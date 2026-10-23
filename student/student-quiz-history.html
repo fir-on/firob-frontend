@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>سجل محاولات الاختبارات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }  /* كان 3.93:1 في الداكن */
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }  /* كان 4.28:1 */
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .combo-option.is-active.is-selected { @apply bg-primary-500/20 ring-1 ring-inset ring-brand/40; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- أشرطة التقدّم (ProgressMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-500; }
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="student-dashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:ring-2" :class="!expanded && 'lg:flex-none lg:justify-center'" :aria-label="t('appTitle')">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold text-muted ltr:tracking-wide" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); } else if (mobile) { mobileNav = false; }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- جرس الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-controls="notif-menu" :aria-expanded="notifOpen.toString()"
+                    :aria-label="t('notifications') + (unread ? ' (' + fmt(unread) + ')' : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="relMin(n.min)"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- قائمة الملف الشخصي -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="studentName + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="studentName"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleStudent')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-brand" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="../common/notifications.html" role="menuitem" class="menu-item"><i class="fa-regular fa-bell w-4 text-muted" aria-hidden="true"></i> <span x-text="t('notifications')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex flex-wrap items-center gap-2" role="list">
+            <li><a href="student-dashboard.html" class="hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" aria-current="page" x-text="t('qh.title')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — STU-07: سجل المحاولات (بيانات مشتركة + فلترة وترقيم حقيقيان) ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <section class="min-w-0">
+        <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('qh.title')"></h1>
+        <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qh.subtitle')"></p>
+      </section>
+
+      <!-- ================= مؤشرات الأداء (محسوبة) ================= -->
+      <section :aria-label="t('qh.kpisLabel')">
+        <ul class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" role="list">
+          <template x-for="k in kpis" :key="k.key">
+            <li class="panel p-4 sm:p-5">
+              <div class="flex items-center justify-between gap-3">
+                <p :id="'kpi-' + k.key" class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qh.kpi.' + k.key)"></p>
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.tone" aria-hidden="true"><i class="fa-solid" :class="k.icon"></i></span>
+              </div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums text-ink" :aria-describedby="'kpi-' + k.key" x-text="k.value"></p>
+              <p x-show="k.hint" class="mt-0.5 truncate text-xs text-muted" x-text="k.hint"></p>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ================= البحث والفلاتر (فعّالة + محفوظة في الرابط) ================= -->
+      <section class="panel flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:flex-wrap lg:items-center" role="search" :aria-label="t('qh.filtersLabel')">
+        <div class="relative min-w-0 w-full flex-1 lg:w-auto lg:min-w-[14rem] lg:basis-56">
+          <label for="attempt-search" class="sr-only" x-text="t('qh.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="attempt-search" x-ref="attemptSearch" type="search" x-model.debounce.200ms="searchQuery" :placeholder="t('qh.searchPlaceholder')" autocomplete="off"
+                 @keydown.escape.stop="searchQuery = ''"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line-strong bg-field pe-10 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none sm:text-sm">
+          <button type="button" x-show="searchQuery" x-cloak @click="searchQuery = ''; $refs.attemptSearch.focus()" :aria-label="t('qh.clearSearch')"
+                  class="absolute end-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-soft hover:text-ink">
+            <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="relative w-full shrink-0 lg:w-56"
+             x-data="selectDropdown({ id: 'course-filter', options: () => courseOptions, get: () => selectedCourse, set: (v) => selectedCourse = v })"
+             @click.outside="closeList()">
+          <span id="course-filter-label" class="sr-only" x-text="t('qh.filterCourseLabel')"></span>
+          <button type="button" id="course-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="course-filter-list" aria-labelledby="course-filter-label course-filter"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold" :class="selectedCourse !== 'all' && '!border-primary-500 !bg-primary-500/5'"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="course-filter-list" role="listbox" aria-labelledby="course-filter-label" x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }" @click="choose(item)" @mousemove="active = idx">
+                <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
+                <span x-show="item.count != null" class="shrink-0 text-xs font-bold tabular-nums text-muted" x-text="item.count != null ? fmt(item.count) : ''"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+        <div class="relative w-full shrink-0 lg:w-52"
+             x-data="selectDropdown({ id: 'status-filter', options: () => statusOptions, get: () => selectedStatus, set: (v) => selectedStatus = v })"
+             @click.outside="closeList()">
+          <span id="status-filter-label" class="sr-only" x-text="t('qh.filterStatusLabel')"></span>
+          <button type="button" id="status-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="status-filter-list" aria-labelledby="status-filter-label status-filter"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold" :class="selectedStatus !== 'all' && '!border-primary-500 !bg-primary-500/5'"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="status-filter-list" role="listbox" aria-labelledby="status-filter-label" x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }" @click="choose(item)" @mousemove="active = idx">
+                <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
+                <span x-show="item.count != null" class="shrink-0 text-xs font-bold tabular-nums text-muted" x-text="item.count != null ? fmt(item.count) : ''"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+        <div class="relative w-full shrink-0 lg:w-44"
+             x-data="selectDropdown({ id: 'range-filter', options: () => rangeOptions, get: () => selectedRange, set: (v) => selectedRange = v })"
+             @click.outside="closeList()">
+          <span id="range-filter-label" class="sr-only" x-text="t('qh.filterDateLabel')"></span>
+          <button type="button" id="range-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="range-filter-list" aria-labelledby="range-filter-label range-filter"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold" :class="selectedRange !== 'all' && '!border-primary-500 !bg-primary-500/5'"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="range-filter-list" role="listbox" aria-labelledby="range-filter-label" x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }" @click="choose(item)" @mousemove="active = idx">
+                <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
+                <span x-show="item.count != null" class="shrink-0 text-xs font-bold tabular-nums text-muted" x-text="item.count != null ? fmt(item.count) : ''"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+        <button type="button" class="btn btn-outline shrink-0" x-show="filtersActive" @click="resetFilters()">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('qh.resetFilters')"></span>
+        </button>
+      </section>
+
+      <p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+
+      <!-- ================= سجل المحاولات — عرض واحد مرسوم (جدول ≥1280px، بطاقات أصغر) ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="attempts-title">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+          <h2 id="attempts-title" class="font-extrabold text-ink" x-text="t('qh.listTitle')"></h2>
+          <p class="text-xs font-bold text-muted" x-text="rangeText"></p>
+        </div>
+
+        <div x-show="!filtered.length" class="flex flex-col items-center gap-3 p-10 text-center">
+          <span class="grid h-12 w-12 place-items-center rounded-full bg-soft text-brand" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <p class="font-bold text-ink" x-text="t('qh.noResults')"></p>
+          <button type="button" class="btn btn-outline btn-sm" x-show="filtersActive" @click="resetFilters()" x-text="t('qh.resetFilters')"></button>
+        </div>
+
+        <template x-if="wide && filtered.length">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1000px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('qh.listTitle') + ' — ' + rangeText"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3 text-start text-xs font-extrabold" x-text="t('qh.colQuiz')"></th>
+                  <th scope="col" class="px-4 py-3 text-start text-xs font-extrabold" x-text="t('qh.colAttempt')"></th>
+                  <th scope="col" class="px-4 py-3 text-start text-xs font-extrabold" x-text="t('qh.colScore')"></th>
+                  <th scope="col" class="px-4 py-3 text-start text-xs font-extrabold" x-text="t('qh.colTime')"></th>
+                  <th scope="col" class="px-4 py-3 text-start text-xs font-extrabold" x-text="t('qh.colDate')"></th>
+                  <th scope="col" class="px-5 py-3 text-end text-xs font-extrabold" x-text="t('qh.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="a in paged" :key="a.id">
+                  <tr class="transition hover:bg-soft/40">
+                    <th scope="row" class="px-5 py-3.5 text-start align-middle font-normal">
+                      <div class="flex items-center gap-3">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm text-brand" aria-hidden="true"><i class="fa-solid" :class="subjectIcon(a.subject)"></i></span>
+                        <div class="min-w-0">
+                          <p class="truncate font-extrabold leading-6 text-ink" x-text="a.title[locale]"></p>
+                          <p class="truncate text-xs text-muted" x-text="subjectName(a.subject)"></p>
+                        </div>
+                      </div>
+                    </th>
+                    <td class="whitespace-nowrap px-4 py-3.5 align-middle text-muted" x-text="attemptLabel(a)"></td>
+                    <td class="px-4 py-3.5 align-middle">
+                      <template x-if="!a.pending">
+                        <div class="max-w-[11rem]">
+                          <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                            <bdi class="tabular-nums text-ink" x-text="fmt(a.earned) + ' / ' + fmt(a.max)"></bdi>
+                            <span class="inline-flex items-center gap-1 tabular-nums" :class="STATUS[a.status].text">
+                              <i class="fa-solid text-[10px]" :class="STATUS[a.status].icon" aria-hidden="true"></i><span x-text="fmtPct(a.pct)"></span>
+                              <span class="sr-only" x-text="' — ' + t('qh.status.' + a.status)"></span>
+                            </span>
+                          </div>
+                          <div class="quota-track mt-1.5" aria-hidden="true"><div class="quota-fill" :class="STATUS[a.status].bar" :style="'width:' + a.pct + '%'"></div></div>
+                        </div>
+                      </template>
+                      <template x-if="a.pending">
+                        <span class="badge badge-warning"><i class="fa-solid fa-hourglass-half text-[10px]" aria-hidden="true"></i> <span x-text="t('qh.status.pending')"></span></span>
+                      </template>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3.5 align-middle tabular-nums text-muted" x-text="fmtDuration(a.durationSec)"></td>
+                    <td class="whitespace-nowrap px-4 py-3.5 align-middle text-muted"><time :datetime="a.date.toISOString()" x-text="fmtDate(a.date)"></time></td>
+                    <td class="px-5 py-3.5 align-middle">
+                      <div class="flex items-center justify-end gap-2">
+                        <a :href="'student-quiz-result.html?attempt=' + a.id" class="act group relative text-brand" :aria-label="t('qh.actionViewResult') + ': ' + a.title[locale]">
+                          <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                          <span class="tooltip-bubble" aria-hidden="true" x-text="t('qh.actionViewResult')"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                        </a>
+                        <template x-if="canRetake(a)">
+                          <a :href="'quiz-player.html?code=' + a.code" class="act group relative text-yellow-900 dark:text-accent-500" :aria-label="t('qh.actionRetake') + ': ' + a.title[locale]">
+                            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                            <span class="tooltip-bubble" aria-hidden="true" x-text="t('qh.actionRetake')"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                          </a>
+                        </template>
+                        <template x-if="!canRetake(a)">
+                          <span class="act group relative cursor-not-allowed text-muted opacity-70" tabindex="0" role="img" :aria-label="t('qh.actionRetake') + ': ' + retakeReason(a)">
+                            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                            <span class="tooltip-bubble" aria-hidden="true" x-text="retakeReason(a)"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                          </span>
+                        </template>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <template x-if="!wide && filtered.length">
+          <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4" role="list">
+            <template x-for="a in paged" :key="a.id">
+              <li class="min-w-0 rounded-xl border border-line p-4">
+                <div class="flex items-start gap-3">
+                  <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-base text-brand" aria-hidden="true"><i class="fa-solid" :class="subjectIcon(a.subject)"></i></span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="font-extrabold leading-6 text-ink" x-text="a.title[locale]"></h3>
+                    <p class="truncate text-xs text-muted" x-text="subjectName(a.subject) + ' · ' + attemptLabel(a)"></p>
+                  </div>
+                </div>
+                <div class="mt-3">
+                      <template x-if="!a.pending">
+                        <div class="max-w-[11rem]">
+                          <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                            <bdi class="tabular-nums text-ink" x-text="fmt(a.earned) + ' / ' + fmt(a.max)"></bdi>
+                            <span class="inline-flex items-center gap-1 tabular-nums" :class="STATUS[a.status].text">
+                              <i class="fa-solid text-[10px]" :class="STATUS[a.status].icon" aria-hidden="true"></i><span x-text="fmtPct(a.pct)"></span>
+                              <span class="sr-only" x-text="' — ' + t('qh.status.' + a.status)"></span>
+                            </span>
+                          </div>
+                          <div class="quota-track mt-1.5" aria-hidden="true"><div class="quota-fill" :class="STATUS[a.status].bar" :style="'width:' + a.pct + '%'"></div></div>
+                        </div>
+                      </template>
+                      <template x-if="a.pending">
+                        <span class="badge badge-warning"><i class="fa-solid fa-hourglass-half text-[10px]" aria-hidden="true"></i> <span x-text="t('qh.status.pending')"></span></span>
+                      </template>
+                </div>
+                <p class="mt-2.5 text-xs text-muted">
+                  <i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span x-text="fmtDuration(a.durationSec)"></span>
+                  <span class="mx-1" aria-hidden="true">·</span><time :datetime="a.date.toISOString()" x-text="fmtDate(a.date)"></time>
+                </p>
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                  <a :href="'student-quiz-result.html?attempt=' + a.id" class="btn btn-outline btn-sm flex-1" :aria-label="t('qh.actionViewResult') + ': ' + a.title[locale]">
+                    <i class="fa-solid fa-file-lines" aria-hidden="true"></i> <span x-text="t('qh.actionViewResult')"></span>
+                  </a>
+                  <a x-show="canRetake(a)" :href="'quiz-player.html?code=' + a.code" class="btn btn-accent btn-sm flex-1" :aria-label="t('qh.actionRetake') + ': ' + a.title[locale]">
+                    <i class="fa-solid fa-rotate-right" aria-hidden="true"></i> <span x-text="t('qh.actionRetake')"></span>
+                  </a>
+                </div>
+                <p x-show="!canRetake(a)" class="mt-2 text-xs text-muted"><i class="fa-solid fa-lock me-1" aria-hidden="true"></i><span x-text="retakeReason(a)"></span></p>
+              </li>
+            </template>
+          </ul>
+        </template>
+
+        <!-- الترقيم (حقيقي) -->
+        <div x-show="filtered.length > pageSize" class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p class="text-xs font-bold text-muted" x-text="rangeText"></p>
+          <nav class="flex items-center gap-1.5" :aria-label="t('qh.pagination')">
+            <button type="button" class="act" :disabled="page === 1" :class="page === 1 && 'opacity-40'" @click="goPage(page - 1)" :aria-label="t('qh.prev')">
+              <i class="fa-solid fa-chevron-left rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+            </button>
+            <template x-for="n in pages" :key="n">
+              <button type="button" class="act font-bold" :class="n === page && 'border-transparent bg-primary-500 text-white'" @click="goPage(n)"
+                      :aria-current="n === page ? 'page' : null" :aria-label="tf('qh.pageN', { n: fmt(n) })" x-text="fmt(n)"></button>
+            </template>
+            <button type="button" class="act" :disabled="page === pages" :class="page === pages && 'opacity-40'" @click="goPage(page + 1)" :aria-label="t('qh.next')">
+              <i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-muted" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن القائمة المنسدلة المخصّصة (Combobox Listbox) — النسخة الموحّدة في المشروع:
+   * Home/End، البحث بالكتابة (type-ahead)، Escape لا يتسرّب للنافذة، Tab يغلق القائمة.
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : (typeof placeholder === 'function' ? placeholder() : placeholder); },
+      optId(item) { return this.id + '-opt-' + item.value; },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      // children[0] هو <template x-for> — لذا +1
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+
+  /**
+   * حالة واجهة شاشة «سجل محاولات الاختبارات» (STU-07).
+   * البيانات من المصدر المشترك (لوحة الطالب + صفحة النتيجة + ما سُلِّم من مشغّل الاختبار).
+   * البحث والفلاتر والترقيم حقيقية، ومحفوظة في الرابط (?q=&course=&status=&range=&page=).
+   * في Laravel: #[Url] + WithPagination + scopes على quiz_attempts.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+
+    /* ================= محاولات الطالب — مصدر واحد مشترك بين: لوحة الطالب، سجل المحاولات، صفحة النتيجة =================
+       كل درجة/نسبة/حالة محسوبة من الإجابات نفسها (لا أرقام مكتوبة يدويًا).
+       earned = null ⇒ السؤال بانتظار تصحيح المعلّم ⇒ المحاولة «بانتظار التصحيح» ولا نسبة/نجاح نهائي.
+       + المحاولات المُسلَّمة فعليًا من quiz-player.html (localStorage: firob-attempt-done:CODE) تُدمج تلقائيًا. */
+    const T = (ar, en) => ({ ar, en });
+    const M = (math) => ({ math });
+    const SA_DAY = 864e5;
+    const SA_TODAY = (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); })();
+
+    const SUBJECT_META = {
+      'math-g11': { ar: 'الرياضيات', en: 'Mathematics', icon: 'fa-square-root-variable' },
+      'phys-g11': { ar: 'الفيزياء', en: 'Physics', icon: 'fa-atom' },
+      'arab-g11': { ar: 'اللغة العربية', en: 'Arabic Language', icon: 'fa-language' },
+      'hist-g11': { ar: 'التاريخ', en: 'History', icon: 'fa-landmark' },
+      'chem-g11': { ar: 'الكيمياء', en: 'Chemistry', icon: 'fa-flask' },
+      'engl-g11': { ar: 'اللغة الإنجليزية', en: 'English Language', icon: 'fa-spell-check' },
+    };
+
+    const SA_RAW = [
+      { id: 'ATT-2210-09', code: 'QZ-C11-104', subject: 'chem-g11', title: T('اختبار الروابط الكيميائية', 'Chemical Bonds Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 3, at: [10, 5], durationSec: 1260, timeAllowed: 30, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 10, earned: 10, q: T('ما نوع الرابطة في جزيء كلوريد الصوديوم؟', 'What type of bond is in sodium chloride?'), math: 'NaCl',
+          yours: T('أيونية', 'Ionic'), correct: T('أيونية', 'Ionic'), grader: 'auto', fb: T('صحيح: انتقال إلكترون من Na إلى Cl يكوّن أيونين متجاذبين.', 'Correct: an electron moves from Na to Cl, forming attracting ions.') },
+        { type: 'tf', bloom: 'understand', marks: 10, earned: 10, q: T('الرابطة التساهمية تنتج عن مشاركة الإلكترونات.', 'A covalent bond results from sharing electrons.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 0, q: T('كم رابطة تساهمية يكوّنها الكربون عادةً؟', 'How many covalent bonds does carbon usually form?'),
+          yours: M('2'), correct: M('4'), grader: 'auto', fb: T('للكربون أربعة إلكترونات تكافؤ، فيكوّن أربع روابط.', 'Carbon has four valence electrons, so it forms four bonds.') },
+        { type: 'essay', bloom: 'analyze', marks: 10, earned: null, q: T('قارن بين الرابطة الأيونية والتساهمية من حيث درجة الانصهار.', 'Compare ionic and covalent bonds in terms of melting point.'),
+          yours: T('المركبات الأيونية درجة انصهارها أعلى لأن التجاذب بين الأيونات قوي في الشبكة البلورية.', 'Ionic compounds melt at higher temperatures because ions attract strongly in the crystal lattice.'), grader: 'teacher', fb: null },
+      ] },
+      { id: 'ATT-2210-08', code: 'QZ-M11-203', subject: 'math-g11', title: T('اختبار الفصل الثالث', 'Chapter 3 Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 13, at: [9, 42], durationSec: 1930, timeAllowed: 45, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('ما قيمة x في المعادلة التالية؟', 'What is the value of x in the following equation?'), math: '2x + 5 = 13',
+          yours: M('x = 4'), correct: M('x = 4'), grader: 'auto', fb: T('صحيح: نطرح 5 من الطرفين ثم نقسم على 2.', 'Correct: subtract 5 from both sides, then divide by 2.') },
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('ما ميل الخط المار بالنقطتين التاليتين؟', 'What is the slope of the line through these points?'), math: '(1, 2), (3, 6)',
+          yours: M('m = 2'), correct: M('m = 2'), grader: 'auto', fb: T('صحيح: (6 − 2) ÷ (3 − 1) = 2.', 'Correct: (6 − 2) ÷ (3 − 1) = 2.') },
+        { type: 'tf', bloom: 'understand', marks: 10, earned: 10, q: T('الخطان المتوازيان لهما الميل نفسه.', 'Parallel lines have the same slope.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'understand', marks: 10, earned: 8, q: T('اشرح معنى كل من m و b في الصورة الميلية لمعادلة الخط.', 'Explain the meaning of m and b in slope-intercept form.'), math: 'y = mx + b',
+          yours: T('m هو الميل ويحدد انحدار الخط، و b هو نقطة تقاطعه مع محور y.', 'm is the slope that sets the steepness; b is where the line crosses the y-axis.'), grader: 'teacher',
+          fb: T('شرح صحيح؛ كان ينقصه مثال عددي يوضّح أثر تغيّر m.', 'Correct explanation; a numeric example showing the effect of changing m was missing.') },
+        { type: 'essay', bloom: 'analyze', marks: 10, earned: 8, q: T('كيف تتحقق من أن خطين متعامدان باستخدام ميليهما؟', 'How do you check that two lines are perpendicular using their slopes?'),
+          yours: T('إذا كان حاصل ضرب الميلين يساوي −1 فهما متعامدان.', 'If the product of the slopes is −1, they are perpendicular.'), grader: 'teacher',
+          fb: T('صحيح، مع ملاحظة الحالة الخاصة للخط الرأسي الذي ميله غير معرّف.', 'Correct; note the special case of a vertical line with an undefined slope.') },
+      ] },
+      { id: 'ATT-2210-07', code: 'QZ-C11-105', subject: 'chem-g11', title: T('اختبار التفاعلات الكيميائية', 'Chemical Reactions Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 16, at: [11, 15], durationSec: 1500, timeAllowed: 30, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('ما المعادلة الموزونة لتكوّن الماء؟', 'Which is the balanced equation for forming water?'),
+          yours: M('2H₂ + O₂ → 2H₂O'), correct: M('2H₂ + O₂ → 2H₂O'), grader: 'auto', fb: T('موازنة صحيحة.', 'Correctly balanced.') },
+        { type: 'mcq', bloom: 'understand', marks: 10, earned: 0, q: T('ماذا نغيّر لموازنة المعادلة الكيميائية؟', 'What do we change to balance a chemical equation?'),
+          yours: T('الأرقام السفلية', 'The subscripts'), correct: T('المعاملات', 'The coefficients'), grader: 'auto',
+          fb: T('تغيير الأرقام السفلية يغيّر المادة نفسها؛ نغيّر المعاملات فقط.', 'Changing subscripts changes the substance itself; only coefficients change.') },
+        { type: 'tf', bloom: 'remember', marks: 10, earned: 10, q: T('تبقى الكتلة الكلية ثابتة في التفاعل الكيميائي.', 'Total mass stays constant in a chemical reaction.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('قانون حفظ الكتلة.', 'Law of conservation of mass.') },
+        { type: 'essay', bloom: 'analyze', marks: 10, earned: 5, q: T('حدّد العامل المؤكسد والمختزل في التفاعل التالي مع التعليل.', 'Identify the oxidizing and reducing agents in the reaction below, with reasons.'), math: 'Zn + Cu²⁺ → Zn²⁺ + Cu',
+          yours: T('الزنك هو العامل المؤكسد لأنه فقد إلكترونات.', 'Zinc is the oxidizing agent because it lost electrons.'), grader: 'teacher',
+          fb: T('عكستَ المفهومين: الزنك يفقد إلكترونات فهو العامل المختزل، و Cu²⁺ هو المؤكسد.', 'You swapped them: zinc loses electrons so it is the reducing agent; Cu²⁺ is the oxidizing agent.') },
+        { type: 'essay', bloom: 'apply', marks: 10, earned: 4, q: T('صنّف التفاعل التالي واذكر السبب.', 'Classify the following reaction and give the reason.'), math: 'CaCO₃ → CaO + CO₂',
+          yours: T('تفاعل اتحاد.', 'A combination reaction.'), grader: 'teacher',
+          fb: T('هو تفاعل تفكك: مادة واحدة تتحوّل إلى مادتين. أحسنت ذكر النواتج.', 'It is a decomposition: one substance becomes two. Good job naming the products.') },
+      ] },
+      { id: 'ATT-2210-06', code: 'QZ-A11-302', subject: 'arab-g11', title: T('اختبار قواعد اللغة', 'Grammar Rules Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 19, at: [10, 0], durationSec: 720, timeAllowed: 20, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 5, earned: 5, q: T('ما ركنا الجملة الاسمية؟', 'What are the two pillars of the nominal sentence?'),
+          yours: T('المبتدأ والخبر', 'Subject and predicate'), correct: T('المبتدأ والخبر', 'Subject and predicate'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 5, q: T('ما نوع الخبر في: «الكتابُ على الطاولةِ»؟', 'What type of predicate is in «الكتابُ على الطاولةِ»?'),
+          yours: T('شبه جملة', 'A phrase'), correct: T('شبه جملة', 'A phrase'), grader: 'auto', fb: T('صحيح: جار ومجرور.', 'Correct: a prepositional phrase.') },
+        { type: 'tf', bloom: 'understand', marks: 5, earned: 5, q: T('«كان» تنصب المبتدأ وترفع الخبر.', '«كان» makes the subject accusative and the predicate nominative.'),
+          yours: T('خطأ', 'False'), correct: T('خطأ', 'False'), grader: 'auto', fb: T('صحيح: العكس هو الصواب — ترفع الاسم وتنصب الخبر.', 'Correct: it is the reverse — nominative subject, accusative predicate.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 5, q: T('اختر الجملة التي خبرها جملة فعلية:', 'Choose the sentence whose predicate is a verbal clause:'),
+          yours: T('الطالبُ يقرأُ', 'الطالبُ يقرأُ'), correct: T('الطالبُ يقرأُ', 'الطالبُ يقرأُ'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 5, earned: 2, q: T('أعرب: «كان الجوُّ ماطرًا».', 'Parse: «كان الجوُّ ماطرًا».'),
+          yours: T('كان: فعل ماضٍ، الجو: فاعل مرفوع، ماطرًا: حال.', 'كان: past verb; الجو: agent; ماطرًا: circumstantial.'), grader: 'teacher',
+          fb: T('«الجو» اسم كان مرفوع وليس فاعلًا، و«ماطرًا» خبر كان منصوب.', '«الجو» is the noun of كان (nominative), not an agent; «ماطرًا» is its accusative predicate.') },
+      ] },
+      { id: 'ATT-2210-05', code: 'QZ-P11-110', subject: 'phys-g11', title: T('اختبار الحركة والقوة', 'Motion & Force Quiz'),
+        attemptNo: 1, attemptsAllowed: 1, daysAgo: 22, at: [8, 30], durationSec: 2400, timeAllowed: 45, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('جسم كتلته 2 kg يتسارع بمعدل 3 m/s². ما القوة المحصلة؟', 'A 2 kg body accelerates at 3 m/s². What is the net force?'),
+          yours: M('6 N'), correct: M('6 N'), grader: 'auto', fb: T('صحيح: F = ma = 2 × 3.', 'Correct: F = ma = 2 × 3.') },
+        { type: 'tf', bloom: 'understand', marks: 10, earned: 10, q: T('الإزاحة كمية متجهة.', 'Displacement is a vector quantity.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح: لها مقدار واتجاه.', 'Correct: it has magnitude and direction.') },
+        { type: 'mcq', bloom: 'remember', marks: 10, earned: 10, q: T('ما وحدة التسارع في النظام الدولي؟', 'What is the SI unit of acceleration?'),
+          yours: M('m/s²'), correct: M('m/s²'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'analyze', marks: 10, earned: 0, q: T('سيارة سرعتها ثابتة على طريق مستقيم. ما القوة المحصلة عليها؟', 'A car moves at constant velocity on a straight road. What is the net force on it?'),
+          yours: T('تساوي قوة المحرك', 'Equal to the engine force'), correct: T('صفر', 'Zero'), grader: 'auto',
+          fb: T('السرعة الثابتة تعني تسارعًا صفريًا، إذن القوة المحصلة صفر (قوة المحرك تعادل الاحتكاك).', 'Constant velocity means zero acceleration, so the net force is zero (engine force balances friction).') },
+        { type: 'essay', bloom: 'apply', marks: 10, earned: 8, q: T('فسّر لماذا يندفع الراكب إلى الأمام عند توقف الحافلة فجأة.', 'Explain why a passenger lurches forward when a bus stops suddenly.'),
+          yours: T('بسبب القصور الذاتي؛ جسم الراكب يميل للاستمرار في الحركة.', 'Because of inertia; the passenger’s body tends to keep moving.'), grader: 'teacher',
+          fb: T('تفسير صحيح بقانون نيوتن الأول؛ أضف دور حزام الأمان كقوة خارجية.', 'Correct use of Newton’s first law; add the seatbelt’s role as an external force.') },
+      ] },
+      { id: 'ATT-2210-04', code: 'QZ-H11-401', subject: 'hist-g11', title: T('اختبار الثورة الصناعية', 'Industrial Revolution Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 26, at: [12, 10], durationSec: 2050, timeAllowed: 40, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 20, earned: 20, q: T('في أي بلد بدأت الثورة الصناعية؟', 'In which country did the Industrial Revolution begin?'),
+          yours: T('بريطانيا', 'Britain'), correct: T('بريطانيا', 'Britain'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'remember', marks: 20, earned: 0, q: T('من طوّر الآلة البخارية بصورتها الفعّالة؟', 'Who developed the efficient steam engine?'),
+          yours: T('توماس إديسون', 'Thomas Edison'), correct: T('جيمس واط', 'James Watt'), grader: 'auto', fb: T('جيمس واط في القرن الثامن عشر؛ إديسون جاء لاحقًا.', 'James Watt in the 18th century; Edison came later.') },
+        { type: 'tf', bloom: 'understand', marks: 20, earned: 0, q: T('أدّت الثورة الصناعية إلى هجرة السكان من المدن إلى الأرياف.', 'The Industrial Revolution drove people from cities to the countryside.'),
+          yours: T('صواب', 'True'), correct: T('خطأ', 'False'), grader: 'auto', fb: T('العكس: هاجر السكان من الأرياف إلى المدن الصناعية.', 'The reverse: people moved from the countryside to industrial cities.') },
+        { type: 'essay', bloom: 'analyze', marks: 20, earned: 15, q: T('حلّل أثر الثورة الصناعية على ظروف العمال.', 'Analyze the impact of the Industrial Revolution on workers’ conditions.'),
+          yours: T('زادت ساعات العمل وانتشرت عمالة الأطفال وظهرت النقابات للمطالبة بالحقوق.', 'Working hours grew, child labor spread, and unions formed to demand rights.'), grader: 'teacher',
+          fb: T('تحليل جيد؛ ينقصه ذكر التشريعات التي حسّنت الظروف لاحقًا.', 'Good analysis; it misses the later laws that improved conditions.') },
+        { type: 'essay', bloom: 'understand', marks: 20, earned: 6, q: T('اذكر ثلاثة أسباب لقيام الثورة الصناعية.', 'Give three causes of the Industrial Revolution.'),
+          yours: T('توفر الفحم.', 'Availability of coal.'), grader: 'teacher', fb: T('ذكرت سببًا واحدًا فقط؛ راجع: رأس المال، الأسواق، الاختراعات.', 'You gave only one cause; review: capital, markets, inventions.') },
+      ] },
+      { id: 'ATT-2210-03', code: 'QZ-E11-501', subject: 'engl-g11', title: T('اختبار الأزمنة', 'Verb Tenses Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 30, at: [9, 0], durationSec: 1100, timeAllowed: 25, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 8, earned: 8, q: T('أكمل: I ___ to Paris twice.', 'Complete: I ___ to Paris twice.'), yours: M('have been'), correct: M('have been'), grader: 'auto', fb: T('صحيح: تجربة دون زمن محدد.', 'Correct: an experience with no specific time.') },
+        { type: 'mcq', bloom: 'apply', marks: 8, earned: 8, q: T('أكمل: She ___ the report yesterday.', 'Complete: She ___ the report yesterday.'), yours: M('finished'), correct: M('finished'), grader: 'auto', fb: T('صحيح: yesterday زمن ماضٍ محدد.', 'Correct: yesterday is a specific past time.') },
+        { type: 'tf', bloom: 'remember', marks: 8, earned: 8, q: T('يُستخدم المضارع التام مع since و for.', 'Present perfect is used with since and for.'), yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'understand', marks: 8, earned: 8, q: T('أي جملة صحيحة؟', 'Which sentence is correct?'), yours: M('I have lived here since 2020.'), correct: M('I have lived here since 2020.'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 8, earned: 2, q: T('اكتب فقرة قصيرة تقارن فيها بين زمنين.', 'Write a short paragraph contrasting two tenses.'), yours: T('I went to school. I have went home.', 'I went to school. I have went home.'), grader: 'teacher',
+          fb: T('خطأ في التصريف: الصحيح have gone. والفقرة قصيرة جدًا.', 'Form error: it should be have gone. The paragraph is too short.') },
+      ] },
+      { id: 'ATT-2210-02', code: 'QZ-M11-202', subject: 'math-g11', title: T('اختبار المصفوفات', 'Matrices Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 35, at: [13, 30], durationSec: 1700, timeAllowed: 30, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 5, earned: 5, q: T('ما رتبة المصفوفة التي لها 2 صفوف و3 أعمدة؟', 'What is the order of a matrix with 2 rows and 3 columns?'), yours: M('2 × 3'), correct: M('2 × 3'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'tf', bloom: 'understand', marks: 5, earned: 5, q: T('ضرب المصفوفات ليس إبداليًا دائمًا.', 'Matrix multiplication is not always commutative.'), yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح: AB ≠ BA عمومًا.', 'Correct: AB ≠ BA in general.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 0, q: T('ما محدد المصفوفة التالية؟', 'What is the determinant of the following matrix?'), math: '[[2, 1], [4, 3]]', yours: M('10'), correct: M('2'), grader: 'auto', fb: T('المحدد = 2×3 − 1×4 = 2.', 'det = 2×3 − 1×4 = 2.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 5, q: T('ناتج جمع مصفوفتين من الرتبة 2×2 هو مصفوفة من الرتبة:', 'Adding two 2×2 matrices gives a matrix of order:'), yours: M('2 × 2'), correct: M('2 × 2'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 5, earned: 0, q: T('متى لا يكون للمصفوفة معكوس؟ علّل.', 'When does a matrix have no inverse? Explain.'), yours: T('', ''), grader: 'teacher', fb: T('لم تُجب. المصفوفة ليس لها معكوس عندما يكون محددها صفرًا.', 'Not answered. A matrix has no inverse when its determinant is zero.') },
+      ] },
+      { id: 'ATT-2210-01', code: 'QZ-A11-301', subject: 'arab-g11', title: T('اختبار البلاغة', 'Rhetoric Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 40, at: [10, 20], durationSec: 1320, timeAllowed: 25, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 6, earned: 6, q: T('ما أركان التشبيه؟', 'What are the elements of a simile?'), yours: T('المشبّه والمشبّه به والأداة ووجه الشبه', 'Tenor, vehicle, particle and ground'), correct: T('المشبّه والمشبّه به والأداة ووجه الشبه', 'Tenor, vehicle, particle and ground'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'understand', marks: 6, earned: 6, q: T('التشبيه البليغ هو ما حُذف منه:', 'An eloquent simile omits:'), yours: T('الأداة ووجه الشبه', 'The particle and the ground'), correct: T('الأداة ووجه الشبه', 'The particle and the ground'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'tf', bloom: 'apply', marks: 6, earned: 6, q: T('«العلمُ نورٌ» تشبيه بليغ.', '«العلمُ نورٌ» is an eloquent simile.'), yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 6, earned: 3, q: T('بيّن أثر الصورة في: «رأيتُ أسدًا يخطب».', 'Explain the image’s effect in: «رأيتُ أسدًا يخطب».'), yours: T('استعارة تدل على الشجاعة.', 'A metaphor showing courage.'), grader: 'teacher', fb: T('صحيح النوع؛ وضّح القرينة «يخطب» ونوع الاستعارة (تصريحية).', 'Right type; explain the clue «يخطب» and the metaphor type (explicit).') },
+        { type: 'essay', bloom: 'apply', marks: 6, earned: 0, q: T('اكتب جملة فيها استعارة مكنية.', 'Write a sentence with an implicit metaphor.'), yours: T('الشمس كالذهب.', 'The sun is like gold.'), grader: 'teacher', fb: T('هذه جملة تشبيه وليست استعارة؛ مثال: «ضحكت الشمس».', 'That is a simile, not a metaphor; e.g. «ضحكت الشمس».') },
+      ] },
+    ];
+
+    /* درجة/نسبة/حالة محسوبة من الإجابات */
+    function saScore(a) {
+      const max = a.questions.reduce((s, q) => s + q.marks, 0);
+      const graded = a.questions.filter(q => q.earned != null);
+      const earned = graded.reduce((s, q) => s + q.earned, 0);
+      const pending = graded.length < a.questions.length;
+      const pct = pending ? null : (max ? Math.round(earned / max * 100) : 0);
+      const status = pending ? 'pending' : (pct >= a.passMark ? 'passed' : 'failed');
+      return { max, earned, gradedMax: graded.reduce((s, q) => s + q.marks, 0), pending, pct, status };
+    }
+    /* محاولات مُسلَّمة فعليًا من مشغّل الاختبار (تبقى «بانتظار التصحيح» — التصحيح في الخادم) */
+    function saLocalAttempts() {
+      const out = [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || k.indexOf('firob-attempt-done:') !== 0) continue;
+          const d = JSON.parse(localStorage.getItem(k) || 'null');
+          if (!d || !d.attemptId || !d.title) continue;
+          out.push({ id: d.attemptId, code: d.code, subject: d.subject, title: d.title, attemptNo: 1, attemptsAllowed: d.attemptsAllowed || 1,
+                     date: new Date(d.submittedAt), durationSec: d.durationSec || 0, timeAllowed: d.duration || 0, passMark: 60,
+                     questions: null, local: true, answered: d.answered, total: d.total, reason: d.reason,
+                     max: d.totalMarks || 0, earned: 0, gradedMax: 0, pending: true, pct: null, status: 'pending' });
+        }
+      } catch (e) {}
+      return out;
+    }
+    const SA_ATTEMPTS = SA_RAW.map(a => ({ ...a, date: new Date(SA_TODAY.getTime() - a.daysAgo * SA_DAY + (a.at[0] * 60 + a.at[1]) * 60000), ...saScore(a) }));
+    const allAttempts = () => saLocalAttempts().concat(SA_ATTEMPTS).sort((x, y) => y.date - x.date);
+
+    const STUDENT = { id: 'STU-2210', ar: 'عمر خالد الفرا', en: 'Omar Khaled Al-Farra' };
+    const ATT = allAttempts();
+    const norm = (s) => (s || '').toString().toLowerCase().normalize('NFKD')
+      .replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[̀-ͯ]/g, '').trim();
+    const RANGE_DAYS = { week: 7, month: 30, semester: 120 };
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'بوابة الطالب',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في موادي واختباراتي…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', logout: 'تسجيل الخروج',
+        roleStudent: 'طالب',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', learning: 'التعلّم', account: 'الحساب' },
+        navItems: {
+          dashboard: 'لوحة التحكم', courses: 'المقررات الدراسية', catalog: 'الكتالوج العام',
+          availableQuizzes: 'الاختبارات المتاحة', quizResults: 'نتائج المحاولات', quizHistory: 'سجل محاولاتي',
+          profile: 'الملف الشخصي', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: {
+          resultPublished: 'تم نشر نتيجة «اختبار الفصل الثالث» — الرياضيات',
+          retakeAvailable: 'إعادة محاولة «اختبار التفاعلات الكيميائية» متاحة — الكيمياء',
+          gradePosted: 'صحّح المعلّم «اختبار قواعد اللغة» يدويًا',
+        },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          attempts: { zero: 'لا محاولات', one: 'محاولة واحدة', two: 'محاولتان', few: '{n} محاولات', many: '{n} محاولة', other: '{n} محاولة' },
+          minutes:  { zero: '0 دقيقة', one: 'دقيقة واحدة', two: 'دقيقتان', few: '{n} دقائق', many: '{n} دقيقة', other: '{n} دقيقة' },
+        },
+
+        qh: {
+          title: 'سجل محاولاتي', subtitle: 'كل محاولاتك السابقة ونتائجها والوقت المستغرق، مع عرض التفاصيل أو إعادة المحاولة عند إتاحتها.',
+          kpisLabel: 'مؤشرات الأداء',
+          kpi: { total: 'إجمالي المحاولات', passed: 'محاولات ناجحة', average: 'متوسط الدرجات', time: 'إجمالي وقت الحل' },
+          kpiPending: 'منها {n} بانتظار التصحيح', kpiAvgHint: 'من المحاولات المصحّحة فقط', kpiPassRate: 'نسبة النجاح {p}',
+          hm: '{h} س {m} د',
+
+          filtersLabel: 'البحث والتصفية', searchPlaceholder: 'ابحث باسم الاختبار أو المقرر أو رمزه…', clearSearch: 'مسح البحث',
+          filterCourseLabel: 'المقرر', filterCourseAll: 'كل المقررات',
+          filterStatusLabel: 'الحالة', filterStatusAll: 'كل الحالات',
+          filterDateLabel: 'النطاق الزمني', range: { all: 'كل الأوقات', week: 'آخر 7 أيام', month: 'آخر 30 يومًا', semester: 'هذا الفصل' },
+          status: { passed: 'ناجح', failed: 'غير ناجح', pending: 'بانتظار التصحيح' },
+          resetFilters: 'مسح التصفية',
+
+          listTitle: 'المحاولات', rangeOf: 'عرض {a}–{b} من {n}', noResults: 'لا توجد محاولات تطابق البحث أو التصفية.', resultsN: 'النتائج: {n}',
+          colQuiz: 'الاختبار والمقرر', colAttempt: 'المحاولة', colScore: 'الدرجة', colTime: 'الوقت المستغرق', colDate: 'تاريخ التسليم', colActions: 'الإجراءات',
+          attemptOf: 'المحاولة {n} من {m}',
+          actionViewResult: 'عرض النتيجة', actionRetake: 'إعادة الاختبار',
+          retakeMax: 'استُنفدت المحاولات المسموحة', retakePending: 'متاحة بعد اعتماد التصحيح', retakeNewer: 'توجد محاولة أحدث لهذا الاختبار',
+          pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية', pageN: 'الصفحة {n}',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Student Portal',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search my subjects & quizzes…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', logout: 'Log out',
+        roleStudent: 'Student',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', learning: 'Learning', account: 'Account' },
+        navItems: {
+          dashboard: 'Dashboard', courses: 'Courses', catalog: 'Public Catalog',
+          availableQuizzes: 'Available Quizzes', quizResults: 'Quiz Results', quizHistory: 'Attempt History',
+          profile: 'Profile', notificationCenter: 'Notification Center',
+        },
+        notif: {
+          resultPublished: 'Result published for "Chapter 3 Quiz" — Mathematics',
+          retakeAvailable: 'A retake is available for "Chemical Reactions Quiz" — Chemistry',
+          gradePosted: 'Your teacher manually graded "Grammar Rules Quiz"',
+        },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          attempts: { zero: 'No attempts', one: '{n} attempt', other: '{n} attempts' },
+          minutes:  { zero: '0 min', one: '{n} min', other: '{n} min' },
+        },
+
+        qh: {
+          title: 'My Attempt History', subtitle: 'All your previous attempts, results and time spent — view details or retake when available.',
+          kpisLabel: 'Performance indicators',
+          kpi: { total: 'Total Attempts', passed: 'Passed Attempts', average: 'Average Score', time: 'Total Time Spent' },
+          kpiPending: '{n} awaiting grading', kpiAvgHint: 'Graded attempts only', kpiPassRate: 'Pass rate {p}',
+          hm: '{h}h {m}m',
+
+          filtersLabel: 'Search & filters', searchPlaceholder: 'Search by quiz title, course or code…', clearSearch: 'Clear search',
+          filterCourseLabel: 'Course', filterCourseAll: 'All Courses',
+          filterStatusLabel: 'Status', filterStatusAll: 'All Statuses',
+          filterDateLabel: 'Date range', range: { all: 'All time', week: 'Last 7 days', month: 'Last 30 days', semester: 'This term' },
+          status: { passed: 'Passed', failed: 'Failed', pending: 'Awaiting grading' },
+          resetFilters: 'Clear filters',
+
+          listTitle: 'Attempts', rangeOf: 'Showing {a}–{b} of {n}', noResults: 'No attempts match your search or filters.', resultsN: 'Results: {n}',
+          colQuiz: 'Quiz & Course', colAttempt: 'Attempt', colScore: 'Score', colTime: 'Time Taken', colDate: 'Submitted', colActions: 'Actions',
+          attemptOf: 'Attempt {n} of {m}',
+          actionViewResult: 'View result', actionRetake: 'Retake quiz',
+          retakeMax: 'All allowed attempts used', retakePending: 'Available once grading is final', retakeNewer: 'A newer attempt exists for this quiz',
+          pagination: 'Pagination', prev: 'Previous page', next: 'Next page', pageN: 'Page {n}',
+        },
+      },
+    };
+
+    const STATUS = {
+      passed:  { badge: 'badge-success', text: 'text-success-700 dark:text-success-500', bar: 'bg-success-700 dark:bg-success-500', icon: 'fa-circle-check' },
+      failed:  { badge: 'badge-danger',  text: 'text-error-700 dark:text-red-300',       bar: 'bg-error-600 dark:bg-red-400',        icon: 'fa-circle-xmark' },
+      pending: { badge: 'badge-warning', text: 'text-warning-800 dark:text-warning-500', bar: 'bg-warning-500',                      icon: 'fa-hourglass-half' },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: wideMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'quizHistory',
+      liveMsg: '',
+      STATUS,
+      get expanded() { return this.mobile || !this.collapsed; },
+      get studentName() { return STUDENT[this.locale]; },
+      get initials() { return STUDENT[this.locale].trim().split(/\s+/).slice(0, 2).map(w => w[0]).join(this.locale === 'ar' ? '‌' : '').toUpperCase(); },
+      announce(msg) { this.liveMsg = ''; this.$nextTick(() => { this.liveMsg = msg; }); },
+
+      /* ---------- الفلاتر ---------- */
+      searchQuery: '', selectedCourse: 'all', selectedStatus: 'all', selectedRange: 'all',
+      page: 1, pageSize: 5,
+      get filtersActive() { return !!(this.searchQuery.trim() || this.selectedCourse !== 'all' || this.selectedStatus !== 'all' || this.selectedRange !== 'all'); },
+      resetFilters() { this.searchQuery = ''; this.selectedCourse = 'all'; this.selectedStatus = 'all'; this.selectedRange = 'all'; this.$refs.attemptSearch?.focus(); },
+      get courseOptions() {
+        const used = [...new Set(ATT.map(a => a.subject))];
+        return [{ value: 'all', label: this.t('qh.filterCourseAll'), count: ATT.length }]
+          .concat(Object.keys(SUBJECT_META).filter(k => used.includes(k)).map(k => ({ value: k, label: SUBJECT_META[k][this.locale], count: ATT.filter(a => a.subject === k).length })));
+      },
+      get statusOptions() {
+        return [{ value: 'all', label: this.t('qh.filterStatusAll'), count: ATT.length }]
+          .concat(['passed', 'failed', 'pending'].map(s => ({ value: s, label: this.t('qh.status.' + s), count: ATT.filter(a => a.status === s).length })));
+      },
+      get rangeOptions() { return ['all', 'week', 'month', 'semester'].map(r => ({ value: r, label: this.t('qh.range.' + r), count: null })); },
+
+      get filtered() {
+        const q = norm(this.searchQuery), days = RANGE_DAYS[this.selectedRange], now = Date.now();
+        return ATT.filter(a => (this.selectedCourse === 'all' || a.subject === this.selectedCourse)
+          && (this.selectedStatus === 'all' || a.status === this.selectedStatus)
+          && (!days || (now - a.date) <= days * 864e5)
+          && (!q || norm([a.title.ar, a.title.en, a.code, (SUBJECT_META[a.subject] || {}).ar, (SUBJECT_META[a.subject] || {}).en].join(' ')).includes(q)));
+      },
+      get pages() { return Math.max(1, Math.ceil(this.filtered.length / this.pageSize)); },
+      get paged() { const s = (this.page - 1) * this.pageSize; return this.filtered.slice(s, s + this.pageSize); },
+      get rangeText() {
+        const n = this.filtered.length; if (!n) return this.tf('qh.resultsN', { n: this.fmt(0) });
+        const a = (this.page - 1) * this.pageSize + 1, b = Math.min(n, this.page * this.pageSize);
+        return this.tf('qh.rangeOf', { a: this.fmt(a), b: this.fmt(b), n: this.pluralize('attempts', n) });
+      },
+      goPage(n) {
+        this.page = Math.min(Math.max(1, n), this.pages); this.syncUrl();
+        this.$nextTick(() => document.getElementById('attempts-title')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+      },
+
+      /* ---------- المؤشرات ---------- */
+      get kpis() {
+        const graded = ATT.filter(a => a.pct != null), passed = ATT.filter(a => a.status === 'passed').length, pending = ATT.filter(a => a.pending).length;
+        const avg = graded.length ? Math.round(graded.reduce((s, a) => s + a.pct, 0) / graded.length) : null;
+        const sec = ATT.reduce((s, a) => s + (a.durationSec || 0), 0), h = Math.floor(sec / 3600), m = Math.round(sec % 3600 / 60);
+        return [
+          { key: 'total',   icon: 'fa-list-check',  tone: 'bg-primary-500/10 text-brand', value: this.fmt(ATT.length), hint: pending ? this.tf('qh.kpiPending', { n: this.fmt(pending) }) : '' },
+          { key: 'passed',  icon: 'fa-trophy',      tone: 'bg-success-500/15 text-success-700 dark:text-success-500', value: this.fmt(passed), hint: graded.length ? this.tf('qh.kpiPassRate', { p: this.fmtPct(Math.round(passed / graded.length * 100)) }) : '' },
+          { key: 'average', icon: 'fa-chart-simple', tone: 'bg-info-500/15 text-info-700 dark:text-blue-300', value: avg == null ? '—' : this.fmtPct(avg), hint: this.t('qh.kpiAvgHint') },
+          { key: 'time',    icon: 'fa-stopwatch',   tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500', value: h ? this.tf('qh.hm', { h: this.fmt(h), m: this.fmt(m) }) : this.pluralize('minutes', m), hint: '' },
+        ];
+      },
+
+      /* ---------- مساعدات العرض ---------- */
+      subjectName(id) { return (SUBJECT_META[id] || { ar: id, en: id })[this.locale]; },
+      subjectIcon(id) { return (SUBJECT_META[id] || {}).icon || 'fa-book'; },
+      attemptLabel(a) { return this.tf('qh.attemptOf', { n: this.fmt(a.attemptNo), m: this.fmt(a.attemptsAllowed) }); },
+      hasNewer(a) { return ATT.some(b => b.code === a.code && b.id !== a.id && b.date > a.date); },
+      canRetake(a) { return !a.pending && !this.hasNewer(a) && a.attemptNo < a.attemptsAllowed; },
+      retakeReason(a) { return this.t(a.pending ? 'qh.retakePending' : (this.hasNewer(a) ? 'qh.retakeNewer' : 'qh.retakeMax')); },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) { return String(this.t(path)).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : '')); },
+      get intlLocale() { return this.locale === 'ar' ? 'ar-u-nu-latn' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intlLocale).format(n); },
+      fmtPct(n) { return n == null ? '—' : this.fmt(n) + '%'; },
+      fmtDate(d) { return new Intl.DateTimeFormat(this.intlLocale, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d); },
+      fmtDuration(sec) { const m = Math.floor(sec / 60), s = sec % 60; return this.fmt(m) + ':' + String(s).padStart(2, '0'); },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      relMin(min) {
+        const rtf = new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto', style: 'short' });
+        return min < 60 ? rtf.format(-min, 'minute') : (min < 1440 ? rtf.format(-Math.round(min / 60), 'hour') : rtf.format(-Math.round(min / 1440), 'day'));
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('qh.title') + ' — FirOb';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- الرابط ---------- */
+      syncUrl() {
+        const p = new URLSearchParams();
+        if (this.searchQuery.trim()) p.set('q', this.searchQuery.trim());
+        if (this.selectedCourse !== 'all') p.set('course', this.selectedCourse);
+        if (this.selectedStatus !== 'all') p.set('status', this.selectedStatus);
+        if (this.selectedRange !== 'all') p.set('range', this.selectedRange);
+        if (this.page > 1) p.set('page', this.page);
+        try { history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : '')); } catch (e) {}
+      },
+      readUrl() {
+        const p = new URLSearchParams(location.search);
+        this.searchQuery = p.get('q') || '';
+        if (this.courseOptions.some(o => o.value === p.get('course'))) this.selectedCourse = p.get('course');
+        if (['passed', 'failed', 'pending'].includes(p.get('status'))) this.selectedStatus = p.get('status');
+        if (RANGE_DAYS[p.get('range')]) this.selectedRange = p.get('range');
+        this.page = Math.max(1, parseInt(p.get('page') || '1', 10) || 1);
+      },
+
+      /* ---------- التنقّل (بوابة الطالب) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'student-dashboard.html' },
+        ]},
+        { group: 'learning', items: [
+          { key: 'courses', icon: 'fa-solid fa-book-open', href: 'student-courses.html' },
+          { key: 'catalog', icon: 'fa-solid fa-layer-group', href: 'learning-objects-catalog.html' },
+          { key: 'availableQuizzes', icon: 'fa-solid fa-pen-to-square', href: 'quiz-player.html' },
+          { key: 'quizResults', icon: 'fa-solid fa-chart-simple', href: 'student-quiz-result.html' },
+          { key: 'quizHistory', icon: 'fa-solid fa-clock-rotate-left', href: 'student-quiz-history.html' },
+        ]},
+        { group: 'account', items: [
+          { key: 'profile', icon: 'fa-regular fa-user', href: '../common/profile.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      notifications: [
+        { id: 1, key: 'resultPublished', min: 15,  read: false, icon: 'fa-solid fa-square-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'retakeAvailable', min: 180, read: false, icon: 'fa-solid fa-rotate-right', tone: 'bg-primary-500/15 text-brand' },
+        { id: 3, key: 'gradePosted', min: 1440,    read: true,  icon: 'fa-solid fa-pen', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- عامة ---------- */
+      init() {
+        document.title = this.t('qh.title') + ' — FirOb';
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        this.readUrl();
+        this.page = Math.min(this.page, this.pages);
+        this.$watch(() => [this.searchQuery, this.selectedCourse, this.selectedStatus, this.selectedRange].join('|'), () => {
+          this.page = 1; this.syncUrl();
+          this.announce(this.tf('qh.resultsN', { n: this.pluralize('attempts', this.filtered.length) }));
+        });
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.attemptSearch;
+          if (g && g.offsetParent !== null) g.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>

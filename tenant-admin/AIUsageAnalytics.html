@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- لوحة تحكم محمية خلف تسجيل الدخول: لا فهرسة ولا وصف تسويقي ولا OG -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>تحليلات استهلاك الذكاء الاصطناعي — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج اللغة والاتجاه قبل الرسم (يمنع قفزة RTL ↔ LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || null;
+    if (!l) { try { l = localStorage.getItem('firob-locale'); } catch (e) {} }
+    l = l === 'en' ? 'en' : 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ الأيقونات: تحميل غير حاجب للرسم (المساحة محجوزة مسبقًا في CSS لمنع القفز) -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin referrerpolicy="no-referrer" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer"></noscript>
+
+<!-- ⑤ Tailwind (إصدار مثبّت) + التوكنز المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        danger: v('danger'), ok: v('ok'), warn: v('warn'), info: v('info'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑥ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* ألوان الحالة النصية — كلها ≥ 4.5:1 على البطاقة والشارات الشفافة */
+      --danger: 185 28 28;  --ok: 4 120 87;       --warn: 180 83 9;    --info: 29 78 216;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --warn: 252 211 77;  --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي — clip لا يكسر position: sticky */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    i[class*='fa-'] { display: inline-block; min-width: 1em; text-align: center; font-style: normal; }
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .dark .panel { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .icon-btn { @apply relative inline-grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-soft hover:text-brand disabled:opacity-50 sm:h-10 sm:w-10; }
+    .nav-link { @apply flex min-h-[2.75rem] items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line-strong/60 text-sm text-muted transition-colors hover:bg-soft hover:text-brand disabled:pointer-events-none disabled:opacity-40 sm:h-9 sm:w-9; }
+    .act[aria-current="page"] { @apply border-transparent bg-primary-500 text-white hover:bg-primary-600 hover:text-white; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info/15 text-info; }
+    .badge-danger  { @apply bg-error-500/15 text-danger; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block min-h-[2.75rem] w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover:not(:disabled) { @apply border-primary-500; }
+    .field:focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled, .field[aria-disabled="true"] { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار (حلقة التركيز من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition-colors disabled:pointer-events-none disabled:opacity-50; touch-action: manipulation; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line-strong/60 bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex min-h-[2.75rem] w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition-colors hover:bg-soft focus:bg-soft focus:outline-none disabled:cursor-not-allowed disabled:opacity-40; }
+    .menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--brand)); }
+
+    /* ---------- قائمة الاختيار المخصصة (Select-only Combobox) ---------- */
+    .combo-list { @apply absolute z-50 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex min-h-[2.75rem] w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2 text-start text-sm font-medium text-ink transition-colors hover:bg-soft sm:min-h-[2.5rem]; }
+    .combo-option.is-active   { @apply bg-soft; box-shadow: inset 0 0 0 2px rgb(var(--brand) / .5); }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- SweetAlert2 ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; border: 1px solid rgb(var(--line)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; font-size: .9375rem !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-timer-progress-bar { background: rgb(var(--brand) / .5) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- ألوان سلاسل الرسم — زوج مُتحقَّق منه آليًا (تمييز عمى الألوان + تباين ≥ 3:1) ---------- */
+    :root { --series1: 14 128 161; --series2: 180 83 9; }        /* #0E80A1 / #B45309 — فاتح */
+    .dark { --series1: 21 151 184; --series2: 217 119 6; }       /* #1597B8 / #D97706 — داكن */
+    .bg-series1 { background-color: rgb(var(--series1)); } .bg-series2 { background-color: rgb(var(--series2)); }
+    .fill-series1 { fill: rgb(var(--series1)); } .fill-series2 { fill: rgb(var(--series2)); }
+    .stroke-series1 { stroke: rgb(var(--series1)); } .stroke-series2 { stroke: rgb(var(--series2)); }
+    .chart-grid { stroke: rgb(var(--line)); stroke-width: 1; }
+    .chart-cross { stroke: rgb(var(--line-strong)); stroke-width: 1; stroke-dasharray: 3 3; }
+    .chart-ring { stroke: rgb(var(--card)); stroke-width: 2; }
+    .chart-text { fill: rgb(var(--muted)); font-size: 11px; font-weight: 700; font-family: inherit; }
+    .chart-tip { @apply pointer-events-none absolute top-0 z-10 min-w-[11rem] -translate-x-1/2 rounded-xl border border-line bg-card px-3 py-2 text-xs shadow-pop; }
+    .chart-card { @apply min-w-0 rounded-2xl border border-line bg-card p-4 shadow-card sm:p-5 flex flex-col; }
+    .dark .chart-card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .swatch { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full; }
+    .kpi-track { @apply flex h-2 w-full overflow-hidden rounded-full bg-line; }
+
+    /* ---------- شارة التحذير / المقيّد ---------- */
+    .badge-warning { @apply bg-warning-500/15 text-warn; }
+
+    /* ---------- مقطع أزرار (radiogroup) ---------- */
+    .seg { @apply inline-flex items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex min-h-[2.5rem] items-center gap-1.5 rounded-lg px-3 text-sm font-bold text-muted transition-colors hover:text-ink; }
+    .seg-btn[aria-checked="true"] { @apply bg-primary-500 text-white shadow hover:text-white; }
+
+    /* ---------- النافذة + كتل الشيفرة ---------- */
+    .modal-panel { @apply relative flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+    .code-block  { @apply max-h-56 overflow-auto rounded-xl border border-line bg-page/60 p-3.5 font-mono text-[11px] leading-6 text-ink; }
+
+    /* ---------- مقياس الحصة ---------- */
+    .quota-track { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-700; }
+  }
+</style>
+
+<!-- ⑦ Alpine.js 3.14.8 + Focus -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑧ SweetAlert2 (إصدار مثبّت، مؤجَّل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+</head>
+
+<body x-data="shell()"
+      @keydown.escape.window="closeAll()"
+      @keydown.window.ctrl.k.prevent="focusSearch()" @keydown.window.meta.k.prevent="focusSearch()"
+      @scroll.window.passive="openMenuId !== null && closeMenu()" @resize.window="openMenuId !== null && closeMenu()"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلانات قارئ الشاشة -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav) ? 'true' : null" :inert="mobile && !mobileNav">
+
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <img x-show="expanded" src="../asset/images/firob-logo.png" alt="FirOb" width="124" height="32" decoding="async"
+             class="block h-8 w-auto max-w-[8.5rem] shrink-0 object-contain dark:brightness-125">
+        <img x-show="!expanded" x-cloak src="../asset/images/firob-favicon.png" alt="FirOb" width="36" height="36" decoding="async"
+             class="block h-9 w-9 shrink-0 object-contain">
+        <span class="min-w-0 flex-1 border-s border-line ps-3" x-show="expanded">
+          <span class="block truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></span>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="closeMobileNav()" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)" :id="'ng-' + group.group"></p>
+          <div class="mx-auto mb-2 h-px w-8 bg-line" x-show="!expanded" aria-hidden="true"></div>
+          <ul class="space-y-1" role="list" :aria-labelledby="expanded ? 'ng-' + group.group : null">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href" class="nav-link relative"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? ' (' + navCount(item) + ')' : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold"
+                        :class="active === item.key ? 'bg-white/20 text-white' : (item.tone === 'primary' ? 'bg-primary-500/15 text-brand' : 'bg-accent-500 text-onaccent')"
+                        x-text="navCount(item)"></span>
+                  <span x-show="navCount(item) && !expanded" x-cloak class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+                        :class="item.tone === 'primary' ? 'bg-primary-500' : 'bg-accent-500'" aria-hidden="true"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()"
+              aria-controls="sidebar" :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+        <i class="fa-solid fa-angles-left transition-transform" :class="collapsed ? 'ltr:-scale-x-100' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 ps-[max(.5rem,env(safe-area-inset-left))] pe-[max(.5rem,env(safe-area-inset-right))] sm:gap-2 sm:ps-6 sm:pe-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" x-ref="navToggle" class="icon-btn lg:hidden" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="mobileNav.toString()" :aria-label="mobileNav ? t('closeMenu') : t('openMenu')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn hidden lg:inline-grid" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')" aria-keyshortcuts="Control+K Meta+K"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong/60 bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted lg:inline-flex" x-text="isMac ? '⌘ K' : 'Ctrl K'">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button type="button" class="icon-btn md:hidden" @click="toggleMobileSearch()" aria-controls="mobile-search"
+                  :aria-expanded="searchOpen.toString()" :aria-label="t('openSearch')">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          </button>
+
+          <button type="button"
+                  class="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10"
+                  @click="toggleLocale()" :aria-label="t('switchLang')" :title="t('switchLang')">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" aria-hidden="true" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="t('darkMode')" :title="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" x-ref="notifBtn" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="dialog" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications') + (unread ? ' — ' + tf('notifUnread', { n: unread }) : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="dialog" aria-labelledby="notif-title">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <h2 id="notif-title" class="font-extrabold" x-text="t('notifications')"></h2>
+                <button type="button" class="min-h-[2.25rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                        :disabled="!unread" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('unreadSr') + ': '"></span>
+                        <span x-text="tf('notif.' + n.key, { pct: seatPct })"></span>
+                      </p>
+                      <p class="text-xs text-muted"><time :datetime="isoAgo(n.mins)" x-text="ago(n.mins)"></time></p>
+                    </div>
+                    <span x-show="!n.read" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true"></span>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center rounded-xl text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i><span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- الحساب -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" x-ref="profileBtn" class="flex min-h-[2.75rem] max-w-[14rem] items-center gap-2 rounded-xl p-1 transition-colors hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials(me.name)"></span>
+              <span class="sr-only md:hidden" x-text="t('accountMenu')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="me.name"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted transition-transform md:block" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <nav id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-60" :aria-label="t('accountMenu')">
+              <ul role="list" class="py-1">
+                <li><a href="../common/profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="TenantSettingsForm.html" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('navItems.orgSettings')"></span></a></li>
+                <li><a href="../common/errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('statusErrors')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4 rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <form id="mobile-search" role="search" x-cloak x-show="searchOpen" x-transition.opacity class="border-t border-line px-3 py-2 md:hidden" @submit.prevent>
+        <label for="q-m" class="sr-only" x-text="t('searchPlaceholder')"></label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q-m" x-ref="mobileSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')"
+                 class="h-11 w-full rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+        </div>
+      </form>
+
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li><span class="text-ink" aria-current="page" x-text="t('navItems.aiAnalytics')"></span></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-08: تحليلات استهلاك الذكاء الاصطناعي ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + التصدير -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('ai.title')">تحليلات استهلاك الذكاء الاصطناعي</h1>
+          <p class="mt-1 max-w-3xl text-sm text-muted sm:text-base" x-text="t('ai.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-outline shrink-0" :disabled="!rows.length" @click="exportCsv()">
+          <i class="fa-solid fa-file-csv" aria-hidden="true"></i><span x-text="tf('ai.exportN', { n: fmt(rows.length) })"></span>
+        </button>
+      </div>
+
+      <!-- ================= حصة التوكنز الشهرية + التوقّع ================= -->
+      <section class="panel p-4 sm:p-5" aria-labelledby="quota-title">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div class="flex min-w-0 items-start gap-4">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl" :class="quotaTone.iconBg" aria-hidden="true"><i class="fa-solid fa-gauge-high text-xl"></i></span>
+            <div class="min-w-0">
+              <h2 id="quota-title" class="font-extrabold text-ink" x-text="t('ai.quota.title')"></h2>
+              <p class="mt-0.5 text-sm text-muted" x-text="tf('ai.quota.caption', { month: fmtMonth(Date.now()) })"></p>
+            </div>
+          </div>
+          <ul class="flex flex-wrap items-center gap-1.5 lg:shrink-0" role="list" :aria-label="t('ai.quota.legendTitle')">
+            <li class="badge badge-primary"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i><span x-text="t('ai.quota.legendNormal')"></span></li>
+            <li class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i><span x-text="t('ai.quota.legendWarning')"></span></li>
+            <li class="badge badge-danger"><i class="fa-solid fa-circle-xmark text-[10px]" aria-hidden="true"></i><span x-text="t('ai.quota.legendExceeded')"></span></li>
+          </ul>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex flex-wrap items-end justify-between gap-2">
+            <p class="text-2xl font-extrabold tabular-nums">
+              <bdi dir="ltr"><span x-text="fmt(quota.used)"></span> <span class="text-base font-bold text-muted" x-text="'/ ' + fmt(quota.limit)"></span></bdi>
+              <span class="ms-1 text-sm font-bold text-muted" x-text="t('ai.tokensWord')"></span>
+            </p>
+            <span class="badge" :class="quotaTone.badge"><i class="fa-solid text-[10px]" :class="quotaTone.icon" aria-hidden="true"></i><span x-text="tf('ai.quota.usedPct', { v: fmt(quotaPct) })"></span></span>
+          </div>
+          <div class="quota-track mt-2.5" role="progressbar" aria-valuemin="0" :aria-valuemax="quota.limit" :aria-valuenow="quota.used"
+               aria-labelledby="quota-title" :aria-valuetext="tf('ai.quota.valueText', { used: fmt(quota.used), limit: fmt(quota.limit), pct: fmt(quotaPct) })">
+            <div class="quota-fill" :class="quotaTone.fill" :style="'width:' + Math.min(100, quotaPct) + '%'"></div>
+          </div>
+          <!-- التوقّع: متى تنفد الحصة بمعدل آخر 7 أيام -->
+          <div class="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+            <p class="flex items-start gap-1.5 font-bold" :class="forecast.beforeReset ? 'text-warn' : 'text-ok'">
+              <i class="fa-solid mt-0.5" :class="forecast.beforeReset ? 'fa-triangle-exclamation' : 'fa-circle-check'" aria-hidden="true"></i>
+              <span x-text="forecast.beforeReset ? tf('ai.quota.runsOut', { date: fmtDate(forecast.date), n: fmt(forecast.daysEarly) }) : t('ai.quota.enough')"></span>
+            </p>
+            <p class="text-muted"><i class="fa-solid fa-chart-line me-1" aria-hidden="true"></i><span x-text="tf('ai.quota.perDay', { n: fmtCompact(forecast.perDay) })"></span></p>
+            <p class="text-muted"><i class="fa-regular fa-calendar me-1" aria-hidden="true"></i><span x-text="tf('ai.quota.resetOn', { date: fmtDate(quota.resetAt), n: fmt(quota.daysToReset) })"></span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= الفلاتر (صف واحد فوق المؤشرات والرسوم — تؤثر على كل ما تحتها) ================= -->
+      <section class="panel space-y-3 p-3.5 sm:p-4" aria-labelledby="filters-title">
+        <h2 id="filters-title" class="sr-only" x-text="t('ai.toolbar.title')"></h2>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <form role="search" class="relative min-w-0 flex-1" @submit.prevent>
+            <label for="ai-q" class="sr-only" x-text="t('ai.toolbar.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+            <input id="ai-q" x-ref="aiSearch" type="search" x-model.debounce.300ms="filters.query" autocomplete="off" enterkeyhint="search" :placeholder="t('ai.toolbar.searchPlaceholder')"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          </form>
+
+          <div class="seg shrink-0 overflow-x-auto" role="radiogroup" :aria-label="t('ai.toolbar.statusLabel')" @keydown="radioKey($event, STATUSES, 'status', 'st-')">
+            <template x-for="s in STATUSES" :key="s">
+              <button type="button" role="radio" class="seg-btn whitespace-nowrap" :id="'st-' + s" :aria-checked="(filters.status === s).toString()" :tabindex="filters.status === s ? 0 : -1"
+                      @click="filters.status = s">
+                <i x-show="s !== 'all'" class="fa-solid text-xs" :class="statusMeta(s).icon" aria-hidden="true"></i>
+                <span x-text="s === 'all' ? t('ai.toolbar.statusAll') : t('ai.status.' + s)"></span>
+              </button>
+            </template>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" :disabled="!filtersActive" @click="clearFilters(true)">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.toolbar.clearFilters')"></span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <template x-for="f in [
+              { id: 'ai-feature', label: 'ai.toolbar.featureLabel', key: 'feature' },
+              { id: 'ai-model',   label: 'ai.toolbar.modelLabel',   key: 'model' },
+              { id: 'ai-range',   label: 'ai.toolbar.rangeLabel',   key: 'dateRange' } ]" :key="f.id">
+            <div class="relative min-w-0"
+                 x-data="selectDropdown({ id: f.id, options: () => filterOptions(f.key), get: () => filters[f.key], set: (v) => filters[f.key] = v })"
+                 @click.outside="closeList()">
+              <span :id="f.id + '-label'" class="mb-1 block text-xs font-bold text-muted" x-text="t(f.label)"></span>
+              <button type="button" :id="f.id" x-ref="btn" role="combobox" aria-haspopup="listbox" :aria-labelledby="f.id + '-label ' + f.id"
+                      :aria-expanded="open.toString()" :aria-controls="f.id + '-list'" :aria-activedescendant="activeId"
+                      class="field flex w-full items-center justify-between gap-2 text-start font-bold" :class="filters[f.key] !== DEFAULTS[f.key] && '!border-brand'"
+                      @click="toggleList()" @keydown="onKey($event)">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" :id="f.id + '-list'" role="listbox" :aria-labelledby="f.id + '-label'" tabindex="-1"
+                  x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </template>
+        </div>
+
+        <!-- نطاق مخصّص -->
+        <div x-show="filters.dateRange === 'custom'" x-cloak class="grid grid-cols-1 gap-2.5 border-t border-line pt-3 sm:grid-cols-2 lg:w-2/3">
+          <div>
+            <label for="ai-from" class="label" x-text="t('ai.toolbar.from')"></label>
+            <input id="ai-from" type="date" class="field" dir="ltr" x-model="filters.customFrom" :min="minDate" :max="filters.customTo || maxDate" :aria-invalid="(!!rangeError).toString()">
+          </div>
+          <div>
+            <label for="ai-to" class="label" x-text="t('ai.toolbar.to')"></label>
+            <input id="ai-to" type="date" class="field" dir="ltr" x-model="filters.customTo" :min="filters.customFrom || minDate" :max="maxDate" :aria-invalid="(!!rangeError).toString()">
+          </div>
+          <p x-show="rangeError" class="err sm:col-span-2" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="rangeError ? t('ai.toolbar.' + rangeError) : ''"></span></p>
+        </div>
+        <p class="text-xs font-bold text-muted" aria-live="polite" x-text="loading ? t('ai.updating') : tf('ai.scopeNote', { n: fmt(rows.length), range: rangeLabel })"></p>
+      </section>
+
+      <!-- ================= المؤشرات (محسوبة من النتائج المصفّاة) ================= -->
+      <section aria-labelledby="kpi-title" :aria-busy="loading.toString()">
+        <h2 id="kpi-title" class="sr-only" x-text="t('ai.kpi.title')"></h2>
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 transition-opacity" :class="loading && 'opacity-60'" role="list">
+          <li class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="min-w-0 text-sm font-bold text-muted" x-text="t('ai.kpi.totalTokens')"></h3>
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+            </div>
+            <div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" :title="fmt(stats.tokens)" x-text="fmtCompact(stats.tokens)"></p>
+              <div class="kpi-track mt-3 gap-0.5" aria-hidden="true">
+                <div class="bg-series1" :style="'width:' + stats.promptPct + '%'"></div>
+                <div class="bg-series2" :style="'width:' + (100 - stats.promptPct) + '%'"></div>
+              </div>
+              <p class="mt-1.5 flex flex-wrap gap-x-3 text-xs font-bold text-muted">
+                <span class="inline-flex items-center gap-1"><span class="swatch bg-series1" aria-hidden="true"></span><span x-text="'Prompt ' + fmt(stats.promptPct) + '%'"></span></span>
+                <span class="inline-flex items-center gap-1"><span class="swatch bg-series2" aria-hidden="true"></span><span x-text="'Completion ' + fmt(100 - stats.promptPct) + '%'"></span></span>
+              </p>
+            </div>
+          </li>
+          <li class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="min-w-0 text-sm font-bold text-muted" x-text="t('ai.kpi.totalCost')"></h3>
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-success-500/15 text-ok" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span>
+            </div>
+            <div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" x-text="fmtMoney(stats.cost, 2)"></p>
+              <p class="mt-1.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.avgCostPerCall', { v: fmtMoney(stats.avgCost, 4), n: fmt(stats.calls) })"></p>
+              <p class="mt-0.5 text-[11px] text-muted" x-text="t('ai.kpi.costNote')"></p>
+            </div>
+          </li>
+          <li class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="min-w-0 text-sm font-bold text-muted" x-text="t('ai.kpi.mostActiveFeature')"></h3>
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-500/25 text-onaccent dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+            </div>
+            <div>
+              <p class="mt-2 truncate text-xl font-extrabold sm:text-2xl" x-text="stats.topFeature ? t('ai.features.' + stats.topFeature.key) : '—'"></p>
+              <p class="mt-1.5 text-xs font-bold text-muted" x-text="stats.topFeature ? tf('ai.kpi.mostActiveShare', { v: fmt(stats.topFeature.pct) }) : ''"></p>
+            </div>
+          </li>
+          <li class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="min-w-0 text-sm font-bold text-muted" x-text="t('ai.kpi.activeUsers')"></h3>
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info/15 text-info" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+            </div>
+            <div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl"><bdi dir="ltr"><span x-text="fmt(stats.users)"></span> <span class="text-base font-bold text-muted" x-text="'/ ' + fmt(USERS.length)"></span></bdi></p>
+              <p class="mt-1.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.failRate', { v: fmt(stats.failPct), t: fmt(stats.throttledPct) })"></p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ================= الرسوم البيانية ================= -->
+      <section class="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3" aria-labelledby="charts-title" :aria-busy="loading.toString()">
+        <h2 id="charts-title" class="sr-only" x-text="t('ai.charts.title')"></h2>
+
+        <!-- اتجاه الاستهلاك -->
+        <figure class="chart-card xl:col-span-2" aria-labelledby="trend-title">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 id="trend-title" class="font-extrabold" x-text="t('ai.charts.trendTitle')"></h3>
+              <p class="text-xs text-muted" x-text="buckets.hourly ? t('ai.charts.trendHourly') : t('ai.charts.trendDaily')"></p>
+            </div>
+            <ul class="flex flex-wrap gap-3" role="list" :aria-label="t('ai.charts.legend')">
+              <li class="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><span class="h-0.5 w-4 rounded bg-series1" aria-hidden="true"></span>Prompt</li>
+              <li class="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><span class="h-0.5 w-4 rounded bg-series2" aria-hidden="true"></span>Completion</li>
+            </ul>
+          </div>
+
+          <!-- الرسم ومحوره معًا داخل LTR: الأقدم يسارًا دائمًا (المحور لا ينقلب عن البيانات) -->
+          <div dir="ltr" class="relative mt-3" :class="loading && 'opacity-60'">
+            <div x-show="!buckets.list.length || !stats.tokens" class="grid h-56 place-items-center text-sm text-muted" x-text="t('ai.charts.noData')"></div>
+            <div x-show="buckets.list.length && stats.tokens" class="relative">
+              <svg x-ref="trendSvg" viewBox="0 0 600 220" class="block h-auto w-full touch-none outline-none" tabindex="0" role="img"
+                   :aria-label="trendSummary" aria-describedby="trend-kbd" x-html="trendSvg"
+                   @pointermove="hoverAt($event)" @pointerleave="hi = null" @focus="hi = hi ?? buckets.list.length - 1" @blur="hi = null"
+                   @keydown.arrow-left.prevent="hi = Math.max(0, (hi ?? 0) - 1)" @keydown.arrow-right.prevent="hi = Math.min(buckets.list.length - 1, (hi ?? -1) + 1)"
+                   @keydown.home.prevent="hi = 0" @keydown.end.prevent="hi = buckets.list.length - 1"></svg>
+              <!-- تلميح القيم -->
+              <div x-show="hi !== null && buckets.list[hi]" x-cloak class="chart-tip" :style="tipStyle" role="status" :dir="locale === 'ar' ? 'rtl' : 'ltr'">
+                <template x-if="hi !== null && buckets.list[hi]">
+                  <div>
+                    <p class="mb-1 font-extrabold text-ink" x-text="bucketLabel(buckets.list[hi], true)"></p>
+                    <p class="flex items-center justify-between gap-4"><span class="inline-flex items-center gap-1.5"><span class="swatch bg-series1" aria-hidden="true"></span>Prompt</span><b class="tabular-nums" x-text="fmt(buckets.list[hi].prompt)"></b></p>
+                    <p class="flex items-center justify-between gap-4"><span class="inline-flex items-center gap-1.5"><span class="swatch bg-series2" aria-hidden="true"></span>Completion</span><b class="tabular-nums" x-text="fmt(buckets.list[hi].completion)"></b></p>
+                    <p class="mt-1 border-t border-line pt-1 text-muted" x-text="tf('ai.charts.tipCalls', { n: fmt(buckets.list[hi].calls), c: fmtMoney(buckets.list[hi].cost, 2) })"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+          <p id="trend-kbd" class="sr-only" x-text="t('ai.charts.kbdHint')"></p>
+
+          <details class="mt-3 rounded-xl border border-line">
+            <summary class="cursor-pointer select-none rounded-xl px-3 py-2 text-xs font-bold text-brand" x-text="t('ai.charts.asTable')"></summary>
+            <div class="max-h-64 overflow-auto border-t border-line scroll-thin">
+              <table class="w-full text-xs">
+                <caption class="sr-only" x-text="t('ai.charts.trendTitle')"></caption>
+                <thead class="sticky top-0 bg-soft"><tr>
+                  <th scope="col" class="px-3 py-2 text-start" x-text="buckets.hourly ? t('ai.charts.colHour') : t('ai.charts.colDay')"></th>
+                  <th scope="col" class="px-3 py-2 text-end">Prompt</th><th scope="col" class="px-3 py-2 text-end">Completion</th>
+                  <th scope="col" class="px-3 py-2 text-end" x-text="t('ai.charts.colCalls')"></th>
+                </tr></thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="b in buckets.list" :key="b.t">
+                    <tr><th scope="row" class="px-3 py-1.5 text-start font-bold" x-text="bucketLabel(b, true)"></th>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmt(b.prompt)"></td><td class="px-3 py-1.5 text-end tabular-nums" x-text="fmt(b.completion)"></td>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmt(b.calls)"></td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </figure>
+
+        <!-- التوزيع حسب الميزة: قياس مقدار → لون واحد -->
+        <figure class="chart-card" aria-labelledby="feat-title">
+          <h3 id="feat-title" class="font-extrabold" x-text="t('ai.charts.featureTitle')"></h3>
+          <p class="text-xs text-muted" x-text="t('ai.charts.featureSubtitle')"></p>
+          <ul class="mt-4 flex-1 space-y-3.5" role="list" :class="loading && 'opacity-60'">
+            <template x-for="f in stats.byFeature" :key="f.key">
+              <li>
+                <button type="button" class="w-full rounded-lg text-start" @click="filters.feature = filters.feature === f.key ? 'all' : f.key"
+                        :aria-pressed="(filters.feature === f.key).toString()" :aria-label="t('ai.features.' + f.key) + ': ' + fmt(f.pct) + '% — ' + t('ai.charts.filterBy')">
+                  <span class="mb-1 flex items-center justify-between gap-2 text-xs font-bold">
+                    <span class="truncate" :class="filters.feature === f.key && 'text-brand'" x-text="t('ai.features.' + f.key)"></span>
+                    <span class="shrink-0 tabular-nums text-muted"><span x-text="fmt(f.pct) + '%'"></span> · <span x-text="fmtCompact(f.tokens)"></span></span>
+                  </span>
+                  <span class="kpi-track block" aria-hidden="true"><span class="block h-full rounded-full bg-brand" :style="'width:' + Math.max(f.pct, 1.5) + '%'"></span></span>
+                </button>
+              </li>
+            </template>
+          </ul>
+          <p x-show="!stats.byFeature.length" class="py-10 text-center text-sm text-muted" x-text="t('ai.charts.noData')"></p>
+        </figure>
+      </section>
+
+      <!-- ================= سجلات الاستخدام ================= -->
+      <section class="panel" aria-labelledby="ai-table-title" :aria-busy="loading.toString()">
+        <div class="flex flex-wrap items-end justify-between gap-2 border-b border-line p-4 sm:p-5">
+          <div class="min-w-0">
+            <h2 id="ai-table-title" tabindex="-1" class="rounded font-extrabold focus:outline-none" x-text="t('ai.table.title')"></h2>
+            <p class="text-xs text-muted" x-text="t('ai.table.subtitle')"></p>
+          </div>
+          <p class="text-xs font-bold text-muted" x-text="tf('ai.table.resultsN', { n: fmt(rows.length) })"></p>
+        </div>
+
+        <!-- تحميل -->
+        <div x-show="tableState === 'loading'" x-cloak class="space-y-2 p-4" aria-hidden="true">
+          <template x-for="i in 5" :key="i"><div class="h-14 animate-pulse rounded-xl bg-line/60"></div></template>
+        </div>
+        <p x-show="tableState === 'loading'" x-cloak class="sr-only" x-text="t('ai.table.loadingTitle')"></p>
+
+        <!-- فارغ -->
+        <div x-show="tableState === 'empty'" x-cloak class="py-14 text-center">
+          <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <p class="font-bold" x-text="t('ai.table.emptyTitle')"></p>
+          <p class="mt-1 text-xs text-muted" x-text="t('ai.table.emptyDesc')"></p>
+          <button type="button" class="btn btn-outline btn-sm mt-3" @click="clearFilters(true)" x-text="t('ai.toolbar.clearFilters')"></button>
+        </div>
+
+        <div x-show="tableState === 'data'">
+          <!-- بطاقات — جوال/تابلت -->
+          <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+            <template x-for="r in paged" :key="r.id">
+              <li class="min-w-0 rounded-xl border border-line p-4">
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="min-w-0 truncate text-sm font-extrabold" x-text="t('ai.features.' + r.feature)"></h3>
+                  <span class="badge shrink-0" :class="statusMeta(r.status).badge"><i class="fa-solid text-[10px]" :class="statusMeta(r.status).icon" aria-hidden="true"></i><span x-text="t('ai.status.' + r.status)"></span></span>
+                </div>
+                <div class="mt-2.5 flex items-center gap-2.5">
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true" x-text="initials(r.user.name)"></span>
+                  <div class="min-w-0">
+                    <p class="truncate font-bold leading-5" x-text="r.user.name"></p>
+                    <p class="text-xs text-muted" x-text="t('ai.roles.' + r.user.role)"></p>
+                  </div>
+                </div>
+                <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                  <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold"><bdi dir="ltr" x-text="modelLabel(r.model)"></bdi></dd></div>
+                  <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" x-text="fmt(r.prompt + r.completion)"></dd></div>
+                  <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold"><time :datetime="iso(r.at)" :title="fmtFull(r.at)" x-text="rel(r.at)"></time></dd></div>
+                  <div><dt class="text-muted" x-text="t('ai.table.colCost')"></dt><dd class="mt-0.5 font-bold tabular-nums" x-text="fmtMoney(r.cost, 4)"></dd></div>
+                </dl>
+                <button type="button" class="btn btn-outline btn-sm mt-3 w-full" @click="openDetails(r, $el)" :aria-label="t('ai.table.viewDetails') + ': ' + r.id">
+                  <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+                </button>
+              </li>
+            </template>
+          </ul>
+
+          <!-- جدول — سطح المكتب (أعمدة ثابتة: لا تمرير أفقي) -->
+          <div class="hidden xl:block">
+            <table class="w-full table-fixed text-sm">
+              <caption class="sr-only" x-text="t('ai.table.title') + ' — ' + tf('ai.table.pageOf', { n: fmt(page), total: fmt(pages) })"></caption>
+              <colgroup><col class="w-[14%]"><col class="w-[20%]"><col class="w-[17%]"><col class="w-[19%]"><col class="w-[12%]"><col class="w-[11%]"><col class="w-[7%]"></colgroup>
+              <thead class="bg-soft text-xs text-ink">
+                <tr>
+                  <th scope="col" class="px-5 py-3 text-start font-extrabold" x-text="t('ai.table.colTimestamp')"></th>
+                  <th scope="col" class="px-3 py-3 text-start font-extrabold" x-text="t('ai.table.colUser')"></th>
+                  <th scope="col" class="px-3 py-3 text-start font-extrabold" x-text="t('ai.table.colFeature')"></th>
+                  <th scope="col" class="px-3 py-3 text-start font-extrabold" x-text="t('ai.table.colProvider')"></th>
+                  <th scope="col" class="px-3 py-3 text-end font-extrabold" x-text="t('ai.table.colTokens')"></th>
+                  <th scope="col" class="px-3 py-3 text-start font-extrabold" x-text="t('ai.table.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3 text-end font-extrabold"><span class="sr-only" x-text="t('ai.table.colActions')"></span></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="r in paged" :key="r.id">
+                  <tr class="transition-colors hover:bg-soft/40">
+                    <td class="px-5 py-3 text-muted"><time :datetime="iso(r.at)" :title="fmtFull(r.at)" x-text="rel(r.at)"></time><bdi dir="ltr" class="block text-[11px]" x-text="r.id"></bdi></td>
+                    <th scope="row" class="px-3 py-3 text-start font-normal">
+                      <div class="flex min-w-0 items-center gap-2.5">
+                        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true" x-text="initials(r.user.name)"></span>
+                        <div class="min-w-0"><p class="truncate font-bold leading-5" x-text="r.user.name"></p><p class="truncate text-xs text-muted" x-text="t('ai.roles.' + r.user.role)"></p></div>
+                      </div>
+                    </th>
+                    <td class="px-3 py-3"><span class="block truncate" x-text="t('ai.features.' + r.feature)"></span></td>
+                    <td class="px-3 py-3 text-muted"><bdi dir="ltr" class="block truncate" :title="modelLabel(r.model)" x-text="modelLabel(r.model)"></bdi></td>
+                    <td class="px-3 py-3 text-end">
+                      <p class="font-extrabold tabular-nums" x-text="fmt(r.prompt + r.completion)"></p>
+                      <p class="text-[11px] tabular-nums text-muted"><bdi dir="ltr" x-text="'P ' + fmt(r.prompt) + ' · C ' + fmt(r.completion)"></bdi></p>
+                    </td>
+                    <td class="px-3 py-3"><span class="badge" :class="statusMeta(r.status).badge"><i class="fa-solid text-[10px]" :class="statusMeta(r.status).icon" aria-hidden="true"></i><span x-text="t('ai.status.' + r.status)"></span></span></td>
+                    <td class="px-5 py-3 text-end">
+                      <button type="button" class="act ms-auto" @click="openDetails(r, $el)" :aria-label="t('ai.table.viewDetails') + ': ' + r.id" :title="t('ai.table.viewDetails')">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- الترقيم -->
+          <div class="flex flex-col items-center justify-between gap-3 border-t border-line p-4 sm:flex-row">
+            <p class="text-xs font-bold text-muted" x-text="tf('ai.table.showingRange', { from: fmt((page - 1) * PER_PAGE + 1), to: fmt(Math.min(page * PER_PAGE, rows.length)), total: fmt(rows.length) })"></p>
+            <nav :aria-label="t('ai.table.pagination')" class="flex items-center gap-1.5">
+              <button type="button" class="act" :disabled="page === 1" @click="goPage(page - 1)" :aria-label="t('ai.table.prevPage')"><i class="fa-solid fa-chevron-left text-xs rtl:-scale-x-100" aria-hidden="true"></i></button>
+              <span class="px-2 text-xs font-bold text-muted tabular-nums" aria-live="polite" x-text="tf('ai.table.pageOf', { n: fmt(page), total: fmt(pages) })"></span>
+              <button type="button" class="act" :disabled="page === pages" @click="goPage(page + 1)" :aria-label="t('ai.table.nextPage')"><i class="fa-solid fa-chevron-right text-xs rtl:-scale-x-100" aria-hidden="true"></i></button>
+            </nav>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" loading="lazy" decoding="async" class="block h-7 w-auto shrink-0 object-contain dark:brightness-125">
+          <p class="min-w-0 text-sm text-muted">
+            <span x-text="t('footer.tagline')"></span>
+            <span class="block text-xs sm:inline sm:text-sm">
+              <span class="hidden sm:inline" aria-hidden="true">·</span>
+              © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+            </span>
+          </p>
+        </div>
+        <nav :aria-label="t('footer.nav')" class="min-w-0">
+          <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+            <li><a href="../index.html" class="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-muted underline-offset-4 transition-colors hover:text-brand hover:underline"><i class="fa-solid fa-sitemap text-xs" aria-hidden="true"></i><span x-text="t('footer.screens')"></span></a></li>
+            <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+              <li><span class="inline-flex cursor-not-allowed items-center text-muted/70" aria-disabled="true"><span x-text="t('footer.' + k)"></span><span class="sr-only" x-text="' (' + t('footer.soon') + ')'"></span></span></li>
+            </template>
+          </ul>
+        </nav>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="badge badge-muted" dir="ltr" x-text="version"></span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     النافذة — فاحص تفاصيل المهمة
+     ========================================================================== -->
+<div x-cloak x-show="detailsOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDetails()" aria-hidden="true"></div>
+
+  <div x-show="detailsOpen" x-trap.noscroll.inert="detailsOpen" role="dialog" aria-modal="true" aria-labelledby="details-title" aria-describedby="details-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel" @keydown.alt.arrow-down.prevent="stepLog(1)" @keydown.alt.arrow-up.prevent="stepLog(-1)">
+    <template x-if="selectedLog">
+      <div class="flex min-h-0 flex-1 flex-col">
+        <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4 sm:p-5">
+          <div class="min-w-0">
+            <p class="text-xs font-extrabold text-muted" x-text="t('ai.modal.title')"></p>
+            <h2 id="details-title" class="mt-0.5 text-lg font-extrabold text-ink" x-text="t('ai.features.' + selectedLog.feature)"></h2>
+            <p id="details-desc" class="mt-0.5 text-xs text-muted">
+              <bdi dir="ltr" x-text="selectedLog.id"></bdi> · <time :datetime="iso(selectedLog.at)" x-text="fmtFull(selectedLog.at)"></time>
+            </p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <span class="badge" :class="statusMeta(selectedLog.status).badge"><i class="fa-solid text-[10px]" :class="statusMeta(selectedLog.status).icon" aria-hidden="true"></i><span x-text="t('ai.status.' + selectedLog.status)"></span></span>
+              <span class="badge badge-muted"><bdi dir="ltr" x-text="modelLabel(selectedLog.model)"></bdi></span>
+            </div>
+          </div>
+          <button type="button" class="icon-btn shrink-0" @click="closeDetails()" :aria-label="t('ai.modal.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </header>
+
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+          <!-- أثر الخطأ أو التقييد — أعلى النافذة لأنه سبب الفتح غالبًا -->
+          <section x-show="selectedLog.error" aria-labelledby="err-title"
+                   class="rounded-xl border p-3.5" :class="selectedLog.status === 'failed' ? 'border-error-500/40 bg-error-500/5' : 'border-warning-500/40 bg-warning-500/10'">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <h3 id="err-title" class="flex items-center gap-2 text-sm font-extrabold" :class="selectedLog.status === 'failed' ? 'text-danger' : 'text-warn'">
+                <i class="fa-solid" :class="selectedLog.status === 'failed' ? 'fa-circle-xmark' : 'fa-hourglass-half'" aria-hidden="true"></i>
+                <span x-text="selectedLog.status === 'failed' ? t('ai.modal.errorTrace') : t('ai.modal.throttleTrace')"></span>
+              </h3>
+              <button type="button" class="btn btn-outline btn-sm" @click="copyText(selectedLog.error, 'ai.modal.errorCopied')">
+                <i class="fa-regular fa-copy" aria-hidden="true"></i><span x-text="t('ai.modal.copy')"></span>
+              </button>
+            </div>
+            <p class="mb-2 text-xs text-ink" x-text="selectedLog.status === 'failed' ? t('ai.modal.failedHint') : t('ai.modal.throttledHint')"></p>
+            <pre class="code-block !max-h-40 whitespace-pre-wrap break-words" dir="ltr" tabindex="0" x-text="selectedLog.error"></pre>
+          </section>
+
+          <section aria-labelledby="meta-title">
+            <h3 id="meta-title" class="mb-2 text-sm font-extrabold text-ink" x-text="t('ai.modal.requestMeta')"></h3>
+            <dl class="grid grid-cols-1 gap-3 rounded-xl border border-line p-3.5 sm:grid-cols-2">
+              <div class="min-w-0"><dt class="text-xs text-muted" x-text="t('ai.table.colUser')"></dt>
+                <dd class="mt-0.5 font-bold"><span x-text="selectedLog.user.name"></span> <span class="text-xs font-medium text-muted" x-text="'· ' + t('ai.roles.' + selectedLog.user.role)"></span></dd></div>
+              <div><dt class="text-xs text-muted" x-text="t('ai.modal.duration')"></dt>
+                <dd class="mt-0.5 font-bold tabular-nums" :class="selectedLog.duration >= 30000 && 'text-danger'" x-text="fmtDuration(selectedLog.duration)"></dd></div>
+              <div class="min-w-0"><dt class="text-xs text-muted" x-text="t('ai.modal.provider')"></dt><dd class="mt-0.5 truncate font-bold"><bdi dir="ltr" x-text="modelLabel(selectedLog.model)"></bdi></dd></div>
+              <div><dt class="text-xs text-muted" x-text="t('ai.modal.subject')"></dt><dd class="mt-0.5 font-bold"><bdi dir="ltr" x-text="selectedLog.subject"></bdi></dd></div>
+            </dl>
+            <div class="mt-2 flex flex-wrap gap-x-4">
+              <a :href="'users.html?q=' + encodeURIComponent(selectedLog.user.email)" class="inline-flex min-h-[2.25rem] items-center gap-1.5 text-xs font-bold text-brand hover:underline"><i class="fa-solid fa-user" aria-hidden="true"></i><span x-text="t('ai.modal.viewUser')"></span></a>
+              <button type="button" class="inline-flex min-h-[2.25rem] items-center gap-1.5 text-xs font-bold text-brand hover:underline" @click="filterUser(selectedLog.user)"><i class="fa-solid fa-filter" aria-hidden="true"></i><span x-text="t('ai.modal.filterUser')"></span></button>
+            </div>
+          </section>
+
+          <section aria-labelledby="tok-title">
+            <h3 id="tok-title" class="mb-2 text-sm font-extrabold text-ink" x-text="t('ai.modal.tokenBreakdown')"></h3>
+            <div class="rounded-xl border border-line p-3.5">
+              <div class="kpi-track gap-0.5" aria-hidden="true">
+                <div class="bg-series1" :style="'width:' + pctOf(selectedLog.prompt, selectedLog.prompt + selectedLog.completion) + '%'"></div>
+                <div class="bg-series2" :style="'width:' + pctOf(selectedLog.completion, selectedLog.prompt + selectedLog.completion) + '%'"></div>
+              </div>
+              <dl class="mt-3 grid grid-cols-3 gap-3 text-center">
+                <div><dt class="flex items-center justify-center gap-1 text-[11px] font-bold text-muted"><span class="swatch bg-series1" aria-hidden="true"></span>Prompt</dt><dd class="mt-0.5 font-extrabold tabular-nums" x-text="fmt(selectedLog.prompt)"></dd></div>
+                <div><dt class="flex items-center justify-center gap-1 text-[11px] font-bold text-muted"><span class="swatch bg-series2" aria-hidden="true"></span>Completion</dt><dd class="mt-0.5 font-extrabold tabular-nums" x-text="fmt(selectedLog.completion)"></dd></div>
+                <div><dt class="text-[11px] font-bold text-muted" x-text="t('ai.modal.total')"></dt><dd class="mt-0.5 font-extrabold tabular-nums text-brand" x-text="fmt(selectedLog.prompt + selectedLog.completion)"></dd></div>
+              </dl>
+              <p class="mt-3 border-t border-line pt-3 text-xs text-muted">
+                <span class="font-bold" x-text="t('ai.modal.estimatedCost')"></span>: <b class="tabular-nums text-ink" x-text="fmtMoney(selectedLog.cost, 4)"></b>
+                <span x-text="' — ' + tf('ai.modal.rate', { p: fmtMoney(MODELS[selectedLog.model].in, 2), c: fmtMoney(MODELS[selectedLog.model].out, 2) })"></span>
+              </p>
+            </div>
+          </section>
+
+          <section aria-labelledby="pl-title">
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <h3 id="pl-title" class="text-sm font-extrabold text-ink" x-text="t('ai.modal.payload')"></h3>
+              <button type="button" class="btn btn-outline btn-sm" @click="copyText(payloadJson, 'ai.modal.payloadCopied')"><i class="fa-regular fa-copy" aria-hidden="true"></i><span x-text="t('ai.modal.copy')"></span></button>
+            </div>
+            <pre class="code-block" dir="ltr" tabindex="0" :aria-label="t('ai.modal.payload')" x-text="payloadJson"></pre>
+          </section>
+        </div>
+
+        <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-line p-3 sm:p-4">
+          <button type="button" class="btn btn-outline btn-sm" :disabled="logIndex <= 0" @click="stepLog(-1)" aria-keyshortcuts="Alt+ArrowUp">
+            <i class="fa-solid fa-chevron-right text-xs ltr:-scale-x-100" aria-hidden="true"></i><span x-text="t('ai.modal.newer')"></span>
+          </button>
+          <p class="text-xs font-bold text-muted tabular-nums" x-text="tf('ai.modal.position', { i: fmt(logIndex + 1), n: fmt(rows.length) })"></p>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="logIndex >= rows.length - 1" @click="stepLog(1)" aria-keyshortcuts="Alt+ArrowDown">
+            <span x-text="t('ai.modal.older')"></span><i class="fa-solid fa-chevron-left text-xs ltr:-scale-x-100" aria-hidden="true"></i>
+          </button>
+        </footer>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن الاختيار المخصص (Select-only Combobox — نمط WAI-ARIA APG).
+   * ↓/↑ Home/End · Enter/Space اختيار · Tab اختيار وانتقال · Esc إغلاق (دون إغلاق اللوحة الأم)
+   * · البحث بأول الأحرف · ينقلب للأعلى عند ضيق المساحة.
+   */
+  function selectDropdown({ id, options, get, set, disabled = () => false }) {
+    return {
+      open: false, active: -1, dropUp: false, _q: '', _qt: null,
+      get items() { return options(); },
+      get isDisabled() { return !!disabled(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { return this.selectedItem ? this.selectedItem.label : ''; },
+      get activeId() { return this.open && this.active > -1 && this.items[this.active] ? this.optId(this.items[this.active]) : null; },
+      optId(item) { return id + '-opt-' + item.value; },
+      isSelected(item) { return get() === item.value; },
+      openList() {
+        if (this.isDisabled || !this.items.length) return;
+        const r = this.$refs.btn.getBoundingClientRect();
+        const need = Math.min(224, this.items.length * 46 + 16);
+        this.dropUp = r.bottom + need > window.innerHeight - 8 && r.top > need;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item, refocus = true) { set(item.value); this.closeList(); if (refocus) this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() {
+        this.$nextTick(() => {
+          const list = this.$refs.list, el = list?.children[this.active];
+          if (!list || !el) return;
+          /* تمرير يدوي داخل القائمة فقط (scrollIntoView قد يحرّك الصفحة أو اللوحة) */
+          if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+          else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+        });
+      },
+      onKey(e) {
+        if (this.isDisabled) return;
+        const k = e.key;
+        if (k === 'ArrowDown') { e.preventDefault(); this.move(1); }
+        else if (k === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scrollActiveIntoView(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = this.items.length - 1; this.scrollActiveIntoView(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape' && this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); }
+        else if (k === 'Tab' && this.open) { if (this.active > -1) this.choose(this.items[this.active], false); else this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          this._q += k.toLowerCase(); clearTimeout(this._qt); this._qt = setTimeout(() => this._q = '', 600);
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this._q));
+          if (i > -1) { if (!this.open) this.openList(); this.active = i; this.scrollActiveIntoView(); }
+        }
+      },
+    };
+  }
+
+  /* ---------- النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json ---------- */
+  const I18N = {
+    ar: {
+      skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+      mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+      openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة', expandSidebar: 'توسيع القائمة',
+      searchPlaceholder: 'ابحث في النظام…', openSearch: 'فتح البحث',
+      switchLang: 'تغيير اللغة إلى English', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+      notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', notifUnread: '{n} غير مقروءة', unreadSr: 'غير مقروء',
+      allMarked: 'تم تعليم جميع الإشعارات كمقروءة.', viewAllNotif: 'عرض جميع الإشعارات',
+      accountMenu: 'قائمة الحساب', roleTenantAdmin: 'مسؤول المؤسسة (Tenant Admin)',
+      profile: 'الملف الشخصي', statusErrors: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+      breadcrumbLabel: 'مسار التنقل', breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+      navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+      navItems: {
+        orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+        academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+        concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+        aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+        subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+      },
+      notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'استُهلك {pct}% من حصة توكنز الذكاء الاصطناعي هذا الشهر', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+      footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', nav: 'روابط التذييل', screens: 'خريطة الشاشات',
+                help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', soon: 'قريبًا' },
+
+      ai: {
+        title: 'تحليلات استهلاك الذكاء الاصطناعي',
+        subtitle: 'راقب استهلاك التوكنز والتكلفة التقديرية وحصة الخطة الشهرية عبر كل ميزات الذكاء الاصطناعي في منظمتك.',
+        exportN: 'تصدير CSV ({n})', csvDone: 'تم تصدير {n} سجلًا إلى CSV.', tokensWord: 'توكن',
+        updating: 'جارٍ تحديث النتائج…', scopeNote: 'المؤشرات والرسوم والسجلات أدناه تعكس {n} استدعاءً — {range}.',
+        quota: {
+          title: 'حصة التوكنز الشهرية', caption: 'إجمالي Prompt + Completion لشهر {month} مقابل حد الخطة الحالية.',
+          legendTitle: 'مستويات الحصة', legendNormal: 'طبيعي (أقل من 80%)', legendWarning: 'تحذير (80–99%)', legendExceeded: 'تجاوز (100%+)',
+          usedPct: 'مُستهلك {v}%', valueText: '{used} من {limit} توكن ({pct}%)',
+          runsOut: 'بالمعدل الحالي تنفد الحصة في {date} — قبل التجديد بـ{n} يوم.', enough: 'بالمعدل الحالي تكفي الحصة حتى التجديد.',
+          perDay: 'المعدل اليومي (آخر 7 أيام): {n} توكن', resetOn: 'التجديد في {date} (بعد {n} يوم)',
+        },
+        kpi: {
+          title: 'مؤشرات الاستهلاك', totalTokens: 'إجمالي التوكنز', totalCost: 'التكلفة التقديرية',
+          avgCostPerCall: 'بمتوسط {v} لكل استدعاء · {n} استدعاء', costNote: 'تكلفة المزوّد بالدولار (أسعار الجدول المعتمد).',
+          mostActiveFeature: 'الميزة الأكثر استخدامًا', mostActiveShare: '{v}% من الاستدعاءات',
+          activeUsers: 'مستخدمون نشطون', failRate: 'فشل {v}% · مقيّد {t}%',
+        },
+        charts: {
+          title: 'الرسوم البيانية', trendTitle: 'اتجاه استهلاك التوكنز', trendDaily: 'توكنز Prompt وCompletion يوميًا ضمن الفترة المحددة',
+          trendHourly: 'توكنز Prompt وCompletion كل ساعة', legend: 'مفتاح الرسم', noData: 'لا توجد بيانات في هذه الفترة.',
+          tipCalls: '{n} استدعاء · {c}', asTable: 'عرض البيانات كجدول', colDay: 'اليوم', colHour: 'الساعة', colCalls: 'الاستدعاءات',
+          kbdHint: 'استخدم السهمين يمينًا ويسارًا للتنقل بين النقاط.', summary: '{title}: الإجمالي {total} توكن؛ الذروة {peak} في {at}.',
+          featureTitle: 'التوزيع حسب الميزة', featureSubtitle: 'حصة كل ميزة من الاستدعاءات — انقر للتصفية', filterBy: 'انقر للتصفية',
+        },
+        toolbar: {
+          title: 'البحث والتصفية', searchPlaceholder: 'ابحث باسم المستخدم أو بريده أو الميزة أو النموذج أو رقم المهمة…',
+          statusLabel: 'حالة الاستدعاء', statusAll: 'الكل', clearFilters: 'مسح الفلاتر', filtersCleared: 'تم مسح الفلاتر.',
+          featureLabel: 'الميزة', modelLabel: 'المزوّد والنموذج', rangeLabel: 'الفترة',
+          featureAll: 'كل الميزات', modelAll: 'كل النماذج',
+          dateRange: { today: 'اليوم', yesterday: 'أمس', last7: 'آخر 7 أيام', last30: 'آخر 30 يومًا', month: 'هذا الشهر', custom: 'نطاق مخصّص' },
+          from: 'من تاريخ', to: 'إلى تاريخ', rangeOrder: 'تاريخ البداية بعد تاريخ النهاية.',
+        },
+        status: { success: 'نجاح', failed: 'فشل', throttled: 'مقيّد' },
+        roles: { admin: 'مسؤول', teacher: 'معلّم', editor: 'محرّر', reviewer: 'مراجع' },
+        features: {
+          quiz_generation: 'مولّد الاختبارات', content_summarization: 'ملخّص المحتوى',
+          concept_assist: 'مساعد المفاهيم', question_bank_enrichment: 'إغناء بنك الأسئلة', translation_assist: 'مساعد الترجمة',
+        },
+        table: {
+          title: 'سجلات الاستخدام', subtitle: 'كل استدعاء للذكاء الاصطناعي مع التوكنز والتكلفة والحالة — الأحدث أولًا.',
+          resultsN: '{n} سجل', colTimestamp: 'الوقت', colUser: 'المستخدم', colFeature: 'الميزة', colProvider: 'المزوّد والنموذج',
+          colTokens: 'التوكنز', colCost: 'التكلفة', colStatus: 'الحالة', colActions: 'إجراءات', viewDetails: 'عرض التفاصيل',
+          loadingTitle: 'جارٍ تحميل السجلات…', emptyTitle: 'لا توجد سجلات مطابقة', emptyDesc: 'جرّب توسيع الفترة الزمنية أو تعديل الفلاتر.',
+          showingRange: 'عرض {from}–{to} من {total}', pageOf: 'صفحة {n} من {total}', pagination: 'ترقيم الصفحات', prevPage: 'الصفحة السابقة', nextPage: 'الصفحة التالية',
+        },
+        modal: {
+          title: 'تفاصيل المهمة', close: 'إغلاق', requestMeta: 'بيانات الطلب', provider: 'المزوّد والنموذج', duration: 'مدة المعالجة', subject: 'العنصر',
+          viewUser: 'عرض المستخدم', filterUser: 'كل استدعاءات هذا المستخدم', userFiltered: 'تمت التصفية حسب {name}.',
+          tokenBreakdown: 'تفصيل التوكنز', total: 'الإجمالي', estimatedCost: 'التكلفة التقديرية', rate: 'السعر لكل مليون: Prompt {p} · Completion {c}',
+          payload: 'حمولة الطلب (JSON)', copy: 'نسخ', payloadCopied: 'تم نسخ الحمولة.', errorCopied: 'تم نسخ رسالة الخطأ.', copyFailed: 'تعذّر النسخ؛ حدّد النص وانسخه يدويًا.',
+          errorTrace: 'أثر الخطأ', throttleTrace: 'سبب التقييد',
+          failedHint: 'فشل الاستدعاء ولم يُنتج استجابة؛ تُحتسب توكنز الطلب فقط.', throttledHint: 'تجاوز الطلب حد المعدّل فأُعيدت محاولته تلقائيًا ونجح بعد تأخير.',
+          newer: 'الأحدث', older: 'الأقدم', position: '{i} من {n}',
+        },
+        units: { ms: 'م.ث', sec: 'ث' },
+      },
+    },
+    en: {
+      skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+      mainMenu: 'Main menu', mainNav: 'Main navigation',
+      openMenu: 'Open menu', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar', expandSidebar: 'Expand sidebar',
+      searchPlaceholder: 'Search the system…', openSearch: 'Open search',
+      switchLang: 'Change language to العربية', lightMode: 'Light mode', darkMode: 'Dark mode',
+      notifications: 'Notifications', markAllRead: 'Mark all as read', notifUnread: '{n} unread', unreadSr: 'Unread',
+      allMarked: 'All notifications marked as read.', viewAllNotif: 'View all notifications',
+      accountMenu: 'Account menu', roleTenantAdmin: 'Tenant Admin',
+      profile: 'Profile', statusErrors: 'System Status & Errors', logout: 'Log out',
+      breadcrumbLabel: 'Breadcrumb', breadcrumb: { home: 'Home', org: 'Organization Management' },
+      navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+      navItems: {
+        orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+        academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+        concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+        aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+        subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+      },
+      notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: '{pct}% of this month\'s AI token quota is used', reset: 'A password reset link was sent successfully' },
+      footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', nav: 'Footer links', screens: 'Screen map',
+                help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', soon: 'coming soon' },
+
+      ai: {
+        title: 'AI Usage Analytics',
+        subtitle: 'Monitor token consumption, estimated cost and your monthly plan quota across every AI feature in your organization.',
+        exportN: 'Export CSV ({n})', csvDone: '{n} records exported to CSV.', tokensWord: 'tokens',
+        updating: 'Updating results…', scopeNote: 'KPIs, charts and records below reflect {n} calls — {range}.',
+        quota: {
+          title: 'Monthly token quota', caption: 'Total Prompt + Completion for {month} against your current plan limit.',
+          legendTitle: 'Quota levels', legendNormal: 'Normal (under 80%)', legendWarning: 'Warning (80–99%)', legendExceeded: 'Exceeded (100%+)',
+          usedPct: '{v}% used', valueText: '{used} of {limit} tokens ({pct}%)',
+          runsOut: 'At the current rate the quota runs out on {date} — {n} days before reset.', enough: 'At the current rate the quota lasts until reset.',
+          perDay: 'Daily rate (last 7 days): {n} tokens', resetOn: 'Resets on {date} (in {n} days)',
+        },
+        kpi: {
+          title: 'Usage KPIs', totalTokens: 'Total tokens', totalCost: 'Estimated cost',
+          avgCostPerCall: 'Avg {v} per call · {n} calls', costNote: 'Provider cost in USD (from the approved rate table).',
+          mostActiveFeature: 'Most used feature', mostActiveShare: '{v}% of calls',
+          activeUsers: 'Active users', failRate: 'Failed {v}% · Throttled {t}%',
+        },
+        charts: {
+          title: 'Charts', trendTitle: 'Token consumption trend', trendDaily: 'Daily Prompt and Completion tokens in the selected range',
+          trendHourly: 'Hourly Prompt and Completion tokens', legend: 'Chart legend', noData: 'No data in this range.',
+          tipCalls: '{n} calls · {c}', asTable: 'Show data as a table', colDay: 'Day', colHour: 'Hour', colCalls: 'Calls',
+          kbdHint: 'Use the left and right arrow keys to move between points.', summary: '{title}: total {total} tokens; peak {peak} on {at}.',
+          featureTitle: 'Usage by feature', featureSubtitle: "Each feature's share of calls — click to filter", filterBy: 'click to filter',
+        },
+        toolbar: {
+          title: 'Search and filters', searchPlaceholder: 'Search by user name or email, feature, model, or job ID…',
+          statusLabel: 'Call status', statusAll: 'All', clearFilters: 'Clear filters', filtersCleared: 'Filters cleared.',
+          featureLabel: 'Feature', modelLabel: 'Provider & model', rangeLabel: 'Range',
+          featureAll: 'All features', modelAll: 'All models',
+          dateRange: { today: 'Today', yesterday: 'Yesterday', last7: 'Last 7 days', last30: 'Last 30 days', month: 'This month', custom: 'Custom range' },
+          from: 'From', to: 'To', rangeOrder: 'Start date is after end date.',
+        },
+        status: { success: 'Success', failed: 'Failed', throttled: 'Throttled' },
+        roles: { admin: 'Admin', teacher: 'Teacher', editor: 'Editor', reviewer: 'Reviewer' },
+        features: {
+          quiz_generation: 'Quiz generator', content_summarization: 'Content summarizer',
+          concept_assist: 'Concept assistant', question_bank_enrichment: 'Question bank enrichment', translation_assist: 'Translation assistant',
+        },
+        table: {
+          title: 'Usage records', subtitle: 'Every AI call with tokens, cost and status — newest first.',
+          resultsN: '{n} records', colTimestamp: 'Time', colUser: 'User', colFeature: 'Feature', colProvider: 'Provider & model',
+          colTokens: 'Tokens', colCost: 'Cost', colStatus: 'Status', colActions: 'Actions', viewDetails: 'View details',
+          loadingTitle: 'Loading records…', emptyTitle: 'No matching records', emptyDesc: 'Try widening the date range or adjusting the filters.',
+          showingRange: 'Showing {from}–{to} of {total}', pageOf: 'Page {n} of {total}', pagination: 'Pagination', prevPage: 'Previous page', nextPage: 'Next page',
+        },
+        modal: {
+          title: 'Job details', close: 'Close', requestMeta: 'Request', provider: 'Provider & model', duration: 'Processing time', subject: 'Subject',
+          viewUser: 'View user', filterUser: "All of this user's calls", userFiltered: 'Filtered by {name}.',
+          tokenBreakdown: 'Token breakdown', total: 'Total', estimatedCost: 'Estimated cost', rate: 'Per million: Prompt {p} · Completion {c}',
+          payload: 'Request payload (JSON)', copy: 'Copy', payloadCopied: 'Payload copied.', errorCopied: 'Error message copied.', copyFailed: "Couldn't copy; select the text and copy it manually.",
+          errorTrace: 'Error trace', throttleTrace: 'Throttling reason',
+          failedHint: 'The call failed and produced no response; only prompt tokens are billed.', throttledHint: 'The request hit a rate limit, was retried automatically and succeeded after a delay.',
+          newer: 'Newer', older: 'Older', position: '{i} of {n}',
+        },
+        units: { ms: 'ms', sec: 's' },
+      },
+    },
+  };
+
+  const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
+  const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const isoDate = (ts) => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  /* إعدادات النماذج — في الإنتاج تُحمَّل من config/ai.php (لا تُكتب في الصفحة). الأسعار بالدولار لكل مليون توكن */
+  const MODELS = {
+    'openai-gpt-4o':      { provider: 'OpenAI',    name: 'gpt-4o',            in: 2.5,  out: 10 },
+    'openai-gpt-4o-mini': { provider: 'OpenAI',    name: 'gpt-4o-mini',       in: 0.15, out: 0.6 },
+    'anthropic-sonnet':   { provider: 'Anthropic', name: 'Claude Sonnet',     in: 3,    out: 15 },
+    'google-gemini-pro':  { provider: 'Google',    name: 'Gemini Pro',        in: 1.25, out: 5 },
+  };
+  const FEATURES = [
+    { key: 'quiz_generation',          w: 38, models: [['openai-gpt-4o', .6], ['anthropic-sonnet', .4]], subj: 'Concept' },
+    { key: 'content_summarization',    w: 24, models: [['openai-gpt-4o-mini', 1]], subj: 'Resource' },
+    { key: 'concept_assist',           w: 19, models: [['anthropic-sonnet', 1]], subj: 'Concept' },
+    { key: 'question_bank_enrichment', w: 12, models: [['google-gemini-pro', 1]], subj: 'Subject' },
+    { key: 'translation_assist',       w: 7,  models: [['openai-gpt-4o-mini', .7], ['openai-gpt-4o', .3]], subj: 'Resource' },
+  ];
+  /* مستخدمون وهميون (نفس قائمة صفحة المستخدمين) */
+  const USERS = [
+    { name: 'سارة أحمد المصري',    email: 'sara.ahmed@alaqsa.edu.ps',     role: 'admin' },
+    { name: 'محمد خالد يوسف',      email: 'm.khaled@alaqsa.edu.ps',       role: 'reviewer' },
+    { name: 'ليان عمر الشريف',     email: 'layan.omar@alaqsa.edu.ps',     role: 'editor' },
+    { name: 'أحمد الريماوي',        email: 'ahmad.rimawi@alaqsa.edu.ps',   role: 'teacher' },
+    { name: 'لينا أبو شرار',        email: 'lina.abusharar@alaqsa.edu.ps', role: 'teacher' },
+    { name: 'محمود صالح',           email: 'mahmoud.saleh@alaqsa.edu.ps',  role: 'reviewer' },
+    { name: 'رنا الحلو',            email: 'rana.helou@alaqsa.edu.ps',     role: 'teacher' },
+    { name: 'خالد مرعي',            email: 'khaled.marei@alaqsa.edu.ps',   role: 'editor' },
+    { name: 'هبة جمال القدرة',      email: 'heba.qudra@alaqsa.edu.ps',     role: 'teacher' },
+    { name: 'عمر سمير عيسى',        email: 'omar.issa@alaqsa.edu.ps',      role: 'teacher' },
+    { name: 'يوسف إبراهيم النجار', email: 'yousef.ibrahim@alaqsa.edu.ps', role: 'teacher' },
+    { name: 'نور حسن عودة',         email: 'nour.hassan@alaqsa.edu.ps',    role: 'teacher' },
+  ];
+  const USER_W = [6, 8, 10, 14, 12, 7, 11, 9, 8, 6, 5, 4];
+
+  /* مولّد عشوائي ثابت البذرة: نفس البيانات في كل تحميل، بتوقيتات نسبية إلى الآن */
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function pickW(rnd, items, weights) { const s = weights.reduce((a, b) => a + b, 0); let r = rnd() * s; for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r <= 0) return items[i]; } return items[items.length - 1]; }
+
+  function generateLogs(now) {
+    const rnd = mulberry32(20261019), out = [], today0 = startOfDay(now);
+    let seq = 30000;
+    for (let d = 45; d >= 0; d--) {
+      const day0 = today0 - d * DAY, dow = new Date(day0).getDay();
+      const weekend = dow === 5 || dow === 6;                       /* الجمعة والسبت */
+      const calls = Math.round((weekend ? 38 : 100) * (0.85 + rnd() * 0.3));
+      const times = Array.from({ length: calls }, () => day0 + (7 + rnd() * 15) * HOUR).filter(ts => ts < now).sort((a, b) => a - b);
+      for (const at of times) {
+        const f = pickW(rnd, FEATURES, FEATURES.map(x => x.w));
+        const modelId = pickW(rnd, f.models.map(m => m[0]), f.models.map(m => m[1])), m = MODELS[modelId];
+        const user = pickW(rnd, USERS, USER_W);
+        const r = rnd(), status = r < 0.045 ? 'failed' : r < 0.095 ? 'throttled' : 'success';
+        const prompt = Math.round(300 + rnd() * 1100);
+        const completion = status === 'failed' ? 0 : Math.round(150 + rnd() * 750);
+        const timeout = status === 'failed' && rnd() < 0.5;
+        const duration = timeout ? 30000 + Math.round(rnd() * 400) : status === 'throttled' ? Math.round(4000 + rnd() * 9000) : Math.round(900 + rnd() * 3200);
+        const sid = Math.round(100 + rnd() * 9000);
+        const error = status === 'failed'
+          ? (timeout ? `${m.provider}\\TimeoutException: Request exceeded 30000ms while running "${f.key}" for ${f.subj} #${sid}.`
+                     : `${m.provider}\\InvalidResponseException: Model returned malformed JSON while parsing "${f.key}" output for ${f.subj} #${sid}.`)
+          : status === 'throttled' ? `RateLimitException: Provider rate limit reached for "${f.key}"; request queued and retried after ${Math.round(duration / 1000)}s.` : null;
+        out.push(Object.freeze({   /* مجمّد: لا يُحوَّل لكائن تفاعلي (أداء أفضل مع آلاف السجلات) */
+          id: 'AIJ-' + (++seq), at: Math.round(at), user, feature: f.key, model: modelId, prompt, completion,
+          cost: (prompt * m.in + completion * m.out) / 1e6, duration, status, error, subject: f.subj + ' #' + sid,
+          payload: { feature: f.key, [f.subj.toLowerCase() + '_id']: sid, locale: rnd() < 0.8 ? 'ar' : 'en', max_tokens: 900, model: m.name },
+        }));
+      }
+    }
+    return out.reverse();   /* الأحدث أولًا */
+  }
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const mdMQ = window.matchMedia('(min-width: 768px)');
+    const NOW = Date.now();
+    const ALL = generateLogs(NOW);          /* خارج الحالة التفاعلية عمدًا */
+    const DEFAULTS = { query: '', status: 'all', feature: 'all', model: 'all', dateRange: 'month', customFrom: '', customTo: '' };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      isMac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+      mobileNav: false, collapsed: false, searchOpen: false,
+      notifOpen: false, profileOpen: false, openMenuId: null,
+      active: 'aiAnalytics', live: '',
+      year: new Date().getFullYear(), version: 'v1.0.0',
+      get expanded() { return this.mobile || !this.collapsed; },
+      MODELS, USERS, DEFAULTS, STATUSES: ['all', 'success', 'failed', 'throttled'],
+      RANGES: ['today', 'yesterday', 'last7', 'last30', 'month', 'custom'],
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const get = (d) => path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), d);
+        const s = get(I18N[this.locale]);
+        return s !== undefined ? s : (get(I18N.ar) ?? path);
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      intl() { return this.locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intl(), { maximumFractionDigits: 1 }).format(n); },
+      fmtCompact(n) { return new Intl.NumberFormat(this.intl(), { notation: 'compact', maximumFractionDigits: 2 }).format(n); },
+      fmtMoney(v, d = 2) { return new Intl.NumberFormat(this.intl(), { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(v); },
+      fmtDate(ts) { return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'long' }).format(new Date(ts)); },
+      fmtMonth(ts) { return new Intl.DateTimeFormat(this.intl(), { month: 'long', year: 'numeric' }).format(new Date(ts)); },
+      fmtFull(ts) { return new Intl.DateTimeFormat(this.intl(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(new Date(ts)); },
+      fmtDuration(ms) { return ms < 1000 ? this.fmt(ms) + ' ' + this.t('ai.units.ms') : this.fmt(Math.round(ms / 100) / 10) + ' ' + this.t('ai.units.sec'); },
+      rel(ts) {
+        const diff = ts - Date.now(), a = Math.abs(diff), rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' });
+        if (a < HOUR) return rtf.format(Math.round(diff / MIN), 'minute');
+        if (a < DAY && ts >= startOfDay(Date.now())) return rtf.format(Math.round(diff / HOUR), 'hour');
+        return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
+      },
+      iso(ts) { return new Date(ts).toISOString(); },
+      ago(mins) { const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' }); return mins < 60 ? rtf.format(-mins, 'minute') : mins < 1440 ? rtf.format(-Math.round(mins / 60), 'hour') : rtf.format(-Math.round(mins / 1440), 'day'); },
+      isoAgo(mins) { return new Date(Date.now() - mins * MIN).toISOString(); },
+      pctOf(a, b) { return b ? Math.round(a / b * 1000) / 10 : 0; },
+      initials(name) {
+        const p = String(name).trim().split(/\s+/);
+        return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+      },
+      modelLabel(id) { const m = MODELS[id]; return m ? m.provider + ' · ' + m.name : id; },
+      statusMeta(s) {
+        return { success: { badge: 'badge-success', icon: 'fa-circle-check' }, failed: { badge: 'badge-danger', icon: 'fa-circle-xmark' },
+                 throttled: { badge: 'badge-warning', icon: 'fa-hourglass-half' } }[s] || { badge: 'badge-muted', icon: 'fa-circle' };
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        const h = document.documentElement;
+        h.lang = loc; h.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(loc);
+        else { try { localStorage.setItem('firob-locale', loc); } catch (e) {} }
+        document.title = this.t('ai.title') + ' — FirOb';
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* ---------- التنقل ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) { return item.key === 'notificationCenter' ? this.unread : (item.count || 0); },
+      notifications: [
+        { id: 1, key: 'invite', mins: 10,   read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota',  mins: 120,  read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warn' },
+        { id: 3, key: 'reset',  mins: 1440, read: true,  icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-ok' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      markAllRead() { this.notifications.forEach(n => n.read = true); this.announce(this.t('allMarked')); },
+      me: USERS[0],
+      get seatPct() { return this.fmt(Math.round(this.quotaPct)); },
+
+      /* =====================================================================
+         الحصة الشهرية (مستقلة عن الفلاتر) + التوقّع
+         ===================================================================== */
+      quota: (() => {
+        const d = new Date(NOW), monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime(), resetAt = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+        const used = ALL.reduce((s, l) => l.at >= monthStart ? s + l.prompt + l.completion : s, 0);
+        const t0 = startOfDay(NOW), last7 = ALL.reduce((s, l) => (l.at >= t0 - 7 * DAY && l.at < t0) ? s + l.prompt + l.completion : s, 0);
+        return { limit: 2500000, used, monthStart, resetAt, daysToReset: Math.ceil((resetAt - NOW) / DAY), perDay: last7 / 7 };
+      })(),
+      get quotaPct() { return Math.round(this.quota.used / this.quota.limit * 1000) / 10; },
+      get quotaTone() {
+        const p = this.quotaPct;
+        if (p >= 100) return { badge: 'badge-danger', fill: 'bg-danger', icon: 'fa-circle-xmark', iconBg: 'bg-error-500/15 text-danger' };
+        if (p >= 80) return { badge: 'badge-warning', fill: 'bg-warn', icon: 'fa-triangle-exclamation', iconBg: 'bg-warning-500/15 text-warn' };
+        return { badge: 'badge-primary', fill: 'bg-brand', icon: 'fa-circle-check', iconBg: 'bg-primary-500/15 text-brand' };
+      },
+      get forecast() {
+        const q = this.quota, left = q.limit - q.used;
+        if (left <= 0) return { perDay: q.perDay, date: Date.now(), beforeReset: true, daysEarly: q.daysToReset };
+        const date = Date.now() + (left / Math.max(q.perDay, 1)) * DAY;
+        return { perDay: q.perDay, date, beforeReset: date < q.resetAt, daysEarly: Math.max(1, Math.ceil((q.resetAt - date) / DAY)) };
+      },
+
+      /* =====================================================================
+         الفلترة — النتائج تُحسب مرة واحدة عند تغيّر الفلاتر وتُخزّن (لا getters ثقيلة في كل رسم)
+         ===================================================================== */
+      filters: { ...DEFAULTS },
+      rows: [], stats: { tokens: 0, prompt: 0, completion: 0, promptPct: 0, cost: 0, avgCost: 0, calls: 0, users: 0, byFeature: [], topFeature: null, failPct: 0, throttledPct: 0 },
+      buckets: { hourly: false, list: [] }, loading: false, page: 1, PER_PAGE: 10, hi: null,
+      get minDate() { return isoDate(Date.now() - 45 * DAY); },
+      get maxDate() { return isoDate(Date.now()); },
+      get rangeError() { const f = this.filters; return f.dateRange === 'custom' && f.customFrom && f.customTo && f.customFrom > f.customTo ? 'rangeOrder' : ''; },
+      get filtersActive() { return JSON.stringify(this.filters) !== JSON.stringify(DEFAULTS); },
+      get range() {
+        const now = Date.now(), t0 = startOfDay(now), f = this.filters;
+        switch (f.dateRange) {
+          case 'today': return [t0, now];
+          case 'yesterday': return [t0 - DAY, t0 - 1];
+          case 'last7': return [t0 - 6 * DAY, now];
+          case 'last30': return [t0 - 29 * DAY, now];
+          case 'month': return [this.quota.monthStart, now];
+          case 'custom': {
+            if (this.rangeError) return [t0, now];
+            const from = f.customFrom ? new Date(f.customFrom + 'T00:00:00').getTime() : t0 - 29 * DAY;
+            const to = f.customTo ? Math.min(now, new Date(f.customTo + 'T23:59:59').getTime()) : now;
+            return [from, to];
+          }
+        }
+        return [t0, now];
+      },
+      get rangeLabel() {
+        const [a, b] = this.range;
+        return this.t('ai.toolbar.dateRange.' + this.filters.dateRange) + ' (' + this.fmtDate(a) + (startOfDay(a) !== startOfDay(b) ? ' – ' + this.fmtDate(b) : '') + ')';
+      },
+      filterOptions(key) {
+        if (key === 'feature') return [{ value: 'all', label: this.t('ai.toolbar.featureAll') }, ...FEATURES.map(f => ({ value: f.key, label: this.t('ai.features.' + f.key) }))];
+        if (key === 'model') return [{ value: 'all', label: this.t('ai.toolbar.modelAll') }, ...Object.keys(MODELS).map(id => ({ value: id, label: this.modelLabel(id) }))];
+        return this.RANGES.map(r => ({ value: r, label: this.t('ai.toolbar.dateRange.' + r) }));
+      },
+      recompute() {
+        const f = this.filters, [from, to] = this.range, q = f.query.trim().toLowerCase();
+        const fl = (k) => (I18N.ar.ai.features[k] + ' ' + I18N.en.ai.features[k]).toLowerCase();
+        const rows = ALL.filter(l => l.at >= from && l.at <= to
+          && (f.status === 'all' || l.status === f.status)
+          && (f.feature === 'all' || l.feature === f.feature)
+          && (f.model === 'all' || l.model === f.model)
+          && (!q || l.id.toLowerCase().includes(q) || l.user.name.includes(q) || l.user.email.includes(q) || fl(l.feature).includes(q) || this.modelLabel(l.model).toLowerCase().includes(q)));
+        /* المؤشرات */
+        let prompt = 0, completion = 0, cost = 0, failed = 0, throttled = 0; const users = new Set(), feat = {};
+        for (const l of rows) {
+          prompt += l.prompt; completion += l.completion; cost += l.cost; users.add(l.user.email);
+          if (l.status === 'failed') failed++; else if (l.status === 'throttled') throttled++;
+          (feat[l.feature] ||= { key: l.feature, calls: 0, tokens: 0 }); feat[l.feature].calls++; feat[l.feature].tokens += l.prompt + l.completion;
+        }
+        const n = rows.length, tokens = prompt + completion;
+        const byFeature = Object.values(feat).map(x => ({ ...x, pct: Math.round(x.calls / n * 1000) / 10 })).sort((a, b) => b.calls - a.calls);
+        this.stats = { tokens, prompt, completion, promptPct: tokens ? Math.round(prompt / tokens * 100) : 0, cost, avgCost: n ? cost / n : 0, calls: n,
+          users: users.size, byFeature, topFeature: byFeature[0] || null, failPct: n ? Math.round(failed / n * 1000) / 10 : 0, throttledPct: n ? Math.round(throttled / n * 1000) / 10 : 0 };
+        /* سلسلة الرسم: ساعية ليوم واحد، يومية لغير ذلك */
+        const hourly = (to - from) <= 36 * HOUR, list = [];
+        if (hourly) {
+          const d0 = startOfDay(from);
+          for (let h = 0; h < 24; h++) list.push({ t: d0 + h * HOUR, prompt: 0, completion: 0, calls: 0, cost: 0 });
+          rows.forEach(l => { const b = list[new Date(l.at).getHours()]; b.prompt += l.prompt; b.completion += l.completion; b.calls++; b.cost += l.cost; });
+        } else {
+          for (let d = startOfDay(from); d <= to; d += DAY) list.push({ t: d, prompt: 0, completion: 0, calls: 0, cost: 0 });
+          const s0 = startOfDay(from);
+          rows.forEach(l => { const b = list[Math.round((startOfDay(l.at) - s0) / DAY)]; if (b) { b.prompt += l.prompt; b.completion += l.completion; b.calls++; b.cost += l.cost; } });
+        }
+        this.buckets = { hourly, list };
+        this.rows = rows; this.page = 1; this.hi = null;
+      },
+      get pages() { return Math.max(1, Math.ceil(this.rows.length / this.PER_PAGE)); },
+      get paged() { const s = (this.page - 1) * this.PER_PAGE; return this.rows.slice(s, s + this.PER_PAGE); },
+      get tableState() { return this.loading ? 'loading' : this.rows.length ? 'data' : 'empty'; },
+      goPage(p) {
+        this.page = Math.min(Math.max(1, p), this.pages);
+        this.announce(this.tf('ai.table.pageOf', { n: this.fmt(this.page), total: this.fmt(this.pages) }));
+        this.$nextTick(() => document.getElementById('ai-table-title')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+      },
+      clearFilters(focus = false) {
+        this.filters = { ...DEFAULTS };
+        this.announce(this.t('ai.toolbar.filtersCleared'));
+        if (focus) this.$nextTick(() => this.$refs.aiSearch?.focus());
+      },
+      radioKey(e, list, prop, prefix) {
+        const rtl = document.documentElement.dir === 'rtl';
+        const d = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1, Home: -99, End: 99 }[e.key];
+        if (d === undefined) return;
+        e.preventDefault();
+        const i = Math.min(Math.max(list.indexOf(this.filters[prop]) + d, 0), list.length - 1);
+        this.filters[prop] = list[i];
+        this.$nextTick(() => document.getElementById(prefix + list[i])?.focus());
+      },
+
+      /* =====================================================================
+         رسم الاتجاه: SVG يُبنى نصيًا (x-for لا يعمل داخل SVG)، بمقياس ثابت (لا تمطيط)
+         ===================================================================== */
+      CH: { w: 600, h: 220, l: 52, r: 10, t: 12, b: 28 },
+      bucketLabel(b, long = false) {
+        if (this.buckets.hourly) return new Intl.DateTimeFormat(this.intl(), { hour: 'numeric', minute: '2-digit' }).format(new Date(b.t));
+        return new Intl.DateTimeFormat(this.intl(), long ? { weekday: 'long', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' }).format(new Date(b.t));
+      },
+      get chartGeom() {
+        const C = this.CH, L = this.buckets.list, n = L.length;
+        const max = Math.max(1, ...L.map(b => Math.max(b.prompt, b.completion)));
+        const step = Math.pow(10, Math.floor(Math.log10(max))), nice = Math.ceil(max / step * 1.1) * step;
+        const x = (i) => C.l + (n <= 1 ? (C.w - C.l - C.r) / 2 : i * (C.w - C.l - C.r) / (n - 1));
+        const y = (v) => C.h - C.b - v / nice * (C.h - C.t - C.b);
+        return { x, y, nice, n };
+      },
+      get trendSvg() {
+        const L = this.buckets.list; if (!L.length) return '';
+        const C = this.CH, { x, y, nice, n } = this.chartGeom, esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        let s = '';
+        for (let k = 0; k <= 4; k++) {                       /* شبكة + قيم المحور العمودي */
+          const v = nice * k / 4, yy = y(v);
+          s += `<line x1="${C.l}" x2="${C.w - C.r}" y1="${yy}" y2="${yy}" class="chart-grid"/>`;
+          s += `<text x="${C.l - 8}" y="${yy + 4}" text-anchor="end" class="chart-text">${esc(this.fmtCompact(v))}</text>`;
+        }
+        const every = Math.max(1, Math.ceil(n / 7));          /* ≤ 7 تسميات على المحور الأفقي لتجنّب التداخل */
+        L.forEach((b, i) => { if (i % every === 0 || i === n - 1) s += `<text x="${x(i)}" y="${C.h - 8}" text-anchor="middle" class="chart-text">${esc(this.bucketLabel(b))}</text>`; });
+        const pts = (k) => L.map((b, i) => `${x(i).toFixed(1)},${y(b[k]).toFixed(1)}`).join(' ');
+        s += `<polygon points="${C.l},${y(0)} ${pts('prompt')} ${x(n - 1)},${y(0)}" class="fill-series1" opacity=".1"/>`;
+        s += `<polyline points="${pts('prompt')}" class="stroke-series1" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+        s += `<polyline points="${pts('completion')}" class="stroke-series2" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6 4"/>`;
+        if (this.hi !== null && L[this.hi]) {
+          const hx = x(this.hi);
+          s += `<line x1="${hx}" x2="${hx}" y1="${C.t}" y2="${C.h - C.b}" class="chart-cross"/>`;
+          s += `<circle cx="${hx}" cy="${y(L[this.hi].prompt)}" r="5" class="fill-series1 chart-ring"/>`;
+          s += `<circle cx="${hx}" cy="${y(L[this.hi].completion)}" r="5" class="fill-series2 chart-ring"/>`;
+        } else if (n <= 31) {
+          L.forEach((b, i) => { s += `<circle cx="${x(i)}" cy="${y(b.prompt)}" r="3" class="fill-series1 chart-ring"/><circle cx="${x(i)}" cy="${y(b.completion)}" r="3" class="fill-series2 chart-ring"/>`; });
+        }
+        return s;
+      },
+      hoverAt(e) {
+        const svg = this.$refs.trendSvg; if (!svg || !this.buckets.list.length) return;
+        const r = svg.getBoundingClientRect(), C = this.CH, n = this.buckets.list.length;
+        const vx = (e.clientX - r.left) / r.width * C.w;
+        this.hi = n <= 1 ? 0 : Math.min(n - 1, Math.max(0, Math.round((vx - C.l) / (C.w - C.l - C.r) * (n - 1))));
+      },
+      get tipStyle() {
+        if (this.hi === null) return '';
+        const px = this.chartGeom.x(this.hi) / this.CH.w * 100;
+        return `left:${Math.min(85, Math.max(15, px))}%;`;
+      },
+      get trendSummary() {
+        const L = this.buckets.list; if (!L.length) return this.t('ai.charts.trendTitle');
+        const peak = L.reduce((a, b) => (b.prompt + b.completion > a.prompt + a.completion ? b : a));
+        return this.tf('ai.charts.summary', { title: this.t('ai.charts.trendTitle'), total: this.fmt(this.stats.tokens), peak: this.fmt(peak.prompt + peak.completion), at: this.bucketLabel(peak, true) });
+      },
+
+      /* ---------- نافذة التفاصيل ---------- */
+      detailsOpen: false, selectedLog: null, _detailsTrigger: null,
+      get logIndex() { return this.selectedLog ? this.rows.findIndex(r => r.id === this.selectedLog.id) : -1; },
+      get payloadJson() { return this.selectedLog ? JSON.stringify(this.selectedLog.payload, null, 2) : ''; },
+      openDetails(log, trigger) { this._detailsTrigger = trigger || null; this.selectedLog = log; this.detailsOpen = true; },
+      closeDetails() {
+        this.detailsOpen = false;
+        const t = this._detailsTrigger;
+        setTimeout(() => (t && t.isConnected && t.offsetParent !== null ? t : document.getElementById('ai-table-title'))?.focus(), 220);
+      },
+      stepLog(d) {
+        const i = this.logIndex + d; if (i < 0 || i >= this.rows.length) return;
+        this.selectedLog = this.rows[i];
+        this.page = Math.floor(i / this.PER_PAGE) + 1;
+        this._detailsTrigger = null;
+        this.announce(this.t('ai.features.' + this.selectedLog.feature) + ' — ' + this.selectedLog.id);
+      },
+      filterUser(u) {
+        this.filters.query = u.email; this.detailsOpen = false;
+        this.announce(this.tf('ai.modal.userFiltered', { name: u.name }));
+        setTimeout(() => document.getElementById('ai-table-title')?.focus(), 400);
+      },
+      async copyText(text, okKey) {
+        let ok = false;
+        try { await navigator.clipboard.writeText(text); ok = true; } catch (_) {
+          try {
+            const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+          } catch (__) {}
+        }
+        this.toast(ok ? 'success' : 'error', this.t(ok ? okKey : 'ai.modal.copyFailed'));
+      },
+
+      /* ---------- تصدير CSV فعلي للنتائج المصفّاة ---------- */
+      exportCsv() {
+        const esc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+        const head = ['id', 'created_at', 'user', 'email', 'feature', 'provider', 'model', 'prompt_tokens', 'completion_tokens', 'cost_usd', 'duration_ms', 'status', 'error'];
+        const lines = this.rows.map(l => [l.id, new Date(l.at).toISOString(), l.user.name, l.user.email, l.feature, MODELS[l.model].provider, MODELS[l.model].name,
+          l.prompt, l.completion, l.cost.toFixed(6), l.duration, l.status, l.error].map(esc).join(','));
+        const blob = new Blob(['﻿' + [head.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'ai-usage-' + isoDate(Date.now()) + '.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        this.toast('success', this.tf('ai.csvDone', { n: this.fmt(this.rows.length) }));
+      },
+
+      /* ---------- Toast ---------- */
+      toast(icon, msg) {
+        this.announce(msg);
+        if (!window.Swal) return;
+        Swal.fire({ toast: true, position: 'top-end', icon, title: msg, showConfirmButton: false, timer: 3000, timerProgressBar: true,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); } });
+      },
+
+      /* ---------- البحث العام ---------- */
+      focusSearch() {
+        if (this.detailsOpen) return;
+        if (mdMQ.matches) { this.$refs.globalSearch?.focus(); this.$refs.globalSearch?.select(); return; }
+        this.searchOpen = true; this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      toggleMobileSearch() { this.searchOpen = !this.searchOpen; if (this.searchOpen) this.$nextTick(() => this.$refs.mobileSearch?.focus()); },
+      closeMenu() {},
+
+      /* ---------- عامة ---------- */
+      init() {
+        this.recompute();
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        mdMQ.addEventListener('change', (m) => { if (m.matches) this.searchOpen = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('ai.title') + ' — FirOb';
+        /* تغيير الفلاتر: حالة تحميل قصيرة (محاكاة طلب Livewire) ثم إعادة الحساب وإعلان النتيجة */
+        this.$watch('filters', () => {
+          this.loading = true;
+          clearTimeout(this._recT);
+          this._recT = setTimeout(() => {
+            this.recompute(); this.loading = false;
+            this.announce(this.tf('ai.scopeNote', { n: this.fmt(this.rows.length), range: this.rangeLabel }));
+          }, 280);
+        }, { deep: true });
+        /* إعادة بناء الرسم عند تغيير اللغة (تنسيق الأرقام والتواريخ) */
+        this.$watch('locale', () => { this.buckets = { ...this.buckets }; });
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.applyTheme(e.matches);
+          });
+        } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      closeMobileNav() { this.mobileNav = false; this.$nextTick(() => this.$refs.navToggle?.focus()); },
+      applyTheme(isDark) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('theme-color')?.setAttribute('content', isDark ? '#09141B' : '#F1EDE7');
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() {
+        this.applyTheme(!this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        if (this.detailsOpen) { this.closeDetails(); return; }
+        if (this.notifOpen)   { this.notifOpen = false;   this.$refs.notifBtn?.focus(); return; }
+        if (this.profileOpen) { this.profileOpen = false; this.$refs.profileBtn?.focus(); return; }
+        if (this.searchOpen)  { this.searchOpen = false; return; }
+        if (this.mobileNav)   { this.closeMobileNav(); }
+      },
+    };
+  }
+</script>
+</body>
+</html>

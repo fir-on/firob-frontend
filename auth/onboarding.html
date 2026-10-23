@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="FirOb — معالج تسجيل منشأة جديدة وتهيئة مساحة العمل">
+<!-- معالج تسجيل يحتوي بيانات حساسة: لا فهرسة -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>تسجيل منشأة جديدة — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض الوضع الفاتح) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج تطبيق اللغة والاتجاه قبل الرسم (يمنع قفزة RTL → LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة لكل النطاقات الخارجية (أسرع LCP) -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://fonts.gstatic.com">
+
+<!-- ③ الخطوط: Tajawal للعربية + Manrope للإنجليزية — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ Tailwind (إصدار مثبّت) + الألوان المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      screens: {
+        short:  { raw: '(max-height: 760px)' },   /* لابتوب 13" / تابلت أفقي */
+        xshort: { raw: '(max-height: 560px)' },   /* جوال أفقي */
+      },
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      fontSize: {
+        caption: ['0.875rem',  { lineHeight: '1.375rem' }],
+        label:   ['0.9375rem', { lineHeight: '1.5rem'   }],
+        body:    ['1rem',      { lineHeight: '1.5rem'   }],
+        lead:    ['1.0625rem', { lineHeight: '1.75rem'  }],
+        h1:      ['clamp(1.375rem, 1rem + 1.2vw, 1.875rem)', { lineHeight: '1.3' }],
+      },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'), ok: v('ok'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 500:'#10B981', 700:'#047857' },
+        warning: { 500:'#F59E0B', 700:'#B45309' },
+        error:   { 500:'#EF4444', 600:'#DC2626' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+        bar:  '0 -12px 24px -16px rgba(7,60,76,.35)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة المكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;  --ok: 4 120 87;       --glow: 14 128 161;
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+      /* مسافات الأمان (النوتش / شريط الإيماءات) */
+      --sat: env(safe-area-inset-top, 0px);    --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);   --sar: env(safe-area-inset-right, 0px);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --glow: 14 128 161;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; scroll-behavior: smooth; scroll-padding-top: 1rem; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang='en'] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+    /* clip (لا hidden): يمنع التمرير الأفقي دون كسر position: sticky لشريط التنقل */
+    html, body { overflow-x: clip; max-width: 100%; }
+    body { @apply min-h-screen bg-page text-body text-ink antialiased; -webkit-tap-highlight-color: transparent; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    [x-cloak] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    @keyframes pop-in { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+    .ic { @apply h-5 w-5 shrink-0 fill-none stroke-current; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    [dir='ltr'] .dir-next { transform: scaleX(-1); }
+    [dir='rtl'] .dir-prev { transform: scaleX(-1); }
+    .safe-x { padding-left: max(1rem, var(--sal)); padding-right: max(1rem, var(--sar)); }
+
+    /* ---- Buttons (أهداف لمس ≥ 44px) ---- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2.5 whitespace-nowrap rounded-xl border border-transparent px-4 text-label font-bold transition duration-150; padding-block: .625rem; min-height: 2.75rem; touch-action: manipulation; }
+    .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+    .btn:disabled { @apply cursor-not-allowed opacity-50; }
+    .btn.is-loading { @apply pointer-events-none cursor-progress opacity-90; }
+    .btn-lg { @apply min-h-[3rem] px-6 text-[1.0625rem] leading-7 active:translate-y-px; padding-block: .75rem; }
+    .btn-sm { @apply gap-1.5 rounded-lg px-3 text-caption; padding-block: .375rem; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .btn-primary:not(:disabled):hover { @apply bg-primary-600; }
+    .btn-primary:not(:disabled):active { @apply bg-primary-800; }
+    .btn-accent { @apply bg-accent-500 text-onaccent shadow-lg shadow-accent-500/25; }
+    .btn-accent:not(:disabled):hover { @apply bg-accent-600; }
+    .btn-accent:not(:disabled):active { @apply bg-accent-700; }
+    .btn-outline { @apply border-line-strong bg-field text-ink; }
+    .btn-outline:not(:disabled):hover { @apply border-primary-500 bg-soft; }
+    .btn-ghost { @apply bg-transparent text-brand; }
+    .btn-ghost:not(:disabled):hover { @apply bg-soft; }
+    .btn-ghost:not(:disabled):active { @apply bg-soft-2; }
+
+    /* ---- Form ---- */
+    .label { @apply mb-1.5 block text-label font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-caption text-muted; }
+    .err   { @apply mt-1.5 flex items-start gap-1.5 text-caption font-bold text-danger; }
+    .okmsg { @apply mt-1.5 flex items-start gap-1.5 text-caption font-bold text-ok; }
+    .warn  { @apply mt-1.5 flex items-start gap-1.5 text-caption font-bold; color: #B45309; }
+    .dark .warn { color: #FCD34D; }
+
+    .fgroup { @apply flex w-full items-center gap-3 rounded-xl border border-line-strong bg-field px-4 text-body text-ink transition; }
+    .fgroup:hover { @apply border-primary-500; }
+    .fgroup:focus-within { @apply border-brand; box-shadow: var(--ring); }
+    .fgroup[data-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+    .fgroup[data-invalid='true']:focus-within { box-shadow: 0 0 0 2px rgb(var(--card)), 0 0 0 4px #DC2626; }
+    .fgroup[data-valid='true'] { @apply border-success-500; }
+    /* 16px على الأقل دائمًا — يمنع التكبير التلقائي في iOS */
+    .fgroup-input { @apply min-w-0 flex-1 bg-transparent leading-6 text-ink outline-none placeholder:text-muted/70; font-size: max(16px, 1rem); padding-block: .75rem; min-height: 2.75rem; }
+    [dir='rtl'] .fgroup-input.rtl-end { text-align: right; }
+    .fgroup-input:-webkit-autofill, .fgroup-input:-webkit-autofill:hover, .fgroup-input:-webkit-autofill:focus {
+      -webkit-text-fill-color: rgb(var(--ink)); caret-color: rgb(var(--ink));
+      box-shadow: 0 0 0 1000px rgb(var(--field)) inset; transition: background-color 9999s;
+    }
+    .eye { @apply -me-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-soft hover:text-ink; }
+    .eye:focus-visible { outline: none; box-shadow: var(--ring); }
+
+    .check { @apply mt-0.5 h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-line-strong bg-field transition; }
+    .check:hover:not(:disabled) { @apply border-primary-500; }
+    .check:checked { @apply border-primary-500 bg-primary-500; background-size: 100% 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5L15 6.5'/%3E%3C/svg%3E"); }
+    .check:focus-visible { outline: none; box-shadow: var(--ring); }
+    .check[aria-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+
+    /* ---- Dropzone (حلقة التركيز تُنقل من الحقل المخفي إلى المنطقة عبر peer) ---- */
+    .dropzone { @apply flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-field px-4 py-7 text-center transition short:py-5; }
+    .dropzone:hover, .dropzone.is-drag { @apply border-primary-500 bg-soft; }
+    .peer:focus-visible ~ .dropzone { box-shadow: var(--ring); border-color: rgb(var(--brand)); }
+    .dropzone[data-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+
+    /* ---- Plan Cards ---- */
+    .plan { @apply relative flex h-full cursor-pointer flex-col rounded-2xl border-2 border-line bg-field p-5 transition short:p-4; }
+    .plan:hover { @apply border-primary-500; }
+    .plan.is-selected { border-color: rgb(var(--brand)); background: rgb(var(--soft) / .55); }
+    .plan:has(:focus-visible) { box-shadow: var(--ring); }
+    .plans[data-invalid='true'] .plan { @apply border-error-600/60; }
+
+    /* ---- Segmented ---- */
+    .seg { @apply flex h-12 items-center rounded-xl border border-line-strong bg-field p-1; }
+    .seg-btn { @apply flex h-full items-center gap-2 rounded-lg px-4 text-caption font-bold transition-colors; }
+    .seg-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+
+    /* ---- Alerts ---- */
+    .alert { @apply flex items-start gap-3 rounded-xl border border-s-4 p-4 text-caption font-medium; }
+    .alert-error   { background: #FEF2F2; border-color: #FEE2E2; border-inline-start-color: #EF4444; color: #991B1B; }
+    .alert-success { background: #ECFDF5; border-color: #D1FAE5; border-inline-start-color: #10B981; color: #065F46; }
+    .alert-info    { background: #EFF6FF; border-color: #DBEAFE; border-inline-start-color: #3B82F6; color: #1E40AF; }
+    .alert-accent  { background: #FDF6CC; border-color: #FBEE96; border-inline-start-color: #F7D933; color: #1E293B; }
+    .dark .alert-error   { background: #2A1518; border-color: rgb(239 68 68 / .30);  border-inline-start-color: #EF4444; color: #FCA5A5; }
+    .dark .alert-success { background: #0F2A24; border-color: rgb(16 185 129 / .30); border-inline-start-color: #10B981; color: #6EE7B7; }
+    .dark .alert-info    { background: #12213A; border-color: rgb(59 130 246 / .30); border-inline-start-color: #3B82F6; color: #93C5FD; }
+    .dark .alert-accent  { background: #2A2610; border-color: rgb(247 217 51 / .28); border-inline-start-color: #F7D933; color: #FDF6CC; }
+
+    /* ---- Card / Link / Tool / Badge ---- */
+    .card { @apply rounded-3xl border border-line bg-card shadow-card; }
+    .dark .card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .75); }
+    .link { @apply rounded font-bold text-brand underline-offset-4 transition-colors hover:underline; }
+    .link:focus-visible { outline: none; box-shadow: var(--ring); }
+    .tool { @apply grid h-11 w-11 place-items-center rounded-xl border border-line-strong bg-field text-muted transition-colors hover:bg-soft hover:text-ink; }
+    .tool:focus-visible { outline: none; box-shadow: var(--ring); }
+    .badge { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-accent { @apply bg-accent-500 text-onaccent; }
+    .badge-soft { @apply bg-soft-2 text-brand; }
+    .pill { @apply rounded-full border border-line-strong px-3 py-0.5 text-[0.8125rem] font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]; }
+    .rv-row { @apply flex flex-col gap-0.5 border-b border-line py-2.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4; }
+    .rv-key { @apply shrink-0 text-caption text-muted; }
+    .rv-val { @apply min-w-0 break-words text-label font-bold text-ink sm:text-end; }
+  }
+</style>
+
+<!-- ⑥ المنطق (Alpine مؤجَّل: لا يحجب الرسم) -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script>
+  /* النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json */
+  const I18N = {
+    ar: {
+      pageTitle: 'تسجيل منشأة جديدة', skip: 'تخطّي إلى معالج التسجيل',
+      title: 'إنشاء مساحة منشأة جديدة',
+      subtitle: 'سجّل منشأتك التعليمية وجهّز مساحة عملها المستقلة خلال دقائق.',
+      stepsNav: 'خطوات التسجيل', stepOf: 'الخطوة {n} من {t}', progress: 'تقدّم التسجيل',
+      stepDone: 'مكتملة', stepCurrent: 'الحالية', stepLocked: 'لم تُفتح بعد',
+      s1: 'معلومات المنشأة', s1d: 'الاسم والرابط والشعار',
+      s2: 'مدير النظام', s2d: 'حساب المسؤول الرئيسي',
+      s3: 'الباقة', s3d: 'نطاق العمل والسعة',
+      s4: 'المراجعة والتأكيد', s4d: 'الاعتماد النهائي',
+
+      s1Title: 'عرّفنا بمنشأتك',
+      s1Sub: 'تظهر هذه البيانات لمستخدمي منشأتك، ويمكن تعديلها لاحقًا من الإعدادات (عدا الرابط الفرعي).',
+      nameLabel: 'اسم المنشأة', namePh: 'مثال: مدارس النخبة الأهلية',
+      slugLabel: 'الرابط الفرعي (Subdomain)',
+      slugHint: 'أحرف إنجليزية صغيرة وأرقام وشرطة (-)، من 3 إلى 63 حرفًا. لا يمكن تغييره بعد الإنشاء.',
+      slugAuto: 'اقترحنا رابطًا من اسم المنشأة — يمكنك تعديله.',
+      previewLabel: 'معاينة رابط مساحتك',
+      checking: 'جارٍ التحقق من توفر الرابط…', available: 'الرابط متاح ويمكنك استخدامه.',
+      logoLabel: 'شعار المنشأة', optional: '(اختياري)',
+      logoDrop: 'اسحب الشعار وأفلته هنا أو', logoBrowse: 'اختر ملفًا',
+      logoRules: 'PNG أو JPG أو SVG أو WEBP — بحد أقصى 2 ميجابايت، ويُفضّل مقاس مربع 512×512.',
+      logoReplace: 'استبدال', logoRemove: 'إزالة', logoSmall: 'الصورة صغيرة ({w}×{h})؛ قد تظهر غير واضحة. يُفضّل 512×512.',
+      logoAdded: 'تمت إضافة الشعار.', logoRemoved: 'تمت إزالة الشعار.',
+      nameReq: 'اسم المنشأة مطلوب.', nameMin: 'اسم المنشأة لا يقل عن 3 أحرف.', nameMax: 'اسم المنشأة لا يزيد عن 120 حرفًا.',
+      slugReq: 'الرابط الفرعي مطلوب.', slugFmt: 'أحرف إنجليزية صغيرة وأرقام وشرطة فقط، تبدأ وتنتهي بحرف أو رقم (3–63 حرفًا)، دون شرطتين متتاليتين.',
+      slugTaken: 'هذا الرابط محجوز أو مستخدم، جرّب رابطًا آخر.',
+      logoType: 'صيغة الملف غير مدعومة. استخدم PNG أو JPG أو SVG أو WEBP.', logoSize: 'حجم الملف يتجاوز 2 ميجابايت.',
+
+      s2Title: 'حساب مدير النظام',
+      s2Sub: 'سيكون هذا الحساب هو المالك (Owner) لمساحة المنشأة ويملك جميع الصلاحيات.',
+      adminName: 'الاسم الكامل', adminNamePh: 'مثال: أحمد محمد العلي',
+      email: 'البريد الإلكتروني الإداري', emailHint: 'سنرسل إليه رابط تفعيل الحساب.',
+      password: 'كلمة المرور', confirm: 'تأكيد كلمة المرور',
+      showPw: 'إظهار كلمة المرور', hidePw: 'إخفاء كلمة المرور', caps: 'زر Caps Lock مفعّل.',
+      strength: 'قوة كلمة المرور:', str1: 'ضعيفة', str2: 'متوسطة', str3: 'جيدة', str4: 'قوية',
+      ruleLen: '8 أحرف على الأقل', ruleUpper: 'حرف إنجليزي كبير', ruleLower: 'حرف إنجليزي صغير', ruleNum: 'رقم واحد على الأقل',
+      met: 'مستوفى', unmet: 'غير مستوفى', rulesDone: 'استوفت كلمة المرور جميع الشروط.',
+      adminReq: 'الاسم الكامل مطلوب.', adminMin: 'الاسم لا يقل عن 3 أحرف.',
+      emailReq: 'البريد الإلكتروني مطلوب.', emailFmt: 'صيغة البريد الإلكتروني غير صحيحة.',
+      passReq: 'كلمة المرور مطلوبة.', passWeak: 'كلمة المرور لا تستوفي الشروط الموضحة.',
+      confirmReq: 'يرجى تأكيد كلمة المرور.', confirmMis: 'كلمتا المرور غير متطابقتين.', match: 'كلمتا المرور متطابقتان.',
+
+      s3Title: 'اختر الباقة المناسبة',
+      s3Sub: 'ابدأ بفترة تجريبية مجانية لمدة 14 يومًا، ويمكنك الترقية أو التغيير في أي وقت.',
+      cycleLabel: 'دورة الفوترة', monthly: 'شهري', yearly: 'سنوي', save: 'وفّر شهرين',
+      perMonth: '/ شهريًا', perYear: '/ سنويًا', custom: 'حسب الطلب', currency: '$',
+      equiv: '≈ {m} {c} شهريًا · توفير {s} {c}',
+      popular: 'الأكثر طلبًا', selected: 'مُختارة',
+      planBasic: 'أساسية', planBasicD: 'للمدارس والمراكز الصغيرة',
+      planAdv: 'متقدمة', planAdvD: 'للمنشآت المتوسطة والنامية',
+      planEnt: 'مؤسسية', planEntD: 'للمجموعات التعليمية والجامعات',
+      usersN: 'حتى {n} مستخدم', usersU: 'مستخدمون بلا حدود',
+      storageN: '{n} جيجابايت تخزين', aiN: '{n} توكن ذكاء اصطناعي شهريًا', aiC: 'رصيد ذكاء اصطناعي مخصّص',
+      fB1: 'المستودع التعليمي للمواد والمفاهيم', fB2: 'دعم فني عبر البريد الإلكتروني',
+      fA1: 'توليد ومراجعة المحتوى بالذكاء الاصطناعي', fA2: 'تقارير وتحليلات الاستخدام',
+      fE1: 'نطاق مخصص (Custom Domain)', fE2: 'مدير حساب مخصص واتفاقية SLA',
+      entNote: 'سيتواصل معك فريق المبيعات لتخصيص العرض، وتعمل مساحتك فورًا بحدود الباقة المتقدمة حتى اعتماده.',
+      planReq: 'يرجى اختيار باقة للمتابعة.',
+
+      s4Title: 'راجع بياناتك قبل الاعتماد',
+      s4Sub: 'تأكد من صحة البيانات، خاصة الرابط الفرعي لأنه لا يمكن تغييره لاحقًا.',
+      rvOrg: 'المنشأة', rvAdmin: 'مدير النظام', rvPlan: 'الباقة', edit: 'تعديل', editSr: 'تعديل {x}',
+      rvName: 'الاسم', rvUrl: 'رابط المساحة', rvLogo: 'الشعار', noLogo: 'لم يُرفع شعار',
+      rvEmail: 'البريد الإلكتروني', rvPass: 'كلمة المرور', rvCycle: 'دورة الفوترة', rvPrice: 'السعر بعد التجربة',
+      trial: 'لن يتم خصم أي مبلغ الآن — تبدأ مساحتك بفترة تجريبية مجانية لمدة 14 يومًا.',
+      termsA: 'أوافق على', termsLink: 'شروط الاستخدام', termsAnd: 'و', privacy: 'سياسة الخصوصية', newTab: '(يُفتح في تبويب جديد)',
+      termsReq: 'يجب الموافقة على الشروط وسياسة الخصوصية للمتابعة.',
+
+      prev: 'السابق', next: 'التالي', submit: 'إتمام التسجيل وإنشاء المساحة', submitShort: 'إنشاء المساحة', busy: 'جارٍ إنشاء مساحتك…',
+      errFix: 'يرجى تصحيح الحقول المشار إليها قبل المتابعة.', errCount: '{n} حقول تحتاج إلى تصحيح.',
+      serverErr: 'تعذّر إنشاء المساحة حاليًا. يرجى المحاولة مجددًا.',
+      draftRestored: 'استعدنا بياناتك المحفوظة من الجلسة السابقة (عدا كلمة المرور والشعار).', draftClear: 'البدء من جديد',
+      haveAcc: 'لديك حساب بالفعل؟', login: 'تسجيل الدخول',
+      doneTitle: 'تم إنشاء مساحتك بنجاح!',
+      doneSub: 'أرسلنا رابط تفعيل الحساب إلى بريدك الإداري. فعّل حسابك للبدء في استخدام المستودع.',
+      goWs: 'الانتقال إلى مساحة العمل', copy: 'نسخ الرابط', copied: 'تم النسخ', copiedSr: 'تم نسخ رابط المساحة.',
+      themeDark: 'تفعيل الوضع الداكن', themeLight: 'تفعيل الوضع الفاتح', langGroup: 'لغة الواجهة',
+      secure: 'بياناتك مشفّرة ومعزولة داخل مساحة منشأتك.',
+      rights: '© 2026 FirOb · جميع الحقوق محفوظة', screens: 'خريطة الشاشات',
+    },
+    en: {
+      pageTitle: 'Register a new institution', skip: 'Skip to the registration wizard',
+      title: 'Create a new institution workspace',
+      subtitle: 'Register your educational institution and set up its isolated workspace in minutes.',
+      stepsNav: 'Registration steps', stepOf: 'Step {n} of {t}', progress: 'Registration progress',
+      stepDone: 'completed', stepCurrent: 'current', stepLocked: 'not yet available',
+      s1: 'Institution info', s1d: 'Name, URL and logo',
+      s2: 'System admin', s2d: 'Main administrator account',
+      s3: 'Plan', s3d: 'Scope and capacity',
+      s4: 'Review & confirm', s4d: 'Final approval',
+
+      s1Title: 'Tell us about your institution',
+      s1Sub: 'These details are visible to your users and can be edited later in Settings (except the subdomain).',
+      nameLabel: 'Institution name', namePh: 'e.g. Elite Private Schools',
+      slugLabel: 'Subdomain',
+      slugHint: 'Lowercase letters, numbers and hyphens (-), 3 to 63 characters. It cannot be changed after creation.',
+      slugAuto: 'We suggested a subdomain from the institution name — feel free to edit it.',
+      previewLabel: 'Your workspace URL preview',
+      checking: 'Checking availability…', available: 'This subdomain is available.',
+      logoLabel: 'Institution logo', optional: '(optional)',
+      logoDrop: 'Drag and drop your logo here, or', logoBrowse: 'browse files',
+      logoRules: 'PNG, JPG, SVG or WEBP — up to 2 MB. A 512×512 square works best.',
+      logoReplace: 'Replace', logoRemove: 'Remove', logoSmall: 'The image is small ({w}×{h}) and may look blurry. 512×512 is recommended.',
+      logoAdded: 'Logo added.', logoRemoved: 'Logo removed.',
+      nameReq: 'Institution name is required.', nameMin: 'Name must be at least 3 characters.', nameMax: 'Name must not exceed 120 characters.',
+      slugReq: 'Subdomain is required.', slugFmt: 'Lowercase letters, numbers and hyphens only, starting and ending with a letter or number (3–63 chars), no double hyphens.',
+      slugTaken: 'This subdomain is reserved or taken. Try another one.',
+      logoType: 'Unsupported file type. Use PNG, JPG, SVG or WEBP.', logoSize: 'File size exceeds 2 MB.',
+
+      s2Title: 'System administrator account',
+      s2Sub: 'This account will be the workspace Owner with full permissions.',
+      adminName: 'Full name', adminNamePh: 'e.g. Ahmed Mohammed',
+      email: 'Admin email', emailHint: "We'll send the account activation link here.",
+      password: 'Password', confirm: 'Confirm password',
+      showPw: 'Show password', hidePw: 'Hide password', caps: 'Caps Lock is on.',
+      strength: 'Password strength:', str1: 'Weak', str2: 'Fair', str3: 'Good', str4: 'Strong',
+      ruleLen: 'At least 8 characters', ruleUpper: 'An uppercase letter', ruleLower: 'A lowercase letter', ruleNum: 'At least one number',
+      met: 'met', unmet: 'not met', rulesDone: 'Your password meets all requirements.',
+      adminReq: 'Full name is required.', adminMin: 'Name must be at least 3 characters.',
+      emailReq: 'Email is required.', emailFmt: 'Please enter a valid email address.',
+      passReq: 'Password is required.', passWeak: "Password doesn't meet the requirements.",
+      confirmReq: 'Please confirm your password.', confirmMis: "Passwords don't match.", match: 'Passwords match.',
+
+      s3Title: 'Choose the right plan',
+      s3Sub: 'Start with a free 14-day trial. Upgrade or change anytime.',
+      cycleLabel: 'Billing cycle', monthly: 'Monthly', yearly: 'Yearly', save: '2 months free',
+      perMonth: '/ month', perYear: '/ year', custom: 'Custom', currency: '$',
+      equiv: '≈ {m} {c} / month · save {s} {c}',
+      popular: 'Most popular', selected: 'Selected',
+      planBasic: 'Basic', planBasicD: 'For small schools and centers',
+      planAdv: 'Advanced', planAdvD: 'For medium and growing institutions',
+      planEnt: 'Enterprise', planEntD: 'For education groups and universities',
+      usersN: 'Up to {n} users', usersU: 'Unlimited users',
+      storageN: '{n} GB storage', aiN: '{n} AI tokens / month', aiC: 'Custom AI quota',
+      fB1: 'Educational repository for subjects & concepts', fB2: 'Email support',
+      fA1: 'AI content generation and review', fA2: 'Usage reports and analytics',
+      fE1: 'Custom domain', fE2: 'Dedicated account manager & SLA',
+      entNote: 'Our sales team will contact you to tailor an offer. Your workspace runs immediately with Advanced limits until then.',
+      planReq: 'Please choose a plan to continue.',
+
+      s4Title: 'Review your details',
+      s4Sub: "Double-check everything, especially the subdomain — it can't be changed later.",
+      rvOrg: 'Institution', rvAdmin: 'System admin', rvPlan: 'Plan', edit: 'Edit', editSr: 'Edit {x}',
+      rvName: 'Name', rvUrl: 'Workspace URL', rvLogo: 'Logo', noLogo: 'No logo uploaded',
+      rvEmail: 'Email', rvPass: 'Password', rvCycle: 'Billing cycle', rvPrice: 'Price after trial',
+      trial: 'You will not be charged now — your workspace starts with a free 14-day trial.',
+      termsA: 'I agree to the', termsLink: 'Terms of Use', termsAnd: 'and', privacy: 'Privacy Policy', newTab: '(opens in a new tab)',
+      termsReq: 'You must accept the terms and privacy policy to continue.',
+
+      prev: 'Back', next: 'Next', submit: 'Complete registration & create workspace', submitShort: 'Create workspace', busy: 'Creating your workspace…',
+      errFix: 'Please fix the highlighted fields before continuing.', errCount: '{n} fields need attention.',
+      serverErr: "We couldn't create the workspace right now. Please try again.",
+      draftRestored: 'We restored your saved details from your previous session (except the password and logo).', draftClear: 'Start over',
+      haveAcc: 'Already have an account?', login: 'Sign in',
+      doneTitle: 'Your workspace is ready!',
+      doneSub: 'We sent an activation link to your admin email. Activate your account to start using the repository.',
+      goWs: 'Go to workspace', copy: 'Copy URL', copied: 'Copied', copiedSr: 'Workspace URL copied.',
+      themeDark: 'Switch to dark mode', themeLight: 'Switch to light mode', langGroup: 'Interface language',
+      secure: 'Your data is encrypted and isolated within your workspace.',
+      rights: '© 2026 FirOb · All rights reserved', screens: 'Screen map',
+    },
+  };
+
+  const ROOT_DOMAIN = 'firob.net';
+  const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/;
+  /* للعرض فقط — التحقق الفعلي من التفرّد يتم في الخادم (tenants.slug unique global) */
+  const RESERVED = ['www', 'app', 'api', 'admin', 'mail', 'support', 'help', 'status', 'login', 'demo-school', 'firob'];
+  const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+  const LOGO_MAX = 2 * 1024 * 1024;
+  const DRAFT_KEY = 'firob-onboarding-draft';
+
+  /* نقحرة عربية → لاتينية مبسّطة لاقتراح رابط فرعي من اسم عربي (يبقى قابلًا للتعديل) */
+  const AR_LATIN = {
+    'ا':'a','أ':'a','إ':'i','آ':'a','ء':'','ئ':'e','ؤ':'o','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh',
+    'د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z','ع':'a','غ':'gh',
+    'ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w','ي':'y','ى':'a','ة':'a','ـ':'',
+    '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9',
+  };
+
+  function wizard() {
+    return {
+      /* --- الحالة العامة --- */
+      lang: (window.FIROB && FIROB.locale) || document.documentElement.lang || 'ar',
+      dark: document.documentElement.classList.contains('dark'),
+      step: 1, total: 4, maxReached: 1,
+      busy: false, done: false, live: '', serverError: false, copied: false, restored: false,
+
+      steps: [
+        { key: 's1', icon: 'i-building' },
+        { key: 's2', icon: 'i-user' },
+        { key: 's3', icon: 'i-layers' },
+        { key: 's4', icon: 'i-clipboard' },
+      ],
+
+      plans: [
+        { code: 'basic',      name: 'planBasic', desc: 'planBasicD', icon: 'i-book',    monthly: 99,   users: 25,   storage: 5,   ai: 100000,  feats: ['fB1', 'fB2'] },
+        { code: 'advanced',   name: 'planAdv',   desc: 'planAdvD',   icon: 'i-sparkle', monthly: 249,  users: 150,  storage: 50,  ai: 1000000, feats: ['fB1', 'fA1', 'fA2'], popular: true },
+        { code: 'enterprise', name: 'planEnt',   desc: 'planEntD',   icon: 'i-crown',   monthly: null, users: null, storage: 500, ai: null,    feats: ['fA1', 'fE1', 'fE2'] },
+      ],
+
+      form: {
+        name: '', slug: '', logo: null, logoName: '', logoSize: 0,
+        adminName: '', email: '', password: '', confirm: '',
+        plan: 'advanced', cycle: 'monthly', terms: false,
+      },
+      errors: {}, touched: {},
+      slugTouched: false, slugAuto: false, slugState: '', slugTimer: null,
+      drag: false, dragDepth: 0, logoWarn: '', showPw: false, showCf: false, capsOn: false, capsOn2: false,
+
+      /* --- الترجمة والثيم --- */
+      t(k, vars) {
+        let s = (I18N[this.lang] && I18N[this.lang][k]) || I18N.ar[k] || k;
+        if (vars) Object.keys(vars).forEach(x => { s = s.split('{' + x + '}').join(vars[x]); });
+        return s;
+      },
+      loc() { return this.lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.loc(), { maximumFractionDigits: 1 }).format(n); },
+      compact(n) { return new Intl.NumberFormat(this.loc(), { notation: 'compact' }).format(n); },
+      init() {
+        this.$watch('lang', () => this.applyLang());
+        this.applyLang(); this.syncMeta();
+        try {
+          const mq = window.matchMedia('(prefers-color-scheme: dark)');
+          mq.addEventListener?.('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.setTheme(e.matches, false);
+          });
+        } catch (_) {}
+
+        /* استعادة المسودة (بدون كلمات المرور والشعار) */
+        this.restoreDraft();
+        this.$watch('form', () => this.saveDraft());
+        this.$watch('step', () => this.saveDraft());
+
+        /* تحذير قبل مغادرة الصفحة مع بيانات غير محفوظة */
+        window.addEventListener('beforeunload', (e) => {
+          if (this.done || !this.isDirty()) return;
+          e.preventDefault(); e.returnValue = '';
+        });
+      },
+      applyLang() {
+        const h = document.documentElement;
+        h.lang = this.lang; h.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(this.lang);   /* يثبّت اللغة للصفحة التالية */
+        document.title = (this.done ? this.t('doneTitle') : this.t('pageTitle') + ' · ' + this.t('stepOf', { n: this.step, t: this.total })) + ' — FirOb';
+      },
+      setTheme(isDark, persist = true) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        if (persist) { try { localStorage.setItem('firob-theme', isDark ? 'dark' : 'light'); } catch (e) {} }
+        this.syncMeta();
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() { this.setTheme(!this.dark); },
+      syncMeta() { document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* --- المسودة --- */
+      isDirty() { const f = this.form; return !!(f.name || f.slug || f.adminName || f.email || f.password); },
+      saveDraft() {
+        if (this.done) return;
+        try {
+          const { password, confirm, logo, logoName, logoSize, terms, ...safe } = this.form;
+          sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ form: safe, step: Math.min(this.step, 3), maxReached: Math.min(this.maxReached, 3), slugTouched: this.slugTouched }));
+        } catch (_) {}
+      },
+      restoreDraft() {
+        try {
+          const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
+          if (!d || !d.form || !(d.form.name || d.form.adminName || d.form.email)) return;
+          Object.assign(this.form, d.form);
+          this.slugTouched = !!d.slugTouched;
+          /* كلمة المرور لا تُحفظ، فنعود إلى خطوة لا تتجاوز الثانية إن وصلها المستخدم */
+          this.maxReached = Math.min(d.maxReached || 1, 2);
+          this.step = Math.min(d.step || 1, this.maxReached);
+          this.restored = true;
+          if (this.form.slug) this.checkSlug();
+        } catch (_) {}
+      },
+      clearDraft() {
+        try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
+        Object.assign(this.form, { name: '', slug: '', logo: null, logoName: '', logoSize: 0, adminName: '', email: '', password: '', confirm: '', plan: 'advanced', cycle: 'monthly', terms: false });
+        this.errors = {}; this.touched = {}; this.slugTouched = false; this.slugAuto = false; this.slugState = '';
+        this.step = 1; this.maxReached = 1; this.restored = false; this.logoWarn = '';
+        this.focusHeading();
+      },
+
+      /* --- الخطوة 1: الاسم والرابط والشعار --- */
+      get workspaceUrl() { return 'https://' + (this.form.slug || 'your-school') + '.' + ROOT_DOMAIN; },
+      /* عرض فقط: الرابط الظاهر للعميل يبقى نطاق المنشأة، أما زر الدخول فيفتح لوحة التحكم في النموذج */
+      get enterUrl() { return (window.FIROB && typeof FIROB.url === 'function' && FIROB.url('dashboard')) || '../dashboard.html'; },
+      slugify(s) {
+        const latin = String(s).toLowerCase().replace(/[ً-ْ]/g, '')        // حذف التشكيل
+          .replace(/[؀-ۿ]/g, ch => AR_LATIN[ch] ?? '')                        // نقحرة الحروف العربية
+          .normalize('NFKD').replace(/[̀-ͯ]/g, '');
+        return latin.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '');
+      },
+      onNameInput() {
+        this.errors.name = '';
+        if (!this.slugTouched) {
+          this.form.slug = this.slugify(this.form.name);
+          this.slugAuto = !!this.form.slug;
+          this.errors.slug = ''; this.checkSlug();
+        }
+      },
+      onSlugInput() {
+        this.form.slug = this.form.slug.toLowerCase()
+          .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x0660)
+          .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').slice(0, 63);
+        this.slugTouched = this.form.slug !== '';
+        this.slugAuto = false;
+        this.errors.slug = '';
+        this.checkSlug();
+      },
+      checkSlug() {
+        clearTimeout(this.slugTimer);
+        const s = this.form.slug;
+        this.slugState = '';
+        if (!SLUG_RE.test(s) || s.includes('--')) return;
+        this.slugState = 'checking';
+        /* Livewire: $wire.checkSlugAvailability(s) — أو GET /api/onboarding/slug-availability?slug= */
+        this.slugTimer = setTimeout(() => {
+          if (this.form.slug !== s) return;
+          this.slugState = RESERVED.includes(s) ? 'taken' : 'available';
+        }, 600);
+      },
+      pickFile(file) {
+        this.errors.logo = ''; this.logoWarn = '';
+        if (!file) return;
+        if (!LOGO_TYPES.includes(file.type)) { this.errors.logo = 'logoType'; this.announce(this.t('logoType')); return; }
+        if (file.size > LOGO_MAX) { this.errors.logo = 'logoSize'; this.announce(this.t('logoSize')); return; }
+        /* ملاحظة أمنية: ملفات SVG تُعقَّم في الخادم قبل حفظها (لا تُعرض هنا إلا داخل <img> فلا تُنفَّذ سكربتاتها) */
+        const r = new FileReader();
+        r.onload = () => {
+          this.form.logo = r.result; this.form.logoName = file.name; this.form.logoSize = file.size;
+          this.announce(this.t('logoAdded'));
+          if (file.type !== 'image/svg+xml') {
+            const img = new Image();
+            img.onload = () => { if (img.naturalWidth < 128 || img.naturalHeight < 128) this.logoWarn = this.t('logoSmall', { w: img.naturalWidth, h: img.naturalHeight }); };
+            img.src = r.result;
+          }
+        };
+        r.readAsDataURL(file);
+      },
+      removeLogo() {
+        this.form.logo = null; this.form.logoName = ''; this.form.logoSize = 0; this.errors.logo = ''; this.logoWarn = '';
+        this.announce(this.t('logoRemoved'));
+        this.$nextTick(() => this.$refs.logo?.focus());
+      },
+      fileSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; },
+
+      /* --- الخطوة 2: كلمة المرور --- */
+      get pw() {
+        const p = this.form.password;
+        return { len: p.length >= 8, upper: /[A-Z]/.test(p), lower: /[a-z]/.test(p), num: /\d/.test(p), sym: /[^A-Za-z0-9]/.test(p) };
+      },
+      get pwRulesOk() { const r = this.pw; return r.len && r.upper && r.lower && r.num; },
+      get pwScore() {
+        if (!this.form.password) return 0;
+        const n = Object.values(this.pw).filter(Boolean).length;
+        return n <= 2 ? 1 : n === 3 ? 2 : n === 4 ? 3 : 4;
+      },
+      get pwColor() { return ['', '#EF4444', '#F59E0B', '#0E80A1', '#10B981'][this.pwScore]; },
+      get pwTextClass() { return ['text-muted', 'text-danger', 'text-warning-700 dark:text-[#FCD34D]', 'text-brand', 'text-ok'][this.pwScore]; },
+      caps(e, which = 'capsOn') { if (e && typeof e.getModifierState === 'function') this[which] = e.getModifierState('CapsLock'); },
+      togglePw(which, id) {
+        this[which] = !this[which];
+        this.$nextTick(() => { const i = document.getElementById(id); i.focus(); const n = i.value.length; try { i.setSelectionRange(n, n); } catch (_) {} });
+      },
+
+      /* --- الخطوة 3: الباقة --- */
+      get currentPlan() { return this.plans.find(p => p.code === this.form.plan); },
+      price(p) {
+        if (!p || p.monthly === null) return null;
+        return this.form.cycle === 'monthly' ? p.monthly : p.monthly * 10;   /* السنوي = 10 أشهر (شهران مجانًا) */
+      },
+      yearlyEquiv(p) {
+        if (!p || p.monthly === null) return '';
+        return this.t('equiv', { m: this.fmt((p.monthly * 10) / 12), s: this.fmt(p.monthly * 2), c: this.t('currency') });
+      },
+      cycleKey(e) {
+        if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+        e.preventDefault();
+        this.form.cycle = this.form.cycle === 'monthly' ? 'yearly' : 'monthly';
+        if (e.key === 'Home') this.form.cycle = 'monthly';
+        if (e.key === 'End') this.form.cycle = 'yearly';
+        this.$nextTick(() => document.getElementById('cycle-' + this.form.cycle)?.focus());
+      },
+
+      /* --- التحقق --- */
+      fieldError(k) {
+        const f = this.form;
+        switch (k) {
+          case 'name': { const v = f.name.trim(); if (!v) return 'nameReq'; if (v.length < 3) return 'nameMin'; if (v.length > 120) return 'nameMax'; return ''; }
+          case 'slug': if (!f.slug) return 'slugReq'; if (!SLUG_RE.test(f.slug) || f.slug.includes('--')) return 'slugFmt'; if (RESERVED.includes(f.slug)) return 'slugTaken'; return '';
+          case 'adminName': { const v = f.adminName.trim(); if (!v) return 'adminReq'; if (v.length < 3) return 'adminMin'; return ''; }
+          case 'email': { const v = f.email.trim(); if (!v) return 'emailReq'; if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return 'emailFmt'; return ''; }
+          case 'password': if (!f.password) return 'passReq'; return this.pwRulesOk ? '' : 'passWeak';
+          case 'confirm': if (!f.confirm) return 'confirmReq'; return f.confirm === f.password ? '' : 'confirmMis';
+        }
+        return '';
+      },
+      /* تحقق عند مغادرة الحقل — لا نزعج المستخدم بخطأ "مطلوب" لحقل لم يكتب فيه */
+      blur(k) {
+        const val = this.form[k];
+        if (typeof val === 'string' && !val.trim()) return;
+        this.touched[k] = true;
+        this.errors[k] = this.fieldError(k);
+        if (k === 'slug' && this.errors.slug === 'slugTaken') { this.slugState = 'taken'; this.errors.slug = ''; }
+      },
+      isOk(k) { return !!this.touched[k] && !this.errors[k] && !this.fieldError(k); },
+      validateStep(n) {
+        const f = this.form, e = {};
+        const add = (k) => { const m = this.fieldError(k); if (m) e[k] = m; };
+        if (n === 1) {
+          f.name = f.name.trim();
+          add('name'); add('slug');
+          if (e.slug === 'slugTaken') { delete e.slug; e.slug = 'slugTaken'; this.slugState = 'taken'; }
+          if (this.errors.logo) e.logo = this.errors.logo;
+        }
+        if (n === 2) { f.adminName = f.adminName.trim(); f.email = f.email.trim(); add('adminName'); add('email'); add('password'); add('confirm'); }
+        if (n === 3) { if (!this.plans.some(p => p.code === f.plan)) e.plan = 'planReq'; }
+        if (n === 4) { if (!f.terms) e.terms = 'termsReq'; }
+        this.errors = e;
+        return Object.keys(e).length === 0;
+      },
+      focusFirstError() {
+        const n = Object.keys(this.errors).length;
+        this.announce(this.t('errFix') + ' ' + this.t('errCount', { n }));
+        this.$nextTick(() => {
+          const panel = this.$refs['panel' + this.step];
+          const el = panel && (panel.querySelector('[aria-invalid="true"]') || panel.querySelector('.err:not([style*="none"])'));
+          if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus?.({ preventScroll: true }); }
+        });
+      },
+      focusHeading() {
+        this.applyLang();
+        this.announce(this.t('stepOf', { n: this.step, t: this.total }) + ': ' + this.t(this.steps[this.step - 1].key));
+        this.$nextTick(() => {
+          const top = this.$refs.wizard.getBoundingClientRect().top + window.scrollY - 16;
+          if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
+          this.$refs['h' + this.step]?.focus({ preventScroll: true });
+        });
+      },
+
+      /* --- التنقل --- */
+      next() {
+        if (!this.validateStep(this.step)) { this.focusFirstError(); return; }
+        this.step = Math.min(this.step + 1, this.total);
+        this.maxReached = Math.max(this.maxReached, this.step);
+        this.focusHeading();
+      },
+      prev() {
+        if (this.step === 1 || this.busy) return;
+        this.errors = {};
+        this.step--;
+        this.focusHeading();
+      },
+      canGoTo(n) { return !this.busy && n !== this.step && n <= this.maxReached; },
+      goTo(n) {
+        if (!this.canGoTo(n)) return;
+        if (n > this.step) {
+          for (let i = this.step; i < n; i++) {
+            if (!this.validateStep(i)) { this.step = i; this.focusFirstError(); return; }
+          }
+        }
+        this.errors = {};
+        this.step = n;
+        this.focusHeading();
+      },
+      stepState(i) { return this.step > i + 1 ? 'stepDone' : this.step === i + 1 ? 'stepCurrent' : (i + 1 <= this.maxReached ? '' : 'stepLocked'); },
+      onSubmit() { this.step < this.total ? this.next() : this.submit(); },
+
+      /* --- الإرسال النهائي --- */
+      async submit() {
+        if (this.busy) return;
+        this.serverError = false;
+        for (let i = 1; i <= this.total; i++) {
+          if (!this.validateStep(i)) { this.step = i; this.focusFirstError(); return; }
+        }
+        this.busy = true;
+        /* ---- التكامل مع Laravel (Livewire: TenantOnboardingWizard) ----
+           $wire.register({ name, slug, logo, adminName, email, password, password_confirmation, plan, cycle, terms })
+           الخادم: TenantService::onboard() داخل Transaction ← إنشاء tenant + subscription (trial) + مستخدم Owner
+           + setPermissionsTeamId(tenant_id) لإسناد دور Owner، مع التحقق من تفرّد slug و Rate Limiting. */
+        try {
+          await new Promise(r => setTimeout(r, 1800));   // محاكاة للعرض فقط
+          this.done = true;
+          try { sessionStorage.removeItem(DRAFT_KEY); } catch (_) {}
+          this.form.password = ''; this.form.confirm = '';   /* لا نُبقي كلمة المرور في الذاكرة */
+          this.applyLang();
+          this.announce(this.t('doneTitle'));
+          this.$nextTick(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); this.$refs.doneTitle?.focus({ preventScroll: true }); });
+        } catch (err) {
+          this.serverError = true;
+          this.announce(this.t('serverErr'));
+        } finally {
+          this.busy = false;
+        }
+      },
+      async copyUrl() {
+        const text = this.workspaceUrl;
+        let ok = false;
+        try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+          /* بديل للمتصفحات/السياقات غير الآمنة (http) */
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+          } catch (_) {}
+        }
+        if (ok) { this.copied = true; this.announce(this.t('copiedSr')); setTimeout(() => this.copied = false, 2000); }
+      },
+    };
+  }
+</script>
+</head>
+
+<body x-data="wizard()">
+
+<!-- ========== Icon Sprite (رموز مستخدمة فقط) ========== -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 011-1h9a1 1 0 011 1v16M15 10h4a1 1 0 011 1v10M2 21h20M8 8h3M8 12h3M8 16h3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.5a3.5 3.5 0 010 7M18 14.5a6.5 6.5 0 013.5 5.5"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11l2 2 4-4M9 17h6"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A9.7 9.7 0 0112 6c6.5 0 10 6 10 6a17 17 0 01-3.2 3.9M6.6 7.7C3.9 9.3 2 12 2 12s3.5 6 10 6c1.5 0 2.9-.3 4.1-.8M9.9 9.9a3 3 0 004.2 4.2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 00-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0014.3 4.9L20 16M20 20v-4h-4"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M10 10h4v4h-4zM9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M7 19h12"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M14 4c3-1 5.5-1 6-.5s.5 3-.5 6L13 16l-5-5 6-7z"/><path d="M8 11l-3.5.5L3 15l4 .5M13 16l-.5 3.5L9 21l-.5-4M15.5 8.5h.01M6 18c-1 1-1.5 2.5-1.5 2.5S6 20 7 19"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+</svg>
+
+<a href="#wizard" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:font-bold focus:text-onaccent" x-text="t('skip')">تخطّي إلى معالج التسجيل</a>
+
+<!-- منطقة إعلانات قارئ الشاشة (تغيّر الخطوة، الأخطاء، الشعار، النسخ) -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="flex min-h-screen flex-col bg-[radial-gradient(56rem_24rem_at_50%_0%,rgb(var(--glow)/0.14),transparent)]">
+
+  <!-- ╔══════════ الشريط العلوي (يحترم النوتش) ══════════╗ -->
+  <header class="safe-x flex shrink-0 items-center justify-between gap-3 pb-3 sm:px-8 lg:px-10 short:pb-2" style="padding-top: calc(.75rem + var(--sat));">
+    <a href="../index.html" class="inline-flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:shadow-[var(--ring)]" aria-label="FirOb">
+      <img src="../asset/images/firob-logo.png" alt="FirOb" width="132" height="34" fetchpriority="high" decoding="async"
+           class="block h-8 w-auto max-w-[9rem] object-contain sm:h-9 dark:brightness-125">
+    </a>
+
+    <div class="flex items-center gap-2">
+      <a href="login.html" class="btn btn-ghost btn-sm hidden md:inline-flex">
+        <span x-text="t('haveAcc')" class="font-medium text-muted"></span><span x-text="t('login')"></span>
+      </a>
+      <button type="button" class="tool" @click="toggleTheme()" :aria-pressed="dark"
+              :aria-label="dark ? t('themeLight') : t('themeDark')" :title="dark ? t('themeLight') : t('themeDark')">
+        <svg class="ic" x-show="!dark" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="ic" x-show="dark" x-cloak aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <div class="flex h-11 items-center rounded-xl border border-line-strong bg-field p-1" role="group" :aria-label="t('langGroup')">
+        <button type="button" lang="ar" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                :class="lang === 'ar' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'ar'" @click="lang = 'ar'">عربي</button>
+        <button type="button" lang="en" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                :class="lang === 'en' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'en'" @click="lang = 'en'">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="wizard" x-ref="wizard" tabindex="-1" class="safe-x mx-auto w-full max-w-4xl flex-1 pb-10 pt-2 focus:outline-none sm:px-8 short:pb-6">
+
+    <!-- ╔══════════ حالة النجاح ══════════╗ -->
+    <section x-show="done" x-cloak x-transition.opacity.duration.400ms class="card mx-auto max-w-xl p-6 text-center sm:p-10 short:p-6" aria-labelledby="done-title">
+      <template x-if="done">
+        <span class="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success-500/15 text-ok motion-safe:animate-[pop-in_.5s_ease-out]" aria-hidden="true">
+          <svg class="ic !h-9 !w-9"><use href="#i-check-circle"/></svg>
+        </span>
+      </template>
+      <h1 id="done-title" x-ref="doneTitle" tabindex="-1" class="mt-5 text-h1 font-extrabold text-ink focus:outline-none" x-text="t('doneTitle')"></h1>
+      <p class="mx-auto mt-2 max-w-md text-caption text-muted" x-text="t('doneSub')"></p>
+      <p class="mt-1 text-label font-bold text-ink"><bdi dir="ltr" class="break-all" x-text="form.email"></bdi></p>
+
+      <div class="mt-6 flex items-center gap-2 rounded-xl border border-line bg-field p-2 ps-4" dir="ltr">
+        <svg class="ic text-ok" aria-hidden="true"><use href="#i-lock"/></svg>
+        <span class="min-w-0 flex-1 select-all truncate text-start text-label font-bold text-ink" :title="workspaceUrl" x-text="workspaceUrl"></span>
+        <button type="button" class="btn btn-outline btn-sm" @click="copyUrl()">
+          <svg class="ic !h-4 !w-4" x-show="!copied" aria-hidden="true"><use href="#i-copy"/></svg>
+          <svg class="ic !h-4 !w-4 text-ok" x-show="copied" x-cloak aria-hidden="true"><use href="#i-check"/></svg>
+          <span x-text="copied ? t('copied') : t('copy')"></span>
+        </button>
+      </div>
+
+      <a :href="enterUrl" class="btn btn-primary btn-lg mt-6 w-full">
+        <svg class="ic" aria-hidden="true"><use href="#i-rocket"/></svg>
+        <span x-text="t('goWs')"></span>
+      </a>
+    </section>
+
+    <!-- ╔══════════ المعالج ══════════╗ -->
+    <section x-show="!done" aria-labelledby="wizard-title">
+
+      <!-- الترويسة -->
+      <div class="mb-5 text-center short:mb-3">
+        <h1 id="wizard-title" class="text-h1 font-extrabold text-ink" x-text="t('title')">إنشاء مساحة منشأة جديدة</h1>
+        <p class="mx-auto mt-1.5 max-w-xl text-caption text-muted xshort:hidden" x-text="t('subtitle')"></p>
+      </div>
+
+      <!-- استعادة المسودة -->
+      <div x-show="restored" x-cloak x-transition.opacity class="alert alert-info mb-4" role="status">
+        <svg class="ic mt-0.5" aria-hidden="true"><use href="#i-refresh"/></svg>
+        <p class="flex-1" x-text="t('draftRestored')"></p>
+        <button type="button" class="link shrink-0 text-caption" @click="clearDraft()" x-text="t('draftClear')"></button>
+      </div>
+
+      <!-- شريط الخطوات -->
+      <nav class="card mb-5 px-3 py-4 sm:px-6 sm:py-5 short:mb-3 short:py-3" :aria-label="t('stepsNav')">
+        <ol class="flex items-start">
+          <template x-for="(s, i) in steps" :key="s.key">
+            <li class="relative flex flex-1 flex-col items-center text-center">
+              <div x-show="i < steps.length - 1" class="absolute top-[1.375rem] h-1 -translate-y-1/2 overflow-hidden rounded-full bg-line"
+                   style="inset-inline-start: calc(50% + 1.875rem); inset-inline-end: calc(-50% + 1.875rem);" aria-hidden="true">
+                <div class="h-full rounded-full bg-primary-500 transition-all duration-500" :style="`width:${step > i + 1 ? 100 : 0}%`"></div>
+              </div>
+              <button type="button" @click="goTo(i + 1)" :disabled="!canGoTo(i + 1) && step !== i + 1"
+                      class="relative z-10 grid h-11 w-11 place-items-center rounded-full border-2 transition-all duration-300 focus-visible:outline-none focus-visible:shadow-[var(--ring)] disabled:cursor-default"
+                      :class="step > i + 1 ? 'border-primary-500 bg-primary-500 text-white hover:bg-primary-600'
+                            : (step === i + 1 ? 'border-brand bg-soft text-brand ring-4 ring-primary-500/15'
+                            : (i + 1 <= maxReached ? 'border-primary-500 bg-field text-brand hover:bg-soft' : 'border-line-strong bg-field text-muted'))"
+                      :aria-current="step === i + 1 ? 'step' : null"
+                      :aria-label="t('stepOf', { n: i + 1, t: total }) + ' — ' + t(s.key) + (stepState(i) ? ' (' + t(stepState(i)) + ')' : '')">
+                <svg class="ic !h-[1.125rem] !w-[1.125rem]" x-show="step > i + 1" aria-hidden="true"><use href="#i-check"/></svg>
+                <svg class="ic !h-[1.125rem] !w-[1.125rem]" x-show="step <= i + 1" aria-hidden="true"><use :href="'#' + s.icon"/></svg>
+              </button>
+              <span class="mt-2 hidden text-caption font-bold sm:block" :class="step >= i + 1 ? 'text-ink' : 'text-muted'" x-text="t(s.key)" aria-hidden="true"></span>
+              <span class="hidden text-xs text-muted md:block short:!hidden" x-text="t(s.key + 'd')" aria-hidden="true"></span>
+            </li>
+          </template>
+        </ol>
+
+        <!-- ملخص التقدّم (الجوال) -->
+        <div class="mt-4 sm:hidden">
+          <div class="flex items-center justify-between gap-2 text-caption">
+            <span class="truncate font-bold text-ink" x-text="t(steps[step - 1].key)"></span>
+            <span class="shrink-0 text-muted" x-text="t('stepOf', { n: step, t: total })"></span>
+          </div>
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" :aria-label="t('progress')"
+               :aria-valuenow="step" aria-valuemin="1" :aria-valuemax="total" :aria-valuetext="t('stepOf', { n: step, t: total }) + ': ' + t(steps[step - 1].key)">
+            <div class="h-full rounded-full bg-primary-500 transition-all duration-500" :style="`width:${(step / total) * 100}%`"></div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Laravel: <livewire:tenant-onboarding-wizard /> أو action="{{ route('tenant.register') }}" + @csrf -->
+      <!-- بلا overflow-hidden: كي يعمل شريط التنقل اللاصق (sticky) على الجوال -->
+      <form x-ref="form" method="POST" action="/register-tenant" enctype="multipart/form-data" novalidate class="card" :aria-busy="busy" @submit.prevent="onSubmit()">
+
+        <div class="p-5 sm:p-8 short:p-5">
+
+          <!-- خطأ الخادم -->
+          <div x-show="serverError" x-cloak class="alert alert-error mb-5" role="alert">
+            <svg class="ic mt-0.5" aria-hidden="true"><use href="#i-x-circle"/></svg>
+            <p class="flex-1" x-text="t('serverErr')"></p>
+          </div>
+
+          <!-- ═════ الخطوة 1: معلومات المنشأة ═════ -->
+          <div x-ref="panel1" x-show="step === 1" role="group" aria-labelledby="h-step1" x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+            <header class="mb-6 short:mb-4">
+              <h2 id="h-step1" x-ref="h1" tabindex="-1" class="text-xl font-extrabold text-ink focus:outline-none" x-text="t('s1Title')"></h2>
+              <p class="mt-1 text-caption text-muted short:hidden" x-text="t('s1Sub')"></p>
+            </header>
+
+            <div class="space-y-5 short:space-y-4">
+              <!-- اسم المنشأة -->
+              <div>
+                <label class="label" for="org-name"><span x-text="t('nameLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.name" :data-valid="isOk('name')">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-building"/></svg>
+                  <input id="org-name" name="name" type="text" autocomplete="organization" maxlength="120" enterkeyhint="next" required aria-required="true"
+                         class="fgroup-input" :placeholder="t('namePh')"
+                         x-model="form.name" @input="onNameInput()" @blur="blur('name')"
+                         :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'org-name-err' : null">
+                  <svg x-show="isOk('name')" x-cloak class="ic !h-4 !w-4 text-ok" aria-hidden="true"><use href="#i-check-circle"/></svg>
+                </div>
+                <p id="org-name-err" class="err" x-show="errors.name" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.name)"></span></p>
+              </div>
+
+              <!-- الرابط الفرعي -->
+              <div class="rounded-2xl border border-line bg-soft/60 p-4">
+                <label class="label" for="org-slug"><span x-text="t('slugLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.slug || slugState === 'taken'" :data-valid="slugState === 'available' && !errors.slug">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-globe"/></svg>
+                  <div dir="ltr" class="flex min-w-0 flex-1 items-center">
+                    <span class="hidden shrink-0 select-none text-label font-medium text-muted sm:inline" aria-hidden="true">https://</span>
+                    <input id="org-slug" name="slug" type="text" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="63"
+                           enterkeyhint="next" required aria-required="true"
+                           placeholder="your-school" class="fgroup-input text-left"
+                           x-model="form.slug" @input="onSlugInput()" @blur="form.slug = form.slug.replace(/-+$/, ''); blur('slug')"
+                           :aria-invalid="!!errors.slug || slugState === 'taken'" aria-describedby="slug-status slug-hint">
+                    <span class="shrink-0 select-none border-s border-line ps-2 text-label font-bold text-muted sm:ps-3" aria-hidden="true">.firob.net</span>
+                  </div>
+                  <span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
+                    <svg class="ic animate-spin text-brand" x-show="slugState === 'checking'" x-cloak><use href="#i-spinner"/></svg>
+                    <svg class="ic text-ok" x-show="slugState === 'available' && !errors.slug" x-cloak><use href="#i-check-circle"/></svg>
+                    <svg class="ic text-danger" x-show="slugState === 'taken'" x-cloak><use href="#i-x-circle"/></svg>
+                  </span>
+                </div>
+
+                <!-- حالة الرابط (منطقة حيّة واحدة: تُعلن الحالة مرة واحدة عند تغيّرها) -->
+                <div id="slug-status" aria-live="polite" aria-atomic="true">
+                  <p class="err" x-show="errors.slug && errors.slug !== 'slugTaken'" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.slug ? t(errors.slug) : ''"></span></p>
+                  <p class="err" x-show="slugState === 'taken'" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="slugState === 'taken' ? t('slugTaken') : ''"></span></p>
+                  <p class="hint flex items-center gap-1.5" x-show="slugState === 'checking'" x-cloak><span x-text="slugState === 'checking' ? t('checking') : ''"></span></p>
+                  <p class="okmsg" x-show="slugState === 'available' && !errors.slug" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-check-circle"/></svg><span x-text="slugState === 'available' ? t('available') : ''"></span></p>
+                </div>
+                <p id="slug-hint" class="hint" x-show="!errors.slug && slugState !== 'taken'">
+                  <span x-show="slugAuto" class="mb-0.5 flex items-center gap-1.5 font-bold text-brand"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-sparkle"/></svg><span x-text="t('slugAuto')"></span></span>
+                  <span class="short:hidden" x-text="t('slugHint')"></span>
+                </p>
+
+                <!-- معاينة مباشرة للنطاق -->
+                <div class="mt-4 xshort:hidden" aria-hidden="true">
+                  <p class="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted" x-text="t('previewLabel')"></p>
+                  <div class="overflow-hidden rounded-xl border border-line bg-field shadow-sm">
+                    <div class="flex items-center gap-2 border-b border-line bg-page/60 px-3 py-2" dir="ltr">
+                      <span class="flex gap-1.5"><i class="h-2.5 w-2.5 rounded-full bg-error-500/70"></i><i class="h-2.5 w-2.5 rounded-full bg-accent-500"></i><i class="h-2.5 w-2.5 rounded-full bg-success-500/70"></i></span>
+                      <div class="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg bg-field px-3 py-1 text-caption">
+                        <svg class="ic !h-3.5 !w-3.5 text-ok"><use href="#i-lock"/></svg>
+                        <span class="truncate text-muted">https://<b class="font-bold" :class="form.slug ? 'text-brand' : 'text-muted/60'" x-text="form.slug || 'your-school'"></b>.firob.net</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-3 px-4 py-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-soft text-brand">
+                        <img x-show="form.logo" x-cloak :src="form.logo" alt="" width="40" height="40" class="h-full w-full object-contain">
+                        <svg class="ic" x-show="!form.logo"><use href="#i-building"/></svg>
+                      </span>
+                      <div class="min-w-0">
+                        <p class="truncate text-label font-bold text-ink" x-text="form.name.trim() || t('namePh')" :class="!form.name.trim() && 'text-muted/70'"></p>
+                        <p class="text-xs text-muted">FirOb Workspace</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- الشعار -->
+              <div>
+                <p class="label" id="logo-label"><span x-text="t('logoLabel')"></span> <span class="font-medium text-muted" x-text="t('optional')"></span></p>
+                <!-- الحقل الأصلي قبل منطقة الإفلات مباشرة: peer يمرّر حلقة التركيز إليها -->
+                <input id="logo" x-ref="logo" name="logo" type="file" class="peer sr-only" accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                       aria-labelledby="logo-label" :aria-describedby="errors.logo ? 'logo-err' : 'logo-rules'" :aria-invalid="!!errors.logo"
+                       @change="pickFile($event.target.files[0]); $event.target.value = ''">
+
+                <label for="logo" x-show="!form.logo" class="dropzone" :class="drag && 'is-drag'" :data-invalid="!!errors.logo"
+                       @dragenter.prevent="dragDepth++; drag = true" @dragover.prevent
+                       @dragleave.prevent="if (--dragDepth <= 0) { dragDepth = 0; drag = false; }"
+                       @drop.prevent="dragDepth = 0; drag = false; pickFile($event.dataTransfer.files[0])">
+                  <span class="grid h-12 w-12 place-items-center rounded-2xl bg-soft-2 text-brand" aria-hidden="true"><svg class="ic !h-6 !w-6"><use href="#i-upload"/></svg></span>
+                  <span class="text-label text-ink"><span x-text="t('logoDrop')"></span> <span class="font-bold text-brand underline underline-offset-4" x-text="t('logoBrowse')"></span></span>
+                  <span id="logo-rules" class="text-caption text-muted" x-text="t('logoRules')"></span>
+                </label>
+
+                <div x-show="form.logo" x-cloak class="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-field p-4">
+                  <span class="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line bg-[conic-gradient(rgb(var(--line))_25%,transparent_0_50%,rgb(var(--line))_0_75%,transparent_0)] bg-[length:16px_16px]">
+                    <img :src="form.logo" :alt="t('logoLabel')" width="80" height="80" class="h-full w-full object-contain p-1.5">
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-label font-bold text-ink" dir="ltr" x-text="form.logoName"></p>
+                    <p class="text-caption text-muted" dir="ltr" x-text="fileSize(form.logoSize)"></p>
+                  </div>
+                  <div class="flex w-full gap-2 min-[420px]:w-auto">
+                    <button type="button" class="btn btn-outline btn-sm flex-1 min-[420px]:flex-none" @click="$refs.logo.click()"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-refresh"/></svg><span x-text="t('logoReplace')"></span></button>
+                    <button type="button" class="btn btn-sm flex-1 border-error-600/40 bg-error-500/10 text-danger hover:bg-error-500/20 min-[420px]:flex-none" @click="removeLogo()"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-trash"/></svg><span x-text="t('logoRemove')"></span></button>
+                  </div>
+                </div>
+                <p class="warn" x-show="logoWarn" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-warning"/></svg><span x-text="logoWarn"></span></p>
+                <p id="logo-err" class="err" x-show="errors.logo" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.logo ? t(errors.logo) : ''"></span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═════ الخطوة 2: بيانات مدير النظام ═════ -->
+          <div x-ref="panel2" x-show="step === 2" x-cloak role="group" aria-labelledby="h-step2" x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+            <header class="mb-6 short:mb-4">
+              <h2 id="h-step2" x-ref="h2" tabindex="-1" class="text-xl font-extrabold text-ink focus:outline-none" x-text="t('s2Title')"></h2>
+              <p class="mt-1 text-caption text-muted short:hidden" x-text="t('s2Sub')"></p>
+            </header>
+
+            <div class="grid gap-5 md:grid-cols-2 short:gap-4">
+              <!-- الاسم الكامل -->
+              <div class="min-w-0">
+                <label class="label" for="admin-name"><span x-text="t('adminName')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.adminName" :data-valid="isOk('adminName')">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-user"/></svg>
+                  <input id="admin-name" name="admin_name" type="text" autocomplete="name" autocapitalize="words" maxlength="100" enterkeyhint="next" required aria-required="true"
+                         class="fgroup-input" :placeholder="t('adminNamePh')"
+                         x-model="form.adminName" @input="errors.adminName = ''" @blur="blur('adminName')"
+                         :aria-invalid="!!errors.adminName" :aria-describedby="errors.adminName ? 'admin-name-err' : null">
+                  <svg x-show="isOk('adminName')" x-cloak class="ic !h-4 !w-4 text-ok" aria-hidden="true"><use href="#i-check-circle"/></svg>
+                </div>
+                <p id="admin-name-err" class="err" x-show="errors.adminName" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.adminName ? t(errors.adminName) : ''"></span></p>
+              </div>
+
+              <!-- البريد -->
+              <div class="min-w-0">
+                <label class="label" for="admin-email"><span x-text="t('email')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.email" :data-valid="isOk('email')">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-mail"/></svg>
+                  <!-- autocomplete=username: البريد هو مُعرّف الدخول فيحفظه مدير كلمات المرور مع كلمة المرور -->
+                  <input id="admin-email" name="email" type="email" dir="ltr" inputmode="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+                         enterkeyhint="next" required aria-required="true"
+                         class="fgroup-input rtl-end" placeholder="admin@school.edu.sa"
+                         x-model="form.email" @input="errors.email = ''" @blur="form.email = form.email.trim(); blur('email')"
+                         :aria-invalid="!!errors.email" :aria-describedby="errors.email ? 'admin-email-err' : 'admin-email-hint'">
+                  <svg x-show="isOk('email')" x-cloak class="ic !h-4 !w-4 text-ok" aria-hidden="true"><use href="#i-check-circle"/></svg>
+                </div>
+                <p id="admin-email-hint" class="hint short:hidden" x-show="!errors.email" x-text="t('emailHint')"></p>
+                <p id="admin-email-err" class="err" x-show="errors.email" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.email ? t(errors.email) : ''"></span></p>
+              </div>
+
+              <!-- كلمة المرور -->
+              <div class="min-w-0">
+                <label class="label" for="admin-pass"><span x-text="t('password')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.password" :data-valid="!!form.password && pwRulesOk && !errors.password">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-lock"/></svg>
+                  <input id="admin-pass" name="password" :type="showPw ? 'text' : 'password'" dir="ltr" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"
+                         enterkeyhint="next" maxlength="128" required aria-required="true"
+                         class="fgroup-input rtl-end" placeholder="••••••••"
+                         x-model="form.password" @input="errors.password = ''; if (errors.confirm === 'confirmMis' && form.confirm === form.password) errors.confirm = ''"
+                         @keyup="caps($event)" @keydown="caps($event)" @blur="capsOn = false; blur('password')"
+                         :aria-invalid="!!errors.password" :aria-describedby="['pw-rules', errors.password ? 'admin-pass-err' : '', capsOn ? 'caps1' : ''].filter(Boolean).join(' ')">
+                  <button type="button" class="eye" @mousedown.prevent @click="togglePw('showPw', 'admin-pass')" :aria-pressed="showPw" aria-controls="admin-pass" :aria-label="showPw ? t('hidePw') : t('showPw')" :title="showPw ? t('hidePw') : t('showPw')">
+                    <svg class="ic" x-show="!showPw" aria-hidden="true"><use href="#i-eye"/></svg>
+                    <svg class="ic" x-show="showPw" x-cloak aria-hidden="true"><use href="#i-eye-off"/></svg>
+                  </button>
+                </div>
+                <p id="caps1" class="warn" x-show="capsOn" x-cloak role="status"><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-warning"/></svg><span x-text="t('caps')"></span></p>
+                <p id="admin-pass-err" class="err" x-show="errors.password" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.password ? t(errors.password) : ''"></span></p>
+              </div>
+
+              <!-- التأكيد -->
+              <div class="min-w-0">
+                <label class="label" for="admin-confirm"><span x-text="t('confirm')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.confirm" :data-valid="!errors.confirm && !!form.confirm && form.confirm === form.password">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-shield"/></svg>
+                  <input id="admin-confirm" name="password_confirmation" :type="showCf ? 'text' : 'password'" dir="ltr" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"
+                         enterkeyhint="next" maxlength="128" required aria-required="true"
+                         class="fgroup-input rtl-end" placeholder="••••••••"
+                         x-model="form.confirm" @input="errors.confirm = ''"
+                         @keyup="caps($event, 'capsOn2')" @keydown="caps($event, 'capsOn2')" @blur="capsOn2 = false; blur('confirm')"
+                         :aria-invalid="!!errors.confirm"
+                         :aria-describedby="[errors.confirm ? 'admin-confirm-err' : '', (!errors.confirm && form.confirm && form.confirm === form.password) ? 'admin-confirm-ok' : '', capsOn2 ? 'caps2' : ''].filter(Boolean).join(' ') || null">
+                  <button type="button" class="eye" @mousedown.prevent @click="togglePw('showCf', 'admin-confirm')" :aria-pressed="showCf" aria-controls="admin-confirm" :aria-label="showCf ? t('hidePw') : t('showPw')" :title="showCf ? t('hidePw') : t('showPw')">
+                    <svg class="ic" x-show="!showCf" aria-hidden="true"><use href="#i-eye"/></svg>
+                    <svg class="ic" x-show="showCf" x-cloak aria-hidden="true"><use href="#i-eye-off"/></svg>
+                  </button>
+                </div>
+                <p id="caps2" class="warn" x-show="capsOn2" x-cloak role="status"><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-warning"/></svg><span x-text="t('caps')"></span></p>
+                <p id="admin-confirm-err" class="err" x-show="errors.confirm" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.confirm ? t(errors.confirm) : ''"></span></p>
+                <p id="admin-confirm-ok" class="okmsg" x-show="!errors.confirm && form.confirm && form.confirm === form.password" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-check-circle"/></svg><span x-text="t('match')"></span></p>
+              </div>
+            </div>
+
+            <!-- قوة كلمة المرور والشروط -->
+            <div id="pw-rules" class="mt-5 rounded-2xl border border-line bg-soft/50 p-4 short:mt-4 short:p-3" :class="pwRulesOk && '!border-success-500/50'">
+              <div class="flex items-center justify-between gap-3 text-caption">
+                <span class="font-bold text-ink" x-text="t('strength')"></span>
+                <span class="font-bold" :class="pwTextClass" role="status" aria-live="polite" x-text="pwScore ? t('str' + pwScore) : '—'"></span>
+              </div>
+              <div class="mt-2 grid grid-cols-4 gap-1.5" dir="ltr" aria-hidden="true">
+                <template x-for="n in 4" :key="n">
+                  <span class="h-1.5 rounded-full bg-line transition-colors duration-300" :style="n <= pwScore ? `background:${pwColor}` : ''"></span>
+                </template>
+              </div>
+              <ul class="mt-3 grid gap-1.5 text-caption min-[400px]:grid-cols-2">
+                <template x-for="r in [['len','ruleLen'],['upper','ruleUpper'],['lower','ruleLower'],['num','ruleNum']]" :key="r[0]">
+                  <li class="flex items-center gap-2 transition-colors" :class="pw[r[0]] ? 'font-bold text-ok' : 'text-muted'">
+                    <svg class="ic !h-4 !w-4" aria-hidden="true"><use :href="pw[r[0]] ? '#i-check-circle' : '#i-dot'"/></svg>
+                    <span x-text="t(r[1])"></span>
+                    <span class="sr-only" x-text="'— ' + (pw[r[0]] ? t('met') : t('unmet'))"></span>
+                  </li>
+                </template>
+              </ul>
+              <p class="sr-only" role="status" x-text="form.password && pwRulesOk ? t('rulesDone') : ''"></p>
+            </div>
+          </div>
+
+          <!-- ═════ الخطوة 3: الباقة ═════ -->
+          <div x-ref="panel3" x-show="step === 3" x-cloak role="group" aria-labelledby="h-step3" x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+            <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between short:mb-4">
+              <div>
+                <h2 id="h-step3" x-ref="h3" tabindex="-1" class="text-xl font-extrabold text-ink focus:outline-none" x-text="t('s3Title')"></h2>
+                <p class="mt-1 text-caption text-muted short:hidden" x-text="t('s3Sub')"></p>
+              </div>
+              <!-- دورة الفوترة: radiogroup بتنقل الأسهم ومؤشر tabindex متنقّل -->
+              <div class="seg w-full shrink-0 sm:w-auto" role="radiogroup" :aria-label="t('cycleLabel')" @keydown="cycleKey($event)">
+                <button type="button" id="cycle-monthly" role="radio" class="seg-btn flex-1 justify-center sm:flex-none" :aria-checked="form.cycle === 'monthly'" :tabindex="form.cycle === 'monthly' ? 0 : -1"
+                        :class="form.cycle === 'monthly' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'"
+                        @click="form.cycle = 'monthly'" x-text="t('monthly')"></button>
+                <button type="button" id="cycle-yearly" role="radio" class="seg-btn flex-1 justify-center sm:flex-none" :aria-checked="form.cycle === 'yearly'" :tabindex="form.cycle === 'yearly' ? 0 : -1"
+                        :class="form.cycle === 'yearly' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'"
+                        @click="form.cycle = 'yearly'">
+                  <span x-text="t('yearly')"></span>
+                  <span class="badge badge-accent !px-2 !py-0 text-[0.6875rem]" x-text="t('save')"></span>
+                </button>
+              </div>
+            </header>
+
+            <fieldset>
+              <legend class="sr-only" x-text="t('s3')"></legend>
+              <div class="plans grid gap-4 md:grid-cols-3" :data-invalid="!!errors.plan">
+                <template x-for="p in plans" :key="p.code">
+                  <label class="plan" :class="form.plan === p.code && 'is-selected'">
+                    <input type="radio" name="plan" class="sr-only" :value="p.code" x-model="form.plan" @change="errors.plan = ''" :aria-invalid="!!errors.plan"
+                           :aria-describedby="'plan-' + p.code + '-desc'">
+
+                    <span x-show="p.popular" class="badge badge-accent absolute -top-3 start-5 shadow-sm">
+                      <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-sparkle"/></svg><span x-text="t('popular')"></span>
+                    </span>
+
+                    <div class="flex items-start justify-between gap-3">
+                      <span class="grid h-11 w-11 place-items-center rounded-xl transition-colors"
+                            :class="form.plan === p.code ? 'bg-primary-500 text-white' : 'bg-soft-2 text-brand'" aria-hidden="true">
+                        <svg class="ic"><use :href="'#' + p.icon"/></svg>
+                      </span>
+                      <span class="grid h-6 w-6 place-items-center rounded-full border-2 transition-colors"
+                            :class="form.plan === p.code ? 'border-primary-500 bg-primary-500 text-white' : 'border-line-strong'" aria-hidden="true">
+                        <svg class="ic !h-3.5 !w-3.5" x-show="form.plan === p.code" style="stroke-width:3"><use href="#i-check"/></svg>
+                      </span>
+                    </div>
+
+                    <p class="mt-4 text-lg font-extrabold text-ink short:mt-3" x-text="t(p.name)"></p>
+                    <p class="text-caption text-muted" x-text="t(p.desc)"></p>
+
+                    <div class="mt-4 short:mt-3" :id="'plan-' + p.code + '-desc'">
+                      <template x-if="price(p) !== null">
+                        <div>
+                          <p class="flex flex-wrap items-baseline gap-x-1.5">
+                            <span class="text-3xl font-extrabold tabular-nums text-ink" x-text="fmt(price(p))"></span>
+                            <span class="text-caption font-bold text-muted" x-text="t('currency')"></span>
+                            <span class="text-caption text-muted" x-text="form.cycle === 'monthly' ? t('perMonth') : t('perYear')"></span>
+                          </p>
+                          <p class="mt-1 text-xs font-bold text-ok" x-show="form.cycle === 'yearly'" x-text="yearlyEquiv(p)"></p>
+                        </div>
+                      </template>
+                      <template x-if="price(p) === null">
+                        <span class="text-3xl font-extrabold text-ink" x-text="t('custom')"></span>
+                      </template>
+                    </div>
+
+                    <ul class="mt-4 space-y-2 border-t border-line pt-4 text-caption text-ink short:mt-3 short:space-y-1.5 short:pt-3">
+                      <li class="flex items-start gap-2"><svg class="ic mt-0.5 !h-4 !w-4 text-brand" aria-hidden="true"><use href="#i-users"/></svg><span x-text="p.users ? t('usersN', { n: fmt(p.users) }) : t('usersU')"></span></li>
+                      <li class="flex items-start gap-2"><svg class="ic mt-0.5 !h-4 !w-4 text-brand" aria-hidden="true"><use href="#i-database"/></svg><span x-text="t('storageN', { n: fmt(p.storage) })"></span></li>
+                      <li class="flex items-start gap-2"><svg class="ic mt-0.5 !h-4 !w-4 text-brand" aria-hidden="true"><use href="#i-cpu"/></svg><span x-text="p.ai ? t('aiN', { n: compact(p.ai) }) : t('aiC')"></span></li>
+                      <template x-for="f in p.feats" :key="f">
+                        <li class="flex items-start gap-2"><svg class="ic mt-0.5 !h-4 !w-4 text-ok" aria-hidden="true"><use href="#i-check"/></svg><span x-text="t(f)"></span></li>
+                      </template>
+                    </ul>
+                  </label>
+                </template>
+              </div>
+            </fieldset>
+
+            <p class="err" x-show="errors.plan" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.plan ? t(errors.plan) : ''"></span></p>
+
+            <div x-show="form.plan === 'enterprise'" x-cloak x-transition.opacity class="alert alert-accent mt-5" role="note">
+              <svg class="ic mt-0.5" aria-hidden="true"><use href="#i-info"/></svg>
+              <p class="flex-1" x-text="t('entNote')"></p>
+            </div>
+          </div>
+
+          <!-- ═════ الخطوة 4: المراجعة والتأكيد ═════ -->
+          <div x-ref="panel4" x-show="step === 4" x-cloak role="group" aria-labelledby="h-step4" x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
+            <header class="mb-6 short:mb-4">
+              <h2 id="h-step4" x-ref="h4" tabindex="-1" class="text-xl font-extrabold text-ink focus:outline-none" x-text="t('s4Title')"></h2>
+              <p class="mt-1 text-caption text-muted short:hidden" x-text="t('s4Sub')"></p>
+            </header>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+              <!-- المنشأة -->
+              <section class="min-w-0 rounded-2xl border border-line bg-field p-4 lg:col-span-2" aria-labelledby="rv-org">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <h3 id="rv-org" class="flex items-center gap-2 text-label font-extrabold text-ink"><svg class="ic text-brand" aria-hidden="true"><use href="#i-building"/></svg><span x-text="t('rvOrg')"></span></h3>
+                  <button type="button" class="btn btn-ghost btn-sm" @click="goTo(1)" :disabled="busy" :aria-label="t('editSr', { x: t('rvOrg') })"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-pencil"/></svg><span x-text="t('edit')"></span></button>
+                </div>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <span class="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-line bg-soft text-brand">
+                    <img x-show="form.logo" :src="form.logo" :alt="t('logoLabel')" width="64" height="64" class="h-full w-full object-contain p-1">
+                    <svg class="ic !h-7 !w-7" x-show="!form.logo" aria-hidden="true"><use href="#i-image"/></svg>
+                  </span>
+                  <dl class="min-w-0 flex-1">
+                    <div class="rv-row"><dt class="rv-key" x-text="t('rvName')"></dt><dd class="rv-val" x-text="form.name.trim()"></dd></div>
+                    <div class="rv-row"><dt class="rv-key" x-text="t('rvUrl')"></dt><dd class="rv-val text-brand"><bdi dir="ltr" class="break-all" x-text="workspaceUrl"></bdi></dd></div>
+                    <div class="rv-row"><dt class="rv-key" x-text="t('rvLogo')"></dt><dd class="rv-val" :class="!form.logo && '!font-medium !text-muted'"><bdi dir="ltr" class="break-all" x-text="form.logo ? form.logoName : ''"></bdi><span x-show="!form.logo" x-text="t('noLogo')"></span></dd></div>
+                  </dl>
+                </div>
+              </section>
+
+              <!-- المدير -->
+              <section class="min-w-0 rounded-2xl border border-line bg-field p-4" aria-labelledby="rv-admin">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <h3 id="rv-admin" class="flex items-center gap-2 text-label font-extrabold text-ink"><svg class="ic text-brand" aria-hidden="true"><use href="#i-user"/></svg><span x-text="t('rvAdmin')"></span></h3>
+                  <button type="button" class="btn btn-ghost btn-sm" @click="goTo(2)" :disabled="busy" :aria-label="t('editSr', { x: t('rvAdmin') })"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-pencil"/></svg><span x-text="t('edit')"></span></button>
+                </div>
+                <dl>
+                  <div class="rv-row"><dt class="rv-key" x-text="t('adminName')"></dt><dd class="rv-val" x-text="form.adminName.trim()"></dd></div>
+                  <div class="rv-row"><dt class="rv-key" x-text="t('rvEmail')"></dt><dd class="rv-val"><bdi dir="ltr" class="break-all" x-text="form.email"></bdi></dd></div>
+                  <div class="rv-row"><dt class="rv-key" x-text="t('rvPass')"></dt><dd class="rv-val tracking-widest" dir="ltr" aria-label="••••••••" x-text="'•'.repeat(Math.min(form.password.length, 12))"></dd></div>
+                </dl>
+              </section>
+
+              <!-- الباقة -->
+              <section class="min-w-0 rounded-2xl border border-line bg-field p-4" aria-labelledby="rv-plan">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <h3 id="rv-plan" class="flex items-center gap-2 text-label font-extrabold text-ink"><svg class="ic text-brand" aria-hidden="true"><use href="#i-layers"/></svg><span x-text="t('rvPlan')"></span></h3>
+                  <button type="button" class="btn btn-ghost btn-sm" @click="goTo(3)" :disabled="busy" :aria-label="t('editSr', { x: t('rvPlan') })"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-pencil"/></svg><span x-text="t('edit')"></span></button>
+                </div>
+                <dl>
+                  <div class="rv-row"><dt class="rv-key" x-text="t('s3')"></dt><dd class="rv-val flex items-center gap-2 sm:justify-end"><span x-text="currentPlan && t(currentPlan.name)"></span><span x-show="currentPlan && currentPlan.popular" class="badge badge-soft" x-text="t('popular')"></span></dd></div>
+                  <div class="rv-row"><dt class="rv-key" x-text="t('rvCycle')"></dt><dd class="rv-val" x-text="form.cycle === 'monthly' ? t('monthly') : t('yearly')"></dd></div>
+                  <div class="rv-row"><dt class="rv-key" x-text="t('rvPrice')"></dt>
+                    <dd class="rv-val" x-text="price(currentPlan) === null ? t('custom') : fmt(price(currentPlan)) + ' ' + t('currency') + ' ' + (form.cycle === 'monthly' ? t('perMonth') : t('perYear'))"></dd></div>
+                </dl>
+              </section>
+            </div>
+
+            <div class="alert alert-info mt-5 short:mt-4">
+              <svg class="ic mt-0.5" aria-hidden="true"><use href="#i-info"/></svg>
+              <p class="flex-1" x-text="t('trial')"></p>
+            </div>
+
+            <!-- الشروط: روابط حقيقية لا تبدّل مربع الاختيار عند النقر -->
+            <div class="mt-5 short:mt-4">
+              <div class="flex items-start gap-3 text-label text-ink">
+                <input id="terms" type="checkbox" name="terms" class="check" x-model="form.terms" @change="errors.terms = ''" :aria-invalid="!!errors.terms" :aria-describedby="errors.terms ? 'terms-err' : null">
+                <p class="leading-6">
+                  <label for="terms" class="cursor-pointer select-none" x-text="t('termsA')"></label>
+                  <a href="terms.html" target="_blank" rel="noopener" class="link inline-flex items-center gap-0.5">
+                    <span x-text="t('termsLink')"></span><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-external"/></svg><span class="sr-only" x-text="t('newTab')"></span>
+                  </a>
+                  <span x-text="t('termsAnd')"></span>
+                  <a href="privacy.html" target="_blank" rel="noopener" class="link inline-flex items-center gap-0.5">
+                    <span x-text="t('privacy')"></span><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-external"/></svg><span class="sr-only" x-text="t('newTab')"></span>
+                  </a>
+                  <span class="text-danger" aria-hidden="true">*</span>
+                </p>
+              </div>
+              <p id="terms-err" class="err" x-show="errors.terms" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="errors.terms ? t(errors.terms) : ''"></span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═════ شريط التنقل: لاصق أسفل الشاشة على الجوال (مع مسافة الأمان)، ثابت داخل البطاقة على الشاشات الأكبر ═════ -->
+        <div class="sticky bottom-0 z-20 flex items-center gap-3 rounded-b-3xl border-t border-line bg-card/95 px-4 pt-3 shadow-bar backdrop-blur-md sm:static sm:justify-between sm:bg-page/50 sm:px-8 sm:py-4 sm:shadow-none sm:backdrop-blur-0"
+             style="padding-bottom: max(.75rem, calc(.75rem + var(--sab)));">
+          <!-- السابق: مخفي في الخطوة الأولى على الجوال، ومحجوز مكانه (invisible) على الشاشات الأكبر لثبات التخطيط -->
+          <button type="button" class="btn btn-outline btn-lg shrink-0 px-4 sm:px-6" @click="prev()" :disabled="busy"
+                  :class="step === 1 && 'max-sm:hidden sm:invisible'" :aria-hidden="step === 1 ? 'true' : null" :tabindex="step === 1 ? -1 : null">
+            <svg class="ic dir-prev" aria-hidden="true"><use href="#i-arrow"/></svg>
+            <span class="max-[379px]:sr-only" x-text="t('prev')"></span>
+          </button>
+
+          <span class="hidden text-caption font-bold text-muted sm:block" x-text="t('stepOf', { n: step, t: total })" aria-hidden="true"></span>
+
+          <button type="submit" x-show="step < total" class="btn btn-primary btn-lg flex-1 sm:w-auto sm:flex-none">
+            <span x-text="t('next')"></span>
+            <svg class="ic dir-next" aria-hidden="true"><use href="#i-arrow"/></svg>
+          </button>
+
+          <button type="submit" x-show="step === total" x-cloak class="btn btn-accent btn-lg min-w-0 flex-1 sm:w-auto sm:flex-none" :class="busy && 'is-loading'" :disabled="busy" :aria-busy="busy">
+            <svg class="ic animate-spin" x-show="busy" x-cloak aria-hidden="true"><use href="#i-spinner"/></svg>
+            <svg class="ic" x-show="!busy" aria-hidden="true"><use href="#i-rocket"/></svg>
+            <span class="truncate sm:hidden" x-text="busy ? t('busy') : t('submitShort')"></span>
+            <span class="hidden sm:inline" x-text="busy ? t('busy') : t('submit')"></span>
+          </button>
+        </div>
+      </form>
+
+      <!-- رابط الدخول والتذييل -->
+      <div class="mt-6 space-y-3 text-center short:mt-4">
+        <p class="text-caption text-muted">
+          <span x-text="t('haveAcc')"></span>
+          <a href="login.html" class="link ms-1 inline-flex min-h-[2.75rem] items-center" x-text="t('login')"></a>
+        </p>
+        <p class="flex items-center justify-center gap-1.5 text-xs text-muted"><svg class="ic !h-4 !w-4 text-ok" aria-hidden="true"><use href="#i-shield"/></svg><span x-text="t('secure')"></span></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="safe-x flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-xs text-muted" style="padding-bottom: calc(1.25rem + var(--sab));">
+    <span x-text="t('rights')"></span>
+    <a href="../index.html" class="pill inline-flex items-center gap-1 text-muted hover:bg-soft hover:text-ink">
+      <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-home"/></svg><span x-text="t('screens')"></span>
+    </a>
+  </footer>
+</div>
+
+</body>
+</html>

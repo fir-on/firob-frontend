@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- لوحة تحكم محمية خلف تسجيل الدخول: لا فهرسة ولا وصف تسويقي ولا OG -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>لوحة المؤسسة — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج اللغة والاتجاه قبل الرسم (يمنع قفزة RTL ↔ LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || null;
+    if (!l) { try { l = localStorage.getItem('firob-locale'); } catch (e) {} }
+    l = l === 'en' ? 'en' : 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ الأيقونات: تحميل غير حاجب للرسم (المساحة محجوزة مسبقًا في CSS لمنع القفز) -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin referrerpolicy="no-referrer" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer"></noscript>
+
+<!-- ⑤ Tailwind (إصدار مثبّت) + التوكنز المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        danger: v('danger'), ok: v('ok'), warn: v('warn'), info: v('info'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑥ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* ألوان الحالة النصية — كلها ≥ 4.5:1 على البطاقة والشارات الشفافة */
+      --danger: 185 28 28;  --ok: 4 120 87;       --warn: 180 83 9;    --info: 29 78 216;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --warn: 252 211 77;  --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي — clip لا يكسر position: sticky */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    /* حجز مساحة الأيقونات قبل وصول FontAwesome (يمنع قفز النص) */
+    i[class*='fa-'] { display: inline-block; min-width: 1em; text-align: center; font-style: normal; }
+    /* حلقة تركيز موحّدة لكل العناصر — outline شفاف يبقى ظاهرًا في وضع التباين العالي بويندوز */
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .dark .panel { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .icon-btn { @apply relative inline-grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10 sm:w-10; }
+    .nav-link { @apply flex min-h-[2.75rem] items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line-strong/60 text-sm text-muted transition-colors hover:bg-soft hover:text-brand sm:h-9 sm:w-9; }
+
+    /* ---------- الشارات (StatusBadge) — نص بتوكن دلالي يتكيّف مع الوضعين ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info/15 text-info; }
+    .badge-danger  { @apply bg-error-500/15 text-danger; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار (لا ring-2 هنا: حلقة التركيز تأتي من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition-colors disabled:pointer-events-none disabled:opacity-50; touch-action: manipulation; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line-strong/60 bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    /* success-700: 5.5:1 مع الأبيض (success-500 كان 2.5:1) */
+    .btn-success { @apply bg-success-700 text-white hover:bg-success-800; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex min-h-[2.75rem] w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition-colors hover:bg-soft focus-visible:bg-soft; }
+
+    /* ---------- النافذة المنبثقة ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; border: 1px solid rgb(var(--line)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; font-size: .9375rem !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; margin: .5rem 0 0 !important; }
+    .firob-swal .swal2-timer-progress-bar { background: rgb(var(--brand) / .5) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) — التعبئة ≥ 3:1 مع المسار في الوضعين ---------- */
+    .quota-track { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-700; }
+
+    /* ---------- بطاقة اختصار سريع (QuickTile) ---------- */
+    .quick-tile { @apply flex min-h-[4.25rem] items-center gap-3 rounded-2xl border border-line bg-card p-4 shadow-card transition hover:-translate-y-0.5 hover:border-primary-500 hover:shadow-pop; }
+  }
+</style>
+
+<!-- ⑦ Alpine.js 3.14.8 (موحّد مع بقية الصفحات) + إضافة Focus لحصر التركيز داخل النوافذ -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑧ SweetAlert2 (إصدار مثبّت، مؤجَّل: لا يحجب الرسم — يُستخدم فقط عند التفاعل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+</head>
+
+<body x-data="shell()"
+      @keydown.escape.window="closeAll()"
+      @keydown.window.ctrl.k.prevent="focusSearch()" @keydown.window.meta.k.prevent="focusSearch()"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلانات قارئ الشاشة (قبول/رفض/تراجع/تعليم الإشعارات) -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav) ? 'true' : null" :inert="mobile && !mobileNav">
+
+    <!-- الشعار: الكامل عند التوسيع، الأيقونة فقط عند الطي — بأبعاد ثابتة (لا CLS) -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <img x-show="expanded" src="../asset/images/firob-logo.png" alt="FirOb" width="124" height="32" decoding="async"
+             class="block h-8 w-auto max-w-[8.5rem] shrink-0 object-contain dark:brightness-125">
+        <img x-show="!expanded" x-cloak src="../asset/images/firob-favicon.png" alt="FirOb" width="36" height="36" decoding="async"
+             class="block h-9 w-9 shrink-0 object-contain">
+        <span class="min-w-0 flex-1 border-s border-line ps-3" x-show="expanded">
+          <span class="block truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></span>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="closeMobileNav()" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)" :id="'ng-' + group.group"></p>
+          <div class="mx-auto mb-2 h-px w-8 bg-line" x-show="!expanded" aria-hidden="true"></div>
+          <ul class="space-y-1" role="list" :aria-labelledby="expanded ? 'ng-' + group.group : null">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href" class="nav-link relative"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? ' (' + navCount(item) + ')' : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold"
+                        :class="active === item.key ? 'bg-white/20 text-white' : (item.tone === 'primary' ? 'bg-primary-500/15 text-brand' : 'bg-accent-500 text-onaccent')"
+                        x-text="navCount(item)"></span>
+                  <!-- مؤشر العدد في الوضع المطوي -->
+                  <span x-show="navCount(item) && !expanded" x-cloak class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+                        :class="item.tone === 'primary' ? 'bg-primary-500' : 'bg-accent-500'" aria-hidden="true"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()"
+              aria-controls="sidebar" :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+        <!-- أيقونة واحدة تنقلب حسب الاتجاه (ltr:fa-* لا تعمل: Tailwind لا يولّد متغيرات لأصناف FontAwesome) -->
+        <i class="fa-solid fa-angles-left transition-transform" :class="collapsed ? 'ltr:-scale-x-100' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 ps-[max(.5rem,env(safe-area-inset-left))] pe-[max(.5rem,env(safe-area-inset-right))] sm:gap-2 sm:ps-6 sm:pe-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" x-ref="navToggle" class="icon-btn lg:hidden" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="mobileNav.toString()" :aria-label="mobileNav ? t('closeMenu') : t('openMenu')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn hidden lg:inline-grid" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <!-- بحث سطح المكتب / التابلت -->
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')" aria-keyshortcuts="Control+K Meta+K"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong/60 bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted lg:inline-flex" x-text="isMac ? '⌘ K' : 'Ctrl K'">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <!-- بحث الجوال -->
+          <button type="button" class="icon-btn md:hidden" @click="toggleMobileSearch()" aria-controls="mobile-search"
+                  :aria-expanded="searchOpen.toString()" :aria-label="t('openSearch')">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          </button>
+
+          <!-- اللغة: زر عادي باسم يصف الإجراء (لا role=switch لخيار ليس تشغيل/إيقاف) -->
+          <button type="button"
+                  class="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10"
+                  @click="toggleLocale()" :aria-label="t('switchLang')" :title="t('switchLang')">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" :lang="locale === 'ar' ? 'en' : 'ar'" x-text="locale === 'ar' ? 'EN' : 'ع'" aria-hidden="true"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="t('darkMode')" :title="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" x-ref="notifBtn" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="dialog" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications') + (unread ? ' — ' + tf('notifUnread', { n: unread }) : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="dialog" aria-labelledby="notif-title">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <h2 id="notif-title" class="font-extrabold" x-text="t('notifications')"></h2>
+                <button type="button" class="min-h-[2.25rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                        :disabled="!unread" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('unreadSr') + ': '"></span>
+                        <span x-text="t('notif.' + n.key)"></span>
+                      </p>
+                      <p class="text-xs text-muted"><time :datetime="isoAgo(n.mins)" x-text="ago(n.mins)"></time></p>
+                    </div>
+                    <span x-show="!n.read" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true"></span>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center rounded-xl text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- الحساب: روابط تنقل عادية (لا role=menu بدون دعم الأسهم) — الاسم الظاهر هو الاسم المقروء -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" x-ref="profileBtn" class="flex min-h-[2.75rem] max-w-[14rem] items-center gap-2 rounded-xl p-1 transition-colors hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials(t('adminName'))"></span>
+              <span class="sr-only md:hidden" x-text="t('accountMenu')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('adminName')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted transition-transform md:block" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <nav id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-60" :aria-label="t('accountMenu')">
+              <ul role="list" class="py-1">
+                <li><a href="../common/profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="TenantSettingsForm.html" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('navItems.orgSettings')"></span></a></li>
+                <li><a href="../common/errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('statusErrors')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4 rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- بحث الجوال (صف منسدل تحت الشريط) -->
+      <form id="mobile-search" role="search" x-cloak x-show="searchOpen" x-transition.opacity class="border-t border-line px-3 py-2 md:hidden" @submit.prevent>
+        <label for="q-m" class="sr-only" x-text="t('searchPlaceholder')"></label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q-m" x-ref="mobileSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')"
+                 class="h-11 w-full rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+        </div>
+      </form>
+
+      <!-- مسار التنقل (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="../index.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li><span class="text-ink" aria-current="page" x-text="t('dash.title')"></span></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-01: نظرة عامة على المؤسسة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- ================= العنوان الترحيبي ================= -->
+      <div class="min-w-0">
+        <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('dash.title')">لوحة المؤسسة</h1>
+        <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('dash.subtitle')"></p>
+      </div>
+
+      <!-- ================= شريط تنبيه الحصة — يظهر فقط عند ≥ 85% ================= -->
+      <section x-show="showBanner" x-cloak x-transition.opacity aria-labelledby="banner-title"
+               class="flex flex-col gap-3 rounded-2xl border border-accent-600/50 bg-accent-500/15 p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-500 text-onaccent" aria-hidden="true">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+          <h2 id="banner-title" class="font-extrabold text-ink" x-text="t('dash.bannerTitle')"></h2>
+          <p class="mt-1 text-sm text-ink/80" x-text="tf('dash.bannerText', { pct: storage.pct })"></p>
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2 sm:self-center">
+          <button type="button" class="btn btn-accent btn-sm" @click="goToStorage()">
+            <i class="fa-solid fa-database" aria-hidden="true"></i> <span x-text="t('dash.bannerView')"></span>
+          </button>
+          <button type="button" class="icon-btn shrink-0 text-ink/70" @click="dismissBanner()" :aria-label="t('dash.bannerDismiss')">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= بطاقة ملخّص الخطة الحالية ================= -->
+      <section class="panel flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="plan-label">
+        <div class="flex min-w-0 items-start gap-4">
+          <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary-500/10 text-brand" aria-hidden="true">
+            <i class="fa-solid fa-crown text-2xl"></i>
+          </span>
+          <div class="min-w-0">
+            <h2 id="plan-label" class="text-xs font-extrabold tracking-wide text-muted" x-text="t('dash.planLabel')"></h2>
+            <div class="mt-1 flex flex-wrap items-center gap-2">
+              <p class="min-w-0 break-words text-lg font-extrabold text-ink sm:text-xl" x-text="t('dash.planName')"></p>
+              <span class="badge badge-success">
+                <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                <span x-text="t('dash.statusActive')"></span>
+              </span>
+            </div>
+            <p class="mt-1.5 text-sm text-muted">
+              <i class="fa-regular fa-calendar me-1.5" aria-hidden="true"></i>
+              <span x-text="t('dash.renewalLabel')"></span>:
+              <time class="font-bold text-ink" :datetime="renewal.toISOString().slice(0, 10)" x-text="fmtDate(renewal)"></time>
+              <span class="whitespace-nowrap" x-text="'(' + tf('dash.inDays', { n: fmt(daysToRenewal) }) + ')'"></span>
+            </p>
+          </div>
+        </div>
+        <a href="SubscriptionsAndInvoices.html" class="btn btn-accent shrink-0" @click.prevent="upgradePlan($event)">
+          <i class="fa-solid fa-arrow-up-right-dots" aria-hidden="true"></i>
+          <span x-text="t('dash.upgradeCta')"></span>
+        </a>
+      </section>
+
+      <!-- ================= شبكة الاستخدام والحصص ================= -->
+      <section aria-labelledby="usage-title">
+        <h2 id="usage-title" class="sr-only" x-text="t('dash.usageTitle')"></h2>
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4" role="list">
+
+          <template x-for="q in quotas" :key="q.key">
+            <li class="panel flex h-full flex-col justify-between p-4 sm:p-5" :id="q.key === 'storage' ? 'storage-quota' : null" :tabindex="q.key === 'storage' ? -1 : null"
+                :aria-labelledby="'qt-' + q.key">
+              <div>
+                <div class="flex items-center justify-between gap-3">
+                  <h3 :id="'qt-' + q.key" class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('dash.' + q.title)"></h3>
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i :class="'fa-solid ' + q.icon"></i></span>
+                </div>
+                <p class="mt-3 text-2xl font-extrabold tabular-nums" dir="ltr" :class="locale === 'ar' && 'text-end'">
+                  <span x-text="fmt(q.used)"></span>
+                  <span class="text-base font-bold text-muted" x-text="'/ ' + fmt(q.total) + (q.unit ? ' ' + t('units.' + q.unit) : '')"></span>
+                </p>
+                <p class="mt-0.5 text-xs text-muted" x-text="t('dash.' + q.caption)"></p>
+              </div>
+              <div class="mt-4">
+                <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                  <span class="inline-flex items-center gap-1 tabular-nums" :class="toneText(q)">
+                    <i x-show="pct(q) >= 80" class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                    <span x-text="fmt(pct(q)) + '%'"></span>
+                  </span>
+                  <span class="truncate text-muted tabular-nums" x-text="q.remain ? fmt(remaining(q)) + (q.unit ? ' ' + t('units.' + q.unit) : '') + ' ' + t('dash.' + q.remain) : t('dash.' + q.hint)"></span>
+                </div>
+                <div class="quota-track mt-1.5" role="progressbar" aria-valuemin="0" :aria-valuemax="q.total" :aria-valuenow="q.used"
+                     :aria-labelledby="'qt-' + q.key" :aria-valuetext="valueText(q)">
+                  <div class="quota-fill" :class="toneFill(q)" :style="'width:' + pct(q) + '%'"></div>
+                </div>
+                <a x-show="q.link" :href="q.link" class="mt-3 inline-flex min-h-[2.75rem] items-center gap-1.5 rounded-lg text-sm font-bold text-brand hover:underline sm:min-h-0">
+                  <span x-text="q.linkLabel ? t('dash.' + q.linkLabel) : ''"></span>
+                  <i class="fa-solid fa-arrow-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+                </a>
+                <button x-show="q.key === 'storage'" type="button" class="btn btn-outline btn-sm mt-3 w-full" @click="cleanupStorage()">
+                  <i class="fa-solid fa-broom" aria-hidden="true"></i> <span x-text="t('dash.cleanupStorage')"></span>
+                </button>
+              </div>
+            </li>
+          </template>
+
+          <!-- المحتوى المنشور (KPI) -->
+          <li class="panel flex h-full flex-col justify-between p-4 sm:p-5" aria-labelledby="qt-content">
+            <div>
+              <div class="flex items-center justify-between gap-3">
+                <h3 id="qt-content" class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('dash.kpiActiveContentTitle')"></h3>
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-ok" aria-hidden="true"><i class="fa-solid fa-cubes"></i></span>
+              </div>
+              <p class="mt-3 text-2xl font-extrabold tabular-nums" x-text="fmt(content.concepts + content.objects)"></p>
+              <p class="mt-0.5 text-xs text-muted" x-text="t('dash.kpiActiveContentCaption')"></p>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <a href="concepts.html" class="badge badge-neutral hover:bg-soft-2"><span class="tabular-nums" x-text="fmt(content.concepts)"></span> <span x-text="t('dash.kpiConcepts')"></span></a>
+              <a href="learning-objects.html" class="badge badge-neutral hover:bg-soft-2"><span class="tabular-nums" x-text="fmt(content.objects)"></span> <span x-text="t('dash.kpiLearningObjects')"></span></a>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ================= طابور المراجعات المعلقة ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="pending-title">
+        <div class="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div class="flex min-w-0 items-center gap-3">
+            <h2 id="pending-title" tabindex="-1" class="truncate rounded text-lg font-extrabold text-ink focus:outline-none" x-text="t('dash.pendingTitle')"></h2>
+            <span class="badge shrink-0" :class="pendingCount ? 'badge-accent' : 'badge-success'">
+              <span class="tabular-nums" x-text="fmt(pendingCount)"></span> <span x-text="t('dash.pendingBadge')"></span>
+            </span>
+          </div>
+          <a href="ReviewQueue.html" class="btn btn-outline btn-sm shrink-0">
+            <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('dash.viewAllQueue')"></span>
+          </a>
+        </div>
+
+        <!-- حالة الإنجاز -->
+        <p x-show="!pendingCount" x-cloak class="flex items-center gap-2 border-b border-line bg-success-500/10 px-5 py-3 text-sm font-bold text-ok">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i> <span x-text="t('dash.allClear')"></span>
+        </p>
+
+        <!-- (أ) بطاقات — للجوال والتابلت وأغلب اللابتوبات (< 1536px) -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-2 2xl:hidden" role="list">
+          <template x-for="q in queue" :key="q.id">
+            <li class="min-w-0 rounded-xl border border-line p-4 focus:outline-none" data-item tabindex="-1" :aria-labelledby="'qc-' + q.id">
+              <div class="flex items-start gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="initials(q.author)"></span>
+                <div class="min-w-0 flex-1">
+                  <h3 :id="'qc-' + q.id" class="truncate font-extrabold leading-6" x-text="q.title"></h3>
+                  <p class="truncate text-xs text-muted" x-text="q.subject"></p>
+                </div>
+                <span class="badge shrink-0" :class="statusBadge(q)" x-text="statusText(q)"></span>
+              </div>
+              <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span class="badge" :class="roleBadge(q.role)" x-text="t('dash.role' + q.role)"></span>
+                <span class="font-bold text-ink" x-text="q.author"></span>
+                <span class="text-muted">· <time :datetime="isoAgo(q.mins)" x-text="ago(q.mins)"></time></span>
+              </div>
+              <div class="mt-3 flex flex-wrap items-center gap-2" x-show="!itemStatus[q.id]">
+                <button type="button" class="btn btn-success btn-sm" @click="approveItem(q, $el)" :aria-label="t('dash.approve') + ': ' + q.title">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm" @click="openReject(q, $el)" :aria-label="t('dash.reject') + ': ' + q.title">
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                </button>
+                <button type="button" class="act" @click="previewConcept(q)" :aria-label="t('dash.preview') + ': ' + q.title" :title="t('dash.preview')">
+                  <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                </button>
+              </div>
+              <p class="mt-3 text-xs font-bold text-muted" x-show="itemStatus[q.id]" x-cloak x-text="t('dash.resolvedNote')"></p>
+            </li>
+          </template>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات العريضة (≥ 1536px) حيث يتسع دون تمرير أفقي -->
+        <div class="hidden 2xl:block">
+          <table class="w-full table-fixed border-collapse text-sm">
+            <caption class="sr-only" x-text="t('dash.pendingTitle')"></caption>
+            <colgroup><col class="w-[30%]"><col class="w-[24%]"><col class="w-[13%]"><col class="w-[11%]"><col class="w-[22%]"></colgroup>
+            <thead>
+              <tr class="bg-soft text-ink">
+                <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colConcept')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colAuthor')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colSubmitted')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colStatus')"></th>
+                <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('dash.colActions')"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              <template x-for="q in queue" :key="q.id">
+                <tr class="transition-colors hover:bg-soft/40 focus:outline-none" data-item tabindex="-1">
+                  <th scope="row" class="px-5 py-4 text-start align-middle font-normal">
+                    <p class="truncate font-extrabold leading-6" x-text="q.title" :title="q.title"></p>
+                    <p class="truncate text-xs text-muted" x-text="q.subject"></p>
+                  </th>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true" x-text="initials(q.author)"></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5" x-text="q.author"></p>
+                        <span class="badge mt-0.5" :class="roleBadge(q.role)" x-text="t('dash.role' + q.role)"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted"><time :datetime="isoAgo(q.mins)" x-text="ago(q.mins)"></time></td>
+                  <td class="px-4 py-4 align-middle"><span class="badge" :class="statusBadge(q)" x-text="statusText(q)"></span></td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap justify-end gap-2" x-show="!itemStatus[q.id]">
+                      <button type="button" class="btn btn-success btn-sm" @click="approveItem(q, $el)" :aria-label="t('dash.approve') + ': ' + q.title">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" @click="openReject(q, $el)" :aria-label="t('dash.reject') + ': ' + q.title">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                      </button>
+                      <button type="button" class="act" @click="previewConcept(q)" :aria-label="t('dash.preview') + ': ' + q.title" :title="t('dash.preview')">
+                        <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <p class="text-end text-xs font-bold text-muted" x-show="itemStatus[q.id]" x-cloak x-text="t('dash.resolvedNote')"></p>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= اختصارات الإدارة السريعة وصحة النظام ================= -->
+      <section aria-labelledby="quick-title">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="quick-title" class="text-lg font-extrabold text-ink" x-text="t('dash.quickMgmtTitle')"></h2>
+          <span class="badge badge-success">
+            <span class="h-2 w-2 rounded-full bg-current" aria-hidden="true"></span>
+            <span x-text="t('dash.systemHealthy')"></span>
+          </span>
+        </div>
+        <ul class="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:gap-4 lg:grid-cols-4" role="list">
+          <template x-for="tile in tiles" :key="tile.key">
+            <li>
+              <a :href="tile.href" class="quick-tile h-full">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i :class="'fa-solid ' + tile.icon"></i></span>
+                <span class="min-w-0 flex-1 font-extrabold leading-snug" x-text="t('dash.' + tile.key)"></span>
+                <i class="fa-solid fa-chevron-right text-xs text-muted rtl:-scale-x-100" aria-hidden="true"></i>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" loading="lazy" decoding="async" class="block h-7 w-auto shrink-0 object-contain dark:brightness-125">
+          <p class="min-w-0 text-sm text-muted">
+            <span x-text="t('footer.tagline')"></span>
+            <span class="block text-xs sm:inline sm:text-sm">
+              <span class="hidden sm:inline" aria-hidden="true">·</span>
+              © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+            </span>
+          </p>
+        </div>
+
+        <nav :aria-label="t('footer.nav')" class="min-w-0">
+          <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+            <li><a href="../index.html" class="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-muted underline-offset-4 transition-colors hover:text-brand hover:underline"><i class="fa-solid fa-sitemap text-xs" aria-hidden="true"></i><span x-text="t('footer.screens')"></span></a></li>
+            <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+              <li><span class="inline-flex cursor-not-allowed items-center text-muted/70" aria-disabled="true"><span x-text="t('footer.' + k)"></span><span class="sr-only" x-text="' (' + t('footer.soon') + ')'"></span></span></li>
+            </template>
+          </ul>
+        </nav>
+
+        <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="badge badge-muted" dir="ltr" x-text="version"></span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — سبب الرفض
+     ========================================================================== -->
+<div x-cloak x-show="rejectOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeReject()" aria-hidden="true"></div>
+  <div x-show="rejectOpen" x-trap.noscroll.inert="rejectOpen" role="dialog" aria-modal="true" aria-labelledby="rj-title" aria-describedby="rj-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-md p-5 sm:p-6">
+    <form @submit.prevent="confirmReject()" novalidate>
+      <div class="flex items-start gap-3">
+        <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-error-500/15 text-danger" aria-hidden="true"><i class="fa-solid fa-ban text-lg"></i></span>
+        <div class="min-w-0 flex-1">
+          <h2 id="rj-title" class="text-lg font-extrabold text-ink" x-text="t('dash.rejectModalTitle')"></h2>
+          <p id="rj-desc" class="mt-1 text-sm text-muted">
+            <span x-text="t('dash.rejectModalDesc')"></span> <span class="font-bold text-ink" x-text="rejectTarget ? '«' + rejectTarget.title + '»' : ''"></span>
+          </p>
+        </div>
+        <button type="button" class="icon-btn -me-2 -mt-2 shrink-0" :disabled="busy" @click="closeReject()" :aria-label="t('dash.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+
+      <div class="mt-5">
+        <label for="rj-reason" class="label"><span x-text="t('dash.rejectLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <textarea id="rj-reason" x-ref="rejectInput" rows="4" maxlength="500" required aria-required="true" x-model="rejectReason" :placeholder="t('dash.rejectPlaceholder')"
+                  class="field resize-y" :aria-invalid="(rejectSubmitted && !rejectReason.trim()).toString()"
+                  :aria-describedby="rejectSubmitted && !rejectReason.trim() ? 'rj-err rj-count' : 'rj-count'"
+                  @keydown.ctrl.enter.prevent="confirmReject()" @keydown.meta.enter.prevent="confirmReject()"></textarea>
+        <div class="mt-1.5 flex items-start justify-between gap-3">
+          <p id="rj-err" class="err !mt-0" role="alert"><template x-if="rejectSubmitted && !rejectReason.trim()"><span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('dash.rejectRequired')"></span></span></template></p>
+          <p id="rj-count" class="ms-auto shrink-0 text-xs tabular-nums text-muted" :class="rejectReason.length > 450 && '!text-warn font-bold'" x-text="tf('dash.charCount', { n: rejectReason.length })"></p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <button type="button" class="btn btn-outline" :disabled="busy" @click="closeReject()" x-text="t('dash.cancel')"></button>
+        <button type="submit" class="btn btn-danger" :disabled="busy" :aria-busy="busy.toString()">
+          <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i>
+          <span x-text="busy ? t('dash.rejecting') : t('dash.confirmReject')"></span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  /**
+   * حالة واجهة ADM-01 — نظرة عامة على المؤسسة (Dashboard Shell لمسؤول المؤسسة).
+   * الحصص وطابور المراجعة بيانات تجريبية (Mock) — في Laravel تأتي من Livewire + Eloquent
+   * وتُمرَّر كمصفوفات بدل التكرار اليدوي في HTML.
+   */
+  const I18N = {
+    ar: {
+      skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+      mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+      openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة', expandSidebar: 'توسيع القائمة',
+      searchPlaceholder: 'ابحث في النظام…', openSearch: 'فتح البحث',
+      switchLang: 'تغيير اللغة إلى English', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+      notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', notifUnread: '{n} غير مقروءة', unreadSr: 'غير مقروء',
+      allMarked: 'تم تعليم جميع الإشعارات كمقروءة.', viewAllNotif: 'عرض جميع الإشعارات',
+      accountMenu: 'قائمة الحساب', adminName: 'مسؤول المؤسسة', roleTenantAdmin: 'مسؤول المؤسسة (Tenant Admin)',
+      profile: 'الملف الشخصي', statusErrors: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+      breadcrumbLabel: 'مسار التنقل', breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+      units: { gb: 'GB' },
+      navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+      navItems: {
+        orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+        academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+        concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+        aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+        subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+      },
+      notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة التخزين من الحد الأقصى (87%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+      footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', nav: 'روابط التذييل', screens: 'خريطة الشاشات',
+                help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', soon: 'قريبًا' },
+
+      dash: {
+        title: 'لوحة المؤسسة',
+        subtitle: 'مرحبًا بك مجددًا؛ تابع حالة اشتراكك، حصصك الاستخدامية، وطابور المراجعات المعلقة من مكان واحد.',
+        planLabel: 'الخطة الحالية', planName: 'الخطة المؤسسية الاحترافية', statusActive: 'نشطة',
+        renewalLabel: 'تاريخ التجديد القادم', inDays: 'بعد {n} يومًا',
+        upgradeCta: 'ترقية الخطة / إدارة الاشتراك',
+        bannerTitle: 'تنبيه: اقتراب نفاد حصة التخزين',
+        bannerText: 'استهلكت منظمتك {pct}% من مساحة التخزين المسموح بها. نظّف الملفات غير الضرورية أو رقِّ خطتك لتفادي أي انقطاع في الخدمة.',
+        bannerView: 'عرض حصة التخزين', bannerDismiss: 'إغلاق التنبيه',
+        usageTitle: 'الاستخدام والحصص', of: 'من', used: 'مستخدم',
+        quotaUsersTitle: 'حصة المستخدمين', quotaUsersCaption: 'مستخدم نشط من إجمالي المقاعد المتاحة', seatsRemaining: 'مقاعد متبقية', manageUsers: 'إدارة المستخدمين',
+        quotaStorageTitle: 'حصة التخزين', quotaStorageCaption: 'من إجمالي مساحة التخزين المخصّصة لمنظمتك', storageFree: 'متبقية', cleanupStorage: 'تنظيف التخزين',
+        quotaAITitle: 'حصة توليد الذكاء الاصطناعي', aiTokensCaption: 'رمز (Token) مستخدم هذا الشهر', aiResetHint: 'تتجدد أول كل شهر',
+        kpiActiveContentTitle: 'المحتوى المنشور', kpiActiveContentCaption: 'مفهومًا وعنصرًا تعليميًا منشورًا وجاهزًا للطلاب', kpiConcepts: 'مفهوم', kpiLearningObjects: 'عنصر تعليمي',
+        pendingTitle: 'طابور المراجعات المعلقة', pendingBadge: 'معلّق', viewAllQueue: 'عرض الطابور الكامل',
+        allClear: 'لا توجد مراجعات معلّقة الآن — أحسنت!',
+        colConcept: 'المفهوم والمادة', colAuthor: 'المؤلف', colSubmitted: 'وقت الإرسال', colStatus: 'الحالة', colActions: 'إجراءات',
+        statusPending: 'قيد المراجعة', statusApproved: 'مقبول', statusRejected: 'مرفوض', resolvedNote: 'تمت معالجة هذا العنصر (معاينة فقط)',
+        approve: 'قبول', reject: 'رفض', preview: 'معاينة المحتوى', undo: 'تراجع',
+        roleTeacher: 'معلّم', roleEditor: 'محرّر', roleReviewer: 'مراجع',
+        quickMgmtTitle: 'اختصارات الإدارة السريعة', systemHealthy: 'جميع الأنظمة تعمل بشكل طبيعي',
+        tileUsers: 'إدارة المستخدمين', tileRoleMatrix: 'مصفوفة الصلاحيات', tileOrgSettings: 'إعدادات المؤسسة', tileAuditLog: 'سجل التدقيق',
+        rejectModalTitle: 'رفض المحتوى', rejectLabel: 'سبب الرفض', rejectModalDesc: 'وضّح سبب رفض هذا المفهوم ليعرف المؤلف التعديلات المطلوبة:',
+        rejectPlaceholder: 'اكتب سبب الرفض هنا…', rejectRequired: 'سبب الرفض مطلوب.', charCount: '{n} / 500',
+        cancel: 'إلغاء', confirmReject: 'تأكيد الرفض', rejecting: 'جارٍ الرفض…',
+        toastApprove: 'تم قبول «{title}» (معاينة فقط)',
+        toastUndone: 'تم التراجع عن قبول «{title}».',
+        toastReject: 'تم رفض «{title}» وإشعار المؤلف (معاينة فقط)',
+        toastCleanup: 'تم فتح أداة تنظيف التخزين (معاينة فقط)',
+        toastUpgrade: 'سيتم تحويلك إلى صفحة إدارة الاشتراك (معاينة فقط)',
+        toastPreview: 'تم فتح معاينة «{title}» (معاينة فقط)',
+      },
+    },
+    en: {
+      skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+      mainMenu: 'Main menu', mainNav: 'Main navigation',
+      openMenu: 'Open menu', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar', expandSidebar: 'Expand sidebar',
+      searchPlaceholder: 'Search the system…', openSearch: 'Open search',
+      switchLang: 'Change language to العربية', lightMode: 'Light mode', darkMode: 'Dark mode',
+      notifications: 'Notifications', markAllRead: 'Mark all as read', notifUnread: '{n} unread', unreadSr: 'Unread',
+      allMarked: 'All notifications marked as read.', viewAllNotif: 'View all notifications',
+      accountMenu: 'Account menu', adminName: 'Organization Admin', roleTenantAdmin: 'Tenant Admin',
+      profile: 'Profile', statusErrors: 'System Status & Errors', logout: 'Log out',
+      breadcrumbLabel: 'Breadcrumb', breadcrumb: { home: 'Home', org: 'Organization Management' },
+      units: { gb: 'GB' },
+      navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+      navItems: {
+        orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+        academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+        concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+        aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+        subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+      },
+      notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'Storage quota is nearing its limit (87%)', reset: 'A password reset link was sent successfully' },
+      footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', nav: 'Footer links', screens: 'Screen map',
+                help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', soon: 'coming soon' },
+
+      dash: {
+        title: 'Organization Overview',
+        subtitle: 'Welcome back — track your subscription status, usage quotas, and pending content reviews in one place.',
+        planLabel: 'Current Plan', planName: 'Pro Institutional Plan', statusActive: 'Active',
+        renewalLabel: 'Next renewal date', inDays: 'in {n} days',
+        upgradeCta: 'Upgrade Plan / Manage Subscription',
+        bannerTitle: 'Warning: storage quota nearing capacity',
+        bannerText: 'Your organization has used {pct}% of its allowed storage. Clean up unnecessary files or upgrade your plan to avoid service disruption.',
+        bannerView: 'View storage quota', bannerDismiss: 'Dismiss alert',
+        usageTitle: 'Usage & Quotas', of: 'of', used: 'used',
+        quotaUsersTitle: 'User Quota', quotaUsersCaption: 'Active users out of total available seats', seatsRemaining: 'seats remaining', manageUsers: 'Manage Users',
+        quotaStorageTitle: 'Storage Quota', quotaStorageCaption: 'Out of total storage allocated to your organization', storageFree: 'free', cleanupStorage: 'Clean Up Storage',
+        quotaAITitle: 'AI Generation Quota', aiTokensCaption: 'Tokens used this month', aiResetHint: 'Resets on the 1st',
+        kpiActiveContentTitle: 'Published Content', kpiActiveContentCaption: 'Concepts and learning objects published and ready for students', kpiConcepts: 'concepts', kpiLearningObjects: 'learning objects',
+        pendingTitle: 'Pending Content Reviews', pendingBadge: 'pending', viewAllQueue: 'View Full Queue',
+        allClear: 'No pending reviews right now — nice work!',
+        colConcept: 'Concept & Subject', colAuthor: 'Author', colSubmitted: 'Submitted', colStatus: 'Status', colActions: 'Actions',
+        statusPending: 'Pending', statusApproved: 'Approved', statusRejected: 'Rejected', resolvedNote: 'This item has been reviewed (preview only)',
+        approve: 'Approve', reject: 'Reject', preview: 'Preview content', undo: 'Undo',
+        roleTeacher: 'Teacher', roleEditor: 'Editor', roleReviewer: 'Reviewer',
+        quickMgmtTitle: 'Quick Management Shortcuts', systemHealthy: 'All systems operational',
+        tileUsers: 'Manage Users', tileRoleMatrix: 'Role Matrix', tileOrgSettings: 'Organization Settings', tileAuditLog: 'Audit Log',
+        rejectModalTitle: 'Reject content', rejectLabel: 'Rejection reason', rejectModalDesc: 'Explain why this concept is being rejected so the author knows what to change:',
+        rejectPlaceholder: 'Write the rejection reason here…', rejectRequired: 'A rejection reason is required.', charCount: '{n} / 500',
+        cancel: 'Cancel', confirmReject: 'Confirm rejection', rejecting: 'Rejecting…',
+        toastApprove: '"{title}" approved (preview only)',
+        toastUndone: 'Approval of "{title}" was undone.',
+        toastReject: '"{title}" was rejected and the author notified (preview only)',
+        toastCleanup: 'Storage clean-up tool opened (preview only)',
+        toastUpgrade: 'You will be redirected to subscription management (preview only)',
+        toastPreview: '"{title}" preview opened (preview only)',
+      },
+    },
+  };
+
+  const BANNER_KEY = 'firob-quota-banner-dismissed';
+  const DAY = 86400000;
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const mdMQ = window.matchMedia('(min-width: 768px)');
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      isMac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+      mobileNav: false, collapsed: false, searchOpen: false,
+      notifOpen: false, profileOpen: false,
+      active: 'orgDashboard', live: '',
+      year: new Date().getFullYear(), version: 'v1.0.0',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const get = (d) => path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), d);
+        const s = get(I18N[this.locale]);
+        return s !== undefined ? s : (get(I18N.ar) ?? path);
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      intl() { return this.locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intl(), { maximumFractionDigits: 1 }).format(n); },
+      fmtDate(d) { return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'long', year: 'numeric' }).format(d); },
+      ago(mins) {
+        const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' });
+        if (mins < 60) return rtf.format(-mins, 'minute');
+        if (mins < 1440) return rtf.format(-Math.round(mins / 60), 'hour');
+        return rtf.format(-Math.round(mins / 1440), 'day');
+      },
+      isoAgo(mins) { return new Date(Date.now() - mins * 60000).toISOString(); },
+      initials(name) {
+        const p = String(name).trim().split(/\s+/);
+        return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        const h = document.documentElement;
+        h.lang = loc; h.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(loc);
+        else { try { localStorage.setItem('firob-locale', loc); } catch (e) {} }
+        document.title = this.t('dash.title') + ' — FirOb';
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html' },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          /* موحّد مع رابط القائمة المنسدلة (كان ../notifications.html هنا و ../common/notifications.html هناك) */
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      /* العدادات حيّة: تنقص فور القبول/الرفض أو تعليم الإشعارات */
+      navCount(item) {
+        if (item.key === 'reviewQueue') return this.pendingCount;
+        if (item.key === 'notificationCenter') return this.unread;
+        return item.count || 0;
+      },
+
+      /* ---------- الإشعارات ---------- */
+      notifications: [
+        { id: 1, key: 'invite', mins: 10,   read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota',  mins: 120,  read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warn' },
+        { id: 3, key: 'reset',  mins: 1440, read: true,  icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-ok' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      markAllRead() { this.notifications.forEach(n => n.read = true); this.announce(this.t('allMarked')); },
+
+      /* ---------- الخطة والحصص (Mock) ---------- */
+      renewal: new Date(Date.now() + 147 * DAY),
+      get daysToRenewal() { return Math.max(0, Math.ceil((this.renewal - Date.now()) / DAY)); },
+      quotas: [
+        { key: 'users',   title: 'quotaUsersTitle',   icon: 'fa-users',                 used: 42,     total: 50,     caption: 'quotaUsersCaption',   remain: 'seatsRemaining', link: 'users.html', linkLabel: 'manageUsers' },
+        { key: 'storage', title: 'quotaStorageTitle', icon: 'fa-database',              used: 8.7,    total: 10,     unit: 'gb', caption: 'quotaStorageCaption', remain: 'storageFree' },
+        { key: 'ai',      title: 'quotaAITitle',      icon: 'fa-wand-magic-sparkles',   used: 183400, total: 250000, caption: 'aiTokensCaption',     hint: 'aiResetHint' },
+      ],
+      content: { concepts: 742, objects: 506 },
+      pct(q) { return Math.min(100, Math.round((q.used / q.total) * 100)); },
+      remaining(q) { return Math.max(0, Math.round((q.total - q.used) * 10) / 10); },
+      /* عتبات موحّدة: < 80% عادي · 80–94% تحذير · ≥ 95% حرج — كلها بتوكنز تتكيّف مع الوضع الداكن */
+      tone(q) { const p = this.pct(q); return p >= 95 ? 'danger' : p >= 80 ? 'warn' : 'ok'; },
+      toneFill(q) { return { ok: 'bg-brand', warn: 'bg-warn', danger: 'bg-danger' }[this.tone(q)]; },
+      toneText(q) { return { ok: 'text-brand', warn: 'text-warn', danger: 'text-danger' }[this.tone(q)]; },
+      valueText(q) {
+        const u = q.unit ? ' ' + this.t('units.' + q.unit) : '';
+        return this.fmt(q.used) + u + ' ' + this.t('dash.of') + ' ' + this.fmt(q.total) + u + ' (' + this.fmt(this.pct(q)) + '%)';
+      },
+      get storage() { const q = this.quotas.find(x => x.key === 'storage'); return { ...q, pct: this.pct(q) }; },
+
+      /* ---------- شريط تنبيه الحصة ---------- */
+      bannerDismissed: false,
+      get showBanner() { return !this.bannerDismissed && this.storage.pct >= 85; },
+      dismissBanner() {
+        this.bannerDismissed = true;
+        try { sessionStorage.setItem(BANNER_KEY, '1'); } catch (e) {}
+        this.$nextTick(() => document.getElementById('main')?.focus({ preventScroll: true }));
+      },
+      goToStorage() {
+        const el = document.getElementById('storage-quota');
+        if (!el) return;
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+        el.focus({ preventScroll: true });
+      },
+      upgradePlan(e) {
+        this.toast('info', this.t('dash.toastUpgrade'));
+        /* في الإنتاج: الانتقال الفعلي — window.location = e.currentTarget.href */
+      },
+      cleanupStorage() { this.toast('info', this.t('dash.toastCleanup')); },
+
+      /* ---------- طابور المراجعات المعلقة (مصدر واحد للبطاقات والجدول) ---------- */
+      queue: [
+        { id: 1, title: 'الخلية الكهرومائية',     subject: 'الكيمياء العامة', author: 'أحمد الريماوي', role: 'Teacher',  mins: 120 },
+        { id: 2, title: 'نظرية التطور الدارويني', subject: 'الأحياء',         author: 'لينا أبو شرار', role: 'Editor',   mins: 240 },
+        { id: 3, title: 'قوانين نيوتن للحركة',    subject: 'الفيزياء',        author: 'محمود صالح',    role: 'Reviewer', mins: 360 },
+        { id: 4, title: 'الأحماض والقواعد',       subject: 'الكيمياء العامة', author: 'رنا الحلو',     role: 'Teacher',  mins: 1440 },
+        { id: 5, title: 'التمثيل الضوئي',         subject: 'الأحياء',         author: 'خالد مرعي',     role: 'Editor',   mins: 2880 },
+      ],
+      itemStatus: {},
+      get pendingCount() { return this.queue.filter(q => !this.itemStatus[q.id]).length; },
+      statusBadge(q) { const s = this.itemStatus[q.id]; return s === 'approved' ? 'badge-success' : s === 'rejected' ? 'badge-danger' : 'badge-accent'; },
+      statusText(q) { const s = this.itemStatus[q.id]; return s === 'approved' ? this.t('dash.statusApproved') : s === 'rejected' ? this.t('dash.statusRejected') : this.t('dash.statusPending'); },
+      roleBadge(r) { return { Teacher: 'badge-primary', Editor: 'badge-accent', Reviewer: 'badge-info' }[r] || 'badge-muted'; },
+      /* الزر يختفي بعد الإجراء — ننقل التركيز إلى العنصر نفسه كي لا يضيع إلى body */
+      focusItem(el) { const host = el && el.closest('[data-item]'); this.$nextTick(() => host?.focus({ preventScroll: true })); },
+
+      approveItem(q, el) {
+        this.itemStatus[q.id] = 'approved';
+        this.focusItem(el);
+        const msg = this.tf('dash.toastApprove', { title: q.title });
+        this.announce(msg);
+        /* قبول بنقرة واحدة + نافذة تراجع 6 ثوانٍ (بدل حوار تأكيد يبطئ سير العمل اليومي) */
+        if (!window.Swal) return;
+        Swal.fire({
+          toast: true, position: 'top-end', icon: 'success', title: msg,
+          timer: 6000, timerProgressBar: true,
+          showConfirmButton: true, confirmButtonText: this.t('dash.undo'), buttonsStyling: false,
+          customClass: { popup: 'firob-swal firob-toast', confirmButton: 'btn btn-outline btn-sm' },
+          didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); t.addEventListener('focusin', Swal.stopTimer); },
+        }).then(r => {
+          if (r.isConfirmed && this.itemStatus[q.id] === 'approved') {
+            delete this.itemStatus[q.id];
+            const m = this.tf('dash.toastUndone', { title: q.title });
+            this.announce(m);
+            this.toast('info', m);
+          }
+        });
+      },
+      previewConcept(q) { this.toast('info', this.tf('dash.toastPreview', { title: q.title })); },
+
+      /* ---------- نافذة سبب الرفض ---------- */
+      rejectOpen: false, rejectTarget: null, rejectReason: '', rejectSubmitted: false, busy: false, _rejectEl: null,
+      openReject(q, el) {
+        this.rejectTarget = { id: q.id, title: q.title };
+        this._rejectEl = el;
+        this.rejectReason = '';
+        this.rejectSubmitted = false;
+        this.rejectOpen = true;
+        /* التركيز على الحقل مباشرة (x-trap يركّز أول عنصر = زر الإغلاق) */
+        setTimeout(() => this.$refs.rejectInput?.focus(), 60);
+      },
+      closeReject() {
+        if (this.busy) return;
+        this.rejectOpen = false; this.rejectTarget = null;
+      },
+      async confirmReject() {
+        if (this.busy || !this.rejectTarget) return;
+        this.rejectSubmitted = true;
+        if (!this.rejectReason.trim()) { this.$refs.rejectInput?.focus(); return; }
+        this.busy = true;
+        /* Livewire: $wire.reject(id, reason) */
+        await new Promise(r => setTimeout(r, 500));
+        const { id, title } = this.rejectTarget;
+        this.itemStatus[id] = 'rejected';
+        this.busy = false;
+        this.rejectOpen = false; this.rejectTarget = null;
+        const msg = this.tf('dash.toastReject', { title });
+        this.announce(msg);
+        this.toast('success', msg);
+        /* بعد أن يعيد x-trap التركيز للزر المخفي، ننقله إلى العنصر نفسه */
+        const el = this._rejectEl;
+        setTimeout(() => this.focusItem(el), 200);
+      },
+
+      /* ---------- Toast (SweetAlert2 مؤجّل — مع بديل منطقة الإعلان إن لم يُحمَّل) ---------- */
+      toast(icon, msg) {
+        if (!window.Swal) { this.announce(msg); return; }
+        Swal.fire({
+          toast: true, position: 'top-end', icon, title: msg,
+          showConfirmButton: false, timer: 3500, timerProgressBar: true,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); },
+        });
+      },
+
+      /* ---------- البحث ---------- */
+      focusSearch() {
+        if (mdMQ.matches) { this.$refs.globalSearch?.focus(); this.$refs.globalSearch?.select(); return; }
+        this.searchOpen = true;
+        this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      toggleMobileSearch() {
+        this.searchOpen = !this.searchOpen;
+        if (this.searchOpen) this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        mdMQ.addEventListener('change', (m) => { if (m.matches) this.searchOpen = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        try { this.bannerDismissed = sessionStorage.getItem(BANNER_KEY) === '1'; } catch (e) {}
+        document.title = this.t('dash.title') + ' — FirOb';
+        /* اتباع ثيم النظام ما لم يختر المستخدم ثيمًا صراحة */
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.applyTheme(e.matches);
+          });
+        } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      closeMobileNav() { this.mobileNav = false; this.$nextTick(() => this.$refs.navToggle?.focus()); },
+      applyTheme(isDark) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('theme-color')?.setAttribute('content', isDark ? '#09141B' : '#F1EDE7');
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() {
+        this.applyTheme(!this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      /* Esc يغلق الطبقة العليا فقط ويعيد التركيز إلى الزر الذي فتحها */
+      closeAll() {
+        if (this.rejectOpen) { this.closeReject(); return; }
+        if (this.notifOpen)   { this.notifOpen = false;   this.$refs.notifBtn?.focus(); return; }
+        if (this.profileOpen) { this.profileOpen = false; this.$refs.profileBtn?.focus(); return; }
+        if (this.searchOpen)  { this.searchOpen = false; return; }
+        if (this.mobileNav)   { this.closeMobileNav(); }
+      },
+    };
+  }
+</script>
+</body>
+</html>

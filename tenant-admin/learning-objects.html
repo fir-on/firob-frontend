@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>العناصر التعليمية — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+<!-- بيانات تجريبية مشتركة (مقررات/وحدات/دروس/مفاهيم) مع شاشات المفاهيم — تُحذف عند الانتقال إلى Laravel -->
+<script src="../asset/js/firob-mock-data.js"></script>
+<!-- نسخة احتياطية مطابقة: تعمل الصفحة حتى لو لم يُوضع الملف في asset/js -->
+<script>
+window.FIROB_MOCK = window.FIROB_MOCK || {
+  /* إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس شاشة ADM-05 */
+  structure: {
+    units:   { enabled: true, required: true },
+    lessons: { enabled: true, required: true },
+  },
+
+  /* المقررات (Subject) — الصف خاصية على المقرر (subjects.grade_id) */
+  courses: [
+    { id: 'math-g7', ar: 'الرياضيات - الصف السابع',     en: 'Mathematics - Grade 7',     gradeAr: 'السابع الأساسي', gradeEn: 'Grade 7', icon: 'fa-square-root-variable', cls: 'bg-primary-500/10 text-brand' },
+    { id: 'sci-g8',  ar: 'العلوم العامة - الصف الثامن', en: 'General Science - Grade 8', gradeAr: 'الثامن الأساسي', gradeEn: 'Grade 8', icon: 'fa-flask',                cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+    { id: 'arab-g9', ar: 'اللغة العربية - الصف التاسع', en: 'Arabic Language - Grade 9', gradeAr: 'التاسع الأساسي', gradeEn: 'Grade 9', icon: 'fa-book-open',            cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+  ],
+
+  /* الوحدات (Unit — units.subject_id) */
+  units: [
+    { id: 'u101', courseId: 'math-g7', ar: 'الوحدة الأولى: الأعداد الصحيحة',      en: 'Unit 1: Integers' },
+    { id: 'u102', courseId: 'math-g7', ar: 'الوحدة الثانية: الكسور والنسب',       en: 'Unit 2: Fractions & Ratios' },
+    { id: 'u201', courseId: 'sci-g8',  ar: 'الوحدة الأولى: الخلية ومكوناتها',     en: 'Unit 1: The Cell & Its Components' },
+    { id: 'u202', courseId: 'sci-g8',  ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions' },
+    { id: 'u301', courseId: 'arab-g9', ar: 'الوحدة الأولى: النصوص الأدبية',       en: 'Unit 1: Literary Texts' },
+  ],
+
+  /* الدروس (Lesson — lessons.unit_id) */
+  lessons: [
+    { id: 'l1011', unitId: 'u101', ar: 'جمع الأعداد الصحيحة وطرحها',        en: 'Adding & Subtracting Integers' },
+    { id: 'l1012', unitId: 'u101', ar: 'ضرب الأعداد الصحيحة وقسمتها',       en: 'Multiplying & Dividing Integers' },
+    { id: 'l1021', unitId: 'u102', ar: 'تبسيط الكسور',                      en: 'Simplifying Fractions' },
+    { id: 'l1022', unitId: 'u102', ar: 'النسبة والتناسب',                   en: 'Ratio & Proportion' },
+    { id: 'l2011', unitId: 'u201', ar: 'مكونات الخلية النباتية',             en: 'Plant Cell Components' },
+    { id: 'l2012', unitId: 'u201', ar: 'تركيب الخلية النباتية والحيوانية',   en: 'Plant & Animal Cell Structure' },
+    { id: 'l2021', unitId: 'u202', ar: 'أنواع التفاعلات الكيميائية',         en: 'Types of Chemical Reactions' },
+    { id: 'l2022', unitId: 'u202', ar: 'موازنة المعادلات الكيميائية',        en: 'Balancing Chemical Equations' },
+    { id: 'l3011', unitId: 'u301', ar: 'تحليل النص الشعري',                 en: 'Analysing Poetry' },
+    { id: 'l3012', unitId: 'u301', ar: 'عناصر القصة القصيرة',               en: 'Short Story Elements' },
+  ],
+
+  /* المفاهيم (Concept) — links = withCount(['learningObjects', 'questions']) */
+  concepts: [
+    { id: 1,  code: 'CPT-MATH-001', ar: 'الأعداد الصحيحة الموجبة والسالبة', en: 'Positive & Negative Integers',
+      descAr: 'يشرح مفهوم الأعداد الصحيحة الموجبة والسالبة وطرق تمثيلها على خط الأعداد.',
+      descEn: 'Explains positive and negative integers and how to represent them on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', links: { objects: 6, questions: 24 } },
+    { id: 2,  code: 'CPT-MATH-002', ar: 'خاصية الإبدال في الضرب', en: 'Commutative Property of Multiplication',
+      descAr: 'يوضّح أن ترتيب العددين المضروبين لا يغيّر حاصل الضرب.',
+      descEn: 'Shows that the order of the two multiplied numbers does not change the product.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', links: { objects: 3, questions: 10 } },
+    { id: 3,  code: 'CPT-MATH-003', ar: 'القيمة المطلقة للعدد', en: 'Absolute Value of a Number',
+      descAr: 'يعرّف القيمة المطلقة بأنها المسافة بين العدد والصفر على خط الأعداد.',
+      descEn: 'Defines absolute value as the distance between a number and zero on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 4,  code: 'CPT-SCI-004', ar: 'تركيب الخلية النباتية والحيوانية', en: 'Plant & Animal Cell Structure',
+      descAr: 'يقارن بين مكونات الخلية النباتية والخلية الحيوانية ووظائف كل عضو فيها.',
+      descEn: 'Compares the components of plant and animal cells and the function of each organelle.',
+      courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', links: { objects: 4, questions: 12 } },
+    { id: 5,  code: 'CPT-SCI-005', ar: 'موازنة المعادلة الكيميائية', en: 'Balancing Chemical Equations',
+      descAr: 'يشرح كيفية موازنة عدد الذرات في طرفي المعادلة الكيميائية باستخدام المعاملات.',
+      descEn: 'Explains how to balance atom counts on both sides of a chemical equation using coefficients.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: null, links: { objects: 2, questions: 0 } },
+    { id: 6,  code: 'CPT-ARAB-006', ar: 'عناصر القصة القصيرة: الشخصية', en: 'Elements of the Short Story: Character',
+      descAr: 'يتناول دور الشخصية في بناء الحبكة وأنواعها في القصة القصيرة.',
+      descEn: 'Covers the role of character in building the plot and its types within a short story.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', links: { objects: 5, questions: 18 } },
+    { id: 7,  code: 'CPT-UNFL-007', ar: 'الصورة الشعرية', en: 'Poetic Imagery',
+      descAr: 'يعرّف الصورة الشعرية ودورها في تجسيد المعنى وإثراء النص الأدبي.',
+      descEn: 'Defines poetic imagery and its role in embodying meaning and enriching literary text.',
+      courseId: null, unitId: null, lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 8,  code: 'CPT-MATH-008', ar: 'تبسيط الكسور الاعتيادية', en: 'Simplifying Common Fractions',
+      descAr: 'يشرح قسمة البسط والمقام على العامل المشترك الأكبر للوصول إلى أبسط صورة.',
+      descEn: 'Explains dividing numerator and denominator by their GCD to reach the simplest form.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', links: { objects: 2, questions: 8 } },
+    { id: 9,  code: 'CPT-MATH-009', ar: 'النسبة المئوية', en: 'Percentages',
+      descAr: 'يعرّف النسبة المئوية كنسبة من مئة ويطبّقها على مسائل حياتية.',
+      descEn: 'Defines a percentage as a ratio out of one hundred and applies it to everyday problems.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 10, code: 'CPT-SCI-010', ar: 'التفاعلات الطاردة والماصة للحرارة', en: 'Exothermic & Endothermic Reactions',
+      descAr: 'يميّز بين التفاعلات التي تُطلق الحرارة والتي تمتصها مع أمثلة من الحياة اليومية.',
+      descEn: 'Distinguishes reactions that release heat from those that absorb it, with everyday examples.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', links: { objects: 1, questions: 6 } },
+    { id: 11, code: 'CPT-ARAB-011', ar: 'الوزن الشعري', en: 'Poetic Metre',
+      descAr: 'يعرّف الوزن الشعري والتفعيلات الأساسية في الشعر العربي.',
+      descEn: 'Defines poetic metre and the basic feet of Arabic poetry.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3011', links: { objects: 0, questions: 0 } },
+    { id: 12, code: 'CPT-ARAB-012', ar: 'التشبيه', en: 'Simile',
+      descAr: 'يعرّف التشبيه وأركانه الأربعة وأنواعه.',
+      descEn: 'Defines the simile, its four components and its types.',
+      courseId: 'arab-g9', unitId: null, lessonId: null, links: { objects: 3, questions: 0 } },
+  ],
+};
+</script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+    .menu-item:focus-visible { outline-offset: -2px; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مفتاح التبديل (Settings Switch) — is_public ---------- */
+    .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-line-strong bg-line-strong/25 transition-colors duration-200; }
+    .switch-track[aria-checked="true"] { @apply border-primary-700 bg-primary-500; }
+    .switch-track:disabled, .switch-track[aria-disabled="true"] { @apply cursor-not-allowed opacity-50; }
+    .switch-knob { @apply inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow ring-1 ring-line-strong/60 dark:bg-ink transition-transform duration-200 ltr:translate-x-0.5 rtl:-translate-x-0.5; }
+    .switch-track[aria-checked="true"] .switch-knob { @apply ltr:translate-x-5 rtl:-translate-x-5; }
+
+    /* ---------- منطقة رفع الملفات (Dropzone) ---------- */
+    .dropzone { @apply relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-field px-4 py-7 text-center transition; }
+    .dropzone:hover, .dropzone.is-drag { @apply border-primary-500 bg-soft; }
+    .dropzone:focus-within { box-shadow: var(--ring); }
+    .dropzone[data-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+
+    /* ---------- أيقونة تنسيق الملف (Format Icon Chip) ---------- */
+    .format-icon { @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl text-base; }
+
+    /* ---------- رقم القسم في نموذج الرفع: يتحوّل إلى ✓ عند اكتماله ---------- */
+    .step-dot { @apply grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white transition-colors; }
+    .step-dot.is-done { @apply bg-success-700; }
+    /* زر إزالة الوسم: هدف لمس ≥ 24px (WCAG 2.5.8) */
+    .tag-x { @apply inline-grid h-6 w-6 shrink-0 place-items-center rounded-full transition-colors hover:bg-primary-500/20; }
+    .field[aria-invalid="true"] .tag-x { @apply text-ink; }
+
+    /* ---------- أداء الرسم ---------- */
+    li.lo-row { content-visibility: auto; contain-intrinsic-size: auto 220px; }   /* تخطّي تخطيط/رسم البطاقات خارج الشاشة */
+    /* overflow: clip بدل hidden: يمنع المتصفح من «تمرير» إطار النافذة نفسه عند تركيز عنصر داخلها
+       (كان حقل الملف المخفي يُركَّز بعد اختيار ملف فيُزاح الرأس ويظهر فراغ أسفل الأزرار) */
+    .modal-panel { contain: layout paint; overflow: clip; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      @scroll.window="notifOpen = false; profileOpen = false" @resize.window="notifOpen = false; profileOpen = false"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || panelOpen || modal }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.content')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.learningObjects')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — CNT-05: العناصر التعليمية ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء الرفع -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('lo.title')"></h1>
+          <p class="mt-1 max-w-3xl text-sm text-muted sm:text-base" x-text="t('lo.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-accent" aria-haspopup="dialog" @click="openUpload($event)">
+          <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+          <span x-text="t('lo.uploadNew')"></span>
+        </button>
+      </section>
+
+      <!-- ================= مؤشرات الأداء — محسوبة من البيانات ================= -->
+      <section :aria-label="t('lo.kpis')" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <template x-for="k in kpiCards" :key="k.key">
+          <div class="panel p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('lo.' + k.label)"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.cls" aria-hidden="true"><i class="fa-solid" :class="k.icon"></i></span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="kpis[k.key]"></p>
+          </div>
+        </template>
+      </section>
+
+      <!-- ================= البحث والفلاتر (فلترة فعلية + فلاتر متسلسلة) ================= -->
+      <section class="panel flex flex-wrap items-center gap-3 p-4 sm:p-5" :aria-label="t('lo.filtersLabel')">
+        <div class="relative min-w-0 flex-[2_1_16rem]">
+          <label for="lo-search" class="sr-only" x-text="t('lo.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="lo-search" x-ref="loSearch" type="search" x-model.debounce.200ms="search" :placeholder="t('lo.searchPlaceholder')" autocomplete="off"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line-strong bg-field ps-10 pe-3 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none">
+        </div>
+        <div class="min-w-0 flex-[1_1_11rem]"
+             x-data="selectDropdown({ id: 'format-filter', options: () => formatOptions(), get: () => formatFilter, set: (v) => { formatFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="format-filter-label" for="format-filter" class="sr-only"><span x-text="t('lo.colFormat')"></span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="format-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="format-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="format-filter-list" role="listbox" aria-labelledby="format-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+        <div class="min-w-0 flex-[1_1_11rem]"
+             x-data="selectDropdown({ id: 'visibility-filter', options: () => visibilityOptions(), get: () => visibilityFilter, set: (v) => { visibilityFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="visibility-filter-label" for="visibility-filter" class="sr-only"><span x-text="t('lo.colVisibility')"></span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="visibility-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="visibility-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="visibility-filter-list" role="listbox" aria-labelledby="visibility-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+        <div class="min-w-0 flex-[1_1_13rem]"
+             x-data="selectDropdown({ id: 'course-filter', options: () => courseFilterOptions(), get: () => courseFilter, set: (v) => { courseFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="course-filter-label" for="course-filter" class="sr-only"><span x-text="t('lo.colCourse')"></span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="course-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="course-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="course-filter-list" role="listbox" aria-labelledby="course-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+        <div class="min-w-0 flex-[1_1_13rem]"
+             x-data="selectDropdown({ id: 'unit-filter', options: () => unitFilterOptions(), get: () => unitFilter, set: (v) => { unitFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="unit-filter-label" for="unit-filter" class="sr-only"><span x-text="t('lo.colUnit')"></span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="unit-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="unit-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="unit-filter-list" role="listbox" aria-labelledby="unit-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline h-11 flex-[1_1_auto] sm:flex-none" @click="resetFilters()" :disabled="!activeFilterCount">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>
+          <span x-text="t('lo.resetFilters')"></span>
+          <span x-show="activeFilterCount" class="badge badge-primary px-2" x-text="activeFilterCount"></span>
+        </button>
+      </section>
+
+      <p class="sr-only" aria-live="polite" x-text="resultsMsg"></p>
+
+      <!-- ================= حالة فارغة مربوطة بالفلترة ================= -->
+      <section x-show="!filtered.length" x-cloak class="panel flex flex-col items-center gap-3 p-10 text-center">
+        <span class="grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-box-open text-xl"></i></span>
+        <h2 class="text-lg font-extrabold text-ink" x-text="t('lo.emptyTitle')"></h2>
+        <p class="max-w-sm text-sm text-muted" x-text="t('lo.emptySubtitle')"></p>
+        <button type="button" class="btn btn-outline mt-1" @click="resetFilters(); $refs.loSearch.focus()">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('lo.resetFilters')"></span>
+        </button>
+      </section>
+
+      <!-- ================= بطاقات (أقل من xl) — يُرسم عرض واحد فقط ================= -->
+      <template x-if="filtered.length && !wide">
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="list" :aria-label="t('lo.title')">
+          <template x-for="o in pageRows" :key="o.id">
+            <li class="lo-row panel flex min-w-0 flex-col gap-3 p-4">
+              <div class="flex items-start gap-3">
+                <span class="format-icon" :class="fileMeta(o.format).iconClass" aria-hidden="true"><i class="fa-solid" :class="fileMeta(o.format).icon"></i></span>
+                <div class="min-w-0 flex-1">
+                  <h2 class="truncate font-extrabold leading-6" :lang="titleLang(o)" dir="auto" style="text-align: match-parent" x-text="title(o)"></h2>
+                  <p class="truncate text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="o.code"></bdi> · <bdi dir="ltr" x-text="formatSize(totalBytes(o))"></bdi></p>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge" :class="fileMeta(o.format).badge" x-text="fileMeta(o.format).label"></span>
+                <span x-show="o.files.length > 1" class="badge badge-muted" x-text="pluralize('files', o.files.length)"></span>
+                <span class="badge" :class="o.isPublic ? 'badge-success' : 'badge-muted'">
+                  <i class="fa-solid text-[10px]" :class="o.isPublic ? 'fa-earth-americas' : 'fa-lock'" aria-hidden="true"></i>
+                  <span x-text="o.isPublic ? t('lo.visibilityPublic') : t('lo.visibilityPrivate')"></span>
+                </span>
+                <span class="badge" :class="o.status === 'active' ? 'badge-success' : 'badge-warning'">
+                  <i class="fa-solid text-[10px]" :class="o.status === 'active' ? 'fa-circle-check' : 'fa-hourglass-half'" aria-hidden="true"></i>
+                  <span x-text="o.status === 'active' ? t('lo.statusActive') : t('lo.statusReview')"></span>
+                </span>
+              </div>
+              <ol class="flex flex-wrap items-center gap-1.5 text-xs " :aria-label="t('lo.colLinked')">
+                <template x-for="(step, i) in pathOf(o)" :key="step.level">
+                  <li class="inline-flex min-w-0 items-center gap-1.5">
+                    <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[9px] text-muted" aria-hidden="true"></i>
+                    <span :class="i === 0 ? 'font-bold text-ink' : 'text-muted'" dir="auto" x-text="step.label"></span>
+                  </li>
+                </template>
+              </ol>
+              <p x-show="o.concepts.length" class="text-xs text-muted"><i class="fa-solid fa-diagram-project me-1 text-[10px]" aria-hidden="true"></i><span x-text="pluralize('concepts', o.concepts.length)"></span></p>
+              <div class="mt-auto flex items-center justify-end gap-1.5 border-t border-line pt-3">
+                <button type="button" class="act group relative" @click="openPreview(o, $event)" aria-haspopup="dialog" :aria-label="t('lo.actPreview') + ': ' + title(o)"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative" @click="openEdit(o, $event)" aria-haspopup="dialog" :aria-label="t('lo.actEdit') + ': ' + title(o)"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative" @click="togglePublic(o)" :aria-pressed="o.isPublic.toString()" :aria-label="t('lo.actTogglePublic') + ': ' + title(o)"><i class="fa-solid" :class="o.isPublic ? 'fa-earth-americas text-success-700 dark:text-success-500' : 'fa-lock'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="o.isPublic ? t('lo.actMakePrivate') : t('lo.actMakePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete(o, $event)" aria-haspopup="dialog" :aria-label="t('lo.actDelete') + ': ' + title(o)"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </template>
+
+      <!-- ================= جدول (xl+) ================= -->
+      <template x-if="filtered.length && wide">
+        <section class="panel overflow-hidden" aria-labelledby="lo-table-title">
+          <h2 id="lo-table-title" class="sr-only" x-text="t('lo.title')"></h2>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1000px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('lo.title') + ' — ' + pageInfo"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colObject')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colFormat')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colLinked')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colVisibility') + ' / ' + t('lo.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('lo.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="o in pageRows" :key="o.id">
+                  <tr class="lo-row transition-colors hover:bg-soft/40">
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex items-center gap-3">
+                        <span class="format-icon" :class="fileMeta(o.format).iconClass" aria-hidden="true"><i class="fa-solid" :class="fileMeta(o.format).icon"></i></span>
+                        <div class="min-w-0 max-w-[22rem]">
+                          <p class="truncate font-extrabold leading-6" :lang="titleLang(o)" dir="auto" style="text-align: match-parent" x-text="title(o)"></p>
+                          <p class="truncate font-mono text-xs text-muted" dir="ltr" style="text-align: match-parent" x-text="o.code"></p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                      <span class="badge" :class="fileMeta(o.format).badge" x-text="fileMeta(o.format).label"></span>
+                      <p class="mt-1 text-xs text-muted">
+                        <bdi dir="ltr" x-text="formatSize(totalBytes(o))"></bdi>
+                        <span x-show="o.files.length > 1" x-text="' · ' + pluralize('files', o.files.length)"></span>
+                      </p>
+                    </td>
+                    <td class="max-w-[20rem] px-4 py-4 align-middle">
+              <ol class="flex flex-wrap items-center gap-1.5 text-xs " :aria-label="t('lo.colLinked')">
+                <template x-for="(step, i) in pathOf(o)" :key="step.level">
+                  <li class="inline-flex min-w-0 items-center gap-1.5">
+                    <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[9px] text-muted" aria-hidden="true"></i>
+                    <span :class="i === 0 ? 'font-bold text-ink' : 'text-muted'" dir="auto" x-text="step.label"></span>
+                  </li>
+                </template>
+              </ol>
+              <p x-show="o.concepts.length" class="text-xs text-muted"><i class="fa-solid fa-diagram-project me-1 text-[10px]" aria-hidden="true"></i><span x-text="pluralize('concepts', o.concepts.length)"></span></p>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                      <div class="flex flex-wrap gap-1.5">
+                <span class="badge" :class="o.isPublic ? 'badge-success' : 'badge-muted'">
+                  <i class="fa-solid text-[10px]" :class="o.isPublic ? 'fa-earth-americas' : 'fa-lock'" aria-hidden="true"></i>
+                  <span x-text="o.isPublic ? t('lo.visibilityPublic') : t('lo.visibilityPrivate')"></span>
+                </span>
+                <span class="badge" :class="o.status === 'active' ? 'badge-success' : 'badge-warning'">
+                  <i class="fa-solid text-[10px]" :class="o.status === 'active' ? 'fa-circle-check' : 'fa-hourglass-half'" aria-hidden="true"></i>
+                  <span x-text="o.status === 'active' ? t('lo.statusActive') : t('lo.statusReview')"></span>
+                </span>
+                      </div>
+                    </td>
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex justify-end gap-1.5">
+                <button type="button" class="act group relative" @click="openPreview(o, $event)" aria-haspopup="dialog" :aria-label="t('lo.actPreview') + ': ' + title(o)"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative" @click="openEdit(o, $event)" aria-haspopup="dialog" :aria-label="t('lo.actEdit') + ': ' + title(o)"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative" @click="togglePublic(o)" :aria-pressed="o.isPublic.toString()" :aria-label="t('lo.actTogglePublic') + ': ' + title(o)"><i class="fa-solid" :class="o.isPublic ? 'fa-earth-americas text-success-700 dark:text-success-500' : 'fa-lock'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="o.isPublic ? t('lo.actMakePrivate') : t('lo.actMakePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete(o, $event)" aria-haspopup="dialog" :aria-label="t('lo.actDelete') + ': ' + title(o)"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+
+      <!-- ================= الترقيم (في Livewire: ->paginate(15)->links()) ================= -->
+      <div x-show="filtered.length" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs font-bold text-muted" x-text="pageInfo"></p>
+        <nav x-show="pageCount > 1" class="flex items-center gap-1.5" :aria-label="t('lo.pagination')">
+          <button type="button" class="act" :disabled="page === 1" :class="page === 1 && 'cursor-not-allowed opacity-50'" @click="goPage(page - 1)" :aria-label="t('lo.prev')">
+            <i class="fa-solid fa-chevron-left rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+          </button>
+          <template x-for="p in pageCount" :key="p">
+            <button type="button" class="act font-bold" :class="p === page && 'border-transparent bg-primary-500 text-white'"
+                    :aria-current="p === page ? 'page' : null" :aria-label="tf('lo.pageN', { n: p })" @click="goPage(p)" x-text="p"></button>
+          </template>
+          <button type="button" class="act" :disabled="page === pageCount" :class="page === pageCount && 'cursor-not-allowed opacity-50'" @click="goPage(page + 1)" :aria-label="t('lo.next')">
+            <i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+          </button>
+        </nav>
+      </div>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — رفع / تعديل عنصر تعليمي (4 أقسام)
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-4" @keydown.escape.window="closePanel()">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closePanel()" aria-hidden="true"></div>
+
+  <form x-ref="form" novalidate @submit.prevent="submitObject()" x-show="panelOpen" x-trap.noscroll.noreturn="panelOpen"
+        role="dialog" aria-modal="true" aria-labelledby="panel-title" aria-describedby="panel-subtitle"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel max-h-[92dvh] max-w-5xl">
+
+    <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line bg-soft p-5 sm:p-6">
+      <div class="min-w-0">
+        <h2 id="panel-title" class="text-lg font-extrabold text-ink sm:text-xl" x-text="editingObject ? t('lo.panelEditTitle') : t('lo.panelUploadTitle')"></h2>
+        <p id="panel-subtitle" class="mt-1 text-sm text-muted" x-text="editingObject ? t('lo.panelEditSubtitle') : t('lo.panelUploadSubtitle')"></p>
+      </div>
+      <button type="button" class="icon-btn shrink-0" @click="closePanel()" :disabled="busy" :aria-label="t('lo.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div x-ref="formBody" class="scroll-thin min-h-0 flex-1 space-y-8 overflow-y-auto p-5 sm:p-8">
+      <p class="text-xs text-muted"><span class="text-danger" aria-hidden="true">*</span> <span x-text="t('lo.requiredLegend')"></span></p>
+
+      <!-- ================= 1. المعلومات الأساسية ================= -->
+      <section class="space-y-4" aria-labelledby="lo-sec-1">
+        <div class="flex items-center gap-3">
+          <span class="step-dot" :class="sectionDone.basic && 'is-done'" aria-hidden="true"><i x-show="sectionDone.basic" class="fa-solid fa-check text-xs"></i><span x-show="!sectionDone.basic">1</span></span>
+          <h3 id="lo-sec-1" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.sectionBasicInfo')"></h3>
+        </div>
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div>
+            <label for="lo-title-ar" class="label"><span x-text="t('lo.fieldTitleAr')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="lo-title-ar" autofocus type="text" lang="ar" dir="rtl" x-model.trim="form.titleAr" required aria-required="true" maxlength="200" class="field py-3"
+                   :aria-invalid="(formSubmitted && !!errors.titleAr).toString()" aria-describedby="lo-title-ar-err">
+            <p id="lo-title-ar-err" class="err" x-show="formSubmitted && errors.titleAr"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.titleAr"></span></p>
+          </div>
+          <div>
+            <label for="lo-title-en" class="label"><span x-text="t('lo.fieldTitleEn')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="lo-title-en" type="text" lang="en" dir="ltr" x-model.trim="form.titleEn" required aria-required="true" maxlength="200" class="field py-3"
+                   :aria-invalid="(formSubmitted && !!errors.titleEn).toString()" aria-describedby="lo-title-en-err">
+            <p id="lo-title-en-err" class="err" x-show="formSubmitted && errors.titleEn"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.titleEn"></span></p>
+          </div>
+        </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- ================= 2. الربط الأكاديمي (المقرر إلزامي؛ الصف مشتق منه؛ الوحدة/الدرس اختياريان ومتسلسلان) ================= -->
+      <section class="space-y-4" aria-labelledby="lo-sec-2">
+        <div class="flex items-center gap-3">
+          <span class="step-dot" :class="sectionDone.academic && 'is-done'" aria-hidden="true"><i x-show="sectionDone.academic" class="fa-solid fa-check text-xs"></i><span x-show="!sectionDone.academic">2</span></span>
+          <div class="min-w-0">
+            <h3 id="lo-sec-2" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.academicAssignment')"></h3>
+            <p class="hint !mt-0.5" x-text="t('lo.academicAssignmentHint')"></p>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-line bg-page/50 p-5 sm:p-6">
+          <div class="grid grid-cols-1 items-start gap-5 sm:grid-cols-[2fr_1fr]">
+        <div class="min-w-0"
+             x-data="selectDropdown({ id: 'lo-course', options: () => courseOptions(), get: () => form.course, set: (v) => { setCourse(v) }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="lo-course-label" for="lo-course" class="label"><span x-text="t('lo.fieldCourse')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="lo-course" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-required="true" :aria-invalid="(formSubmitted && !!errors.course).toString()" aria-describedby="lo-course-err"
+                  :aria-expanded="open.toString()" aria-controls="lo-course-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="lo-course-list" role="listbox" aria-labelledby="lo-course-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+          <p id="lo-course-err" class="err" x-show="formSubmitted && errors.course"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.course"></span></p>
+        </div>
+            <!-- الصف: للقراءة فقط — مشتق من المقرر (subjects.grade_id) -->
+            <div>
+              <p id="lo-grade-label" class="label" x-text="t('lo.fieldGrade')"></p>
+              <p class="field flex items-center gap-2 bg-soft text-muted" aria-labelledby="lo-grade-label" aria-live="polite">
+                <i class="fa-solid fa-layer-group text-xs" aria-hidden="true"></i>
+                <span x-text="gradeLabel || t('lo.gradeFromCourse')"></span>
+              </p>
+            </div>
+          </div>
+          <div class="my-5 border-t border-dashed border-line-strong/60"></div>
+          <div class="grid grid-cols-1 items-start gap-5 sm:grid-cols-2">
+        <div class="min-w-0"
+             x-data="selectDropdown({ id: 'lo-unit', options: () => unitOptions(), get: () => form.unit, set: (v) => { if (form.unit !== v) { form.unit = v; form.lesson = ''; } }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="lo-unit-label" for="lo-unit" class="label"><span x-text="t('lo.fieldUnit')"></span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="lo-unit" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!form.course" aria-describedby="lo-unit-hint"
+                  :aria-expanded="open.toString()" aria-controls="lo-unit-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="lo-unit-list" role="listbox" aria-labelledby="lo-unit-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+          <p id="lo-unit-hint" class="hint" x-show="!form.course" x-text="t('lo.selectCourseFirst')"></p>
+        </div>
+        <div class="min-w-0"
+             x-data="selectDropdown({ id: 'lo-lesson', options: () => lessonOptions(), get: () => form.lesson, set: (v) => { form.lesson = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="lo-lesson-label" for="lo-lesson" class="label"><span x-text="t('lo.fieldLesson')"></span></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="lo-lesson" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!form.unit" aria-describedby="lo-lesson-hint"
+                  :aria-expanded="open.toString()" aria-controls="lo-lesson-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="lo-lesson-list" role="listbox" aria-labelledby="lo-lesson-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+          <p id="lo-lesson-hint" class="hint" x-show="form.course && !form.unit" x-text="t('lo.selectUnitFirst')"></p>
+        </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- ================= 3. المفاهيم المرتبطة + مساعد AI ================= -->
+      <section class="space-y-3" aria-labelledby="lo-sec-3"
+               x-data="conceptMultiSelect({ id: 'lo-concepts', options: () => conceptOptions(), get: () => form.concepts, set: (v) => form.concepts = v })"
+               @click.outside="closeList()">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span class="step-dot" :class="sectionDone.concepts && 'is-done'" aria-hidden="true"><i x-show="sectionDone.concepts" class="fa-solid fa-check text-xs"></i><span x-show="!sectionDone.concepts">3</span></span>
+            <h3 id="lo-sec-3" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.sectionConcepts')"></h3>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="aiLoading || !form.course" :aria-busy="aiLoading" @click="runAiAssistant()">
+            <i class="fa-solid" :class="aiLoading ? 'fa-circle-notch animate-spin' : 'fa-wand-magic-sparkles'" aria-hidden="true"></i>
+            <span x-text="aiLoading ? t('lo.aiAnalyzing') : t('lo.aiAssistant')"></span>
+          </button>
+        </div>
+        <p class="hint !mt-0" x-text="form.course ? t('lo.fieldConceptsHint') : t('lo.conceptsNeedCourse')"></p>
+
+        <div class="relative" data-combo-anchor>
+          <div class="field flex min-h-[2.75rem] w-full flex-wrap items-center gap-1.5 py-1.5" :class="!form.course && 'bg-soft'"
+               :aria-invalid="(formSubmitted && !!errors.concepts).toString()">
+            <ul class="contents" role="list" :aria-label="t('lo.selectedConcepts')">
+              <template x-for="c in selected" :key="c.value">
+                <li class="badge badge-primary gap-1 py-0.5 pe-0.5">
+                  <span dir="auto" x-text="c.label"></span>
+                  <button type="button" class="tag-x" @click="remove(c.value)" :aria-label="t('lo.removeConcept') + ': ' + c.label">
+                    <i class="fa-solid fa-xmark text-[10px]" aria-hidden="true"></i>
+                  </button>
+                </li>
+              </template>
+            </ul>
+            <button type="button" id="lo-concepts" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-controls="lo-concepts-list"
+                    :aria-expanded="open.toString()" :aria-activedescendant="open && active > -1 && available[active] ? optId(available[active]) : null"
+                    aria-labelledby="lo-sec-3" aria-describedby="lo-concepts-err" :disabled="!form.course"
+                    class="inline-flex min-h-[2rem] shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-brand transition-colors hover:bg-soft disabled:cursor-not-allowed disabled:text-muted"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i> <span x-text="t('lo.conceptsAdd')"></span>
+            </button>
+          </div>
+          <ul x-show="open" x-cloak x-ref="list" id="lo-concepts-list" role="listbox" aria-labelledby="lo-sec-3" aria-multiselectable="true"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in available" :key="item.value">
+              <li :id="optId(item)" role="option" aria-selected="false" class="combo-option" :class="idx === active && 'is-active'" @click="add(item)" @mousemove="active = idx">
+                <span class="truncate" dir="auto" x-text="item.label"></span>
+                <span class="flex shrink-0 items-center gap-2"><span class="font-mono text-[10px] text-muted" dir="ltr" x-text="item.value"></span><i class="fa-solid fa-plus text-xs text-brand" aria-hidden="true"></i></span>
+              </li>
+            </template>
+            <li x-show="!available.length" role="presentation" class="px-4 py-2.5 text-sm text-muted" x-text="t('lo.conceptsAllAdded')"></li>
+          </ul>
+        </div>
+        <p id="lo-concepts-err" class="err" x-show="formSubmitted && errors.concepts"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.concepts"></span></p>
+        <p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+
+        <!-- اقتراحات AI: مرتبطة بالمقرر والعنوان، مع سبب الاقتراح -->
+        <div x-show="aiSuggestions.length" x-cloak class="rounded-xl border border-dashed border-primary-500/40 bg-primary-500/5 p-3">
+          <p class="mb-2 flex items-center gap-1.5 text-xs font-extrabold text-brand"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> <span x-text="t('lo.aiSuggestionsTitle')"></span></p>
+          <ul class="flex flex-wrap gap-2" role="list">
+            <template x-for="s in aiSuggestions" :key="s.value">
+              <li>
+                <button type="button" class="badge badge-accent gap-1.5 py-1 transition hover:brightness-95" @click="add(s); aiSuggestions = aiSuggestions.filter(x => x.value !== s.value)"
+                        :aria-label="t('lo.aiAdd') + ': ' + s.label + ' — ' + s.reason">
+                  <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> <span dir="auto" x-text="s.label"></span>
+                  <span class="font-normal opacity-80" x-text="'· ' + s.reason"></span>
+                </button>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- ================= 4. ملفات/مصادر العنصر ================= -->
+      <section class="space-y-3" aria-labelledby="lo-sec-4">
+        <div class="flex items-center gap-3">
+          <span class="step-dot" :class="sectionDone.files && 'is-done'" aria-hidden="true"><i x-show="sectionDone.files" class="fa-solid fa-check text-xs"></i><span x-show="!sectionDone.files">4</span></span>
+          <h3 id="lo-sec-4" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.sectionFiles')"></h3>
+        </div>
+        <p class="hint !mt-0" x-text="t('lo.fieldFilesMultiHint')"></p>
+
+        <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2" x-show="form.files.length" role="list" :aria-label="t('lo.filesList')">
+          <template x-for="f in form.files" :key="f.id">
+            <li class="flex items-center gap-3 rounded-xl border border-line p-3" :class="f.status === 'failed' && 'border-error-600'">
+              <span class="format-icon shrink-0" :class="fileMeta(f.kind).iconClass" aria-hidden="true"><i class="fa-solid" :class="fileMeta(f.kind).icon"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-bold text-ink" dir="auto" x-text="f.name"></p>
+                <div class="mt-1 flex flex-wrap items-center gap-2">
+                  <span class="badge" :class="fileMeta(f.kind).badge" x-text="fileMeta(f.kind).label"></span>
+                  <bdi class="text-xs text-muted" dir="ltr" x-text="formatSize(f.bytes)"></bdi>
+                  <span x-show="f.existing" class="text-xs text-muted" x-text="t('lo.fileStored')"></span>
+                </div>
+                <div x-show="f.status === 'uploading' || f.status === 'done'" class="quota-track mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                     :aria-valuenow="f.progress" :aria-label="t('lo.uploading') + ': ' + f.name">
+                  <div class="quota-fill" :class="f.status === 'done' ? 'bg-success-500' : 'bg-primary-500'" :style="'width:' + f.progress + '%'"></div>
+                </div>
+              </div>
+              <button type="button" class="act shrink-0 !text-danger hover:!bg-error-500/10" @click="removeFile(f.id)" :disabled="busy || (f.existing && existingCount === 1 && !newCount)"
+                      :aria-label="t('lo.removeFile') + ': ' + f.name">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
+            </li>
+          </template>
+        </ul>
+
+        <label for="lo-file" class="dropzone" :class="dragOver && 'is-drag'" :data-invalid="(formSubmitted && !!errors.files).toString()"
+               @dragenter.prevent="onDragEnter()" @dragover.prevent @dragleave.prevent="onDragLeave()" @drop.prevent="onDrop($event)">
+          <i class="fa-solid fa-cloud-arrow-up text-2xl text-muted" aria-hidden="true"></i>
+          <span class="text-sm font-bold text-ink" x-text="form.files.length ? t('lo.addMoreFiles') : t('lo.fieldFileHint')"></span>
+          <span class="text-xs text-muted" x-text="t('lo.fieldFileTypes')"></span>
+          <input id="lo-file" type="file" multiple accept=".zip,.html,.htm,.mp4,.mov,.webm,.pdf" class="sr-only" @change="onFileChange($event)" aria-describedby="lo-files-err lo-files-rejected">
+        </label>
+        <p id="lo-files-err" class="err" x-show="formSubmitted && errors.files"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.files"></span></p>
+        <ul id="lo-files-rejected" x-show="fileErrors.length" class="space-y-1" role="alert">
+          <template x-for="(msg, i) in fileErrors" :key="i">
+            <li class="err !mt-0"><i class="fa-solid fa-ban" aria-hidden="true"></i> <span dir="auto" x-text="msg"></span></li>
+          </template>
+        </ul>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- مفتاح is_public -->
+      <div class="flex items-start justify-between gap-3 rounded-xl border border-line bg-page/50 p-4">
+        <span class="min-w-0">
+          <span id="lo-public-lbl" class="block text-sm font-bold text-ink" x-text="t('lo.fieldIsPublic')"></span>
+          <span id="lo-public-hint" class="hint block" x-text="t('lo.fieldIsPublicHint')"></span>
+        </span>
+        <button type="button" class="switch-track" role="switch" :aria-checked="form.isPublic.toString()"
+                aria-labelledby="lo-public-lbl" aria-describedby="lo-public-hint" @click="form.isPublic = !form.isPublic">
+          <span class="switch-knob"></span>
+        </button>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <p x-show="formSubmitted && errorCount" class="me-auto flex items-center gap-1.5 text-xs font-bold text-danger" role="alert">
+        <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="tf('lo.errorsSummary', { n: errorCount })"></span>
+      </p>
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('lo.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy" :aria-busy="busy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? (newCount ? t('lo.uploading') : t('lo.saving')) : (editingObject ? (newCount ? t('lo.saveUpload') : t('lo.saveEdit')) : t('lo.saveUpload'))"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — معاينة العنصر التعليمي
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'preview'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.window="closeModal()">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeModal()" aria-hidden="true"></div>
+  <div x-show="modal === 'preview'" x-trap.noscroll.noreturn="modal === 'preview'" role="dialog" aria-modal="true" aria-labelledby="pm-title"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-h-[92dvh] max-w-2xl">
+    <template x-if="previewTarget">
+      <div class="flex min-h-0 flex-1 flex-col">
+        <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+          <div class="min-w-0">
+            <h2 id="pm-title" class="truncate text-lg font-extrabold text-ink" dir="auto" x-text="title(previewTarget)"></h2>
+            <p class="font-mono text-xs text-muted" dir="ltr" style="text-align: match-parent" x-text="previewTarget.code"></p>
+          </div>
+          <button type="button" class="icon-btn" @click="closeModal()" :aria-label="t('lo.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </header>
+        <div class="scroll-thin min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+          <div class="grid aspect-video place-items-center rounded-xl border border-dashed border-line-strong bg-page/60 text-muted">
+            <div class="flex flex-col items-center gap-2 px-4 text-center">
+              <i class="fa-solid text-3xl text-brand" :class="fileMeta(previewTarget.format).icon" aria-hidden="true"></i>
+              <span class="text-xs font-bold" x-text="t('lo.previewHint')"></span>
+            </div>
+          </div>
+          <dl class="grid grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+            <dt class="font-bold text-muted" x-text="t('lo.colFormat')"></dt>
+            <dd><span class="badge" :class="fileMeta(previewTarget.format).badge" x-text="fileMeta(previewTarget.format).label"></span></dd>
+            <dt class="font-bold text-muted" x-text="t('lo.colLinked')"></dt>
+            <dd class="text-ink" dir="auto" x-text="pathOf(previewTarget).map(s => s.label).join(' › ')"></dd>
+            <dt class="font-bold text-muted" x-text="t('lo.fieldConcepts')"></dt>
+            <dd class="flex flex-wrap gap-1.5">
+              <template x-for="code in previewTarget.concepts" :key="code"><span class="badge badge-primary" dir="auto" x-text="conceptLabel(code)"></span></template>
+              <span x-show="!previewTarget.concepts.length" class="text-muted">—</span>
+            </dd>
+            <dt class="font-bold text-muted" x-text="t('lo.colVisibility')"></dt>
+            <dd x-text="previewTarget.isPublic ? t('lo.visibilityPublic') : t('lo.visibilityPrivate')"></dd>
+          </dl>
+          <div>
+            <p class="mb-2 text-xs font-extrabold text-muted" x-text="t('lo.filesList')"></p>
+            <ul class="space-y-2" role="list">
+              <template x-for="f in previewTarget.files" :key="f.name">
+                <li class="flex items-center gap-3 rounded-xl border border-line p-2.5">
+                  <i class="fa-solid w-5 text-center text-brand" :class="fileMeta(f.kind).icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate text-sm font-bold" dir="auto" x-text="f.name"></span>
+                  <bdi class="text-xs text-muted" dir="ltr" x-text="formatSize(f.bytes)"></bdi>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+        <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+          <button type="button" class="btn btn-outline" @click="closeModal()" x-text="t('lo.close')"></button>
+          <button type="button" class="btn btn-primary" @click="const o = previewTarget; closeModal(false); openEdit(o)"><i class="fa-solid fa-pen" aria-hidden="true"></i> <span x-text="t('lo.actEdit')"></span></button>
+        </footer>
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — حذف العنصر التعليمي (حارس: عنصر مستخدم في أسئلة لا يُحذف)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'delete'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.window="closeModal()">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeModal()" aria-hidden="true"></div>
+  <div x-show="modal === 'delete'" x-trap.noscroll.noreturn="modal === 'delete'" role="alertdialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-md rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <template x-if="deleteTarget && deleteTarget.questions > 0">
+      <div>
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-accent-500/20 text-yellow-800 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-shield-halved text-xl"></i></span>
+        <h2 id="dm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('lo.guardTitle')"></h2>
+        <p id="dm-desc" class="mt-2 text-sm text-muted"><span class="font-bold text-ink" dir="auto" x-text="title(deleteTarget)"></span> <span x-text="tf('lo.guardText', { questions: pluralize('questions', deleteTarget.questions) })"></span></p>
+        <div class="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+          <button type="button" class="btn btn-outline" @click="closeModal()" x-text="t('lo.close')"></button>
+          <button type="button" class="btn btn-primary" x-show="deleteTarget.isPublic" @click="const o = deleteTarget; closeModal(); setPublic(o, false)">
+            <i class="fa-solid fa-lock" aria-hidden="true"></i> <span x-text="t('lo.actMakePrivate')"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+    <template x-if="deleteTarget && !(deleteTarget.questions > 0)">
+      <div>
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-red-300" aria-hidden="true"><i class="fa-solid fa-trash text-xl"></i></span>
+        <h2 id="dm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('lo.deleteTitle')"></h2>
+        <p id="dm-desc" class="mt-2 text-sm text-muted" x-text="tf('lo.deleteText', { title: title(deleteTarget), files: pluralize('files', deleteTarget.files.length) })"></p>
+        <div class="mt-6 flex justify-center gap-3">
+          <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('lo.deleteCancel')"></button>
+          <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="deleteConfirmed()">
+            <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+            <span x-text="t('lo.deleteConfirm')"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<p class="sr-only" aria-live="polite" x-text="pageLiveMsg"></p>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Select-only Combobox — نمط ARIA APG).
+   * options: () => [{ value, label }] | get: () => القيمة | set: (v) => تحديث
+   * لوحة المفاتيح: ↑↓ Home End Enter Space Esc Tab + البحث بالكتابة (type-ahead).
+   * Esc يوقف الانتشار حتى لا يُغلق اللوحة الجانبية/النافذة الأم (C5).
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : placeholder; },
+      optId(item) { return this.id + '-opt-' + (item.value === '' ? 'none' : item.value); },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * اختيار المفاهيم المتعدد (Tag Input + Combobox) — نمط ARIA كامل.
+   * يعتمد Set لفحص المحدَّد (O(1)) وفهرسًا بالمعرّف بدل find() المتكرر في كل رسم.
+   * Esc يغلق القائمة فقط (stopPropagation) ولا يُغلق النافذة الأم.
+   */
+  function conceptMultiSelect({ id, options, get, set }) {
+    return {
+      id, open: false, active: -1, liveMsg: '',
+      get items() { return options(); },
+      get byId() { const m = {}; for (const o of this.items) m[o.value] = o; return m; },
+      get selected() { const m = this.byId; return get().map(v => m[v]).filter(Boolean); },
+      get available() { const sel = new Set(get()); return this.items.filter(o => !sel.has(o.value)); },
+      optId(item) { return this.id + '-opt-' + item.value; },
+      openList() { if (!this.available.length) return; this.active = 0; this.open = true; },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      add(item) {
+        if (!item || get().includes(item.value)) return;
+        set([...get(), item.value]);
+        this.liveMsg = '+ ' + item.label;
+        const n = this.available.length;
+        if (!n) this.closeList(); else this.active = Math.min(this.active, n - 1);
+      },
+      remove(value) {
+        const it = this.byId[value];
+        set(get().filter(v => v !== value));
+        this.liveMsg = it ? '− ' + it.label : '';
+        this.$refs.btn?.focus();
+      },
+      onKey(e) {
+        const k = e.key, n = this.available.length;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (!this.open) return this.openList(); this.active = Math.min(Math.max(this.active + (k === 'ArrowDown' ? 1 : -1), 0), n - 1); this.scroll(); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scroll(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = n - 1; this.scroll(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.add(this.available[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { this.closeList(); }
+      },
+      scroll() { this.$nextTick(() => this.$refs.list?.querySelector('#' + CSS.escape(this.optId(this.available[this.active] || {})))?.scrollIntoView({ block: 'nearest' })); },
+    };
+  }
+
+  /**
+   * حالة واجهة CNT-05 — العناصر التعليمية (النسخة المُراجَعة).
+   * مصدر بيانات واحد: FIROB_MOCK (مقررات/وحدات/دروس/مفاهيم مشتركة مع شاشات المفاهيم) + learningObjects أدناه.
+   * عرض واحد فقط يُرسم (x-if)، الفلاتر حقيقية، والرفع يتحقق من الملفات ويعرض التقدّم.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const DATA = window.FIROB_MOCK;
+    const MB = 1024 * 1024;
+
+    const I18N = {
+      ar: {
+        docTitle: 'العناصر التعليمية — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', content: 'إدارة المحتوى' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم رفع عنصر تعليمي جديد بنجاح' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          objects:   { zero: 'لا عناصر', one: 'عنصر واحد', two: 'عنصران', few: '{n} عناصر', many: '{n} عنصرًا', other: '{n} عنصر' },
+          files:     { zero: 'لا ملفات', one: 'ملف واحد', two: 'ملفان', few: '{n} ملفات', many: '{n} ملفًا', other: '{n} ملف' },
+          concepts:  { zero: 'لا مفاهيم', one: 'مفهوم واحد', two: 'مفهومان', few: '{n} مفاهيم', many: '{n} مفهومًا', other: '{n} مفهوم' },
+          questions: { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: '{n} أسئلة', many: '{n} سؤالًا', other: '{n} سؤال' },
+        },
+
+        lo: {
+          title: 'العناصر التعليمية', subtitle: 'استعرض جميع العناصر التعليمية (SCORM وHTML5 والفيديو وPDF)، تابع ارتباطها بالمفاهيم والدروس، وأدِر ظهورها العام أو الخاص من مكان واحد.',
+          uploadNew: 'رفع عنصر تعليمي جديد', kpis: 'مؤشرات العناصر', filtersLabel: 'البحث والفلاتر',
+          kpiTotal: 'إجمالي العناصر', kpiScorm: 'حزم SCORM', kpiHtml5: 'تفاعلي HTML5', kpiPublic: 'عامة في المكتبة المركزية',
+          searchPlaceholder: 'ابحث بعنوان العنصر أو رمزه…',
+          colFormat: 'التنسيق', colCourse: 'المقرر', colUnit: 'الوحدة',
+          formatAll: 'كل التنسيقات', formatScorm12: 'SCORM 1.2', formatScorm2004: 'SCORM 2004', formatHtml5: 'تفاعلي HTML5', formatVideo: 'فيديو', formatPdf: 'PDF',
+          courseAll: 'كل المقررات', unitAll: 'كل الوحدات',
+          colVisibility: 'الظهور', visibilityAll: 'كل حالات الظهور', visibilityPublic: 'عام', visibilityPrivate: 'خاص',
+          resetFilters: 'مسح الفلاتر', resultsCount: 'النتائج: {objects}',
+          colObject: 'العنصر التعليمي', colLinked: 'الربط الأكاديمي', colStatus: 'الحالة', colActions: 'إجراءات',
+          statusActive: 'نشط', statusReview: 'قيد المراجعة',
+          actPreview: 'معاينة', actEdit: 'تعديل البيانات', actTogglePublic: 'تبديل الظهور', actMakePublic: 'نشر في المكتبة المركزية', actMakePrivate: 'جعله خاصًا', actDelete: 'حذف',
+          emptyTitle: 'لا توجد عناصر تعليمية مطابقة', emptySubtitle: 'جرّب تعديل كلمات البحث أو الفلاتر، أو امسحها للعودة إلى القائمة الكاملة.',
+          pageInfo: 'عرض {from}–{to} من أصل {total}', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية', pageN: 'الصفحة {n}',
+
+          panelUploadTitle: 'رفع عنصر تعليمي جديد', panelEditTitle: 'تعديل العنصر التعليمي',
+          panelUploadSubtitle: 'أكمل الأقسام الأربعة لرفع العنصر وربطه بالمنهج.', panelEditSubtitle: 'حدّث بيانات العنصر وربطه الأكاديمي وملفاته.',
+          requiredLegend: 'حقول مطلوبة',
+          sectionBasicInfo: 'المعلومات الأساسية', sectionConcepts: 'المفاهيم المرتبطة (بمساعدة الذكاء الاصطناعي)', sectionFiles: 'ملفات/مصادر العنصر',
+          fieldTitleAr: 'العنوان بالعربية', fieldTitleEn: 'العنوان بالإنجليزية',
+          titleArRequired: 'العنوان بالعربية مطلوب.', titleEnRequired: 'العنوان بالإنجليزية مطلوب.', titleEnLatin: 'اكتب العنوان بالإنجليزية بأحرف لاتينية.',
+          academicAssignment: 'الربط الأكاديمي', academicAssignmentHint: 'المقرر مطلوب؛ الصف يُحدَّد تلقائيًا من المقرر، والوحدة والدرس اختياريان.',
+          fieldCourse: 'المقرر', fieldGrade: 'الصف الدراسي', fieldUnit: 'الوحدة', fieldLesson: 'الدرس',
+          gradeFromCourse: 'يُحدَّد من المقرر', optional: 'اختياري', notSpecified: '— غير محدد —', courseRequired: 'المقرر مطلوب.',
+          selectCourseFirst: 'اختر المقرر أولًا.', selectUnitFirst: 'اختر الوحدة أولًا.',
+          fieldConcepts: 'المفاهيم المرتبطة', fieldConceptsHint: 'أضف مفهومًا أو أكثر من مفاهيم المقرر المختار.', conceptsNeedCourse: 'اختر المقرر أولًا لعرض مفاهيمه.',
+          selectedConcepts: 'المفاهيم المحدّدة', conceptsAdd: 'إضافة مفهوم', conceptsAllAdded: 'تمت إضافة جميع مفاهيم هذا المقرر', conceptsRequired: 'أضف مفهومًا واحدًا على الأقل.',
+          removeConcept: 'إزالة المفهوم', aiAssistant: 'اقتراح المفاهيم (AI)', aiAnalyzing: 'يحلّل الآن…', aiAdd: 'إضافة',
+          aiSuggestionsTitle: 'مفاهيم مقترحة — اضغط للإضافة', aiReasonLesson: 'من الدرس المختار', aiReasonUnit: 'من الوحدة المختارة', aiReasonTitle: 'يطابق العنوان', aiReasonCourse: 'من المقرر',
+          aiNone: 'لا توجد اقتراحات إضافية لهذا المقرر.', aiReady: 'جاهز: {n} اقتراحات.',
+          fieldFilesMultiHint: 'يمكن أن يضم العنصر الواحد أكثر من مصدر: حزمة SCORM + فيديو شرح + ملف PDF مرجعي.',
+          filesList: 'ملفات العنصر', fileStored: '· محفوظ', uploading: 'جارٍ الرفع', saving: 'جارٍ الحفظ…',
+          fieldFileHint: 'اسحب الملفات هنا أو اضغط للاختيار', addMoreFiles: 'اسحب ملفات إضافية هنا أو اضغط للاختيار',
+          fieldFileTypes: 'SCORM (.zip حتى 500MB) · HTML5 (.zip/.html حتى 200MB) · فيديو (.mp4/.mov/.webm حتى 1GB) · PDF (حتى 50MB) · 10 ملفات كحد أقصى',
+          removeFile: 'إزالة الملف', filesRequired: 'أضف ملفًا واحدًا على الأقل.', fileRemoved: 'تمت إزالة «{name}»',
+          errType: '«{name}»: نوع غير مدعوم.', errSize: '«{name}»: يتجاوز الحد الأقصى ({max}).', errDup: '«{name}»: مضاف مسبقًا.', errMax: 'لا يمكن إضافة أكثر من 10 ملفات.',
+          filesAdded: 'أُضيف {files}.',
+          fieldIsPublic: 'عام ومتاح للمكتبة المركزية', fieldIsPublicHint: 'يصبح العنصر متاحًا لمستخدمي المؤسسات الأخرى. تأكد من امتلاك حقوق النشر.',
+          cancel: 'إلغاء', close: 'إغلاق', saveUpload: 'حفظ ورفع', saveEdit: 'حفظ التعديلات',
+          errorsSummary: 'يوجد {n} حقول تحتاج إلى تصحيح.', discardChanges: 'لديك تغييرات غير محفوظة (ملفات/مفاهيم). هل تريد الإغلاق دون حفظ؟',
+          previewHint: 'معاينة تجريبية — تُعرض الحزمة الفعلية هنا بعد ربطها بالخادم.',
+          publishTitle: 'نشر العنصر في المكتبة المركزية؟', publishText: 'سيصبح «{title}» متاحًا لمستخدمي المؤسسات الأخرى. تأكد من امتلاك المؤسسة حقوق نشر هذا المحتوى.',
+          publishConfirm: 'نعم، انشره', toastPublic: 'أصبح «{title}» عامًا', toastPrivate: 'أصبح «{title}» خاصًا',
+          guardTitle: 'لا يمكن حذف هذا العنصر', guardText: 'مستخدَم في {questions}. أزل ارتباطه بالأسئلة أولًا، أو اجعله خاصًا بدل حذفه.',
+          deleteTitle: 'حذف العنصر التعليمي نهائيًا؟', deleteText: 'لا يمكن التراجع. سيُحذف «{title}» مع {files}.', deleteCancel: 'إلغاء', deleteConfirm: 'نعم، احذف نهائيًا',
+          toastUpload: 'تم رفع العنصر التعليمي (معاينة فقط)', toastSave: 'تم حفظ تعديلات العنصر (معاينة فقط)', toastDelete: 'تم حذف «{title}» (معاينة فقط)',
+          undo: 'تراجع', undone: 'تم التراجع',
+        },
+      },
+      en: {
+        docTitle: 'Learning Objects — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', content: 'Content Management' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'Seat quota is nearing its limit (83%)', reset: 'A new learning object was uploaded successfully' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          objects:   { one: '{n} object', other: '{n} objects' },
+          files:     { one: '{n} file', other: '{n} files' },
+          concepts:  { one: '{n} concept', other: '{n} concepts' },
+          questions: { one: '{n} question', other: '{n} questions' },
+        },
+
+        lo: {
+          title: 'Learning Objects', subtitle: 'Browse all learning objects (SCORM, HTML5, video and PDF), track their links to concepts and lessons, and manage public/private visibility in one place.',
+          uploadNew: 'Upload New Learning Object', kpis: 'Learning object indicators', filtersLabel: 'Search & filters',
+          kpiTotal: 'Total Objects', kpiScorm: 'SCORM Packages', kpiHtml5: 'Interactive HTML5', kpiPublic: 'Public in Central Library',
+          searchPlaceholder: 'Search by object title or code…',
+          colFormat: 'Format', colCourse: 'Course', colUnit: 'Unit',
+          formatAll: 'All formats', formatScorm12: 'SCORM 1.2', formatScorm2004: 'SCORM 2004', formatHtml5: 'Interactive HTML5', formatVideo: 'Video', formatPdf: 'PDF',
+          courseAll: 'All courses', unitAll: 'All units',
+          colVisibility: 'Visibility', visibilityAll: 'All visibility states', visibilityPublic: 'Public', visibilityPrivate: 'Private',
+          resetFilters: 'Reset filters', resultsCount: 'Results: {objects}',
+          colObject: 'Learning Object', colLinked: 'Academic Link', colStatus: 'Status', colActions: 'Actions',
+          statusActive: 'Active', statusReview: 'Under Review',
+          actPreview: 'Preview', actEdit: 'Edit Details', actTogglePublic: 'Toggle visibility', actMakePublic: 'Publish to central library', actMakePrivate: 'Make private', actDelete: 'Delete',
+          emptyTitle: 'No matching learning objects', emptySubtitle: 'Try adjusting your search or filters, or reset them to see the full list.',
+          pageInfo: 'Showing {from}–{to} of {total}', pagination: 'Pagination', prev: 'Previous page', next: 'Next page', pageN: 'Page {n}',
+
+          panelUploadTitle: 'Upload New Learning Object', panelEditTitle: 'Edit Learning Object',
+          panelUploadSubtitle: 'Complete the four sections to upload the object and link it to the curriculum.', panelEditSubtitle: 'Update the object\'s details, academic link and files.',
+          requiredLegend: 'Required fields',
+          sectionBasicInfo: 'Basic Info', sectionConcepts: 'Linked Concepts (AI-assisted)', sectionFiles: 'Object Files / Sources',
+          fieldTitleAr: 'Title (Arabic)', fieldTitleEn: 'Title (English)',
+          titleArRequired: 'Arabic title is required.', titleEnRequired: 'English title is required.', titleEnLatin: 'Write the English title in Latin letters.',
+          academicAssignment: 'Academic Assignment', academicAssignmentHint: 'Course is required; the grade comes from the course, and unit and lesson are optional.',
+          fieldCourse: 'Course', fieldGrade: 'Grade', fieldUnit: 'Unit', fieldLesson: 'Lesson',
+          gradeFromCourse: 'Set by the course', optional: 'Optional', notSpecified: '— Not specified —', courseRequired: 'Course is required.',
+          selectCourseFirst: 'Select a course first.', selectUnitFirst: 'Select a unit first.',
+          fieldConcepts: 'Linked Concepts', fieldConceptsHint: 'Add one or more concepts from the selected course.', conceptsNeedCourse: 'Select a course first to see its concepts.',
+          selectedConcepts: 'Selected concepts', conceptsAdd: 'Add Concept', conceptsAllAdded: 'All concepts of this course are added', conceptsRequired: 'Add at least one concept.',
+          removeConcept: 'Remove concept', aiAssistant: 'Suggest concepts (AI)', aiAnalyzing: 'Analyzing…', aiAdd: 'Add',
+          aiSuggestionsTitle: 'Suggested concepts — click to add', aiReasonLesson: 'from the selected lesson', aiReasonUnit: 'from the selected unit', aiReasonTitle: 'matches the title', aiReasonCourse: 'from the course',
+          aiNone: 'No more suggestions for this course.', aiReady: 'Ready: {n} suggestions.',
+          fieldFilesMultiHint: 'One object can hold several sources: a SCORM package + an explainer video + a reference PDF.',
+          filesList: 'Object files', fileStored: '· stored', uploading: 'Uploading', saving: 'Saving…',
+          fieldFileHint: 'Drag files here or click to browse', addMoreFiles: 'Drag more files here or click to browse',
+          fieldFileTypes: 'SCORM (.zip up to 500MB) · HTML5 (.zip/.html up to 200MB) · Video (.mp4/.mov/.webm up to 1GB) · PDF (up to 50MB) · max 10 files',
+          removeFile: 'Remove file', filesRequired: 'Add at least one file.', fileRemoved: '"{name}" was removed',
+          errType: '"{name}": unsupported type.', errSize: '"{name}": exceeds the limit ({max}).', errDup: '"{name}": already added.', errMax: 'You cannot add more than 10 files.',
+          filesAdded: '{files} added.',
+          fieldIsPublic: 'Public & available to the central library', fieldIsPublicHint: 'The object becomes available to users of other organizations. Make sure you own the publishing rights.',
+          cancel: 'Cancel', close: 'Close', saveUpload: 'Save & Upload', saveEdit: 'Save Changes',
+          errorsSummary: '{n} field(s) need attention.', discardChanges: 'You have unsaved changes (files/concepts). Close without saving?',
+          previewHint: 'Demo preview — the actual package will render here once connected to the backend.',
+          publishTitle: 'Publish to the central library?', publishText: '"{title}" will become available to users of other organizations. Make sure your organization owns the rights to this content.',
+          publishConfirm: 'Yes, publish', toastPublic: '"{title}" is now public', toastPrivate: '"{title}" is now private',
+          guardTitle: 'This object cannot be deleted', guardText: 'is used in {questions}. Unlink it from those questions first, or make it private instead of deleting it.',
+          deleteTitle: 'Permanently delete this learning object?', deleteText: 'This cannot be undone. "{title}" and its {files} will be deleted.', deleteCancel: 'Cancel', deleteConfirm: 'Yes, delete permanently',
+          toastUpload: 'Learning object uploaded (preview only)', toastSave: 'Changes saved (preview only)', toastDelete: '"{title}" was deleted (preview only)',
+          undo: 'Undo', undone: 'Change undone',
+        },
+      },
+    };
+
+    /* ---------- العناصر التعليمية (Mock) — LearningObject::with('files')->withCount(['concepts','questions']) ---------- */
+    const OBJECTS = [
+      { id: 1, code: 'LO-SCORM-001', titleAr: 'مقدّمة في الكسور الاعتيادية', titleEn: 'Intro to Common Fractions', format: 'scorm12',
+        courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', concepts: ['CPT-MATH-008'], isPublic: true, status: 'active', questions: 12,
+        files: [{ name: 'LO-SCORM-001.zip', kind: 'scorm12', bytes: 24.5 * MB }, { name: 'دليل_المعلم_الكسور.pdf', kind: 'pdf', bytes: 1.2 * MB }] },
+      { id: 2, code: 'LO-HTML5-014', titleAr: 'تجربة التحليل الكهربائي للماء', titleEn: 'Water Electrolysis Lab', format: 'html5',
+        courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', concepts: ['CPT-SCI-010'], isPublic: false, status: 'active', questions: 0,
+        files: [{ name: 'electrolysis-lab.zip', kind: 'html5', bytes: 8.2 * MB }] },
+      { id: 3, code: 'LO-VID-027', titleAr: 'فيديو شرح عناصر القصة القصيرة', titleEn: 'Video: Short Story Elements', format: 'video',
+        courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', concepts: ['CPT-ARAB-006'], isPublic: true, status: 'review', questions: 4,
+        files: [{ name: 'short-story-elements.mp4', kind: 'video', bytes: 142 * MB }] },
+      { id: 4, code: 'LO-PDF-009', titleAr: 'بطاقة مراجعة الأعداد الصحيحة', titleEn: 'Integers Review Card', format: 'pdf',
+        courseId: 'math-g7', unitId: 'u101', lessonId: '', concepts: ['CPT-MATH-001', 'CPT-MATH-002'], isPublic: false, status: 'active', questions: 0,
+        files: [{ name: 'integers-review.pdf', kind: 'pdf', bytes: 3.1 * MB }] },
+      { id: 5, code: 'LO-SCORM-033', titleAr: 'محاكاة موازنة معادلة احتراق الميثان', titleEn: 'Methane Combustion Balancing Simulation', format: 'scorm2004',
+        courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2022', concepts: ['CPT-SCI-005', 'CPT-SCI-010'], isPublic: true, status: 'active', questions: 9,
+        files: [{ name: 'methane-sim.zip', kind: 'scorm2004', bytes: 31.8 * MB }] },
+      { id: 6, code: 'LO-HTML5-019', titleAr: 'عرض تفاعلي: تركيب الخلية', titleEn: 'Interactive: Cell Structure', format: 'html5',
+        courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', concepts: ['CPT-SCI-004'], isPublic: false, status: 'review', questions: 0,
+        files: [{ name: 'cell-structure.zip', kind: 'html5', bytes: 12.4 * MB }, { name: 'cell-tour.mp4', kind: 'video', bytes: 48 * MB }] },
+    ];
+    const LIMITS = { maxFiles: 10, bytes: { scorm12: 500 * MB, scorm2004: 500 * MB, html5: 200 * MB, video: 1024 * MB, pdf: 50 * MB } };
+    const emptyForm = () => ({ titleAr: '', titleEn: '', course: '', unit: '', lesson: '', concepts: [], files: [], isPublic: false });
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches, wide: wideMQ.matches,
+      mobileNav: false, collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'learningObjects', pageLiveMsg: '',
+      get expanded() { return this.mobile || !this.collapsed; },
+      get altLocale() { return this.locale === 'ar' ? 'en' : 'ar'; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        if (!forms || typeof forms !== 'object') return String(n);
+        return (forms[new Intl.PluralRules(this.locale).select(n)] ?? forms.other).split('{n}').join(n);
+      },
+      announce(msg) { this.pageLiveMsg = ''; setTimeout(() => { this.pageLiveMsg = msg; }, 60); },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-cloud-arrow-up', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- البيانات المرجعية (مشتركة) + العناصر ---------- */
+      objects: OBJECTS,
+      label(item) { return item ? (item[this.locale] || item.ar) : ''; },
+      courseById(id) { return DATA.courses.find(c => c.id === id); },
+      title(o, loc = this.locale) { return (loc === 'en' && o.titleEn) || o.titleAr; },
+      titleLang(o) { return this.locale === 'en' && o.titleEn ? 'en' : 'ar'; },
+      conceptLabel(code) { return this.label(DATA.concepts.find(c => c.code === code)) || code; },
+      totalBytes(o) { return o.files.reduce((a, f) => a + f.bytes, 0); },
+      pathOf(o) {
+        return [
+          { level: 'course', label: this.label(this.courseById(o.courseId)) },
+          o.unitId   && { level: 'unit',   label: this.label(DATA.units.find(u => u.id === o.unitId)) },
+          o.lessonId && { level: 'lesson', label: this.label(DATA.lessons.find(l => l.id === o.lessonId)) },
+        ].filter(Boolean);
+      },
+      get kpis() {
+        const os = this.objects;
+        return { total: os.length, scorm: os.filter(o => o.format.startsWith('scorm')).length, html5: os.filter(o => o.format === 'html5').length, public: os.filter(o => o.isPublic).length };
+      },
+      kpiCards: [
+        { key: 'total',  label: 'kpiTotal',  icon: 'fa-cubes',          cls: 'bg-primary-500/10 text-brand' },
+        { key: 'scorm',  label: 'kpiScorm',  icon: 'fa-box-archive',    cls: 'bg-info-500/15 text-info-700 dark:text-blue-300' },
+        { key: 'html5',  label: 'kpiHtml5',  icon: 'fa-code',           cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+        { key: 'public', label: 'kpiPublic', icon: 'fa-earth-americas', cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      fileMeta(kind) {
+        const map = {
+          scorm12:   { label: this.t('lo.formatScorm12'),   icon: 'fa-box-archive', iconClass: 'bg-info-500/15 text-info-700 dark:text-blue-300', badge: 'badge-info' },
+          scorm2004: { label: this.t('lo.formatScorm2004'), icon: 'fa-box-archive', iconClass: 'bg-info-500/15 text-info-700 dark:text-blue-300', badge: 'badge-info' },
+          html5:     { label: this.t('lo.formatHtml5'),     icon: 'fa-code',        iconClass: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500', badge: 'badge-accent' },
+          video:     { label: this.t('lo.formatVideo'),     icon: 'fa-film',        iconClass: 'bg-primary-500/10 text-brand', badge: 'badge-primary' },
+          pdf:       { label: this.t('lo.formatPdf'),       icon: 'fa-file-pdf',    iconClass: 'bg-error-500/10 text-error-700 dark:text-red-300', badge: 'badge-danger' },
+        };
+        return map[kind] || { label: 'FILE', icon: 'fa-file', iconClass: 'bg-line text-muted', badge: 'badge-muted' };
+      },
+      formatSize(bytes) {
+        if (!bytes) return '—';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let n = bytes, i = 0;
+        while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+        return n.toFixed(i > 0 && n < 10 ? 1 : 0) + ' ' + units[i];
+      },
+
+      /* ---------- الفلاتر (حقيقية + متسلسلة) ---------- */
+      search: '', formatFilter: 'all', visibilityFilter: 'all', courseFilter: 'all', unitFilter: 'all',
+      formatOptions() { return ['all', 'scorm12', 'scorm2004', 'html5', 'video', 'pdf'].map(v => ({ value: v, label: v === 'all' ? this.t('lo.formatAll') : this.fileMeta(v).label })); },
+      visibilityOptions() { return [{ value: 'all', label: this.t('lo.visibilityAll') }, { value: 'public', label: this.t('lo.visibilityPublic') }, { value: 'private', label: this.t('lo.visibilityPrivate') }]; },
+      courseFilterOptions() { return [{ value: 'all', label: this.t('lo.courseAll') }, ...DATA.courses.map(c => ({ value: c.id, label: this.label(c) }))]; },
+      unitFilterOptions() { return [{ value: 'all', label: this.t('lo.unitAll') }, ...DATA.units.filter(u => this.courseFilter === 'all' || u.courseId === this.courseFilter).map(u => ({ value: u.id, label: this.label(u) }))]; },
+      get filtered() {
+        const q = this.search.trim().toLowerCase();
+        return this.objects.filter(o =>
+          (!q || [o.code, o.titleAr, o.titleEn].some(s => (s || '').toLowerCase().includes(q))) &&
+          (this.formatFilter === 'all' || o.files.some(f => f.kind === this.formatFilter)) &&
+          (this.visibilityFilter === 'all' || o.isPublic === (this.visibilityFilter === 'public')) &&
+          (this.courseFilter === 'all' || o.courseId === this.courseFilter) &&
+          (this.unitFilter === 'all' || o.unitId === this.unitFilter));
+      },
+      get activeFilterCount() { return [this.search.trim(), this.formatFilter !== 'all', this.visibilityFilter !== 'all', this.courseFilter !== 'all', this.unitFilter !== 'all'].filter(Boolean).length; },
+      get resultsMsg() { return this.activeFilterCount ? this.tf('lo.resultsCount', { objects: this.pluralize('objects', this.filtered.length) }) : ''; },
+      resetFilters() { this.search = ''; this.formatFilter = 'all'; this.visibilityFilter = 'all'; this.courseFilter = 'all'; this.unitFilter = 'all'; },
+
+      /* ---------- الترقيم ---------- */
+      page: 1, perPage: 5,
+      get pageCount() { return Math.max(1, Math.ceil(this.filtered.length / this.perPage)); },
+      get pageRows() { const p = Math.min(this.page, this.pageCount); return this.filtered.slice((p - 1) * this.perPage, p * this.perPage); },
+      get pageInfo() {
+        const total = this.filtered.length, from = total ? (Math.min(this.page, this.pageCount) - 1) * this.perPage + 1 : 0;
+        return this.tf('lo.pageInfo', { from, to: Math.min(from + this.perPage - 1, total), total: this.pluralize('objects', total) });
+      },
+      goPage(p) { this.page = Math.min(Math.max(1, p), this.pageCount); this.$nextTick(() => document.getElementById('main')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); },
+
+      /* ---------- نافذة الرفع / التعديل ---------- */
+      panelOpen: false, editingObject: null, formSubmitted: false, busy: false, lastTrigger: null,
+      dragOver: false, dragDepth: 0, fileErrors: [], aiLoading: false, aiSuggestions: [],
+      form: emptyForm(), snapshot: '',
+      get dirty() { return JSON.stringify(this.form) !== this.snapshot; },
+      get gradeLabel() { const c = this.courseById(this.form.course); return c ? (this.locale === 'en' ? c.gradeEn : c.gradeAr) : ''; },
+      courseOptions() { return DATA.courses.map(c => ({ value: c.id, label: this.label(c) })); },
+      unitOptions() { return [{ value: '', label: this.t('lo.notSpecified') }, ...DATA.units.filter(u => u.courseId === this.form.course).map(u => ({ value: u.id, label: this.label(u) }))]; },
+      lessonOptions() { return [{ value: '', label: this.t('lo.notSpecified') }, ...DATA.lessons.filter(l => l.unitId === this.form.unit).map(l => ({ value: l.id, label: this.label(l) }))]; },
+      conceptOptions() { return DATA.concepts.filter(c => c.courseId && c.courseId === this.form.course).map(c => ({ value: c.code, label: this.label(c) })); },
+      setCourse(v) {
+        if (this.form.course === v) return;
+        const keep = new Set(DATA.concepts.filter(c => c.courseId === v).map(c => c.code));
+        this.form.course = v; this.form.unit = ''; this.form.lesson = '';
+        this.form.concepts = this.form.concepts.filter(c => keep.has(c));      // لا مفاهيم من مقرر آخر
+        this.aiSuggestions = [];
+      },
+      get newCount() { return this.form.files.filter(f => !f.existing).length; },
+      get existingCount() { return this.form.files.filter(f => f.existing).length; },
+      get sectionDone() {
+        const e = this.errors;
+        return { basic: !e.titleAr && !e.titleEn, academic: !e.course, concepts: !e.concepts, files: !e.files };
+      },
+      get errors() {
+        const e = {}, f = this.form;
+        if (!f.titleAr) e.titleAr = this.t('lo.titleArRequired');
+        if (!f.titleEn) e.titleEn = this.t('lo.titleEnRequired');
+        else if (/[؀-ۿ]/.test(f.titleEn)) e.titleEn = this.t('lo.titleEnLatin');
+        if (!f.course) e.course = this.t('lo.courseRequired');
+        if (!f.concepts.length) e.concepts = this.t('lo.conceptsRequired');
+        if (!f.files.length) e.files = this.t('lo.filesRequired');
+        return e;
+      },
+      get errorCount() { return Object.keys(this.errors).length; },
+      openUpload(evt) {
+        this.lastTrigger = evt?.currentTarget || document.activeElement;
+        this.editingObject = null;
+        this.resetPanel(emptyForm());
+      },
+      openEdit(o, evt) {
+        this.lastTrigger = evt?.currentTarget || this.lastTrigger || document.activeElement;
+        this.editingObject = o;
+        this.resetPanel({
+          titleAr: o.titleAr, titleEn: o.titleEn, course: o.courseId, unit: o.unitId || '', lesson: o.lessonId || '',
+          concepts: [...o.concepts], isPublic: o.isPublic,
+          files: o.files.map((f, i) => ({ id: 'ex-' + o.id + '-' + i, name: f.name, kind: f.kind, bytes: f.bytes, existing: true, status: 'stored', progress: 100 })),
+        });
+      },
+      resetPanel(form) {
+        this.formSubmitted = false; this.fileErrors = []; this.aiSuggestions = []; this.dragDepth = 0; this.dragOver = false;
+        this.form = form; this.snapshot = JSON.stringify(form);
+        this.panelOpen = true;
+      },
+      closePanel(force = false) {
+        if (this.busy || !this.panelOpen) return;
+        if (!force && this.dirty && !window.confirm(this.t('lo.discardChanges'))) return;
+        this.panelOpen = false;
+        this.restoreFocus();
+      },
+      restoreFocus() {
+        const el = this.lastTrigger; this.lastTrigger = null;
+        this.$nextTick(() => { if (el && el.isConnected && el.offsetParent !== null) el.focus(); else document.getElementById('main')?.focus(); });
+      },
+
+      /* ---------- الملفات: تحقق النوع/الحجم/التكرار/العدد + سحب بلا وميض ---------- */
+      fileKindFromName(name) {
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        if (ext === 'zip') return 'scorm12';          // يُحدَّد الإصدار الدقيق في الخادم من imsmanifest.xml
+        if (ext === 'pdf') return 'pdf';
+        if (['mp4', 'mov', 'webm'].includes(ext)) return 'video';
+        if (['html', 'htm'].includes(ext)) return 'html5';
+        return null;
+      },
+      addFiles(list) {
+        const errs = []; let added = 0;
+        for (const f of Array.from(list || [])) {
+          const kind = this.fileKindFromName(f.name);
+          if (!kind) { errs.push(this.tf('lo.errType', { name: f.name })); continue; }
+          if (f.size > LIMITS.bytes[kind]) { errs.push(this.tf('lo.errSize', { name: f.name, max: this.formatSize(LIMITS.bytes[kind]) })); continue; }
+          if (this.form.files.some(x => x.name === f.name && x.bytes === f.size)) { errs.push(this.tf('lo.errDup', { name: f.name })); continue; }
+          if (this.form.files.length >= LIMITS.maxFiles) { errs.push(this.t('lo.errMax')); break; }
+          this.form.files.push({ id: 'f-' + Date.now() + '-' + Math.random().toString(16).slice(2), name: f.name, kind, bytes: f.size, existing: false, status: 'queued', progress: 0 });
+          added++;
+        }
+        this.fileErrors = errs;
+        if (added) this.announce(this.tf('lo.filesAdded', { files: this.pluralize('files', added) }));
+      },
+      onFileChange(e) { this.addFiles(e.target.files); e.target.value = ''; },
+      onDragEnter() { this.dragDepth++; this.dragOver = true; },
+      onDragLeave() { if (--this.dragDepth <= 0) { this.dragDepth = 0; this.dragOver = false; } },
+      onDrop(e) { this.dragDepth = 0; this.dragOver = false; this.addFiles(e.dataTransfer.files); },
+      removeFile(id) {
+        const i = this.form.files.findIndex(f => f.id === id);
+        if (i < 0) return;
+        const [f] = this.form.files.splice(i, 1);
+        this.toastUndo(this.tf('lo.fileRemoved', { name: f.name }), () => { this.form.files.splice(i, 0, f); });
+      },
+
+      /* ---------- مساعد المفاهيم: مرتبط بالمقرر/الوحدة/الدرس/العنوان مع سبب ---------- */
+      async runAiAssistant() {
+        if (!this.form.course) return;
+        this.aiLoading = true;
+        await sleep(700);
+        const words = (this.form.titleAr + ' ' + this.form.titleEn).toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        const rank = (c) => {
+          if (this.form.lesson && c.lessonId === this.form.lesson) return [3, 'aiReasonLesson'];
+          if (this.form.unit && c.unitId === this.form.unit) return [2, 'aiReasonUnit'];
+          if (words.some(w => (c.ar + ' ' + c.en).toLowerCase().includes(w))) return [2, 'aiReasonTitle'];
+          return [1, 'aiReasonCourse'];
+        };
+        this.aiSuggestions = DATA.concepts
+          .filter(c => c.courseId === this.form.course && !this.form.concepts.includes(c.code))
+          .map(c => { const [score, why] = rank(c); return { value: c.code, label: this.label(c), score, reason: this.t('lo.' + why) }; })
+          .sort((a, b) => b.score - a.score).slice(0, 4);
+        this.aiLoading = false;
+        this.announce(this.aiSuggestions.length ? this.tf('lo.aiReady', { n: this.aiSuggestions.length }) : this.t('lo.aiNone'));
+      },
+
+      /* ---------- الحفظ: تحقق + تقدّم رفع تجريبي لكل ملف جديد ---------- */
+      async submitObject() {
+        this.formSubmitted = true;
+        if (this.errorCount) {
+          await this.$nextTick();
+          this.$refs.form.querySelector('[aria-invalid="true"]')?.focus();
+          return;
+        }
+        this.busy = true;
+        for (const f of this.form.files.filter(x => !x.existing)) {
+          f.status = 'uploading';
+          for (let p = 20; p <= 100; p += 20) { f.progress = p; await sleep(90); }
+          f.status = 'done';
+        }
+        await sleep(200);
+        const f = this.form;
+        const data = { titleAr: f.titleAr, titleEn: f.titleEn, courseId: f.course, unitId: f.unit, lessonId: f.lesson, concepts: [...f.concepts], isPublic: f.isPublic,
+                       files: f.files.map(x => ({ name: x.name, kind: x.kind, bytes: x.bytes })) };
+        data.format = data.files[0].kind;
+        if (this.editingObject) Object.assign(this.editingObject, data);
+        else {
+          const prefix = { scorm12: 'SCORM', scorm2004: 'SCORM', html5: 'HTML5', video: 'VID', pdf: 'PDF' }[data.format];
+          this.objects.unshift({ id: Date.now(), code: 'LO-' + prefix + '-' + String(100 + this.objects.length).padStart(3, '0'), status: 'review', questions: 0, ...data });
+        }
+        this.busy = false;
+        this.toastSuccess(this.t(this.editingObject ? 'lo.toastSave' : 'lo.toastUpload'));
+        this.snapshot = JSON.stringify(this.form);
+        this.closePanel(true);
+      },
+
+      /* ---------- المعاينة / الظهور / الحذف ---------- */
+      modal: null, previewTarget: null, deleteTarget: null,
+      openPreview(o, evt) { this.lastTrigger = evt?.currentTarget || document.activeElement; this.previewTarget = o; this.modal = 'preview'; },
+      closeModal(restore = true) {
+        if (this.busy || !this.modal) return;
+        this.modal = null; this.previewTarget = null; this.deleteTarget = null;
+        if (restore) this.restoreFocus();
+      },
+      async togglePublic(o) {
+        if (!o.isPublic) {
+          const ok = await this.confirmDialog(this.t('lo.publishTitle'), this.tf('lo.publishText', { title: this.title(o) }), this.t('lo.publishConfirm'));
+          if (!ok) return;
+        }
+        this.setPublic(o, !o.isPublic);
+      },
+      setPublic(o, val) {
+        const prev = o.isPublic; o.isPublic = val;
+        this.toastUndo(this.tf(val ? 'lo.toastPublic' : 'lo.toastPrivate', { title: this.title(o) }), () => { o.isPublic = prev; });
+      },
+      async confirmDialog(title, text, confirmText) {
+        if (!window.Swal) return window.confirm(text);
+        const r = await Swal.fire({ title, text, icon: 'warning', showCancelButton: true, focusCancel: true, reverseButtons: true,
+          confirmButtonText: confirmText, cancelButtonText: this.t('lo.cancel'), buttonsStyling: false,
+          customClass: { popup: 'firob-swal', confirmButton: 'btn btn-primary', cancelButton: 'btn btn-outline' } });
+        return r.isConfirmed;
+      },
+      confirmDelete(o, evt) { this.lastTrigger = evt?.currentTarget || document.activeElement; this.deleteTarget = o; this.modal = 'delete'; },
+      async deleteConfirmed() {
+        const o = this.deleteTarget;
+        if (!o || o.questions > 0) return;
+        this.busy = true; await sleep(400); this.busy = false;
+        this.objects = this.objects.filter(x => x.id !== o.id);
+        this.modal = null; this.deleteTarget = null;
+        this.toastSuccess(this.tf('lo.toastDelete', { title: this.title(o) }));
+        this.restoreFocus();
+      },
+
+      /* ---------- SweetAlert2 ---------- */
+      toastBase(extra) {
+        if (!window.Swal) return Promise.resolve({});
+        return Swal.fire(Object.assign({
+          toast: true, position: 'top-end', icon: 'success', showConfirmButton: false, timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (el) => { el.addEventListener('mouseenter', Swal.stopTimer); el.addEventListener('mouseleave', Swal.resumeTimer); el.addEventListener('focusin', Swal.stopTimer); },
+        }, extra));
+      },
+      toastSuccess(msg) { this.toastBase({ title: msg }); },
+      toastUndo(msg, undo) {
+        this.toastBase({ title: msg, timer: 6000, timerProgressBar: true, showConfirmButton: true, confirmButtonText: this.t('lo.undo'), buttonsStyling: false,
+          customClass: { popup: 'firob-swal firob-toast', confirmButton: 'btn btn-sm btn-outline' } })
+          .then(r => { if (r.isConfirmed) { undo(); this.toastSuccess(this.t('lo.undone')); } });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        this.$watch('courseFilter', () => { this.unitFilter = 'all'; this.page = 1; });
+        ['search', 'formatFilter', 'visibilityFilter', 'unitFilter'].forEach(k => this.$watch(k, () => { this.page = 1; }));
+        window.addEventListener('beforeunload', (e) => { if (this.panelOpen && this.dirty && !this.busy) { e.preventDefault(); e.returnValue = ''; } });
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          (g && g.offsetParent !== null ? g : this.$refs.loSearch)?.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — كل نافذة تعالج Esc بنفسها (مع تأكيد التغييرات غير المحفوظة)
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>

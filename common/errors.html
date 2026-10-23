@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>404 · الصفحة غير موجودة — FirOb</title>
+
+<!--
+  ═════ ربط Laravel (Laravel mapping) ═════
+  • كل حالة هنا تصبح قالبًا مستقلًا: resources/views/errors/{code}.blade.php
+      403.blade.php · 404.blade.php · 419.blade.php · 429.blade.php · 500.blade.php
+    والحالتان الخاصتان (quota / suspended) تُعرضان من Middleware/Exception مخصّص
+    (مثل QuotaExceededException → errors/quota.blade.php، و AccountSuspended → errors/suspended.blade.php).
+  • القالب يُرسَم بالكامل على الخادم (العنوان، الوصف، الروابط، رقم المرجع، Retry-After، أرقام الحصة)
+    ولا يعتمد على JavaScript إطلاقًا؛ Alpine في هذا الملف مجرد طبقة معاينة للنموذج الأولي.
+  • 429: قيمة retry_after تأتي من ترويسة Retry-After في الاستثناء ThrottleRequestsException.
+  • 500: رقم المرجع (REQ-xxxxxxxx) يُولَّد على الخادم ويُسجَّل مع الاستثناء في السجلات (Log context)،
+    لا يُولَّد في المتصفح كما هنا.
+  • 419: رابط الدخول يحمل ?redirect= (يُفضَّل url()->previous() إن كان من نفس النطاق، وإلا dashboard).
+  • suspended: «تسجيل الخروج» في Laravel نموذج POST إلى route('logout') مع @csrf وليس رابطًا.
+  • أضف <meta name="robots" content="noindex"> في layout الأخطاء.
+-->
+
+<!-- ① تطبيق الثيم واللغة قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      if (loc !== 'ar' && loc !== 'en') loc = 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج CSS حرج احتياطي (CSS عادي): يبقي الصفحة مقروءة إن فشل تحميل Tailwind CDN أو JavaScript.
+     كل المحددات داخل :where() (أولوية صفرية) كي تتغلب عليها أدوات Tailwind عند توفرها. -->
+<style>
+  :root {
+    color-scheme: light;
+    --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+    --ink: 30 41 59;      --muted: 71 85 105;
+    --line: 226 232 240;  --line-strong: 90 104 125;
+    --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+    --danger: 185 28 28;
+    --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+  }
+  .dark {
+    color-scheme: dark;
+    --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+    --ink: 232 240 245;   --muted: 157 178 192;
+    --line: 34 55 69;     --line-strong: 100 125 143;
+    --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+    --danger: 252 165 165;
+  }
+  [x-cloak] { display: none !important; }
+  :where(body) { margin: 0; background: rgb(var(--page)); color: rgb(var(--ink));
+    font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; line-height: 1.6; }
+  :where(main) { display: flex; justify-content: center; padding: 2.5rem 1rem; }
+  :where(main > div) { width: 100%; max-width: 42rem; }
+  :where(header) { display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem; }
+  :where(header img) { height: 1.75rem; width: auto; }
+  :where(.card) { background: rgb(var(--card)); border: 1px solid rgb(var(--line)); border-radius: 1.5rem; padding: 2rem; text-align: center; }
+  :where(.card h1) { font-size: 1.75rem; font-weight: 800; margin: .5rem 0; color: rgb(var(--ink)); }
+  :where(.card p) { color: rgb(var(--muted)); margin: .75rem auto; max-width: 28rem; }
+  :where(.badge) { display: inline-block; padding: .125rem .75rem; border-radius: 9999px; font-weight: 800;
+    background: rgb(var(--soft)); color: rgb(var(--brand)); }
+  :where(.btn) { display: inline-flex; align-items: center; gap: .5rem; margin: .25rem; padding: .75rem 1.5rem;
+    border-radius: .75rem; font-weight: 700; text-decoration: none; border: 1px solid rgb(var(--line));
+    background: rgb(var(--card)); color: rgb(var(--ink)); font: inherit; cursor: pointer; }
+  :where(.btn-accent) { background: #F7D933; color: #1E293B; border-color: transparent; }
+  :where(footer) { text-align: center; color: rgb(var(--muted)); font-size: .8125rem; margin-top: 1.5rem; }
+  :where(footer a) { color: rgb(var(--brand)); }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  :where(:focus-visible) { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }
+</style>
+
+<!-- ② الخطوط -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  if (window.tailwind) tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      fontSize: {
+        caption: ['0.875rem',  { lineHeight: '1.375rem' }],
+        label:   ['0.9375rem', { lineHeight: '1.5rem'   }],
+        body:    ['1rem',      { lineHeight: '1.625rem' }],
+        lead:    ['1.0625rem', { lineHeight: '1.75rem'  }],
+        h1:      ['clamp(1.5rem, 1rem + 1.7vh, 2rem)',     { lineHeight: '1.3'  }],
+        display: ['clamp(1.75rem, 1rem + 2.4vh, 2.75rem)', { lineHeight: '1.3'  }],
+      },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة المكونات (التوكنز نفسها معرّفة في CSS الحرج أعلاه) -->
+<style type="text/tailwindcss">
+  @layer base {
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; }
+    html[lang='en'] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+    body { @apply min-h-full bg-page text-body text-ink antialiased transition-colors duration-300; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+
+    .btn { @apply m-0 inline-flex select-none items-center justify-center gap-2.5 whitespace-nowrap rounded-xl border border-transparent px-4 py-2.5 text-label font-bold no-underline transition duration-150 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-lg { @apply px-6 py-3.5 text-[1.0625rem] leading-7 active:translate-y-px; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-outline { @apply border-line bg-card text-ink hover:bg-soft; }
+    .btn-ghost   { @apply border-transparent bg-transparent text-brand hover:bg-soft; }
+
+    .tool { @apply grid h-10 w-10 place-items-center rounded-xl border border-line-strong bg-field text-muted transition-colors hover:bg-soft hover:text-ink; }
+    .pill { @apply rounded-full border border-line-strong px-3 py-1 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]; }
+
+    .card { @apply rounded-3xl border border-line bg-card shadow-card transition-colors duration-300; }
+    .dark .card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .75); }
+
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-caption font-extrabold leading-5; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+  }
+  /* [SA shell fixes] غير مطلوبة هنا: لا تلميحات ولا قوائم منسدلة في صفحة الخطأ */
+</style>
+
+<!-- ⑥ Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑦ المنطق ونصوص الحالات -->
+<script>
+  /* النصوص العامة للواجهة — في Laravel تُنقل إلى lang/ar.json و lang/en.json */
+  const I18N = {
+    ar: {
+      pageTitle: 'حالات النظام والأخطاء',
+      previewLabel: 'معاينة الحالات', previewHint: 'لأغراض عرض النموذج الأولي فقط — تُحذف قبل الإطلاق',
+      previewGroup: 'اختيار حالة الخطأ للمعاينة',
+      darkMode: 'الوضع الداكن', language: 'اللغة',
+      home: 'العودة للرئيسية', retry: 'إعادة المحاولة', support: 'التواصل مع الدعم',
+      login: 'تسجيل الدخول', switchAccount: 'التبديل إلى حساب آخر', upgrade: 'ترقية الباقة', logout: 'تسجيل الخروج',
+      back: 'الرجوع للصفحة السابقة',
+      retryIn: 'يمكنك إعادة المحاولة بعد', seconds: 'ثانية', retryNow: 'يمكنك إعادة المحاولة الآن',
+      quotaLabel: 'الاستخدام الحالي', quotaOf: 'من الحصة المتاحة', quotaValueText: '{used} من {limit} {resource} ({pct})',
+      resSeats: 'مقاعد المستخدمين', resTokens: 'توكنز الذكاء الاصطناعي',
+      unsavedNote: 'قد تُفقد أي بيانات أدخلتها ولم تُحفَظ قبل انتهاء الجلسة.',
+      refId: 'رقم المرجع', refHint: 'شارك هذا الرقم مع فريق الدعم لتسريع المتابعة.',
+      copy: 'نسخ', copyRef: 'نسخ رقم المرجع', copied: 'تم نسخ رقم المرجع.',
+      copyFailed: 'تعذّر النسخ تلقائيًا — حدّد الرقم وانسخه يدويًا.',
+      reloading: 'جارٍ إعادة تحميل الصفحة…',
+      mailSubject: 'FirOb — خطأ {code} — {ref}',
+      mailBody: 'رمز الخطأ: {code}\nرقم المرجع: {ref}\nالصفحة: {url}\n\nصف ما كنت تفعله:\n',
+      backToMap: 'خريطة الشاشات',
+      rights: '© 2026 FirOb · جميع الحقوق محفوظة',
+    },
+    en: {
+      pageTitle: 'System Status & Errors',
+      previewLabel: 'Preview states', previewHint: 'For prototype demo purposes only — remove before launch',
+      previewGroup: 'Choose an error state to preview',
+      darkMode: 'Dark mode', language: 'Language',
+      home: 'Go to Dashboard', retry: 'Try again', support: 'Contact Support',
+      login: 'Sign in', switchAccount: 'Switch account', upgrade: 'Upgrade Plan', logout: 'Sign out',
+      back: 'Go back',
+      retryIn: 'You can retry in', seconds: 's', retryNow: 'You can retry now',
+      quotaLabel: 'Current usage', quotaOf: 'of available quota', quotaValueText: '{used} of {limit} {resource} ({pct})',
+      resSeats: 'user seats', resTokens: 'AI tokens',
+      unsavedNote: 'Any input you had not saved before the session expired may be lost.',
+      refId: 'Reference ID', refHint: 'Share this ID with support to speed things up.',
+      copy: 'Copy', copyRef: 'Copy reference ID', copied: 'Reference ID copied.',
+      copyFailed: "Couldn't copy automatically — select the ID and copy it manually.",
+      reloading: 'Reloading the page…',
+      mailSubject: 'FirOb — Error {code} — {ref}',
+      mailBody: 'Error code: {code}\nReference ID: {ref}\nPage: {url}\n\nDescribe what you were doing:\n',
+      backToMap: 'Screen map',
+      rights: '© 2026 FirOb · All rights reserved',
+    },
+  };
+
+  /* المسارات نسبةً إلى common/ (الصفحات في جذر المشروع) */
+  const PATHS = {
+    dashboard: '../tenant-admin/TenantDashboard.html',
+    login: '../auth/login.html',
+    upgrade: '../tenant-admin/SubscriptionsAndInvoices.html',
+    map: '../index.html',
+  };
+  const SUPPORT_EMAIL = 'support@firob.example';
+
+  /* تعريف كل حالة خطأ: الرمز، الأيقونة، درجة الخطورة (للون)، مجموعة الإجراءات، والنصوص */
+  const ERRORS = {
+    '403': {
+      code: '403', short: { ar: '403', en: '403' }, icon: 'fa-solid fa-lock', tone: 'danger',
+      actions: ['home', 'switchAccount', 'support'],
+      ar: { title: 'غير مصرح بالوصول', desc: 'لا تملك الصلاحية الكافية للوصول إلى هذه الصفحة أو هذا المورد. إذا كنت تعتقد أن هذا خطأ، تواصل مع مسؤول النظام في مؤسستك لمراجعة صلاحياتك، أو سجّل الدخول بحساب آخر.' },
+      en: { title: 'Forbidden', desc: "You don't have permission to access this page or resource. If you believe this is a mistake, contact your organization's administrator to review your permissions, or sign in with another account." },
+    },
+    '404': {
+      code: '404', short: { ar: '404', en: '404' }, icon: 'fa-solid fa-map-location-dot', tone: 'primary',
+      actions: ['home', 'back'],
+      ar: { title: 'الصفحة غير موجودة', desc: 'الرابط الذي حاولت الوصول إليه غير موجود، أو تم نقله أو حذفه. تحقّق من صحة الرابط أو عد إلى الصفحة الرئيسية.' },
+      en: { title: 'Page Not Found', desc: "The page you're looking for doesn't exist, or may have been moved or deleted. Check the URL, or head back to the homepage." },
+    },
+    '419': {
+      code: '419', short: { ar: '419', en: '419' }, icon: 'fa-solid fa-hourglass-end', tone: 'warning',
+      actions: ['login'],
+      ar: { title: 'انتهت صلاحية الجلسة', desc: 'انتهت صلاحية جلستك أو رمز الأمان للنموذج، غالبًا بسبب عدم النشاط لفترة طويلة، حرصًا على حماية بياناتك. يرجى تسجيل الدخول مجددًا لمتابعة العمل.' },
+      en: { title: 'Page Expired', desc: 'Your session or form security token has expired, usually after a long period of inactivity, to keep your data safe. Please sign in again to continue.' },
+    },
+    '429': {
+      code: '429', short: { ar: '429', en: '429' }, icon: 'fa-solid fa-gauge-high', tone: 'warning',
+      actions: ['retry', 'home'], showRef: true,
+      ar: { title: 'تجاوز معدل الطلبات المسموح', desc: 'لقد تجاوزت عدد الطلبات المسموح بها خلال فترة زمنية قصيرة. يرجى الانتظار قليلًا قبل إعادة المحاولة.' },
+      en: { title: 'Too Many Requests', desc: "You've exceeded the allowed number of requests in a short period. Please wait a moment before trying again." },
+    },
+    '500': {
+      code: '500', short: { ar: '500', en: '500' }, icon: 'fa-solid fa-server', tone: 'danger',
+      actions: ['retry', 'home', 'support'], showRef: true,
+      ar: { title: 'خطأ خادم داخلي', desc: 'حدث خطأ غير متوقع في الخادم وتم تسجيله. يرجى المحاولة مرة أخرى بعد قليل، وإن تكرر الخطأ فتواصل مع الدعم وأرفق رقم المرجع.' },
+      en: { title: 'Internal Server Error', desc: 'An unexpected server error occurred and has been logged. Please try again shortly; if it keeps happening, contact support and include the reference ID.' },
+    },
+    quota: {
+      code: null, short: { ar: 'الحصة', en: 'Quota' }, icon: 'fa-solid fa-chart-pie', tone: 'warning',
+      actions: ['upgrade', 'support'],
+      ar: { title: 'تجاوز حصة الاستخدام', desc: 'لقد استهلكت الحد الأقصى من حصتك الحالية. قم بترقية باقتك أو تواصل مع مسؤول مؤسستك لزيادة الحصة.' },
+      en: { title: 'Quota Exceeded', desc: "You've reached the maximum of your current quota. Upgrade your plan, or contact your organization's admin to increase it." },
+    },
+    suspended: {
+      code: null, short: { ar: 'معلّق', en: 'Suspended' }, icon: 'fa-solid fa-user-slash', tone: 'warning',
+      actions: ['support', 'logout'],
+      ar: { title: 'الحساب معلّق أو مجمّد', desc: 'تم تعليق أو تجميد هذا الحساب، أو حساب مؤسستك، وقد يكون ذلك بسبب مشكلة في الفوترة أو مخالفة لشروط الاستخدام. تواصل مع الدعم لمعرفة التفاصيل وإعادة تفعيل الحساب.' },
+      en: { title: 'Account Suspended', desc: "This account, or your organization's account, has been suspended or frozen — possibly due to a billing issue or a violation of the terms of use. Contact support for details and to reactivate it." },
+    },
+  };
+
+  /* أيقونات الإجراءات (Font Awesome) */
+  const ACTION_ICONS = {
+    home: 'fa-solid fa-house', back: 'fa-solid fa-arrow-left rtl:-scale-x-100', login: 'fa-solid fa-right-to-bracket',
+    switchAccount: 'fa-solid fa-user-group', support: 'fa-regular fa-envelope', retry: 'fa-solid fa-rotate-right',
+    upgrade: 'fa-solid fa-arrow-up-right-dots', logout: 'fa-solid fa-right-from-bracket',
+  };
+
+  const TONE = {
+    danger:  { glow: 'bg-error-500/15',   ring: 'bg-error-500/10',   ic: 'text-error-600 dark:text-red-300',       badge: 'bg-error-500/15 text-error-700 dark:text-red-300' },
+    warning: { glow: 'bg-warning-500/15', ring: 'bg-warning-500/10', ic: 'text-warning-700 dark:text-warning-500', badge: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+    primary: { glow: 'bg-primary-500/15', ring: 'bg-primary-500/10', ic: 'text-brand',                             badge: 'bg-primary-500/15 text-brand' },
+  };
+
+  /* رقم مرجع لكل تحميل: REQ- + 8 خانات ست عشرية (في Laravel يأتي من الخادم) */
+  function makeRefId() {
+    const b = new Uint8Array(4);
+    (window.crypto || globalThis.crypto).getRandomValues(b);
+    return 'REQ-' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+
+  /* قراءة رقم صحيح غير سالب من الاستعلام، وإلا القيمة الافتراضية */
+  function numParam(params, key, def, min) {
+    const raw = params.get(key);
+    if (raw === null || raw.trim() === '') return def;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= min ? Math.floor(n) : def;
+  }
+
+  function app() {
+    let stored = null;
+    try { stored = localStorage.getItem('firob-locale'); } catch (e) {}
+    return {
+      /* --- الحالة --- */
+      lang: (window.FIROB && FIROB.locale) || (stored === 'en' ? 'en' : 'ar'),
+      dark: document.documentElement.classList.contains('dark'),
+      type: '404',
+      ready: false,
+      toast: '', toastTimer: null,
+      liveMsg: '',
+      refId: makeRefId(),
+      copyState: '',            // '' | 'ok' | 'fail'
+      retryAfter: 20, deadline: 0, retrySeconds: 0, retryTimer: null, announcedReady: false,
+      quota: { used: 150, limit: 150, resource: 'seats' },
+      prevPage: 'dashboard',
+
+      /* --- بيانات مشتقة --- */
+      get def() { return ERRORS[this.type]; },
+      get text() { return this.def[this.lang]; },
+      get tone() { return TONE[this.def.tone]; },
+      get types() { return Object.keys(ERRORS); },
+      get codeLabel() { return this.def.code || this.def.short.en.toLowerCase(); },
+      get locTag() { return this.lang === 'ar' ? 'ar-u-nu-latn' : 'en'; },
+      get actions() { return this.def.actions.map((id, i) => this.action(id, i)); },
+      labelFor(key) { return ERRORS[key].short[this.lang]; },
+
+      /* --- الترجمة --- */
+      t(k) { return (I18N[this.lang] && I18N[this.lang][k]) || k; },
+      tf(k, vars) { return this.t(k).replace(/\{(\w+)\}/g, (m, n) => (vars && n in vars ? vars[n] : m)); },
+      fmt(n) { return new Intl.NumberFormat(this.locTag).format(n); },
+
+      init() {
+        const q = new URLSearchParams(location.search);
+        const tp = q.get('type');
+        if (tp && ERRORS[tp]) this.type = tp;
+        this.retryAfter = numParam(q, 'retry_after', 20, 0);
+        const limit = numParam(q, 'limit', 150, 1);
+        this.quota = {
+          limit,
+          used: numParam(q, 'used', limit, 0),   // الافتراضي: الحصة مستهلكة بالكامل
+          resource: q.get('resource') === 'tokens' ? 'tokens' : 'seats',
+        };
+        this.prevPage = this.computePrevPage();
+        this.$watch('lang', () => this.applyLang());
+        this.$watch('type', () => {
+          this.applyLang(); this.syncQuery(); this.manageRetryTimer();
+          this.copyState = '';
+          this.liveMsg = this.title();
+        });
+        this.applyLang();
+        this.manageRetryTimer();
+        this.ready = true;
+      },
+      title() { return (this.def.code ? this.def.code + ' · ' : '') + this.text.title; },
+      applyLang() {
+        const h = document.documentElement;
+        h.lang = this.lang; h.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', this.lang); } catch (e) {}
+        if (window.FIROB && FIROB.setLocale) FIROB.setLocale(this.lang);
+        document.title = this.title() + ' — FirOb';
+      },
+      syncQuery() {
+        const url = new URL(location.href);
+        url.searchParams.set('type', this.type);
+        history.replaceState(null, '', url);
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+      },
+
+      /* --- الصفحة السابقة (419): من نفس النطاق فقط، وإلا dashboard --- */
+      computePrevPage() {
+        try {
+          const ref = document.referrer;
+          if (ref) {
+            const u = new URL(ref);
+            if (u.origin === location.origin && u.pathname !== location.pathname) return u.pathname + u.search + u.hash;
+          }
+        } catch (e) {}
+        return 'dashboard';
+      },
+
+      /* --- تعريف الإجراء: رابط حقيقي أو زر --- */
+      action(id, i) {
+        const a = { id, label: this.t(id), icon: ACTION_ICONS[id], variant: i === 0 ? 'btn-accent' : i === 1 ? 'btn-outline' : 'btn-ghost', href: null };
+        if (id === 'home') a.href = PATHS.dashboard;
+        else if (id === 'switchAccount') a.href = PATHS.login + '?switch=1';
+        else if (id === 'login') a.href = PATHS.login + '?redirect=' + encodeURIComponent(this.prevPage);
+        else if (id === 'upgrade') a.href = PATHS.upgrade;
+        else if (id === 'logout') a.href = PATHS.login + '?logged_out=1'; // Laravel: POST route('logout') + @csrf
+        else if (id === 'support') a.href = this.mailtoHref();
+        return a;
+      },
+      run(id) {
+        if (id === 'retry') this.refresh();
+        else if (id === 'back') this.goBack();
+      },
+      isDisabled(id) { return id === 'retry' && this.type === '429' && this.retrySeconds > 0; },
+
+      /* --- الدعم: رابط بريد حقيقي يحمل الرمز ورقم المرجع --- */
+      mailtoHref() {
+        const vars = { code: this.codeLabel, ref: this.refId, url: location.href };
+        return 'mailto:' + SUPPORT_EMAIL + '?subject=' + encodeURIComponent(this.tf('mailSubject', vars)) +
+               '&body=' + encodeURIComponent(this.tf('mailBody', vars));
+      },
+
+      /* --- نسخ رقم المرجع مع إبلاغ صادق بالنجاح أو الفشل --- */
+      async copyRef() {
+        let ok = false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(this.refId); ok = true; }
+        } catch (e) { ok = false; }
+        if (!ok) {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = this.refId; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            ok = document.execCommand('copy') === true;
+            ta.remove();
+          } catch (e) { ok = false; }
+        }
+        this.copyState = ok ? 'ok' : 'fail';
+        this.liveMsg = ok ? this.t('copied') : this.t('copyFailed');
+        if (ok) this.notify(this.t('copied'));
+        else if (this.$refs.refText) {
+          try { const r = document.createRange(); r.selectNodeContents(this.$refs.refText); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {}
+        }
+        return ok;
+      },
+
+      /* --- عدّاد 429 قائم على موعد نهائي (لا يتراكم فيه الانحراف) --- */
+      manageRetryTimer() {
+        clearInterval(this.retryTimer); this.retryTimer = null;
+        this.announcedReady = false;
+        if (this.type !== '429') { this.retrySeconds = 0; return; }
+        this.deadline = Date.now() + this.retryAfter * 1000;
+        this.tick();
+        if (this.retrySeconds > 0) this.retryTimer = setInterval(() => this.tick(), 250);
+      },
+      tick() {
+        const left = Math.max(0, Math.ceil((this.deadline - Date.now()) / 1000));
+        this.retrySeconds = left;
+        if (left === 0) {
+          clearInterval(this.retryTimer); this.retryTimer = null;
+          if (!this.announcedReady) { this.announcedReady = true; this.liveMsg = this.t('retryNow'); }
+        }
+      },
+
+      /* --- مقياس الحصة --- */
+      get quotaPct() { return Math.min(100, Math.round((this.quota.used / this.quota.limit) * 100)); },
+      get quotaResource() { return this.t(this.quota.resource === 'tokens' ? 'resTokens' : 'resSeats'); },
+      get quotaPctText() { return new Intl.NumberFormat(this.locTag, { style: 'percent', maximumFractionDigits: 0 }).format(this.quotaPct / 100); },
+      get quotaValueText() {
+        return this.tf('quotaValueText', { used: this.fmt(this.quota.used), limit: this.fmt(this.quota.limit), resource: this.quotaResource, pct: this.quotaPctText });
+      },
+
+      /* --- إجراءات الواجهة --- */
+      notify(msg) {   // يُستخدم للنجاح فقط
+        this.toast = msg; clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => this.toast = '', 3500);
+      },
+      refresh() { this.liveMsg = this.t('reloading'); setTimeout(() => location.reload(), 300); },
+      goBack() { history.length > 1 ? history.back() : (location.href = PATHS.dashboard); },
+    };
+  }
+</script>
+</head>
+
+<body x-data="app()" class="app-h flex flex-col">
+
+<!-- منطقة إعلان وحيدة لقارئات الشاشة: تبديل الحالة، انتهاء العدّاد، نتيجة النسخ، إعادة التحميل -->
+<p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+
+<!-- إشعار نجاح عائم (للنجاح فقط؛ الإعلان الصوتي يتم عبر منطقة liveMsg أعلاه) -->
+<div x-show="toast" x-cloak x-transition.opacity
+     class="fixed inset-x-4 top-4 z-50 mx-auto max-w-md rounded-xl border border-success-100 bg-success-50 p-4 text-caption font-bold text-success-800 shadow-pop dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-500">
+  <div class="flex items-start gap-3">
+    <i class="fa-solid fa-circle-check mt-0.5" aria-hidden="true"></i>
+    <p class="flex-1" x-text="toast"></p>
+  </div>
+</div>
+
+<!-- ═════ الشريط العلوي: الشعار + أدوات العرض ═════ -->
+<header class="flex shrink-0 items-center justify-between gap-3 px-4 py-3 sm:px-8">
+  <a href="../index.html" class="inline-flex items-center gap-2.5 rounded-lg">
+    <span class="inline-flex items-center rounded-lg bg-white p-1 shadow-sm">
+      <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-7 w-auto max-w-[8rem] object-contain">
+    </span>
+  </a>
+  <div x-cloak class="flex items-center gap-2">
+    <button type="button" class="tool" @click="toggleTheme()" :aria-pressed="dark.toString()"
+            :aria-label="t('darkMode')" :title="t('darkMode')">
+      <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+    </button>
+    <div class="flex h-10 items-center rounded-xl border border-line-strong bg-field p-1" role="group" :aria-label="lang === 'ar' ? 'اللغة' : 'Language'">
+      <button type="button" lang="ar" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+              :class="lang === 'ar' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="(lang === 'ar').toString()" @click="lang = 'ar'">عربي</button>
+      <button type="button" lang="en" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+              :class="lang === 'en' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="(lang === 'en').toString()" @click="lang = 'en'">EN</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═════ شريط معاينة الحالات (PROTOTYPE ONLY) ═════
+     أداة عرض للنموذج الأولي فقط: معزولة تمامًا عن منطق الإنتاج، ولا وجود لها في قوالب
+     resources/views/errors/*.blade.php — احذف هذا الشريط بالكامل قبل الإطلاق.
+     مخفي بـ x-cloak فلا يظهر دون JavaScript. -->
+<div x-cloak class="sticky top-0 z-20 shrink-0 border-b border-line/70 bg-card/75 px-4 py-2 backdrop-blur-md sm:px-8" data-prototype-only>
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-1.5" role="group" :aria-label="t('previewGroup')">
+    <span class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line-strong/70 bg-field/70 px-2.5 py-1 text-[0.75rem] font-extrabold text-muted">
+      <i class="fa-solid fa-sliders text-accent-600 dark:text-accent-500" aria-hidden="true"></i>
+      <span x-text="t('previewLabel')"></span>
+    </span>
+    <template x-for="key in types" :key="key">
+      <button type="button" class="pill text-[0.8125rem]" :class="type === key ? 'border-primary-500 bg-primary-500 text-white shadow-sm' : 'border-line text-muted hover:bg-soft'"
+              @click="type = key" :aria-pressed="(type === key).toString()">
+        <span x-text="labelFor(key)"></span>
+      </button>
+    </template>
+    <span class="hidden text-[0.75rem] text-muted md:inline" x-text="t('previewHint')"></span>
+  </div>
+</div>
+
+<!-- ═════ المحتوى الرئيسي ═════
+     المحتوى الافتراضي (404 بالعربية) مكتوب نصًا ثابتًا في HTML — يُقرأ دون JavaScript،
+     ثم يتسلّمه Alpine عبر x-text/:href. هذا ما سيُرسَم على الخادم في errors/404.blade.php. -->
+<main class="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-4 py-10 sm:px-8">
+  <div class="w-full max-w-2xl">
+    <section class="card p-8 text-center sm:p-12" aria-labelledby="error-title">
+
+      <!-- أيقونة توضيحية بخلفية متوهجة بحسب درجة الخطورة (زخرفية) -->
+      <div x-cloak class="relative mx-auto mb-7 grid h-32 w-32 place-items-center sm:h-36 sm:w-36" aria-hidden="true">
+        <span class="absolute inset-0 rounded-full blur-2xl transition-colors duration-300" :class="tone.glow"></span>
+        <span class="absolute inset-3 rounded-full transition-colors duration-300" :class="tone.ring"></span>
+        <span class="absolute inset-3 rounded-full border-2 border-dashed opacity-30 transition-colors duration-300" :class="tone.ic"></span>
+        <span class="relative grid h-24 w-24 place-items-center rounded-full bg-card shadow-card ring-1 ring-line/60 sm:h-28 sm:w-28">
+          <i class="text-4xl sm:text-5xl" :class="[def.icon, tone.ic]"></i>
+        </span>
+      </div>
+
+      <!-- رمز الحالة + العنوان -->
+      <span x-show="def.code" class="badge mb-3" :class="tone.badge">
+        <bdi dir="ltr" x-text="def.code">404</bdi>
+      </span>
+      <h1 id="error-title" class="text-h1 font-extrabold text-ink" x-text="text.title">الصفحة غير موجودة</h1>
+      <p class="mx-auto mt-3 max-w-md text-label leading-7 text-muted" x-text="text.desc">الرابط الذي حاولت الوصول إليه غير موجود، أو تم نقله أو حذفه. تحقّق من صحة الرابط أو عد إلى الصفحة الرئيسية.</p>
+
+      <!-- 419: تنبيه فقدان البيانات غير المحفوظة -->
+      <p x-show="type === '419'" x-cloak class="mx-auto mt-4 max-w-md rounded-xl border border-warning-500/30 bg-warning-50 p-3 text-caption font-bold text-warning-800 dark:bg-warning-500/10 dark:text-warning-500">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        <span x-text="t('unsavedNote')"></span>
+      </p>
+
+      <!-- عدّاد إعادة المحاولة (429 فقط): مرئي لكنه ليس منطقة حيّة؛ الإعلان عند الصفر عبر liveMsg -->
+      <div x-show="type === '429'" x-cloak class="mx-auto mt-5 max-w-xs rounded-xl border border-line bg-soft/60 p-3 text-caption font-bold text-muted">
+        <p x-show="retrySeconds > 0"><span x-text="t('retryIn')"></span> <bdi dir="ltr" class="tabular-nums text-ink" x-text="fmt(retrySeconds)"></bdi> <span x-text="t('seconds')"></span></p>
+        <p x-show="retrySeconds <= 0" class="text-success-700 dark:text-success-500"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <span x-text="t('retryNow')"></span></p>
+      </div>
+
+      <!-- مقياس الحصة (quota فقط) — ?used=&limit=&resource=seats|tokens -->
+      <div x-show="type === 'quota'" x-cloak class="mx-auto mt-5 max-w-xs text-start">
+        <div class="mb-1.5 flex items-center justify-between gap-3 text-caption font-bold">
+          <span id="quota-label" class="text-warning-700 dark:text-warning-500"><span x-text="t('quotaLabel')"></span> · <span x-text="quotaResource"></span></span>
+          <bdi dir="ltr" class="text-muted tabular-nums" x-text="fmt(quota.used) + ' / ' + fmt(quota.limit)"></bdi>
+        </div>
+        <div class="quota-track" role="progressbar" aria-labelledby="quota-label" aria-valuemin="0" aria-valuemax="100"
+             :aria-valuenow="quotaPct" :aria-valuetext="quotaValueText">
+          <div class="quota-fill" :class="quotaPct >= 100 ? 'bg-error-500' : 'bg-warning-500'" :style="'width:' + quotaPct + '%'"></div>
+        </div>
+        <p class="mt-1.5 text-[0.75rem] text-muted"><span x-text="quotaPctText"></span> <span x-text="t('quotaOf')"></span></p>
+      </div>
+
+      <!-- رقم المرجع (500 و 429) مع زر نسخ صادق -->
+      <div x-show="def.showRef" x-cloak class="mx-auto mt-5 max-w-sm rounded-xl border border-line bg-field p-3 text-caption">
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <span class="font-bold text-muted" x-text="t('refId')"></span>
+          <code x-ref="refText" dir="ltr" class="select-all rounded bg-soft px-2 py-0.5 font-mono font-bold text-ink" x-text="refId"></code>
+          <button type="button" class="pill border-line text-brand hover:bg-soft" @click="copyRef()" :aria-label="t('copyRef')">
+            <i class="fa-regular" :class="copyState === 'ok' ? 'fa-circle-check' : 'fa-copy'" aria-hidden="true"></i>
+            <span x-text="t('copy')"></span>
+          </button>
+        </div>
+        <p class="mt-1.5 text-[0.75rem] text-muted" x-text="t('refHint')"></p>
+        <p x-show="copyState === 'fail'" class="mt-1.5 text-[0.75rem] font-bold text-error-700 dark:text-red-300" x-text="t('copyFailed')"></p>
+      </div>
+
+      <!-- أزرار الإجراءات: مجموعة لكل حالة (ERRORS[type].actions) -->
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+        <!-- بديل ثابت دون JavaScript (404): يُستبدل بالمجموعة الديناميكية فور تشغيل Alpine -->
+        <a x-show="!ready" href="../tenant-admin/TenantDashboard.html" class="btn btn-accent btn-lg min-w-[11rem] flex-none">العودة للرئيسية</a>
+        <template x-for="a in actions" :key="type + a.id">
+          <span class="contents">
+            <template x-if="a.href">
+              <a :href="a.href" class="btn btn-lg flex-none" :class="[a.variant, a.variant !== 'btn-ghost' ? 'min-w-[11rem]' : '']">
+                <i :class="a.icon" aria-hidden="true"></i>
+                <span x-text="a.label"></span>
+              </a>
+            </template>
+            <template x-if="!a.href">
+              <button type="button" class="btn btn-lg flex-none" :class="[a.variant, a.variant !== 'btn-ghost' ? 'min-w-[11rem]' : '']"
+                      :disabled="isDisabled(a.id)" @click="run(a.id)">
+                <i :class="a.icon" aria-hidden="true"></i>
+                <span x-text="a.label"></span>
+              </button>
+            </template>
+          </span>
+        </template>
+      </div>
+    </section>
+
+    <!-- تذييل الإنتاج -->
+    <footer class="mt-6 flex flex-wrap items-center justify-center gap-3 px-4 text-[0.8125rem] text-muted">
+      <span x-text="t('rights')">© 2026 FirOb · جميع الحقوق محفوظة</span>
+      <a href="../index.html" class="pill text-muted hover:bg-soft hover:text-ink">&#8962; <span x-text="t('backToMap')">خريطة الشاشات</span></a>
+    </footer>
+  </div>
+</main>
+
+</body>
+</html>

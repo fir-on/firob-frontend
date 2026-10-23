@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>مولّد المحتوى والأسئلة العام — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+<!-- بيانات تجريبية مشتركة (مقررات/وحدات/دروس/مفاهيم) — تُحذف عند الانتقال إلى Laravel -->
+<script src="../asset/js/firob-mock-data.js"></script>
+<!-- نسخة احتياطية مطابقة: تعمل الصفحة حتى لو لم يُوضع الملف في asset/js -->
+<script>
+window.FIROB_MOCK = window.FIROB_MOCK || {
+  /* إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس شاشة ADM-05 */
+  structure: {
+    units:   { enabled: true, required: true },
+    lessons: { enabled: true, required: true },
+  },
+
+  /* المقررات (Subject) — الصف خاصية على المقرر (subjects.grade_id) */
+  courses: [
+    { id: 'math-g7', ar: 'الرياضيات - الصف السابع',     en: 'Mathematics - Grade 7',     gradeAr: 'السابع الأساسي', gradeEn: 'Grade 7', icon: 'fa-square-root-variable', cls: 'bg-primary-500/10 text-brand' },
+    { id: 'sci-g8',  ar: 'العلوم العامة - الصف الثامن', en: 'General Science - Grade 8', gradeAr: 'الثامن الأساسي', gradeEn: 'Grade 8', icon: 'fa-flask',                cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+    { id: 'arab-g9', ar: 'اللغة العربية - الصف التاسع', en: 'Arabic Language - Grade 9', gradeAr: 'التاسع الأساسي', gradeEn: 'Grade 9', icon: 'fa-book-open',            cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+  ],
+
+  /* الوحدات (Unit — units.subject_id) */
+  units: [
+    { id: 'u101', courseId: 'math-g7', ar: 'الوحدة الأولى: الأعداد الصحيحة',      en: 'Unit 1: Integers' },
+    { id: 'u102', courseId: 'math-g7', ar: 'الوحدة الثانية: الكسور والنسب',       en: 'Unit 2: Fractions & Ratios' },
+    { id: 'u201', courseId: 'sci-g8',  ar: 'الوحدة الأولى: الخلية ومكوناتها',     en: 'Unit 1: The Cell & Its Components' },
+    { id: 'u202', courseId: 'sci-g8',  ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions' },
+    { id: 'u301', courseId: 'arab-g9', ar: 'الوحدة الأولى: النصوص الأدبية',       en: 'Unit 1: Literary Texts' },
+  ],
+
+  /* الدروس (Lesson — lessons.unit_id) */
+  lessons: [
+    { id: 'l1011', unitId: 'u101', ar: 'جمع الأعداد الصحيحة وطرحها',        en: 'Adding & Subtracting Integers' },
+    { id: 'l1012', unitId: 'u101', ar: 'ضرب الأعداد الصحيحة وقسمتها',       en: 'Multiplying & Dividing Integers' },
+    { id: 'l1021', unitId: 'u102', ar: 'تبسيط الكسور',                      en: 'Simplifying Fractions' },
+    { id: 'l1022', unitId: 'u102', ar: 'النسبة والتناسب',                   en: 'Ratio & Proportion' },
+    { id: 'l2011', unitId: 'u201', ar: 'مكونات الخلية النباتية',             en: 'Plant Cell Components' },
+    { id: 'l2012', unitId: 'u201', ar: 'تركيب الخلية النباتية والحيوانية',   en: 'Plant & Animal Cell Structure' },
+    { id: 'l2021', unitId: 'u202', ar: 'أنواع التفاعلات الكيميائية',         en: 'Types of Chemical Reactions' },
+    { id: 'l2022', unitId: 'u202', ar: 'موازنة المعادلات الكيميائية',        en: 'Balancing Chemical Equations' },
+    { id: 'l3011', unitId: 'u301', ar: 'تحليل النص الشعري',                 en: 'Analysing Poetry' },
+    { id: 'l3012', unitId: 'u301', ar: 'عناصر القصة القصيرة',               en: 'Short Story Elements' },
+  ],
+
+  /* المفاهيم (Concept) — links = withCount(['learningObjects', 'questions']) */
+  concepts: [
+    { id: 1,  code: 'CPT-MATH-001', ar: 'الأعداد الصحيحة الموجبة والسالبة', en: 'Positive & Negative Integers',
+      descAr: 'يشرح مفهوم الأعداد الصحيحة الموجبة والسالبة وطرق تمثيلها على خط الأعداد.',
+      descEn: 'Explains positive and negative integers and how to represent them on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', links: { objects: 6, questions: 24 } },
+    { id: 2,  code: 'CPT-MATH-002', ar: 'خاصية الإبدال في الضرب', en: 'Commutative Property of Multiplication',
+      descAr: 'يوضّح أن ترتيب العددين المضروبين لا يغيّر حاصل الضرب.',
+      descEn: 'Shows that the order of the two multiplied numbers does not change the product.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', links: { objects: 3, questions: 10 } },
+    { id: 3,  code: 'CPT-MATH-003', ar: 'القيمة المطلقة للعدد', en: 'Absolute Value of a Number',
+      descAr: 'يعرّف القيمة المطلقة بأنها المسافة بين العدد والصفر على خط الأعداد.',
+      descEn: 'Defines absolute value as the distance between a number and zero on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 4,  code: 'CPT-SCI-004', ar: 'تركيب الخلية النباتية والحيوانية', en: 'Plant & Animal Cell Structure',
+      descAr: 'يقارن بين مكونات الخلية النباتية والخلية الحيوانية ووظائف كل عضو فيها.',
+      descEn: 'Compares the components of plant and animal cells and the function of each organelle.',
+      courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', links: { objects: 4, questions: 12 } },
+    { id: 5,  code: 'CPT-SCI-005', ar: 'موازنة المعادلة الكيميائية', en: 'Balancing Chemical Equations',
+      descAr: 'يشرح كيفية موازنة عدد الذرات في طرفي المعادلة الكيميائية باستخدام المعاملات.',
+      descEn: 'Explains how to balance atom counts on both sides of a chemical equation using coefficients.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: null, links: { objects: 2, questions: 0 } },
+    { id: 6,  code: 'CPT-ARAB-006', ar: 'عناصر القصة القصيرة: الشخصية', en: 'Elements of the Short Story: Character',
+      descAr: 'يتناول دور الشخصية في بناء الحبكة وأنواعها في القصة القصيرة.',
+      descEn: 'Covers the role of character in building the plot and its types within a short story.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', links: { objects: 5, questions: 18 } },
+    { id: 7,  code: 'CPT-UNFL-007', ar: 'الصورة الشعرية', en: 'Poetic Imagery',
+      descAr: 'يعرّف الصورة الشعرية ودورها في تجسيد المعنى وإثراء النص الأدبي.',
+      descEn: 'Defines poetic imagery and its role in embodying meaning and enriching literary text.',
+      courseId: null, unitId: null, lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 8,  code: 'CPT-MATH-008', ar: 'تبسيط الكسور الاعتيادية', en: 'Simplifying Common Fractions',
+      descAr: 'يشرح قسمة البسط والمقام على العامل المشترك الأكبر للوصول إلى أبسط صورة.',
+      descEn: 'Explains dividing numerator and denominator by their GCD to reach the simplest form.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', links: { objects: 2, questions: 8 } },
+    { id: 9,  code: 'CPT-MATH-009', ar: 'النسبة المئوية', en: 'Percentages',
+      descAr: 'يعرّف النسبة المئوية كنسبة من مئة ويطبّقها على مسائل حياتية.',
+      descEn: 'Defines a percentage as a ratio out of one hundred and applies it to everyday problems.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 10, code: 'CPT-SCI-010', ar: 'التفاعلات الطاردة والماصة للحرارة', en: 'Exothermic & Endothermic Reactions',
+      descAr: 'يميّز بين التفاعلات التي تُطلق الحرارة والتي تمتصها مع أمثلة من الحياة اليومية.',
+      descEn: 'Distinguishes reactions that release heat from those that absorb it, with everyday examples.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', links: { objects: 1, questions: 6 } },
+    { id: 11, code: 'CPT-ARAB-011', ar: 'الوزن الشعري', en: 'Poetic Metre',
+      descAr: 'يعرّف الوزن الشعري والتفعيلات الأساسية في الشعر العربي.',
+      descEn: 'Defines poetic metre and the basic feet of Arabic poetry.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3011', links: { objects: 0, questions: 0 } },
+    { id: 12, code: 'CPT-ARAB-012', ar: 'التشبيه', en: 'Simile',
+      descAr: 'يعرّف التشبيه وأركانه الأربعة وأنواعه.',
+      descEn: 'Defines the simile, its four components and its types.',
+      courseId: 'arab-g9', unitId: null, lessonId: null, links: { objects: 3, questions: 0 } },
+  ],
+};
+</script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }  /* كان 1.09:1 في الداكن */
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-accent-700 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-2.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill  { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- أزرار التبويب / الأقراص (Tabs & Pills) ---------- */
+    .pill-option { @apply flex cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-line-strong px-3 py-2.5 text-center text-sm font-bold text-ink transition hover:border-primary-500; }
+    .pill-option.is-checked { @apply border-primary-700 bg-soft text-brand; }
+    .mode-tab { @apply flex min-w-0 flex-1 cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-line-strong px-3 py-3 text-center text-sm font-extrabold text-muted transition hover:border-primary-500 hover:text-ink; }
+    .mode-tab.is-checked { @apply border-primary-700 bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+
+    /* ---------- بطاقات نتائج التوليد ---------- */
+    .gen-card { @apply rounded-xl border border-line bg-card p-4 transition-colors; }
+    .gen-skeleton { @apply h-24 rounded-xl border border-line bg-soft/60 motion-safe:animate-pulse; }
+    /* زر إزالة الملف: هدف لمس ≥ 24px (WCAG 2.5.8) */
+    .tag-x { @apply inline-grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-error-500/10 hover:text-danger; }
+
+    /* ---------- منزلقات العدد: مسار ≥ 3:1 (WCAG 1.4.11) + جزء ممتلئ + تركيز واضح ---------- */
+    .range { @apply h-2 w-full cursor-pointer appearance-none rounded-full;
+             background: linear-gradient(to right, rgb(var(--brand)) var(--pct, 50%), rgb(var(--line-strong)) var(--pct, 50%)); }
+    [dir="rtl"] .range { background: linear-gradient(to left, rgb(var(--brand)) var(--pct, 50%), rgb(var(--line-strong)) var(--pct, 50%)); }
+    .range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 1.25rem; width: 1.25rem; border-radius: 9999px;
+             background: rgb(var(--brand)); border: 3px solid rgb(var(--card)); box-shadow: 0 0 0 1px rgb(var(--brand)); }
+    .range::-moz-range-thumb { height: 1.25rem; width: 1.25rem; border-radius: 9999px; background: rgb(var(--brand));
+             border: 3px solid rgb(var(--card)); box-shadow: 0 0 0 1px rgb(var(--brand)); }
+    .range:focus-visible { outline: 3px solid rgb(var(--brand)); outline-offset: 6px; }
+    @media (forced-colors: active) { .range { background: CanvasText; } }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="aiGenerator()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="tf('notif.' + n.key, { v: quotaPct })"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li x-text="t('navGroups.aiTools')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.aiGenerator')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — مولّد المحتوى والأسئلة العام ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-6 px-3 py-4 focus:outline-none sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('aig.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('aig.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-outline shrink-0" aria-haspopup="dialog" @click="openLogs()">
+          <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+          <span x-text="t('aig.logsBtn')"></span>
+          <span class="badge badge-muted px-2 tabular-nums" x-text="logs.length"></span>
+        </button>
+      </section>
+
+      <!-- قادم من قائمة الاختبارات -->
+      <div x-show="handoff" x-cloak role="status" class="flex flex-wrap items-center gap-3 rounded-2xl border border-primary-500/30 bg-soft px-4 py-3 text-sm">
+        <i class="fa-solid fa-route text-brand" aria-hidden="true"></i>
+        <p class="min-w-0 flex-1 font-bold text-ink" x-text="handoff ? tf('aig.handoff', { type: handoff.quizType ? t('aig.quizType.' + handoff.quizType) : '' }) : ''"></p>
+        <a href="quizzes.html" class="btn btn-outline btn-sm"><i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('aig.backToQuizzes')"></span></a>
+      </div>
+
+      <!-- ================= حصة التوكنز — حيّة (ai_usage_logs) ================= -->
+      <section class="panel p-4 sm:p-5" aria-labelledby="tokens-title">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex min-w-0 items-start gap-3">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-lg text-yellow-900 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-coins"></i></span>
+            <div class="min-w-0">
+              <h2 id="tokens-title" class="font-extrabold text-ink" x-text="t('aig.tokens.title')"></h2>
+              <p class="mt-0.5 text-xs text-muted sm:text-sm" x-text="t('aig.tokens.caption')"></p>
+            </div>
+          </div>
+
+          <div class="min-w-0 flex-1 lg:max-w-md">
+            <div class="flex items-center justify-between gap-2 text-xs font-bold">
+              <span :class="quotaTone.text" x-text="tf('aig.tokens.usedPct', { v: quotaPct })"></span>
+              <span class="tabular-nums text-muted" dir="ltr" x-text="fmt(quota.used) + ' / ' + fmt(quota.limit)"></span>
+            </div>
+            <div class="quota-track mt-1.5" role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="quotaPct"
+                 :aria-valuetext="tf('aig.tokens.valuetext', { used: fmt(quota.used), limit: fmt(quota.limit) })" aria-labelledby="tokens-title">
+              <div class="quota-fill" :class="quotaTone.bar" :style="`width:${quotaPct}%`"></div>
+            </div>
+            <p class="mt-1.5 text-xs text-muted" x-text="tf('aig.tokens.remaining', { n: fmt(quotaRemaining) })"></p>
+          </div>
+
+          <a href="SubscriptionsAndInvoices.html" class="badge badge-accent shrink-0 px-3 py-1.5 text-sm transition hover:bg-accent-500/30">
+            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+            <span x-text="t('aig.tokens.recharge')"></span>
+          </a>
+        </div>
+      </section>
+
+      <!-- ================= استوديو التوليد ================= -->
+      <section class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2" :aria-label="t('aig.studioLabel')">
+
+        <!-- ========== لوحة الإعدادات ========== -->
+        <form class="panel space-y-5 p-5 sm:p-6" novalidate @submit.prevent="generate()" :aria-label="t('aig.settingsLabel')">
+
+          <!-- كل الحقول تُعطَّل أثناء التوليد حتى لا تختلف النتائج عن الطلب -->
+          <fieldset class="m-0 min-w-0 space-y-5 border-0 p-0" :disabled="running">
+
+            <!-- نوع المحتوى (أزرار راديو حقيقية — بدون role=tablist) -->
+            <fieldset class="min-w-0">
+              <legend class="label" x-text="t('aig.modeLegend')"></legend>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <template x-for="m in modes" :key="m.key">
+                  <label class="mode-tab" :class="generationMode === m.key && 'is-checked'">
+                    <input type="radio" name="gen-mode" :value="m.key" x-model="generationMode" class="sr-only">
+                    <i class="fa-solid" :class="m.icon" aria-hidden="true"></i>
+                    <span x-text="t('aig.mode.' + m.key)"></span>
+                    <span x-show="state[m.key].items.length" class="badge px-1.5 tabular-nums"
+                          :class="generationMode === m.key ? 'bg-white/20 text-white' : 'badge-muted'"
+                          x-text="state[m.key].items.length" :aria-label="pluralize('items', state[m.key].items.length)"></span>
+                  </label>
+                </template>
+              </div>
+            </fieldset>
+
+            <!-- الموضع الأكاديمي — متسلسل من البيانات المشتركة -->
+            <fieldset class="min-w-0">
+              <legend class="label mb-2" x-text="t('aig.hierarchyTitle')"></legend>
+              <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+                <div class="min-w-0"
+                     x-data="selectDropdown({ id: 'ai-course', options: () => courseOpts, get: () => aiForm.courseId, set: (v) => { setCourse(v) }, placeholder: () => t('aig.coursePh') })"
+                     @click.outside="closeList()">
+                  <label id="ai-course-label" for="ai-course" class="label"><span x-text="t('aig.field.course')"></span> <span class="text-danger" aria-hidden="true" x-show="true">*</span></label>
+                  <div class="relative" data-combo-anchor>
+                    <button type="button" id="ai-course" x-ref="btn" role="combobox" aria-haspopup="listbox" :aria-required="(true).toString()" :aria-invalid="(invalid('course')).toString()"
+                            :aria-expanded="open.toString()" aria-controls="ai-course-list"
+                            :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                            class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                            @click="toggleList()" @keydown="onKey($event)">
+                      <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                      <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                    </button>
+                    <ul x-show="open" x-cloak x-ref="list" id="ai-course-list" role="listbox" aria-labelledby="ai-course-label"
+                        x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                      <template x-for="(item, idx) in items" :key="item.value">
+                        <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                            class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                            @click="choose(item)" @mousemove="active = idx">
+                          <span class="truncate" x-text="item.label"></span>
+                          <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </div>
+                <!-- الصف: خاصية على المقرر (subjects.grade_id) — للعرض فقط -->
+                <div class="min-w-0">
+                  <p id="ai-grade-label" class="label" x-text="t('aig.fieldGrade')"></p>
+                  <p class="field flex min-h-[2.75rem] items-center gap-2 bg-soft font-bold text-muted" aria-labelledby="ai-grade-label" aria-live="polite">
+                    <i class="fa-solid fa-lock text-xs" aria-hidden="true"></i>
+                    <span x-text="gradeLabel"></span>
+                  </p>
+                  <p class="hint" x-text="t('aig.gradeHint')"></p>
+                </div>
+                <div class="min-w-0"
+                     x-data="selectDropdown({ id: 'ai-unit', options: () => unitOpts, get: () => aiForm.unitId, set: (v) => { setUnit(v) }, placeholder: () => unitPh() })"
+                     @click.outside="closeList()">
+                  <label id="ai-unit-label" for="ai-unit" class="label"><span x-text="t('aig.field.unit')"></span> <span class="text-danger" aria-hidden="true" x-show="reqUnit">*</span></label>
+                  <div class="relative" data-combo-anchor>
+                    <button type="button" id="ai-unit" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!aiForm.courseId" :aria-required="(reqUnit).toString()" :aria-invalid="(invalid('unit')).toString()" aria-describedby="ai-unit-hint"
+                            :aria-expanded="open.toString()" aria-controls="ai-unit-list"
+                            :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                            class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                            @click="toggleList()" @keydown="onKey($event)">
+                      <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                      <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                    </button>
+                    <ul x-show="open" x-cloak x-ref="list" id="ai-unit-list" role="listbox" aria-labelledby="ai-unit-label"
+                        x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                      <template x-for="(item, idx) in items" :key="item.value">
+                        <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                            class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                            @click="choose(item)" @mousemove="active = idx">
+                          <span class="truncate" x-text="item.label"></span>
+                          <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                  <p id="ai-unit-hint" class="hint" :class="(invalid('unit')) && 'font-bold !text-danger'" x-show="aiForm.courseId && reqUnit" x-text="t('aig.requiredBySettings')"></p>
+                </div>
+                <div class="min-w-0"
+                     x-data="selectDropdown({ id: 'ai-lesson', options: () => lessonOpts, get: () => aiForm.lessonId, set: (v) => { aiForm.lessonId = v }, placeholder: () => lessonPh() })"
+                     @click.outside="closeList()">
+                  <label id="ai-lesson-label" for="ai-lesson" class="label"><span x-text="t('aig.field.lesson')"></span> <span class="text-danger" aria-hidden="true" x-show="reqLesson">*</span></label>
+                  <div class="relative" data-combo-anchor>
+                    <button type="button" id="ai-lesson" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!aiForm.unitId" :aria-required="(reqLesson).toString()" :aria-invalid="(invalid('lesson')).toString()" aria-describedby="ai-lesson-hint"
+                            :aria-expanded="open.toString()" aria-controls="ai-lesson-list"
+                            :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                            class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                            @click="toggleList()" @keydown="onKey($event)">
+                      <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                      <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                    </button>
+                    <ul x-show="open" x-cloak x-ref="list" id="ai-lesson-list" role="listbox" aria-labelledby="ai-lesson-label"
+                        x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                      <template x-for="(item, idx) in items" :key="item.value">
+                        <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                            class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                            @click="choose(item)" @mousemove="active = idx">
+                          <span class="truncate" x-text="item.label"></span>
+                          <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                  <p id="ai-lesson-hint" class="hint" :class="(invalid('lesson')) && 'font-bold !text-danger'" x-show="aiForm.unitId && reqLesson" x-text="t('aig.requiredBySettings')"></p>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- ========== معطيات الأسئلة ========== -->
+            <div x-show="generationMode === 'questions'" class="space-y-4 border-t border-line pt-5">
+              <h2 class="label" x-text="t('aig.paramsTitle')"></h2>
+                <div class="min-w-0"
+                     x-data="selectDropdown({ id: 'ai-bloom', options: () => bloomOpts(), get: () => aiForm.bloom, set: (v) => { aiForm.bloom = v }, placeholder: () => '' })"
+                     @click.outside="closeList()">
+                  <label id="ai-bloom-label" for="ai-bloom" class="label"><span x-text="t('aig.fieldBloom')"></span></label>
+                  <div class="relative" data-combo-anchor>
+                    <button type="button" id="ai-bloom" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                            :aria-expanded="open.toString()" aria-controls="ai-bloom-list"
+                            :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                            class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                            @click="toggleList()" @keydown="onKey($event)">
+                      <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                      <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                    </button>
+                    <ul x-show="open" x-cloak x-ref="list" id="ai-bloom-list" role="listbox" aria-labelledby="ai-bloom-label"
+                        x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                      <template x-for="(item, idx) in items" :key="item.value">
+                        <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                            class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                            @click="choose(item)" @mousemove="active = idx">
+                          <span class="truncate" x-text="item.label"></span>
+                          <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </div>
+              <fieldset class="min-w-0">
+                <legend class="label" x-text="t('aig.fieldQType')"></legend>
+                <div class="grid grid-cols-2 gap-2">
+                  <template x-for="q in ['mcq', 'tf', 'fill', 'essay']" :key="q">
+                    <label class="pill-option" :class="aiForm.qtype === q && 'is-checked'">
+                      <input type="radio" name="ai-qtype" :value="q" x-model="aiForm.qtype" class="sr-only">
+                      <span x-text="t('aig.qType.' + q)"></span>
+                    </label>
+                  </template>
+                </div>
+              </fieldset>
+
+              <fieldset class="min-w-0">
+                <legend class="label" x-text="t('aig.fieldDifficulty')"></legend>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <template x-for="d in ['easy', 'medium', 'hard', 'mixed']" :key="d">
+                    <label class="pill-option" :class="aiForm.difficulty === d && 'is-checked'">
+                      <input type="radio" name="ai-difficulty" :value="d" x-model="aiForm.difficulty" class="sr-only">
+                      <span x-text="t('aig.diff.' + d)"></span>
+                    </label>
+                  </template>
+                </div>
+              </fieldset>
+
+              <div>
+                <label for="ai-count" class="label flex items-center justify-between gap-2">
+                  <span x-text="t('aig.fieldCount')"></span>
+                  <output for="ai-count" class="font-mono text-brand" aria-hidden="true" x-text="aiForm.count"></output>
+                </label>
+                <input id="ai-count" type="range" min="3" max="20" step="1" class="range" x-model.number="aiForm.count"
+                       :style="`--pct:${(aiForm.count - 3) / 17 * 100}%`" :aria-valuetext="pluralize('questions', aiForm.count)">
+                <div class="mt-1 flex justify-between text-xs tabular-nums text-muted" aria-hidden="true"><span>3</span><span>20</span></div>
+              </div>
+            </div>
+
+            <!-- ========== معطيات المفاهيم ========== -->
+            <div x-show="generationMode === 'concepts'" x-cloak class="space-y-4 border-t border-line pt-5">
+              <h2 class="label" x-text="t('aig.paramsTitle')"></h2>
+              <div>
+                <label for="ai-concept-count" class="label flex items-center justify-between gap-2">
+                  <span x-text="t('aig.fieldConceptCount')"></span>
+                  <output for="ai-concept-count" class="font-mono text-brand" aria-hidden="true" x-text="aiForm.conceptCount"></output>
+                </label>
+                <input id="ai-concept-count" type="range" min="1" max="10" step="1" class="range" x-model.number="aiForm.conceptCount"
+                       :style="`--pct:${(aiForm.conceptCount - 1) / 9 * 100}%`" :aria-valuetext="pluralize('concepts', aiForm.conceptCount)">
+                <div class="mt-1 flex justify-between text-xs tabular-nums text-muted" aria-hidden="true"><span>1</span><span>10</span></div>
+              </div>
+              <p class="flex items-start gap-2 rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                <i class="fa-solid fa-language mt-0.5 text-brand" aria-hidden="true"></i>
+                <span x-text="t('aig.conceptsBilingualNote')"></span>
+              </p>
+            </div>
+
+            <!-- ========== معطيات الملخصات ========== -->
+            <div x-show="generationMode === 'summaries'" x-cloak class="space-y-4 border-t border-line pt-5">
+              <h2 class="label" x-text="t('aig.paramsTitle')"></h2>
+              <fieldset class="min-w-0">
+                <legend class="label" x-text="t('aig.fieldSummaryLength')"></legend>
+                <div class="grid grid-cols-3 gap-2">
+                  <template x-for="s in ['short', 'medium', 'long']" :key="s">
+                    <label class="pill-option" :class="aiForm.summaryLength === s && 'is-checked'">
+                      <input type="radio" name="ai-summary-len" :value="s" x-model="aiForm.summaryLength" class="sr-only">
+                      <span x-text="t('aig.summary.' + s)"></span>
+                    </label>
+                  </template>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- السياق النصي + الملف المرجعي -->
+            <div class="border-t border-line pt-5">
+              <label for="ai-prompt" class="label" x-text="t('aig.promptLabel')"></label>
+              <textarea id="ai-prompt" rows="4" x-model="aiForm.prompt" :maxlength="PROMPT_MAX" class="field resize-y"
+                        :placeholder="t('aig.promptPlaceholder')" aria-describedby="ai-prompt-hint ai-prompt-count"></textarea>
+              <div class="mt-1.5 flex items-start justify-between gap-3">
+                <p id="ai-prompt-hint" class="text-xs text-muted" x-text="t('aig.promptHint')"></p>
+                <p id="ai-prompt-count" class="shrink-0 text-xs tabular-nums" dir="ltr"
+                   :class="aiForm.prompt.length > PROMPT_MAX * .9 ? 'font-bold text-danger' : 'text-muted'"
+                   x-text="aiForm.prompt.length + ' / ' + PROMPT_MAX"></p>
+              </div>
+
+              <div class="mt-3">
+                <input type="file" x-ref="file" class="hidden" :accept="FILE_ACCEPT" @change="onFile($event)" tabindex="-1" aria-hidden="true">
+                <button type="button" x-ref="attachBtn" x-show="!attached" class="btn btn-outline btn-sm" @click="$refs.file.click()" aria-describedby="ai-file-hint">
+                  <i class="fa-solid fa-paperclip" aria-hidden="true"></i>
+                  <span x-text="t('aig.attachFile')"></span>
+                </button>
+                <p id="ai-file-hint" x-show="!attached" class="hint" x-text="t('aig.fileHint')"></p>
+                <div x-show="attached" x-cloak class="inline-flex max-w-full items-center gap-2 rounded-lg border border-line bg-soft py-1 pe-1 ps-3 text-sm">
+                  <i class="fa-regular fa-file-lines text-brand" aria-hidden="true"></i>
+                  <bdi class="min-w-0 truncate font-bold" dir="auto" x-text="attached?.name"></bdi>
+                  <bdi class="shrink-0 text-xs text-muted" dir="ltr" x-text="attached ? formatSize(attached.size) : ''"></bdi>
+                  <button type="button" class="tag-x" @click="removeFile()" :aria-label="t('aig.removeFile') + ': ' + (attached?.name || '')">
+                    <i class="fa-solid fa-xmark text-xs" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <p x-show="fileError" x-cloak class="err" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="fileError"></span></p>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- التكلفة التقديرية + التوليد / الإلغاء -->
+          <div class="space-y-2.5 border-t border-line pt-5">
+            <p class="flex items-center justify-between gap-2 text-xs font-bold" :class="overQuota ? 'text-danger' : 'text-muted'">
+              <span><i class="fa-solid fa-coins me-1" aria-hidden="true"></i> <span x-text="t('aig.estimateLabel')"></span></span>
+              <span class="tabular-nums" dir="ltr" x-text="'≈ ' + fmt(estimate) + ' ' + t('aig.tokensUnit')"></span>
+            </p>
+            <div class="flex gap-2">
+              <button type="submit" class="btn btn-accent btn-lg flex-1 justify-center py-3.5 text-base"
+                      :class="!canGenerate && !running && 'opacity-60'" :aria-disabled="(!canGenerate).toString()" :disabled="running"
+                      aria-describedby="ai-gen-hint">
+                <i class="fa-solid" :class="running ? 'fa-circle-notch motion-safe:animate-spin' : 'fa-wand-magic-sparkles'" aria-hidden="true"></i>
+                <span x-text="running ? t('aig.generating') : t('aig.generateBtn')"></span>
+              </button>
+              <button type="button" x-show="running" x-cloak class="btn btn-outline btn-lg" @click="cancel()">
+                <i class="fa-solid fa-stop" aria-hidden="true"></i>
+                <span x-text="t('aig.cancel')"></span>
+              </button>
+            </div>
+            <p id="ai-gen-hint" class="hint text-center" :class="(submitted && missing.length) || overQuota ? 'font-bold !text-danger' : ''" x-text="genHint"></p>
+          </div>
+        </form>
+
+        <!-- ========== لوحة المعاينة والنتائج ========== -->
+        <section class="panel min-h-[32rem] p-5 sm:p-6" aria-labelledby="res-title" :aria-busy="running.toString()">
+          <h2 id="res-title" class="sr-only" x-text="t('aig.resultsLabel')"></h2>
+
+          <!-- فارغة -->
+          <div x-show="cur.status === 'idle' && !cur.items.length" class="flex min-h-[28rem] flex-col items-center justify-center text-center">
+            <span class="mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-primary-500/10 text-2xl text-brand" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+            <p class="font-extrabold text-ink" x-text="t('aig.emptyTitle')"></p>
+            <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('aig.emptySubtitle')"></p>
+            <ul class="mx-auto mt-5 max-w-sm space-y-2.5 text-start text-sm text-muted" role="list">
+              <template x-for="k in ['tip1', 'tip2', 'tip3']" :key="k">
+                <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle-check mt-0.5 shrink-0 text-success-700 dark:text-success-500" aria-hidden="true"></i> <span x-text="t('aig.' + k)"></span></li>
+              </template>
+            </ul>
+          </div>
+
+          <!-- قيد التوليد: مراحل + هياكل بعدد العناصر المطلوبة -->
+          <div x-show="cur.status === 'running'" x-cloak class="flex min-h-[28rem] flex-col items-center justify-center gap-5 text-center">
+            <span class="grid h-14 w-14 place-items-center rounded-2xl bg-accent-500/20 text-xl text-yellow-900 dark:text-accent-500" aria-hidden="true">
+              <i class="fa-solid fa-circle-notch motion-safe:animate-spin"></i>
+            </span>
+            <div>
+              <p class="font-extrabold text-ink" x-text="t('aig.busyTitle')"></p>
+              <p class="mt-1 text-sm text-muted" x-text="t('aig.busySubtitle')"></p>
+            </div>
+            <ol class="space-y-1.5 text-start text-sm" role="list">
+              <template x-for="(s, i) in ['analyze', 'generate', 'validate']" :key="s">
+                <li class="flex items-center gap-2" :class="i <= stage ? 'font-bold text-ink' : 'text-muted'">
+                  <i class="fa-solid w-4 text-center" aria-hidden="true"
+                     :class="i < stage ? 'fa-circle-check text-success-700 dark:text-success-500' : (i === stage ? 'fa-circle-notch motion-safe:animate-spin text-brand' : 'fa-circle text-[8px]')"></i>
+                  <span x-text="t('aig.stage.' + s)"></span>
+                </li>
+              </template>
+            </ol>
+            <div class="w-full max-w-sm space-y-2.5" aria-hidden="true">
+              <template x-for="i in skeletonCount" :key="i"><div class="gen-skeleton"></div></template>
+            </div>
+          </div>
+
+          <!-- خطأ -->
+          <div x-show="cur.status === 'error'" x-cloak class="mb-4 rounded-xl border border-error-600/40 bg-error-500/5 p-4" role="alert">
+            <p class="flex items-center gap-2 font-extrabold text-danger"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> <span x-text="t('aig.err.title')"></span></p>
+            <p class="mt-1 text-sm text-muted" x-text="cur.error ? t('aig.err.' + cur.error) : ''"></p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button type="button" class="btn btn-outline btn-sm" @click="generate()"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> <span x-text="t('aig.retry')"></span></button>
+              <a x-show="cur.error === 'quota'" href="SubscriptionsAndInvoices.html" class="btn btn-accent btn-sm"><i class="fa-solid fa-bolt" aria-hidden="true"></i> <span x-text="t('aig.tokens.recharge')"></span></a>
+            </div>
+          </div>
+
+          <!-- النتائج (بيانات حقيقية تعكس المعطيات) -->
+          <template x-if="cur.status !== 'running' && cur.items.length">
+            <div class="space-y-4">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p x-ref="resultsHead" tabindex="-1" class="flex items-center gap-2 text-sm font-bold text-success-700 focus:outline-none dark:text-success-500">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <span x-text="tf('aig.resultsReady', { items: pluralize('items', cur.items.length) })"></span>
+                  </p>
+                  <p class="mt-1 text-xs text-muted" x-text="contextLine(cur.ctx)"></p>
+                </div>
+                <span class="badge badge-muted shrink-0" x-show="savedCount" x-text="tf('aig.savedOf', { n: savedCount, total: cur.items.length })"></span>
+              </div>
+
+              <ol class="space-y-3" role="list">
+                <template x-for="(r, i) in cur.items" :key="r.uid">
+                  <li class="gen-card" :class="r.saved && 'border-success-500/50'" :data-uid="r.uid"
+                      @keydown.escape.stop="r.editing && cancelEdit(r, $event)">
+                    <article :aria-labelledby="'gi-' + r.uid">
+                      <header class="mb-3 flex flex-wrap items-center gap-1.5">
+                        <span :id="'gi-' + r.uid" class="badge badge-muted tabular-nums" x-text="tf('aig.itemN', { n: i + 1 })"></span>
+                        <template x-if="r.kind === 'question'">
+                          <span class="contents">
+                            <span class="badge badge-primary" x-text="t('aig.qType.' + r.type)"></span>
+                            <span class="badge badge-info" x-text="t('aig.bloom.' + r.bloom)"></span>
+                            <span class="badge" :class="{ easy: 'badge-success', medium: 'badge-accent', hard: 'badge-danger' }[r.difficulty]" x-text="t('aig.diff.' + r.difficulty)"></span>
+                            <span class="badge badge-neutral"><i class="fa-solid fa-star text-[9px]" aria-hidden="true"></i> <span x-text="tf('aig.cardMarks', { n: r.marks })"></span></span>
+                          </span>
+                        </template>
+                        <template x-if="r.kind === 'concept'">
+                          <bdi class="badge badge-neutral font-mono" dir="ltr" x-text="r.code"></bdi>
+                        </template>
+                        <span x-show="r.saved" class="badge badge-success ms-auto"><i class="fa-solid fa-hourglass-half text-[10px]" aria-hidden="true"></i> <span x-text="t('aig.sentToReview')"></span></span>
+                        <span x-show="r.added" class="badge badge-info"><i class="fa-solid fa-clipboard-check text-[10px]" aria-hidden="true"></i> <span x-text="t('aig.addedToQuiz')"></span></span>
+                      </header>
+
+                      <!-- ===== عرض ===== -->
+                      <div x-show="!r.editing" :class="r.busy && 'opacity-50'">
+                        <!-- سؤال -->
+                        <template x-if="r.kind === 'question'">
+                          <div lang="ar" dir="rtl">
+                            <p class="text-sm font-bold leading-6 text-ink" x-text="r.text"></p>
+                            <ul x-show="r.type === 'mcq'" class="mt-3 space-y-1.5 text-sm text-muted" role="list">
+                              <template x-for="(op, oi) in r.options" :key="oi">
+                                <li class="flex items-center gap-2 rounded-lg px-3 py-1.5" :class="oi === r.correct && 'bg-success-50 py-2 dark:bg-success-500/10'">
+                                  <i class="fa-regular shrink-0" :class="oi === r.correct ? 'fa-circle-dot text-success-700 dark:text-success-500' : 'fa-circle'" aria-hidden="true"></i>
+                                  <span x-text="op"></span>
+                                  <span x-show="oi === r.correct" class="ms-auto shrink-0 text-xs font-bold text-success-700 dark:text-success-500" x-text="t('aig.correctAnswer')"></span>
+                                </li>
+                              </template>
+                            </ul>
+                            <p x-show="r.type === 'tf' || r.type === 'fill'" class="mt-3 flex items-center gap-2 rounded-lg bg-success-50 px-3 py-2 text-sm text-ink dark:bg-success-500/10">
+                              <i class="fa-regular fa-circle-dot shrink-0 text-success-700 dark:text-success-500" aria-hidden="true"></i>
+                              <span x-text="r.type === 'tf' ? t(r.answer ? 'aig.trueLabel' : 'aig.falseLabel') : r.answer"></span>
+                              <span class="ms-auto shrink-0 text-xs font-bold text-success-700 dark:text-success-500" x-text="t('aig.correctAnswer')"></span>
+                            </p>
+                            <p x-show="r.explanation" class="mt-3 rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                              <i class="fa-regular fa-lightbulb me-1 text-brand" aria-hidden="true"></i>
+                              <span class="font-bold text-ink" x-text="t(r.type === 'essay' ? 'aig.rubric' : 'aig.cardExplanation') + ': '"></span>
+                              <span x-text="r.explanation"></span>
+                            </p>
+                          </div>
+                        </template>
+                        <!-- مفهوم (ثنائي اللغة) -->
+                        <template x-if="r.kind === 'concept'">
+                          <div class="grid gap-3 sm:grid-cols-2">
+                            <div lang="ar" dir="rtl">
+                              <h3 class="font-extrabold text-ink" x-text="r.nameAr"></h3>
+                              <p class="mt-1 text-sm leading-6 text-muted" x-text="r.descAr"></p>
+                            </div>
+                            <div lang="en" dir="ltr" class="border-line sm:border-s sm:ps-3">
+                              <h3 class="font-extrabold text-ink" x-text="r.nameEn"></h3>
+                              <p class="mt-1 text-sm leading-6 text-muted" x-text="r.descEn"></p>
+                            </div>
+                          </div>
+                        </template>
+                        <!-- ملخص -->
+                        <template x-if="r.kind === 'summary'">
+                          <div lang="ar" dir="rtl">
+                            <h3 class="font-extrabold text-ink" x-text="r.title"></h3>
+                            <ul class="mt-2 space-y-2 text-sm leading-6 text-muted" role="list">
+                              <template x-for="(p, pi) in r.points" :key="pi">
+                                <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle mt-2 shrink-0 text-[6px] text-brand" aria-hidden="true"></i> <span x-text="p"></span></li>
+                              </template>
+                            </ul>
+                          </div>
+                        </template>
+                      </div>
+
+                      <!-- ===== تعديل (مسودة مربوطة — لا تُفقد التعديلات) ===== -->
+                      <template x-if="r.editing">
+                        <div class="space-y-3">
+                          <template x-if="r.kind === 'question'">
+                            <div class="space-y-3">
+                              <div>
+                                <label :for="'q-' + r.uid" class="label" x-text="t('aig.qTextLabel')"></label>
+                                <textarea :id="'q-' + r.uid" rows="2" class="field resize-y" lang="ar" dir="rtl" x-model="r.draft.text"
+                                          :aria-invalid="(!!r.errors.text).toString()" :aria-describedby="r.errors.text ? 'q-' + r.uid + '-err' : null"></textarea>
+                                <p :id="'q-' + r.uid + '-err'" x-show="r.errors.text" class="err"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="r.errors.text"></span></p>
+                              </div>
+                              <fieldset x-show="r.type === 'mcq'" class="min-w-0">
+                                <legend class="label" x-text="t('aig.optionsLegend')"></legend>
+                                <div class="space-y-2">
+                                  <template x-for="(op, oi) in r.draft.options" :key="oi">
+                                    <div class="flex items-center gap-2">
+                                      <input type="radio" class="h-5 w-5 shrink-0 accent-primary-500" :name="'correct-' + r.uid" :value="oi" x-model.number="r.draft.correct"
+                                             :aria-label="tf('aig.markCorrect', { n: oi + 1 })">
+                                      <input type="text" class="field" lang="ar" dir="rtl" x-model="r.draft.options[oi]" :aria-label="tf('aig.optionN', { n: oi + 1 })">
+                                    </div>
+                                  </template>
+                                </div>
+                                <p x-show="r.errors.options" class="err"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="r.errors.options"></span></p>
+                              </fieldset>
+                              <fieldset x-show="r.type === 'tf'" class="min-w-0">
+                                <legend class="label" x-text="t('aig.correctAnswer')"></legend>
+                                <div class="grid grid-cols-2 gap-2">
+                                  <label class="pill-option" :class="r.draft.answer === true && 'is-checked'"><input type="radio" class="sr-only" :name="'tf-' + r.uid" :value="true" @change="r.draft.answer = true" :checked="r.draft.answer === true"><span x-text="t('aig.trueLabel')"></span></label>
+                                  <label class="pill-option" :class="r.draft.answer === false && 'is-checked'"><input type="radio" class="sr-only" :name="'tf-' + r.uid" :value="false" @change="r.draft.answer = false" :checked="r.draft.answer === false"><span x-text="t('aig.falseLabel')"></span></label>
+                                </div>
+                              </fieldset>
+                              <div x-show="r.type === 'fill'">
+                                <label :for="'fa-' + r.uid" class="label" x-text="t('aig.correctAnswer')"></label>
+                                <input :id="'fa-' + r.uid" type="text" class="field" lang="ar" dir="rtl" x-model="r.draft.answer">
+                              </div>
+                              <div>
+                                <label :for="'ex-' + r.uid" class="label" x-text="t(r.type === 'essay' ? 'aig.rubric' : 'aig.cardExplanation')"></label>
+                                <textarea :id="'ex-' + r.uid" rows="2" class="field resize-y" lang="ar" dir="rtl" x-model="r.draft.explanation"></textarea>
+                              </div>
+                            </div>
+                          </template>
+                          <template x-if="r.kind === 'concept'">
+                            <div class="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <label :for="'na-' + r.uid" class="label"><span x-text="t('aig.nameAr')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input :id="'na-' + r.uid" type="text" class="field" lang="ar" dir="rtl" x-model="r.draft.nameAr" aria-required="true"
+                                       :aria-invalid="(!!r.errors.nameAr).toString()" :aria-describedby="'na-' + r.uid + '-err'">
+                                <p :id="'na-' + r.uid + '-err'" x-show="r.errors.nameAr" class="err"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="r.errors.nameAr"></span></p>
+                              </div>
+                              <div>
+                                <label :for="'ne-' + r.uid" class="label"><span x-text="t('aig.nameEn')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                                <input :id="'ne-' + r.uid" type="text" class="field" lang="en" dir="ltr" x-model="r.draft.nameEn" aria-required="true"
+                                       :aria-invalid="(!!r.errors.nameEn).toString()" :aria-describedby="'ne-' + r.uid + '-err'">
+                                <p :id="'ne-' + r.uid + '-err'" x-show="r.errors.nameEn" class="err"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="r.errors.nameEn"></span></p>
+                              </div>
+                              <div>
+                                <label :for="'da-' + r.uid" class="label" x-text="t('aig.descAr')"></label>
+                                <textarea :id="'da-' + r.uid" rows="3" class="field resize-y" lang="ar" dir="rtl" x-model="r.draft.descAr"></textarea>
+                              </div>
+                              <div>
+                                <label :for="'de-' + r.uid" class="label" x-text="t('aig.descEn')"></label>
+                                <textarea :id="'de-' + r.uid" rows="3" class="field resize-y" lang="en" dir="ltr" x-model="r.draft.descEn"></textarea>
+                              </div>
+                            </div>
+                          </template>
+                          <template x-if="r.kind === 'summary'">
+                            <div class="space-y-3">
+                              <div>
+                                <label :for="'st-' + r.uid" class="label" x-text="t('aig.summaryTitle')"></label>
+                                <input :id="'st-' + r.uid" type="text" class="field" lang="ar" dir="rtl" x-model="r.draft.title"
+                                       :aria-invalid="(!!r.errors.title).toString()">
+                                <p x-show="r.errors.title" class="err"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="r.errors.title"></span></p>
+                              </div>
+                              <div>
+                                <label :for="'sp-' + r.uid" class="label" x-text="t('aig.summaryPoints')"></label>
+                                <textarea :id="'sp-' + r.uid" rows="5" class="field resize-y" lang="ar" dir="rtl" x-model="r.draft.pointsText" :aria-describedby="'sp-' + r.uid + '-hint'"></textarea>
+                                <p :id="'sp-' + r.uid + '-hint'" class="hint" x-text="t('aig.onePerLine')"></p>
+                              </div>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+
+                      <!-- ===== الإجراءات (أيقونات + تلميحات) ===== -->
+                      <div class="mt-4 flex flex-wrap items-center justify-end gap-1.5 border-t border-line pt-3">
+                        <template x-if="r.editing">
+                          <div class="me-auto flex gap-2">
+                            <button type="button" class="btn btn-primary btn-sm" @click="saveEdit(r)"><i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('aig.actSaveEdit')"></span></button>
+                            <button type="button" class="btn btn-outline btn-sm" @click="cancelEdit(r, $event)" x-text="t('aig.cancelEdit')"></button>
+                          </div>
+                        </template>
+                        <button type="button" data-act="edit" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" x-show="!r.editing" :disabled="r.saved || r.busy" @click="startEdit(r)" :aria-label="t('aig.actEdit') + ' — ' + tf('aig.itemN', { n: i + 1 })"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="r.saved ? t('aig.lockedInReview') : t('aig.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                        <button type="button" data-act="save" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" :aria-pressed="(r.saved).toString()" :disabled="r.saved || r.editing || r.busy" @click="saveItem(r)" :aria-label="t('aig.saveTo.' + generationMode) + ' — ' + tf('aig.itemN', { n: i + 1 })"><i class="fa-solid " :class="r.saved ? 'fa-check text-success-700 dark:text-success-500' : 'fa-box-archive'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="r.saved ? t('aig.sentToReview') : t('aig.saveTo.' + generationMode)" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                        <button type="button" data-act="quiz" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" x-show="r.kind === 'question'" :aria-pressed="(r.added).toString()" :disabled="r.added || r.editing || r.busy" @click="addToQuiz(r)" :aria-label="t('aig.actAddQuiz') + ' — ' + tf('aig.itemN', { n: i + 1 })"><i class="fa-solid " :class="r.added ? 'fa-clipboard-check text-info-700 dark:text-blue-300' : 'fa-clipboard-question'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="r.added ? t('aig.addedToQuiz') : t('aig.actAddQuiz')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                        <button type="button" data-act="regen" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" :disabled="r.saved || r.editing || r.busy" @click="regenerate(r)" :aria-label="t('aig.actRegenerate') + ' — ' + tf('aig.itemN', { n: i + 1 })"><i class="fa-solid fa-rotate" :class="r.busy && 'motion-safe:animate-spin'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="r.saved ? t('aig.lockedInReview') : t('aig.actRegenerate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                        <button type="button" data-act="discard" class="act group relative disabled:cursor-not-allowed disabled:opacity-40 !text-danger hover:!bg-error-500/10" :disabled="r.busy" @click="discard(r)" :aria-label="t('aig.actDiscard') + ' — ' + tf('aig.itemN', { n: i + 1 })"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('aig.actDiscard')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      </div>
+                    </article>
+                  </li>
+                </template>
+              </ol>
+
+              <!-- حفظ الكل + التصدير -->
+              <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-line pt-4">
+                <button type="button" class="btn btn-outline" @click="exportAs('word')">
+                  <i class="fa-regular fa-file-word text-info-700 dark:text-blue-300" aria-hidden="true"></i>
+                  <span x-text="t('aig.exportWord')"></span>
+                </button>
+                <button type="button" class="btn btn-outline" @click="exportAs('pdf')">
+                  <i class="fa-regular fa-file-pdf text-error-700 dark:text-red-300" aria-hidden="true"></i>
+                  <span x-text="t('aig.exportPdf')"></span>
+                </button>
+                <button type="button" class="btn btn-accent" @click="saveAll()" :disabled="!unsavedCount">
+                  <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i>
+                  <span x-text="unsavedCount ? tf('aig.saveAllN', { n: unsavedCount }) : t('aig.allSaved')"></span>
+                </button>
+              </div>
+              <p class="text-xs text-muted" x-text="t('aig.reviewNote.' + generationMode)"></p>
+            </div>
+          </template>
+        </section>
+      </section>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية — سجل التوليد الأخير (ai_usage_logs) — مبنية من البيانات
+     role=dialog على اللوحة نفسها (لا على الغلاف مع الخلفية)؛ x-trap يعيد التركيز للزر تلقائيًا
+     ========================================================================== -->
+<div x-show="logsOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeLogs()" aria-hidden="true"></div>
+
+  <div x-show="logsOpen" x-trap.noscroll="logsOpen" role="dialog" aria-modal="true" aria-labelledby="logs-title" aria-describedby="logs-sub"
+       @keydown.escape.stop.prevent="closeLogs()"
+       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <div class="min-w-0">
+        <h2 id="logs-title" class="text-lg font-extrabold text-ink" x-text="t('aig.logsTitle')"></h2>
+        <p id="logs-sub" class="mt-0.5 text-xs text-muted" x-text="t('aig.logsSubtitle')"></p>
+      </div>
+      <button type="button" class="icon-btn shrink-0" @click="closeLogs()" :aria-label="t('aig.logsClose')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <ul class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-5" role="list">
+      <template x-for="l in logs" :key="l.id">
+        <li class="rounded-xl border border-line p-4">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-extrabold text-ink" :title="logTitle(l)" x-text="logTitle(l)"></p>
+            <span class="badge shrink-0" :class="{ questions: 'badge-primary', concepts: 'badge-accent', summaries: 'badge-info' }[l.mode]" x-text="t('aig.mode.' + l.mode)"></span>
+          </div>
+          <p class="mt-1 text-xs text-muted">
+            <time :datetime="l.at.toISOString()" x-text="fmtDate(l.at)"></time> ·
+            <span x-text="t('aig.logsByUser')"></span>: <span x-text="l.user || t('aig.logsYou')"></span>
+          </p>
+          <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+            <span><i class="fa-solid fa-list-check me-1 text-brand" aria-hidden="true"></i> <span x-text="pluralize('items', l.items)"></span></span>
+            <span><i class="fa-solid fa-coins me-1 text-yellow-900 dark:text-accent-500" aria-hidden="true"></i> <bdi dir="ltr" class="tabular-nums" x-text="fmt(l.tokens)"></bdi> <span x-text="t('aig.tokensUnit')"></span></span>
+            <span x-show="l.status === 'cancelled'" class="badge badge-muted" x-text="t('aig.logCancelled')"></span>
+          </div>
+        </li>
+      </template>
+    </ul>
+
+    <footer class="shrink-0 border-t border-line p-4">
+      <a href="AIUsageAnalytics.html" class="btn btn-outline w-full justify-center">
+        <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+        <span x-text="t('aig.logsViewAll')"></span>
+      </a>
+    </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Select-only Combobox — نمط ARIA APG).
+   * options: () => [{ value, label }] | get: () => القيمة | set: (v) => تحديث
+   * لوحة المفاتيح: ↑↓ Home End Enter Space Esc Tab + البحث بالكتابة (type-ahead).
+   * Esc يوقف الانتشار حتى لا يُغلق اللوحة الجانبية/النافذة الأم (C5).
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : (typeof placeholder === 'function' ? placeholder() : placeholder); },  // placeholder تفاعلي مع اللغة
+      optId(item) { return this.id + '-opt-' + (item.value === '' ? 'none' : item.value); },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة مولّد المحتوى والأسئلة العام.
+   * — البيانات الأكاديمية من window.FIROB_MOCK (مشتركة مع المفاهيم/العناصر التعليمية).
+   * — النتائج تُبنى من المعطيات فعليًا (النوع، العدد، الصعوبة، بلوم، طول الملخص) عبر مولّد تجريبي.
+   * — في Laravel: generate() ⇢ $wire.generate() يُنشئ AiGenerationRun ويُرسل Job إلى طابور "ai"،
+   *   والحالة تُتابَع عبر wire:poll أو بثّ Echo؛ الحفظ يُنشئ سجلات source=ai بحالة review_status=pending.
+   */
+  function aiGenerator() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const M = window.FIROB_MOCK;
+
+    /* ---------- مولّد تجريبي (يُحذف مع الانتقال إلى مزوّد AI حقيقي) ---------- */
+    const QBANK = {
+      'math-g7': {
+        mcq: [
+          { text: 'ما نتيجة ضرب (-4) × (-3)؟', options: ['12', '-12', '7', '-7'], correct: 0, explanation: 'حاصل ضرب عددين سالبين موجب دائمًا؛ لذلك (-4) × (-3) = 12.' },
+          { text: 'ما ناتج (-15) ÷ 5؟', options: ['3', '-3', '-20', '-10'], correct: 1, explanation: 'قسمة عدد سالب على عدد موجب تعطي ناتجًا سالبًا.' },
+          { text: 'أيّ الأعداد التالية هو الأصغر؟', options: ['-2', '0', '-9', '4'], correct: 2, explanation: 'كلما ابتعد العدد السالب عن الصفر صغرت قيمته.' },
+        ],
+        tf: [
+          { text: 'كل عدد صحيح موجب أكبر من أي عدد صحيح سالب.', answer: true, explanation: 'الأعداد الموجبة تقع يمين الصفر على خط الأعداد والسالبة يساره.' },
+          { text: 'ناتج جمع عددين سالبين يكون موجبًا دائمًا.', answer: false, explanation: 'جمع عددين سالبين يعطي عددًا سالبًا، مثل (-2) + (-5) = -7.' },
+          { text: 'القيمة المطلقة للعدد صفر تساوي صفرًا.', answer: true, explanation: 'المسافة بين الصفر ونفسه صفر.' },
+        ],
+        fill: [
+          { text: 'القيمة المطلقة للعدد (-9) تساوي ____.', answer: '9', explanation: 'القيمة المطلقة هي المسافة بين العدد والصفر.' },
+          { text: 'ناتج (-6) + 10 = ____.', answer: '4', explanation: 'نطرح القيمتين المطلقتين ونأخذ إشارة العدد الأكبر قيمةً مطلقة.' },
+          { text: 'المعكوس الجمعي للعدد 8 هو ____.', answer: '-8', explanation: 'مجموع العدد ومعكوسه الجمعي يساوي صفرًا.' },
+        ],
+        essay: [
+          { text: 'وضّح الفرق بين القيمة المطلقة لعدد صحيح موجب وعدد صحيح سالب له المقدار نفسه، مع ذكر مثال.', explanation: 'تعريف القيمة المطلقة (2) · المقارنة الصحيحة (2) · مثال مناسب (1).' },
+          { text: 'اشرح بالخطوات كيف تحسب ناتج (-3) × 4 + (-2) × (-5).', explanation: 'ترتيب العمليات (2) · قواعد الإشارات (2) · الناتج الصحيح −2 (1).' },
+          { text: 'اكتب موقفًا حياتيًا تُستخدم فيه الأعداد السالبة، ثم مثّله على خط الأعداد.', explanation: 'موقف واقعي (2) · تمثيل صحيح (2) · وضوح التعبير (1).' },
+        ],
+      },
+      'sci-g8': {
+        mcq: [
+          { text: 'أيّ العضيات التالية توجد في الخلية النباتية ولا توجد في الحيوانية؟', options: ['البلاستيدات الخضراء', 'الميتوكوندريا', 'النواة', 'الغشاء البلازمي'], correct: 0, explanation: 'البلاستيدات الخضراء مسؤولة عن البناء الضوئي في النبات.' },
+          { text: 'ما وظيفة الميتوكوندريا في الخلية؟', options: ['إنتاج الطاقة', 'تخزين الماء', 'صنع الجدار الخلوي', 'حماية النواة'], correct: 0, explanation: 'تُعرف الميتوكوندريا بـ«بيت الطاقة» لأنها تُنتج ATP.' },
+          { text: 'في المعادلة 2H₂ + O₂ → 2H₂O، كم ذرة هيدروجين في المتفاعلات؟', options: ['2', '4', '6', '1'], correct: 1, explanation: 'المعامل 2 × الرقم السفلي 2 = 4 ذرات.' },
+        ],
+        tf: [
+          { text: 'للخلية الحيوانية جدار خلوي يحيط بالغشاء البلازمي.', answer: false, explanation: 'الجدار الخلوي يوجد في الخلية النباتية فقط.' },
+          { text: 'في التفاعل الطارد للحرارة تنطلق طاقة إلى الوسط المحيط.', answer: true, explanation: 'تكون طاقة النواتج أقل من طاقة المتفاعلات.' },
+          { text: 'تتغير أعداد الذرات عند موازنة المعادلة الكيميائية.', answer: false, explanation: 'الموازنة تحافظ على عدد الذرات وفق قانون حفظ الكتلة.' },
+        ],
+        fill: [
+          { text: 'العضية التي تتحكم في أنشطة الخلية هي ____.', answer: 'النواة', explanation: 'تحتوي النواة على المادة الوراثية DNA.' },
+          { text: 'يُسمّى التفاعل الذي يمتص الحرارة تفاعلًا ____.', answer: 'ماصًّا للحرارة', explanation: 'يمتص الطاقة من الوسط المحيط فتنخفض حرارته.' },
+          { text: 'الأرقام التي توضع قبل الصيغ لموازنة المعادلة تُسمّى ____.', answer: 'المعاملات', explanation: 'لا نغيّر الأرقام السفلية في الصيغ الكيميائية.' },
+        ],
+        essay: [
+          { text: 'قارن بين الخلية النباتية والخلية الحيوانية من حيث الشكل والعضيات.', explanation: 'ثلاثة فروق صحيحة (3) · تنظيم المقارنة (2).' },
+          { text: 'اشرح كيف تُوازن المعادلة: Fe + O₂ → Fe₂O₃.', explanation: 'خطوات الموازنة (3) · المعادلة الموزونة 4Fe + 3O₂ → 2Fe₂O₃ (2).' },
+          { text: 'اذكر مثالين من حياتك اليومية لتفاعل طارد وآخر ماص للحرارة مع التعليل.', explanation: 'مثالان صحيحان (2) · التعليل (3).' },
+        ],
+      },
+      'arab-g9': {
+        mcq: [
+          { text: 'ما نوع الصورة في قولنا: «العلمُ نورٌ»؟', options: ['تشبيه بليغ', 'استعارة مكنية', 'كناية', 'طباق'], correct: 0, explanation: 'حُذفت أداة التشبيه ووجه الشبه فصار تشبيهًا بليغًا.' },
+          { text: 'ما العنصر القصصي الذي يُحدِّد زمان الأحداث ومكانها؟', options: ['البيئة', 'الحبكة', 'العقدة', 'الحوار'], correct: 0, explanation: 'البيئة (الزمان والمكان) إطار تجري فيه الأحداث.' },
+          { text: 'كم ركنًا للتشبيه؟', options: ['أربعة', 'ثلاثة', 'اثنان', 'خمسة'], correct: 0, explanation: 'المشبّه والمشبّه به والأداة ووجه الشبه.' },
+        ],
+        tf: [
+          { text: 'الشخصية النامية تتطور وتتغير بتطور أحداث القصة.', answer: true, explanation: 'بخلاف الشخصية الثابتة التي لا تتغير.' },
+          { text: 'يُشترط ذكر أداة التشبيه في كل تشبيه.', answer: false, explanation: 'قد تُحذف الأداة كما في التشبيه المؤكَّد والبليغ.' },
+          { text: 'البحر الشعري هو الوزن الذي يُبنى عليه البيت.', answer: true, explanation: 'لكل بحر تفعيلات خاصة به.' },
+        ],
+        fill: [
+          { text: 'التشبيه الذي حُذفت منه الأداة ووجه الشبه يُسمّى تشبيهًا ____.', answer: 'بليغًا', explanation: 'وهو أقوى أنواع التشبيه.' },
+          { text: 'لحظة التأزّم في القصة تُسمّى ____.', answer: 'العقدة', explanation: 'تليها لحظة الانفراج أو الحل.' },
+          { text: 'العلم الذي يُعرف به صحيح أوزان الشعر من فاسدها هو علم ____.', answer: 'العروض', explanation: 'وضعه الخليل بن أحمد الفراهيدي.' },
+        ],
+        essay: [
+          { text: 'حلّل دور الشخصية الرئيسة في قصة قصيرة درستها، مبيّنًا نوعها.', explanation: 'تحديد الشخصية ونوعها (2) · تحليل الدور (2) · الشواهد (1).' },
+          { text: 'استخرج صورتين فنيتين من نص شعري درسته، واشرح أثرهما في المعنى.', explanation: 'استخراج صحيح (2) · الشرح (2) · الأثر (1).' },
+          { text: 'وضّح الفرق بين التشبيه المرسل والتشبيه البليغ مع مثال لكل منهما.', explanation: 'التعريفان (2) · مثالان (2) · الدقة (1).' },
+        ],
+      },
+    };
+    const CBANK = {
+      'math-g7': [
+        { nameAr: 'المعكوس الجمعي', nameEn: 'Additive Inverse', descAr: 'العدد الذي إذا جُمع مع عدد آخر كان الناتج صفرًا، مثل 5 و−5.', descEn: 'The number that, added to another, gives zero — e.g. 5 and −5.' },
+        { nameAr: 'خط الأعداد', nameEn: 'Number Line', descAr: 'مستقيم تُمثَّل عليه الأعداد بأبعاد متساوية؛ الموجبة يمين الصفر والسالبة يساره.', descEn: 'A straight line on which numbers are placed at equal intervals, positives right of zero and negatives left.' },
+        { nameAr: 'أولويات العمليات الحسابية', nameEn: 'Order of Operations', descAr: 'ترتيب تنفيذ العمليات: الأقواس، ثم الأسس، ثم الضرب والقسمة، ثم الجمع والطرح.', descEn: 'The order for evaluating expressions: brackets, exponents, multiplication/division, then addition/subtraction.' },
+        { nameAr: 'العامل المشترك الأكبر', nameEn: 'Greatest Common Factor', descAr: 'أكبر عدد يقسم عددين أو أكثر دون باقٍ.', descEn: 'The largest number that divides two or more numbers without a remainder.' },
+        { nameAr: 'المضاعف المشترك الأصغر', nameEn: 'Least Common Multiple', descAr: 'أصغر عدد يقبل القسمة على عددين أو أكثر.', descEn: 'The smallest number divisible by two or more given numbers.' },
+        { nameAr: 'التناسب الطردي', nameEn: 'Direct Proportion', descAr: 'علاقة بين كميتين تزداد إحداهما بزيادة الأخرى بنسبة ثابتة.', descEn: 'A relationship where one quantity increases with the other at a constant ratio.' },
+      ],
+      'sci-g8': [
+        { nameAr: 'الميتوكوندريا', nameEn: 'Mitochondria', descAr: 'عضيات تُنتج الطاقة اللازمة لأنشطة الخلية عبر التنفس الخلوي.', descEn: 'Organelles that produce the energy the cell needs through cellular respiration.' },
+        { nameAr: 'البلاستيدات الخضراء', nameEn: 'Chloroplasts', descAr: 'عضيات في الخلايا النباتية تقوم بعملية البناء الضوئي.', descEn: 'Organelles in plant cells that carry out photosynthesis.' },
+        { nameAr: 'قانون حفظ الكتلة', nameEn: 'Law of Conservation of Mass', descAr: 'الكتلة لا تفنى ولا تُستحدث في التفاعل الكيميائي.', descEn: 'Mass is neither created nor destroyed in a chemical reaction.' },
+        { nameAr: 'العامل المساعد', nameEn: 'Catalyst', descAr: 'مادة تزيد سرعة التفاعل دون أن تُستهلك فيه.', descEn: 'A substance that speeds up a reaction without being consumed.' },
+        { nameAr: 'الغشاء البلازمي', nameEn: 'Plasma Membrane', descAr: 'غشاء رقيق يحيط بالخلية وينظّم دخول المواد وخروجها.', descEn: 'A thin membrane surrounding the cell that controls what enters and leaves.' },
+        { nameAr: 'سرعة التفاعل الكيميائي', nameEn: 'Rate of Reaction', descAr: 'مقدار التغير في كمية المتفاعلات أو النواتج في وحدة الزمن.', descEn: 'The change in amount of reactants or products per unit of time.' },
+      ],
+      'arab-g9': [
+        { nameAr: 'الاستعارة', nameEn: 'Metaphor', descAr: 'تشبيه حُذف أحد طرفيه، وتكون تصريحية أو مكنية.', descEn: 'A simile with one of its two sides omitted; explicit or implicit.' },
+        { nameAr: 'الكناية', nameEn: 'Metonymy', descAr: 'لفظ أُطلق وأُريد به لازم معناه مع جواز إرادة المعنى الأصلي.', descEn: 'An expression used to imply a related meaning while the literal one remains possible.' },
+        { nameAr: 'الحبكة القصصية', nameEn: 'Plot', descAr: 'تسلسل الأحداث وترابطها منطقيًا من البداية إلى النهاية.', descEn: 'The logical sequence and connection of events from beginning to end.' },
+        { nameAr: 'العقدة والحل', nameEn: 'Climax & Resolution', descAr: 'ذروة تأزّم الأحداث ثم انفراجها في نهاية القصة.', descEn: 'The peak of tension in the story and its subsequent release.' },
+        { nameAr: 'الطباق', nameEn: 'Antithesis', descAr: 'الجمع بين الكلمة وضدها في الكلام.', descEn: 'Pairing a word with its opposite in the same expression.' },
+        { nameAr: 'التفعيلة', nameEn: 'Metrical Foot', descAr: 'وحدة موسيقية تتكرر لتُكوّن وزن البيت الشعري.', descEn: 'A rhythmic unit repeated to form the metre of a verse.' },
+      ],
+    };
+    const SBANK = {
+      'math-g7': ['الأعداد الصحيحة تشمل الموجبة والسالبة والصفر.', 'تُمثَّل الأعداد الصحيحة على خط الأعداد؛ الموجبة يمين الصفر والسالبة يساره.', 'القيمة المطلقة لأي عدد صحيح قيمة غير سالبة دائمًا.', 'عند جمع عددين لهما الإشارة نفسها نجمع القيمتين ونحتفظ بالإشارة.', 'عند جمع عددين مختلفي الإشارة نطرح القيمتين ونأخذ إشارة الأكبر قيمةً مطلقة.', 'الطرح يعني جمع المعكوس الجمعي: أ − ب = أ + (−ب).', 'ناتج ضرب أو قسمة عددين لهما الإشارة نفسها موجب، ومختلفي الإشارة سالب.', 'تُطبَّق أولويات العمليات: الأقواس ثم الضرب والقسمة ثم الجمع والطرح.'],
+      'sci-g8': ['الخلية هي الوحدة الأساسية للتركيب والوظيفة في الكائنات الحية.', 'تشترك الخليتان النباتية والحيوانية في النواة والغشاء البلازمي والميتوكوندريا.', 'تنفرد الخلية النباتية بالجدار الخلوي والبلاستيدات الخضراء والفجوة العصارية الكبيرة.', 'التفاعل الكيميائي تكسير روابط في المتفاعلات وتكوين روابط جديدة في النواتج.', 'تُوازن المعادلة بتعديل المعاملات لا الأرقام السفلية.', 'يحكم الموازنةَ قانونُ حفظ الكتلة.', 'التفاعل الطارد يُطلق الحرارة، والماص يمتصها من الوسط.', 'تزداد سرعة التفاعل بزيادة التركيز ودرجة الحرارة ووجود العامل المساعد.'],
+      'arab-g9': ['النص الأدبي يجمع بين جمال اللفظ وعمق المعنى.', 'للتشبيه أربعة أركان: المشبّه والمشبّه به والأداة ووجه الشبه.', 'التشبيه البليغ ما حُذفت منه الأداة ووجه الشبه.', 'الاستعارة تشبيه حُذف أحد طرفيه.', 'عناصر القصة القصيرة: الشخصية والحدث والبيئة والحبكة.', 'الشخصية النامية تتغير بتطور الأحداث، والثابتة لا تتغير.', 'العقدة ذروة التأزّم ويليها الحل.', 'الوزن الشعري يقوم على تفعيلات تتكرر وفق بحور معروفة.'],
+    };
+    const BLOOMS = ['remembering', 'understanding', 'applying', 'analyzing', 'evaluating', 'creating'];
+    const DIFFS = ['easy', 'medium', 'hard'];
+    const CODE_PREFIX = { 'math-g7': 'MATH', 'sci-g8': 'SCI', 'arab-g9': 'ARAB' };
+    const AR = /[؀-ۿ]/, LATIN = /[A-Za-z]/;
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    let uidSeq = 0;
+    const uid = () => 'g' + (++uidSeq);
+    const sleep = (ms, signal) => new Promise((res, rej) => {
+      const id = setTimeout(res, ms);
+      signal?.addEventListener('abort', () => { clearTimeout(id); rej(new DOMException('Aborted', 'AbortError')); }, { once: true });
+    });
+    const daysAgo = (d, h, m) => { const x = new Date(); x.setDate(x.getDate() - d); x.setHours(h, m, 0, 0); return x; };
+
+    const I18N = {
+      ar: {
+        docTitle: 'مولّد المحتوى والأسئلة العام — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد المحتوى والأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { quota: 'وصل استهلاك حصة توكنز الذكاء الاصطناعي إلى {v}%', ready: 'اكتمل توليد مسودة أسئلة جديدة بنجاح', log: 'تم تسجيل عملية توليد جديدة في سجل الاستخدام' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          items:     { zero: 'لا عناصر', one: 'عنصر واحد', two: 'عنصران', few: '{n} عناصر', many: '{n} عنصرًا', other: '{n} عنصر' },
+          questions: { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: '{n} أسئلة', many: '{n} سؤالًا', other: '{n} سؤال' },
+          concepts:  { zero: 'لا مفاهيم', one: 'مفهوم واحد', two: 'مفهومان', few: '{n} مفاهيم', many: '{n} مفهومًا', other: '{n} مفهوم' },
+        },
+
+        aig: {
+          handoff: 'معطيات معبّأة من قائمة الاختبارات{type} — راجعها ثم ولّد الأسئلة واحفظها، ثم اجمعها في الاختبار من محرّره.', backToQuizzes: 'العودة إلى الاختبارات',
+          quizType: { formative: ' (اختبار تكويني)', summative: ' (اختبار ختامي)', diagnostic: ' (اختبار تشخيصي)' },
+          title: 'مولّد المحتوى والأسئلة العام', subtitle: 'ولّد أسئلة واختبارات، مفاهيم وشروحات، أو ملخصات دراسية بالذكاء الاصطناعي، بالاستناد إلى الهيكل الأكاديمي أو سياق نصي مخصص. كل ما يُحفظ يمرّ بطابور المراجعة قبل النشر.',
+          studioLabel: 'استوديو التوليد بالذكاء الاصطناعي', settingsLabel: 'إعدادات التوليد', resultsLabel: 'نتائج التوليد',
+          tokens: {
+            title: 'استهلاك توكنز الذكاء الاصطناعي الشهري', caption: 'الحصة الشهرية المتاحة لمنشأتك (ai_usage_logs)',
+            usedPct: '{v}% من الحصة', remaining: 'المتبقي: {n} توكن حتى تجديد الحصة', recharge: 'شحن / ترقية الباقة',
+            valuetext: 'مستهلك {used} من {limit} توكن',
+          },
+          tokensUnit: 'توكن',
+
+          logsBtn: 'سجل التوليد الأخير',
+          logsTitle: 'سجل التوليد الأخير', logsSubtitle: 'آخر عمليات التوليد بالذكاء الاصطناعي في منشأتك (ai_usage_logs)',
+          logsByUser: 'بواسطة', logsYou: 'أنت', logsClose: 'إغلاق السجل', logsViewAll: 'عرض كل سجلات الاستخدام', logCancelled: 'أُلغيت',
+          logVerb: { questions: 'توليد أسئلة', concepts: 'توليد مفاهيم', summaries: 'توليد ملخص' },
+
+          modeLegend: 'نوع المحتوى المطلوب توليده',
+          mode: { questions: 'أسئلة واختبارات', concepts: 'مفاهيم وشروحات', summaries: 'ملخصات دراسية' },
+
+          hierarchyTitle: 'الموضع الأكاديمي',
+          field: { course: 'المقرر', unit: 'الوحدة', lesson: 'الدرس' },
+          fieldGrade: 'الصف', gradeHint: 'يُحدَّد تلقائيًا من المقرر.',
+          coursePh: 'اختر المقرر…', unitPh: 'اختر الوحدة…', lessonPh: 'اختر الدرس…', optionalPh: 'اختياري…',
+          pickCourseFirst: 'اختر المقرر أولًا', pickUnitFirst: 'اختر الوحدة أولًا',
+          requiredBySettings: 'إلزامي وفق إعدادات الهيكل الأكاديمي.',
+
+          paramsTitle: 'معطيات التوليد',
+          fieldBloom: 'مستوى بلوم المعرفي',
+          bloom: { remembering: 'التذكر', understanding: 'الفهم', applying: 'التطبيق', analyzing: 'التحليل', evaluating: 'التقييم', creating: 'الإبداع', mixed: 'متنوّع (كل المستويات)' },
+          fieldQType: 'نوع السؤال',
+          qType: { mcq: 'اختيار من متعدد', tf: 'صح / خطأ', fill: 'إكمال الفراغ', essay: 'مقالي' },
+          fieldDifficulty: 'مستوى الصعوبة',
+          diff: { easy: 'سهل', medium: 'متوسط', hard: 'صعب', mixed: 'متنوّع' },
+          fieldCount: 'عدد الأسئلة المطلوب', fieldConceptCount: 'عدد المفاهيم المطلوبة',
+          conceptsBilingualNote: 'يُولَّد كل مفهوم باسم ووصف عربي وإنجليزي ورمز مقترح؛ الاسم الإنجليزي إلزامي للحفظ.',
+          fieldSummaryLength: 'طول الملخص',
+          summary: { short: 'قصير', medium: 'متوسط', long: 'طويل' },
+
+          promptLabel: 'سياق نصي مخصص (اختياري)', promptPlaceholder: 'الصق نصًا من الكتاب المدرسي، أو اكتب تعليمات إضافية لتوجيه الذكاء الاصطناعي…',
+          promptHint: 'كل حرف إضافي يرفع التكلفة التقديرية.',
+          attachFile: 'إرفاق ملف مرجعي', removeFile: 'إزالة الملف المرفق', fileHint: 'PDF أو DOCX أو PPTX أو TXT — حتى 10 ميجابايت.',
+          fileErrType: 'نوع الملف غير مدعوم. المسموح: PDF و DOCX و PPTX و TXT.', fileErrSize: 'حجم الملف يتجاوز 10 ميجابايت.',
+
+          estimateLabel: 'التكلفة التقديرية', generateBtn: 'توليد بالذكاء الاصطناعي', generating: 'جارِ التوليد…', cancel: 'إلغاء',
+          missingHint: 'لإتمام التوليد حدّد: {fields}.', overQuotaHint: 'التكلفة التقديرية تتجاوز الرصيد المتبقي — قلّل العدد أو اشحن الباقة.',
+          readyHint: 'ستظهر النتائج في لوحة المعاينة، ولن يُحفظ شيء قبل مراجعتك.', runningHint: 'يمكنك الإلغاء في أي وقت؛ لا تُخصم إلا التوكنز المستهلكة فعلًا.',
+
+          emptyTitle: 'ابدأ أول توليد لك', emptySubtitle: 'حدّد المعطيات في لوحة الإعدادات، ثم اضغط «توليد بالذكاء الاصطناعي» لمعاينة النتائج هنا.',
+          tip1: 'كلما حدّدت الدرس بدقة كانت النتائج أقرب لمحتواه.', tip2: 'أضف سياقًا نصيًا واضحًا أو أرفق ملفًا مرجعيًا لنتائج أدق.', tip3: 'جرّب «متنوّع» في بلوم والصعوبة لتغطية أوسع.',
+
+          busyTitle: 'جارِ تحليل المعطيات وتوليد النتائج…', busySubtitle: 'قد تستغرق العملية بضع ثوانٍ بحسب الكمية المطلوبة.',
+          stage: { analyze: 'تحليل الموضع الأكاديمي والسياق', generate: 'توليد العناصر', validate: 'التحقق من الصياغة والإجابات' },
+          startedMsg: 'بدأ التوليد.', cancelledMsg: 'أُلغي التوليد.',
+
+          err: {
+            title: 'تعذّر إكمال التوليد', provider: 'لم يستجب مزوّد الذكاء الاصطناعي. لم تُخصم أي توكنز — حاول مرة أخرى.',
+            quota: 'الرصيد المتبقي لا يكفي لهذا الطلب. اشحن الباقة أو قلّل عدد العناصر.', timeout: 'انتهت مهلة الطلب. حاول بعدد أقل من العناصر.',
+          },
+          retry: 'إعادة المحاولة',
+
+          resultsReady: 'تم توليد {items} — راجعها ثم احفظها', doneMsg: 'اكتمل التوليد: {items}.',
+          savedOf: 'محفوظ {n} من {total}', itemN: '#{n}',
+          cardMarks: 'الدرجة: {n}', cardExplanation: 'التفسير', rubric: 'معايير التصحيح', correctAnswer: 'الإجابة الصحيحة',
+          qTextLabel: 'نص السؤال', trueLabel: 'صحيح', falseLabel: 'خاطئ',
+          optionsLegend: 'الخيارات (حدّد الإجابة الصحيحة)', optionN: 'الخيار {n}', markCorrect: 'اعتماد الخيار {n} إجابةً صحيحة',
+          nameAr: 'اسم المفهوم (عربي)', nameEn: 'اسم المفهوم (إنجليزي)', descAr: 'الوصف (عربي)', descEn: 'الوصف (إنجليزي)',
+          summaryTitle: 'عنوان الملخص', summaryPoints: 'النقاط', onePerLine: 'نقطة واحدة في كل سطر.', summaryPrefix: 'ملخص: ',
+
+          v: { required: 'هذا الحقل إلزامي.', needArabic: 'يجب أن يحتوي على حروف عربية.', noArabic: 'استخدم حروفًا لاتينية فقط.', optionsEmpty: 'املأ جميع الخيارات.', optionsDup: 'الخيارات يجب أن تكون مختلفة.' },
+
+          actEdit: 'تعديل', actSaveEdit: 'حفظ التعديل', cancelEdit: 'إلغاء', actAddQuiz: 'إضافة إلى اختبار', actRegenerate: 'إعادة توليد', actDiscard: 'استبعاد',
+          saveTo: { questions: 'حفظ في بنك الأسئلة', concepts: 'حفظ في المفاهيم', summaries: 'حفظ كعنصر تعليمي' },
+          lockedInReview: 'مُرسل للمراجعة — يُعدَّل من طابور المراجعة', sentToReview: 'بانتظار المراجعة', addedToQuiz: 'أُضيف لاختبار',
+          exportWord: 'تصدير Word', exportPdf: 'تصدير PDF', saveAllN: 'حفظ الكل ({n})', allSaved: 'تم حفظ الكل',
+          reviewNote: {
+            questions: 'تُحفظ الأسئلة في بنك الأسئلة بحالة «بانتظار المراجعة» ولا تظهر للطلاب قبل اعتمادها.',
+            concepts: 'تُضاف المفاهيم بحالة «بانتظار المراجعة» ويمكن ربطها بالعناصر التعليمية بعد اعتمادها.',
+            summaries: 'يُحفظ الملخص كعنصر تعليمي نصي خاص بانتظار المراجعة.',
+          },
+
+          toastEditSaved: 'تم حفظ التعديل.', toastSaved: { questions: 'أُرسل السؤال إلى بنك الأسئلة للمراجعة (معاينة)', concepts: 'أُرسل المفهوم للمراجعة (معاينة)', summaries: 'أُرسل الملخص كعنصر تعليمي للمراجعة (معاينة)' },
+          toastSavedAll: 'أُرسل {items} للمراجعة (معاينة)', toastSkippedEditing: 'تُركت العناصر قيد التعديل دون حفظ.',
+          toastAddedQuiz: 'أُضيف السؤال إلى مسودة اختبار (معاينة)', toastRegenerated: 'أُعيد توليد العنصر.', toastDiscarded: 'استُبعد العنصر.', undo: 'تراجع',
+          toastExport: { word: 'سيُصدَّر {items} كملف Word (معاينة)', pdf: 'سيُصدَّر {items} كملف PDF (معاينة)' },
+          toastFile: 'أُرفق الملف المرجعي.',
+          confirmReplaceTitle: 'استبدال النتائج غير المحفوظة؟', confirmReplaceText: 'لديك {items} غير محفوظة في هذا الوضع وستُستبدل بالنتائج الجديدة.',
+          confirmReplace: 'استبدال وتوليد', keep: 'إلغاء',
+        },
+      },
+      en: {
+        docTitle: 'General AI Content & Question Generator — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Content & Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { quota: 'AI token usage has reached {v}% of the quota', ready: 'A new question draft was generated successfully', log: 'A new generation run was recorded in the usage log' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          items:     { zero: 'no items', one: '{n} item', other: '{n} items' },
+          questions: { zero: 'no questions', one: '{n} question', other: '{n} questions' },
+          concepts:  { zero: 'no concepts', one: '{n} concept', other: '{n} concepts' },
+        },
+
+        aig: {
+          handoff: 'Parameters pre-filled from the quizzes list{type} — review them, generate and save the questions, then assemble them into the quiz from its builder.', backToQuizzes: 'Back to quizzes',
+          quizType: { formative: ' (formative quiz)', summative: ' (summative quiz)', diagnostic: ' (diagnostic quiz)' },
+          title: 'General AI Content & Question Generator', subtitle: 'Generate questions and quizzes, concepts and explanations, or study summaries with AI, based on the academic hierarchy or a custom text context. Everything you save goes through the review queue before publishing.',
+          studioLabel: 'AI generation studio', settingsLabel: 'Generation settings', resultsLabel: 'Generation results',
+          tokens: {
+            title: 'Monthly AI Token Usage', caption: "Your organization's monthly allowance (ai_usage_logs)",
+            usedPct: '{v}% of quota used', remaining: '{n} tokens remaining until renewal', recharge: 'Recharge / Upgrade Plan',
+            valuetext: '{used} of {limit} tokens used',
+          },
+          tokensUnit: 'tokens',
+
+          logsBtn: 'Recent Generation Log',
+          logsTitle: 'Recent Generation Log', logsSubtitle: 'Latest AI generation runs in your organization (ai_usage_logs)',
+          logsByUser: 'By', logsYou: 'You', logsClose: 'Close log', logsViewAll: 'View all usage logs', logCancelled: 'Cancelled',
+          logVerb: { questions: 'Questions', concepts: 'Concepts', summaries: 'Summary' },
+
+          modeLegend: 'Type of content to generate',
+          mode: { questions: 'Questions & Quizzes', concepts: 'Concepts & Explanations', summaries: 'Study Summaries' },
+
+          hierarchyTitle: 'Academic Position',
+          field: { course: 'Course', unit: 'Unit', lesson: 'Lesson' },
+          fieldGrade: 'Grade', gradeHint: 'Set automatically from the course.',
+          coursePh: 'Select a course…', unitPh: 'Select a unit…', lessonPh: 'Select a lesson…', optionalPh: 'Optional…',
+          pickCourseFirst: 'Select a course first', pickUnitFirst: 'Select a unit first',
+          requiredBySettings: 'Required by the academic structure settings.',
+
+          paramsTitle: 'Generation Parameters',
+          fieldBloom: "Bloom's Taxonomy Level",
+          bloom: { remembering: 'Remembering', understanding: 'Understanding', applying: 'Applying', analyzing: 'Analyzing', evaluating: 'Evaluating', creating: 'Creating', mixed: 'Mixed (all levels)' },
+          fieldQType: 'Question Type',
+          qType: { mcq: 'Multiple Choice', tf: 'True / False', fill: 'Fill in the Blank', essay: 'Essay' },
+          fieldDifficulty: 'Difficulty Level',
+          diff: { easy: 'Easy', medium: 'Medium', hard: 'Hard', mixed: 'Mixed' },
+          fieldCount: 'Number of Questions', fieldConceptCount: 'Number of Concepts',
+          conceptsBilingualNote: 'Each concept is generated with Arabic and English names and descriptions plus a suggested code; the English name is required to save.',
+          fieldSummaryLength: 'Summary Length',
+          summary: { short: 'Short', medium: 'Medium', long: 'Long' },
+
+          promptLabel: 'Custom Prompt / Source Context (optional)', promptPlaceholder: 'Paste text from the textbook, or add extra instructions to guide the AI…',
+          promptHint: 'Every extra character raises the estimated cost.',
+          attachFile: 'Attach Reference File', removeFile: 'Remove attached file', fileHint: 'PDF, DOCX, PPTX or TXT — up to 10 MB.',
+          fileErrType: 'Unsupported file type. Allowed: PDF, DOCX, PPTX, TXT.', fileErrSize: 'The file is larger than 10 MB.',
+
+          estimateLabel: 'Estimated cost', generateBtn: 'Generate with AI', generating: 'Generating…', cancel: 'Cancel',
+          missingHint: 'To generate, select: {fields}.', overQuotaHint: 'The estimated cost exceeds the remaining balance — reduce the count or recharge.',
+          readyHint: 'Results appear in the preview panel; nothing is saved until you review it.', runningHint: 'You can cancel at any time; only tokens actually used are charged.',
+
+          emptyTitle: 'Start your first generation', emptySubtitle: 'Set the parameters in the settings panel, then click "Generate with AI" to preview results here.',
+          tip1: 'The more precisely you pick the lesson, the closer the results match it.', tip2: 'Add clear text context or attach a reference file for more accurate results.', tip3: 'Try "Mixed" for Bloom and difficulty for wider coverage.',
+
+          busyTitle: 'Analyzing parameters and generating results…', busySubtitle: 'This may take a few seconds depending on the amount requested.',
+          stage: { analyze: 'Analyzing academic position and context', generate: 'Generating items', validate: 'Validating wording and answers' },
+          startedMsg: 'Generation started.', cancelledMsg: 'Generation cancelled.',
+
+          err: {
+            title: 'Generation could not be completed', provider: 'The AI provider did not respond. No tokens were charged — please try again.',
+            quota: 'The remaining balance is not enough for this request. Recharge or reduce the number of items.', timeout: 'The request timed out. Try fewer items.',
+          },
+          retry: 'Try again',
+
+          resultsReady: '{items} generated — review, then save', doneMsg: 'Generation complete: {items}.',
+          savedOf: '{n} of {total} saved', itemN: '#{n}',
+          cardMarks: 'Marks: {n}', cardExplanation: 'Explanation', rubric: 'Marking rubric', correctAnswer: 'Correct answer',
+          qTextLabel: 'Question text', trueLabel: 'True', falseLabel: 'False',
+          optionsLegend: 'Options (mark the correct answer)', optionN: 'Option {n}', markCorrect: 'Mark option {n} as correct',
+          nameAr: 'Concept name (Arabic)', nameEn: 'Concept name (English)', descAr: 'Description (Arabic)', descEn: 'Description (English)',
+          summaryTitle: 'Summary title', summaryPoints: 'Points', onePerLine: 'One point per line.', summaryPrefix: 'ملخص: ',
+
+          v: { required: 'This field is required.', needArabic: 'Must contain Arabic letters.', noArabic: 'Use Latin letters only.', optionsEmpty: 'Fill in all options.', optionsDup: 'Options must be different.' },
+
+          actEdit: 'Edit', actSaveEdit: 'Save edit', cancelEdit: 'Cancel', actAddQuiz: 'Add to quiz', actRegenerate: 'Regenerate', actDiscard: 'Discard',
+          saveTo: { questions: 'Save to item bank', concepts: 'Save to concepts', summaries: 'Save as learning object' },
+          lockedInReview: 'Sent for review — edit it from the Review Queue', sentToReview: 'Pending review', addedToQuiz: 'Added to quiz',
+          exportWord: 'Export Word', exportPdf: 'Export PDF', saveAllN: 'Save all ({n})', allSaved: 'All saved',
+          reviewNote: {
+            questions: 'Questions are saved to the item bank as "Pending review" and are hidden from students until approved.',
+            concepts: 'Concepts are added as "Pending review" and can be linked to learning objects once approved.',
+            summaries: 'The summary is saved as a private text learning object pending review.',
+          },
+
+          toastEditSaved: 'Edit saved.', toastSaved: { questions: 'Question sent to the item bank for review (preview)', concepts: 'Concept sent for review (preview)', summaries: 'Summary sent as a learning object for review (preview)' },
+          toastSavedAll: '{items} sent for review (preview)', toastSkippedEditing: 'Items still being edited were not saved.',
+          toastAddedQuiz: 'Question added to a quiz draft (preview)', toastRegenerated: 'Item regenerated.', toastDiscarded: 'Item discarded.', undo: 'Undo',
+          toastExport: { word: '{items} will be exported as a Word file (preview)', pdf: '{items} will be exported as a PDF file (preview)' },
+          toastFile: 'Reference file attached.',
+          confirmReplaceTitle: 'Replace unsaved results?', confirmReplaceText: 'You have {items} unsaved in this mode; they will be replaced by the new results.',
+          confirmReplace: 'Replace & generate', keep: 'Cancel',
+        },
+      },
+    };
+
+    const emptyRun = () => ({ status: 'idle', items: [], error: null, ctx: null });
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'aiGenerator',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        const s = (n === 0 && forms.zero) || forms[cat] || forms.other;
+        return s.replace('{n}', this.fmt(n));
+      },
+      fmt(n) { return Number(n).toLocaleString('en-US'); },
+      fmtDate(d) { return new Intl.DateTimeFormat(this.locale === 'ar' ? 'ar' : 'en', { dateStyle: 'medium', timeStyle: 'short' }).format(d); },
+      formatSize(b) { return b < 1024 * 1024 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1024 / 1024).toFixed(1) + ' MB'; },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html' },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات ---------- */
+      notifications: [
+        { id: 1, key: 'quota', time: '20د', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-800 dark:text-warning-500' },
+        { id: 2, key: 'ready', time: '1س', read: false, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+        { id: 3, key: 'log', time: '3س', read: true, icon: 'fa-solid fa-clock-rotate-left', tone: 'bg-primary-500/10 text-brand' },
+      ],
+      get unread() { return this.notifications.some(n => !n.read); },
+
+      /* ---------- الحصة (في Livewire: #[Computed] quota() من AiQuota service) ---------- */
+      quota: { used: 32000, limit: 50000 },
+      get quotaRemaining() { return Math.max(0, this.quota.limit - this.quota.used); },
+      get quotaPct() { return Math.min(100, Math.round(this.quota.used / this.quota.limit * 100)); },
+      get quotaTone() {
+        const p = this.quotaPct;
+        if (p >= 90) return { bar: 'bg-error-600', text: 'text-danger' };
+        if (p >= 75) return { bar: 'bg-warning-500', text: 'text-warning-800 dark:text-warning-500' };
+        return { bar: 'bg-accent-500', text: 'text-yellow-900 dark:text-accent-500' };
+      },
+
+      /* ---------- الأوضاع والنموذج ---------- */
+      modes: [
+        { key: 'questions', icon: 'fa-list-check' },
+        { key: 'concepts', icon: 'fa-lightbulb' },
+        { key: 'summaries', icon: 'fa-file-lines' },
+      ],
+      generationMode: 'questions',
+      structure: M.structure,
+      aiForm: {
+        courseId: '', unitId: '', lessonId: '',
+        bloom: 'mixed', qtype: 'mcq', difficulty: 'medium', count: 6,
+        conceptCount: 4, summaryLength: 'medium',
+        prompt: '',
+      },
+      PROMPT_MAX: 4000,
+      FILE_ACCEPT: '.pdf,.docx,.pptx,.txt',
+      FILE_MAX: 10 * 1024 * 1024,
+      attached: null, fileError: '',
+      submitted: false,
+
+      /* حالة مستقلة لكل وضع: تبديل الوضع لا يفقد النتائج */
+      state: { questions: emptyRun(), concepts: emptyRun(), summaries: emptyRun() },
+      get cur() { return this.state[this.generationMode]; },
+      get running() { return Object.values(this.state).some(s => s.status === 'running'); },
+      stage: 0, liveMsg: '', _ctrl: null,
+
+      /* ---------- البيانات الأكاديمية المتسلسلة ---------- */
+      label(o) { return o ? o[this.locale] : ''; },
+      course(id) { return M.courses.find(c => c.id === id); },
+      unit(id) { return M.units.find(u => u.id === id); },
+      lesson(id) { return M.lessons.find(l => l.id === id); },
+      get courseOpts() { return M.courses.map(c => ({ value: c.id, label: c[this.locale] })); },
+      get unitOpts() { return M.units.filter(u => u.courseId === this.aiForm.courseId).map(u => ({ value: u.id, label: u[this.locale] })); },
+      get lessonOpts() { return M.lessons.filter(l => l.unitId === this.aiForm.unitId).map(l => ({ value: l.id, label: l[this.locale] })); },
+      get gradeLabel() { const c = this.course(this.aiForm.courseId); return c ? c[this.locale === 'ar' ? 'gradeAr' : 'gradeEn'] : '—'; },
+      get reqUnit() { return this.structure.units.enabled && this.structure.units.required; },
+      get reqLesson() { return this.structure.lessons.enabled && this.structure.lessons.required; },
+      unitPh() { return !this.aiForm.courseId ? this.t('aig.pickCourseFirst') : this.t(this.reqUnit ? 'aig.unitPh' : 'aig.optionalPh'); },
+      lessonPh() { return !this.aiForm.unitId ? this.t('aig.pickUnitFirst') : this.t(this.reqLesson ? 'aig.lessonPh' : 'aig.optionalPh'); },
+      setCourse(v) { if (v === this.aiForm.courseId) return; this.aiForm.courseId = v; this.aiForm.unitId = ''; this.aiForm.lessonId = ''; },
+      setUnit(v) { if (v === this.aiForm.unitId) return; this.aiForm.unitId = v; this.aiForm.lessonId = ''; },
+      bloomOpts() { return ['mixed', ...BLOOMS].map(b => ({ value: b, label: this.t('aig.bloom.' + b) })); },
+
+      get missing() {
+        const m = [];
+        if (!this.aiForm.courseId) m.push('course');
+        if (this.reqUnit && !this.aiForm.unitId) m.push('unit');
+        if (this.reqLesson && !this.aiForm.lessonId) m.push('lesson');
+        return m;
+      },
+      invalid(field) { return this.submitted && this.missing.includes(field); },
+
+      /* ---------- التكلفة التقديرية ---------- */
+      get estimate() {
+        const f = this.aiForm;
+        const base = {
+          questions: f.count * (f.qtype === 'essay' ? 220 : 160),
+          concepts: f.conceptCount * 220,
+          summaries: { short: 350, medium: 650, long: 1100 }[f.summaryLength],
+        }[this.generationMode];
+        return 120 + base + Math.ceil(f.prompt.length / 3) + (this.attached ? 900 : 0);
+      },
+      get overQuota() { return this.estimate > this.quotaRemaining; },
+      get canGenerate() { return !this.running && !this.missing.length && !this.overQuota; },
+      get skeletonCount() { return Math.min(3, this.generationMode === 'questions' ? this.aiForm.count : this.generationMode === 'concepts' ? this.aiForm.conceptCount : 1); },
+      get genHint() {
+        if (this.running) return this.t('aig.runningHint');
+        if (this.missing.length) return this.tf('aig.missingHint', { fields: this.missing.map(k => this.t('aig.field.' + k)).join(this.locale === 'ar' ? '، ' : ', ') });
+        if (this.overQuota) return this.t('aig.overQuotaHint');
+        return this.t('aig.readyHint');
+      },
+
+      /* ---------- الملف المرجعي (Livewire: WithFileUploads + rules mimes:pdf,docx,pptx,txt|max:10240) ---------- */
+      onFile(e) {
+        const f = e.target.files?.[0];
+        e.target.value = '';
+        if (!f) return;
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!['pdf', 'docx', 'pptx', 'txt'].includes(ext)) { this.fileError = this.t('aig.fileErrType'); return; }
+        if (f.size > this.FILE_MAX) { this.fileError = this.t('aig.fileErrSize'); return; }
+        this.fileError = '';
+        this.attached = { name: f.name, size: f.size };
+        this.toastSuccess(this.t('aig.toastFile'));
+      },
+      removeFile() { this.attached = null; this.fileError = ''; this.$nextTick(() => this.$refs.attachBtn?.focus()); },
+
+      /* ---------- التوليد ---------- */
+      unsaved(mode) { return this.state[mode].items.filter(r => !r.saved).length; },
+      get unsavedCount() { return this.unsaved(this.generationMode); },
+      get savedCount() { return this.cur.items.filter(r => r.saved).length; },
+
+      async generate() {
+        if (this.running) return;
+        this.submitted = true;
+        if (this.missing.length) {
+          this.liveMsg = this.genHint;
+          document.getElementById('ai-' + this.missing[0])?.focus();
+          return;
+        }
+        const mode = this.generationMode, run = this.state[mode];
+        if (this.overQuota) { run.status = 'error'; run.error = 'quota'; this.liveMsg = this.t('aig.err.quota'); return; }
+        if (this.unsaved(mode) && !(await this.confirmReplace(this.unsaved(mode)))) return;
+
+        const ctx = { mode, ...clone(this.aiForm), file: this.attached?.name || null };
+        const cost = this.estimate;
+        const prev = run.items;
+        run.status = 'running'; run.error = null; this.stage = 0;
+        this.liveMsg = this.t('aig.startedMsg');
+        this._ctrl = new AbortController();
+        try {
+          for (let s = 0; s < 3; s++) { this.stage = s; await sleep(480, this._ctrl.signal); }
+          if (/#fail/i.test(ctx.prompt)) throw Object.assign(new Error('provider'), { code: 'provider' });   // لمعاينة حالة الخطأ: اكتب ‎#fail‎ في السياق
+          run.items = this.build(ctx);
+          run.ctx = ctx;
+          run.status = 'idle';
+          this.quota.used += Math.round(cost * 0.92);
+          this.logs.unshift({ id: Date.now(), mode, courseId: ctx.courseId, unitId: ctx.unitId, lessonId: ctx.lessonId, at: new Date(), user: null, items: run.items.length, tokens: Math.round(cost * 0.92), status: 'done' });
+          this.liveMsg = this.tf('aig.doneMsg', { items: this.pluralize('items', run.items.length) });
+          this.$nextTick(() => {
+            const h = this.$refs.resultsHead;
+            if (!h) return;
+            h.focus({ preventScroll: true });
+            if (this.mobile) h.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+          });
+        } catch (e) {
+          if (e.name === 'AbortError') {
+            run.status = 'idle'; run.items = prev;
+            this.logs.unshift({ id: Date.now(), mode, courseId: ctx.courseId, unitId: ctx.unitId, lessonId: ctx.lessonId, at: new Date(), user: null, items: 0, tokens: 0, status: 'cancelled' });
+            this.liveMsg = this.t('aig.cancelledMsg');
+          } else {
+            run.status = 'error'; run.error = e.code || 'provider'; run.items = prev;
+            this.liveMsg = this.t('aig.err.' + run.error);
+          }
+        } finally { this._ctrl = null; }
+      },
+      cancel() { this._ctrl?.abort(); },
+      async confirmReplace(n) {
+        const text = this.tf('aig.confirmReplaceText', { items: this.pluralize('items', n) });
+        if (!window.Swal) return window.confirm(text);
+        const r = await Swal.fire({
+          icon: 'warning', title: this.t('aig.confirmReplaceTitle'), text,
+          showCancelButton: true, confirmButtonText: this.t('aig.confirmReplace'), cancelButtonText: this.t('aig.keep'),
+          reverseButtons: this.locale === 'ar', focusCancel: true,
+          customClass: { popup: 'firob-swal', confirmButton: 'btn btn-accent', cancelButton: 'btn btn-outline' }, buttonsStyling: false,
+        });
+        return r.isConfirmed;
+      },
+
+      /* يبني عناصر تعكس المعطيات (النوع/العدد/الصعوبة/بلوم/الطول) */
+      build(ctx, only = null, avoid = null) {
+        const cid = ctx.courseId;
+        const seed = Math.floor(Math.random() * 3);
+        if (ctx.mode === 'questions') {
+          const pool = QBANK[cid][ctx.qtype];
+          const n = only !== null ? 1 : ctx.count;
+          return Array.from({ length: n }, (_, i) => {
+            let src = pool[(seed + i) % pool.length];
+            if (avoid && src.text === avoid) src = pool[(pool.indexOf(src) + 1) % pool.length];
+            const bloom = ctx.bloom === 'mixed' ? BLOOMS[(i + (only ?? 0)) % BLOOMS.length] : ctx.bloom;
+            const difficulty = ctx.difficulty === 'mixed' ? DIFFS[(i + (only ?? 0)) % 3] : ctx.difficulty;
+            return { uid: uid(), kind: 'question', type: ctx.qtype, bloom, difficulty,
+                     marks: ctx.qtype === 'essay' ? 5 : { easy: 1, medium: 2, hard: 3 }[difficulty],
+                     ...clone(src), editing: false, draft: null, errors: {}, saved: false, added: false, busy: false };
+          });
+        }
+        if (ctx.mode === 'concepts') {
+          const pool = CBANK[cid];
+          const max = Math.max(...M.concepts.map(c => +c.code.split('-').pop()));
+          const n = only !== null ? 1 : ctx.conceptCount;
+          return Array.from({ length: n }, (_, i) => {
+            const k = (seed + i) % pool.length, round = Math.floor((seed + i) / pool.length);
+            let src = clone(pool[k]);
+            if (avoid && src.nameAr === avoid) src = clone(pool[(k + 1) % pool.length]);
+            if (round) { src.nameAr += ' (' + (round + 1) + ')'; src.nameEn += ' (' + (round + 1) + ')'; }
+            const code = 'CPT-' + CODE_PREFIX[cid] + '-' + String(max + 1 + (only ?? i)).padStart(3, '0');
+            return { uid: uid(), kind: 'concept', code, ...src, editing: false, draft: null, errors: {}, saved: false, busy: false };
+          });
+        }
+        const pts = SBANK[cid];
+        const len = { short: 3, medium: 5, long: 8 }[ctx.summaryLength];
+        const place = this.lesson(ctx.lessonId)?.ar || this.unit(ctx.unitId)?.ar || this.course(cid).ar;
+        return [{ uid: uid(), kind: 'summary', title: 'ملخص: ' + place, points: pts.slice(0, len),
+                  editing: false, draft: null, errors: {}, saved: false, busy: false }];
+      },
+
+      contextLine(ctx) {
+        if (!ctx) return '';
+        const path = [this.course(ctx.courseId), this.unit(ctx.unitId), this.lesson(ctx.lessonId)].filter(Boolean).map(o => this.label(o));
+        const p = { questions: [this.t('aig.qType.' + ctx.qtype), this.t('aig.bloom.' + ctx.bloom), this.t('aig.diff.' + ctx.difficulty)],
+                    concepts: [], summaries: [this.t('aig.fieldSummaryLength') + ': ' + this.t('aig.summary.' + ctx.summaryLength)] }[ctx.mode];
+        return [path.join(' › '), ...p].join(' · ');
+      },
+
+      /* ---------- إجراءات العنصر ---------- */
+      card(r) { return this.$root.querySelector(`[data-uid="${r.uid}"]`); },
+      startEdit(r) {
+        r.draft = clone(r);
+        if (r.kind === 'summary') r.draft.pointsText = r.points.join('\n');
+        r.errors = {}; r.editing = true;
+        this.$nextTick(() => this.card(r)?.querySelector('textarea, input[type=text]')?.focus());
+      },
+      cancelEdit(r, e) {
+        e?.preventDefault?.();
+        r.editing = false; r.errors = {}; r.draft = null;
+        this.$nextTick(() => this.card(r)?.querySelector('[data-act=edit]')?.focus());
+      },
+      validate(r) {
+        const d = r.draft, v = (k) => this.t('aig.v.' + k), e = {};
+        if (r.kind === 'question') {
+          if (!d.text.trim()) e.text = v('required');
+          if (d.type === 'mcq') {
+            const ops = d.options.map(o => o.trim());
+            if (ops.some(o => !o)) e.options = v('optionsEmpty');
+            else if (new Set(ops).size !== ops.length) e.options = v('optionsDup');
+          }
+          if (d.type === 'fill' && !String(d.answer).trim()) e.text = e.text || v('required');
+        } else if (r.kind === 'concept') {
+          if (!d.nameAr.trim()) e.nameAr = v('required'); else if (!AR.test(d.nameAr)) e.nameAr = v('needArabic');
+          if (!d.nameEn.trim()) e.nameEn = v('required'); else if (AR.test(d.nameEn) || !LATIN.test(d.nameEn)) e.nameEn = v('noArabic');
+        } else {
+          if (!d.title.trim()) e.title = v('required');
+        }
+        return e;
+      },
+      saveEdit(r) {
+        r.errors = this.validate(r);
+        if (Object.keys(r.errors).length) {
+          this.$nextTick(() => this.card(r)?.querySelector('[aria-invalid="true"]')?.focus());
+          return;
+        }
+        const d = r.draft;
+        if (r.kind === 'question') Object.assign(r, { text: d.text.trim(), options: d.options?.map(o => o.trim()), correct: d.correct, answer: d.answer, explanation: d.explanation });
+        else if (r.kind === 'concept') Object.assign(r, { nameAr: d.nameAr.trim(), nameEn: d.nameEn.trim(), descAr: d.descAr, descEn: d.descEn });
+        else Object.assign(r, { title: d.title.trim(), points: d.pointsText.split('\n').map(s => s.trim()).filter(Boolean) });
+        this.toastSuccess(this.t('aig.toastEditSaved'));
+        this.cancelEdit(r);
+      },
+      saveItem(r) {
+        if (r.saved || r.editing) return;
+        r.saved = true;
+        this.toastSuccess(this.t('aig.toastSaved.' + this.generationMode));
+      },
+      addToQuiz(r) { r.added = true; this.toastSuccess(this.t('aig.toastAddedQuiz')); },
+      async regenerate(r) {
+        if (r.busy || r.saved) return;
+        r.busy = true;
+        const ctx = this.cur.ctx, idx = this.cur.items.indexOf(r);
+        await sleep(900);
+        const [fresh] = this.build(ctx, idx, r.text || r.nameAr || r.title);
+        const { uid: _keep, ...rest } = fresh;
+        Object.assign(r, rest, { busy: false });
+        this.quota.used += 180;
+        this.liveMsg = this.t('aig.toastRegenerated');
+      },
+      discard(r) {
+        const items = this.cur.items, i = items.indexOf(r);
+        items.splice(i, 1);
+        this.liveMsg = this.t('aig.toastDiscarded');
+        this.$nextTick(() => {
+          const next = items[i] || items[i - 1];
+          (next ? this.card(next)?.querySelector('[data-act=save]') : this.$refs.resultsHead)?.focus();
+        });
+        if (!window.Swal) return;
+        Swal.fire({
+          toast: true, position: 'top-end', icon: 'info', title: this.t('aig.toastDiscarded'), timer: 5000, timerProgressBar: true,
+          showConfirmButton: true, confirmButtonText: this.t('aig.undo'), customClass: { popup: 'firob-swal firob-toast' },
+        }).then(res => { if (res.isConfirmed) { items.splice(i, 0, r); this.liveMsg = this.t('aig.undo'); } });
+      },
+      saveAll() {
+        const todo = this.cur.items.filter(r => !r.saved && !r.editing);
+        const skipped = this.cur.items.some(r => !r.saved && r.editing);
+        todo.forEach(r => { r.saved = true; });
+        if (todo.length) this.toastSuccess(this.tf('aig.toastSavedAll', { items: this.pluralize('items', todo.length) }) + (skipped ? ' — ' + this.t('aig.toastSkippedEditing') : ''));
+      },
+      exportAs(kind) { this.toastSuccess(this.tf('aig.toastExport.' + kind, { items: this.pluralize('items', this.cur.items.length) })); },
+
+      /* ---------- سجل التوليد (ai_usage_logs) ---------- */
+      logs: [
+        { id: 1, mode: 'questions', courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', at: daysAgo(0, 10, 24), user: 'سارة أحمد المصري', items: 8, tokens: 1280, status: 'done' },
+        { id: 2, mode: 'summaries', courseId: 'sci-g8', unitId: 'u201', lessonId: null, at: daysAgo(1, 16, 11), user: 'محمد خالد يوسف', items: 1, tokens: 640, status: 'done' },
+        { id: 3, mode: 'concepts', courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2022', at: daysAgo(1, 11, 48), user: 'ليان عمر الشريف', items: 4, tokens: 910, status: 'done' },
+        { id: 4, mode: 'questions', courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', at: daysAgo(17, 14, 5), user: 'يوسف إبراهيم النجار', items: 12, tokens: 2140, status: 'done' },
+        { id: 5, mode: 'questions', courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', at: daysAgo(19, 9, 15), user: 'نور حسن عودة', items: 6, tokens: 980, status: 'done' },
+      ],
+      logTitle(l) {
+        const place = this.lesson(l.lessonId) || this.unit(l.unitId) || this.course(l.courseId);
+        return this.t('aig.logVerb.' + l.mode) + ' — ' + this.label(place);
+      },
+      logsOpen: false,
+      openLogs() { this.logsOpen = true; },
+      closeLogs() { this.logsOpen = false; },
+
+      /* ---------- SweetAlert2 ---------- */
+      toastSuccess(msg) {
+        this.liveMsg = msg;
+        if (!window.Swal) return;
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: msg, showConfirmButton: false, timer: 3000, customClass: { popup: 'firob-swal firob-toast' } });
+      },
+
+      /* ---------- عامة ---------- */
+      /* ---------- قادم من قائمة الاختبارات (quizzes.html → ?mode=…&course=…&unit=…&lesson=…&count=…) ---------- */
+      handoff: null,
+      readHandoff() {
+        const p = new URLSearchParams(window.location.search);
+        const mode = p.get('mode');
+        if (mode && this.state[mode]) this.generationMode = mode;
+        const c = p.get('course'), u = p.get('unit'), l = p.get('lesson');
+        if (M.courses.some(x => x.id === c)) {
+          this.setCourse(c);
+          if (M.units.some(x => x.id === u && x.courseId === c)) {
+            this.setUnit(u);
+            if (M.lessons.some(x => x.id === l && x.unitId === u)) this.aiForm.lessonId = l;
+          }
+        }
+        const n = parseInt(p.get('count'), 10);
+        if (n) this.aiForm.count = Math.min(20, Math.max(3, n));
+        const d = p.get('difficulty');
+        if (['easy', 'medium', 'hard', 'mixed'].includes(d)) this.aiForm.difficulty = d;
+        if (p.get('from') === 'quizzes') {
+          const qt = p.get('quizType');
+          this.handoff = { quizType: ['formative', 'summative', 'diagnostic'].includes(qt) ? qt : null };
+        }
+      },
+
+      init() {
+        this.readHandoff();
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        window.addEventListener('beforeunload', (e) => {
+          if (this.running || Object.keys(this.state).some(k => this.unsaved(k))) { e.preventDefault(); e.returnValue = ''; }
+        });
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          (g && g.offsetParent !== null ? g : document.getElementById('ai-prompt'))?.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — اللوحة الجانبية وبطاقات التعديل تعالج Esc بنفسها
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>نظرة عامة على المؤسسة — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-success { @apply bg-success-500 text-white hover:bg-success-700; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- النافذة المنبثقة ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- بطاقة اختصار سريع (QuickTile) ---------- */
+    .quick-tile { @apply flex items-center gap-3 rounded-2xl border border-line bg-card p-4 shadow-card transition hover:-translate-y-0.5 hover:border-primary-500 hover:shadow-pop focus-visible:ring-2; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || rejectOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('dash.title')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-01: نظرة عامة على المؤسسة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- ================= العنوان الترحيبي ================= -->
+      <section class="min-w-0">
+        <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('dash.title')"></h1>
+        <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('dash.subtitle')"></p>
+      </section>
+
+      <!-- ================= شريط تنبيه الحصة (Quota Warning Banner) ================= -->
+      <section x-show="!bannerDismissed" x-cloak x-transition.opacity
+               class="flex flex-col gap-3 rounded-2xl border border-accent-600/40 bg-accent-500/15 p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5"
+               role="alert" aria-live="polite">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-500 text-onaccent" aria-hidden="true">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="font-extrabold text-ink" x-text="t('dash.bannerTitle')"></p>
+          <p class="mt-1 text-sm text-ink/80" x-text="t('dash.bannerText')"></p>
+        </div>
+        <div class="flex shrink-0 items-center gap-2 sm:self-center">
+          <button type="button" class="btn btn-accent btn-sm" @click="scrollToStorage()">
+            <i class="fa-solid fa-broom" aria-hidden="true"></i> <span x-text="t('dash.cleanupStorage')"></span>
+          </button>
+          <button type="button" class="icon-btn shrink-0" @click="bannerDismissed = true" :aria-label="t('dash.bannerDismiss')">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= بطاقة ملخّص الخطة الحالية (Active Plan Summary) ================= -->
+      <section class="panel flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div class="flex min-w-0 items-start gap-4">
+          <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary-500/10 text-brand" aria-hidden="true">
+            <i class="fa-solid fa-crown text-2xl"></i>
+          </span>
+          <div class="min-w-0">
+            <p class="text-xs font-extrabold tracking-wide text-muted" x-text="t('dash.planLabel')"></p>
+            <div class="mt-1 flex flex-wrap items-center gap-2">
+              <h2 class="truncate text-lg font-extrabold text-ink sm:text-xl" x-text="t('dash.planName')"></h2>
+              <span class="badge badge-success">
+                <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                <span x-text="t('dash.statusActive')"></span>
+              </span>
+            </div>
+            <p class="mt-1.5 text-sm text-muted">
+              <i class="fa-regular fa-calendar me-1.5" aria-hidden="true"></i>
+              <span x-text="t('dash.renewalLabel')"></span>: <span class="font-bold text-ink" x-text="t('dash.renewalDate')"></span>
+            </p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-accent shrink-0" @click="upgradePlan()">
+          <i class="fa-solid fa-arrow-up-right-dots" aria-hidden="true"></i>
+          <span x-text="t('dash.upgradeCta')"></span>
+        </button>
+      </section>
+
+      <!-- ================= شبكة الاستخدام والحصص (QuotaMeter Grid) ================= -->
+      <section aria-label="Usage &amp; Quotas" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+
+        <!-- بطاقة حصة المستخدمين -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('dash.quotaUsersTitle')"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+            </div>
+            <p class="mt-3 text-2xl font-extrabold tabular-nums">42 <span class="text-base font-bold text-muted">/ 50</span></p>
+            <p class="mt-0.5 text-xs text-muted" x-text="t('dash.quotaUsersCaption')"></p>
+          </div>
+          <div class="mt-4">
+            <div class="flex items-center justify-between text-xs font-bold">
+              <span class="text-accent-700 dark:text-accent-500">84%</span>
+              <span class="text-muted tabular-nums">8 <span x-text="t('dash.seatsRemaining')"></span></span>
+            </div>
+            <div class="quota-track mt-1.5" role="progressbar" aria-valuenow="84" aria-valuemin="0" aria-valuemax="100" :aria-label="t('dash.quotaUsersTitle')">
+              <div class="quota-fill bg-accent-500" style="width:84%"></div>
+            </div>
+            <a href="users.html" class="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-brand hover:underline">
+              <span x-text="t('dash.manageUsers')"></span>
+              <i class="fa-solid ltr:fa-arrow-right rtl:fa-arrow-left text-xs" aria-hidden="true"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- بطاقة حصة التخزين -->
+        <div id="storage-quota" class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('dash.quotaStorageTitle')"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-database"></i></span>
+            </div>
+            <p class="mt-3 text-2xl font-extrabold tabular-nums">8.7 <span class="text-base font-bold text-muted">/ 10 GB</span></p>
+            <p class="mt-0.5 text-xs text-muted" x-text="t('dash.quotaStorageCaption')"></p>
+          </div>
+          <div class="mt-4">
+            <div class="flex items-center justify-between text-xs font-bold">
+              <span class="text-accent-700 dark:text-accent-500">87%</span>
+              <span class="text-muted tabular-nums">1.3 GB <span x-text="t('dash.storageFree')"></span></span>
+            </div>
+            <div class="quota-track mt-1.5" role="progressbar" aria-valuenow="87" aria-valuemin="0" aria-valuemax="100" :aria-label="t('dash.quotaStorageTitle')">
+              <div class="quota-fill bg-accent-500" style="width:87%"></div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm mt-3 w-full" @click="cleanupStorage()">
+              <i class="fa-solid fa-broom" aria-hidden="true"></i> <span x-text="t('dash.cleanupStorage')"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- بطاقة حصة توليد الذكاء الاصطناعي -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('dash.quotaAITitle')"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+            </div>
+            <p class="mt-3 text-2xl font-extrabold tabular-nums">183,400 <span class="text-base font-bold text-muted">/ 250,000</span></p>
+            <p class="mt-0.5 text-xs text-muted" x-text="t('dash.aiTokensCaption')"></p>
+          </div>
+          <div class="mt-4">
+            <div class="flex items-center justify-between text-xs font-bold">
+              <span class="badge badge-primary">73%</span>
+              <span class="text-muted" x-text="t('dash.aiResetHint')"></span>
+            </div>
+            <div class="quota-track mt-1.5" role="progressbar" aria-valuenow="73" aria-valuemin="0" aria-valuemax="100" :aria-label="t('dash.quotaAITitle')">
+              <div class="quota-fill bg-primary-500" style="width:73%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- بطاقة المحتوى المنشور (KPI) -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div>
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('dash.kpiActiveContentTitle')"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-cubes"></i></span>
+            </div>
+            <p class="mt-3 text-2xl font-extrabold tabular-nums">1,248</p>
+            <p class="mt-0.5 text-xs text-muted" x-text="t('dash.kpiActiveContentCaption')"></p>
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <span class="badge badge-neutral">742 <span x-text="t('dash.kpiConcepts')"></span></span>
+            <span class="badge badge-neutral">506 <span x-text="t('dash.kpiLearningObjects')"></span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= طابور المراجعات المعلقة (Pending Reviews Queue) ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="pending-title">
+        <div class="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div class="flex min-w-0 items-center gap-3">
+            <h2 id="pending-title" class="truncate text-lg font-extrabold text-ink" x-text="t('dash.pendingTitle')"></h2>
+            <span class="badge badge-accent shrink-0"><span x-text="pendingCount"></span> <span x-text="t('dash.pendingBadge')"></span></span>
+          </div>
+          <span class="btn btn-outline btn-sm shrink-0 cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1">
+            <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('dash.viewAllQueue')"></span>
+          </span>
+        </div>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:p-4 xl:hidden" role="list">
+
+          <!-- عنصر 1 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-sm font-extrabold text-brand" aria-hidden="true">أر</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">الخلية الكهرومائية</p>
+                <p class="truncate text-xs text-muted">الكيمياء العامة</p>
+              </div>
+              <span class="badge shrink-0" :class="itemStatus[1] === 'approved' ? 'badge-success' : itemStatus[1] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                    x-text="itemStatus[1] === 'approved' ? t('dash.statusApproved') : itemStatus[1] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="badge badge-primary" x-text="t('dash.roleTeacher')"></span>
+              <span class="font-bold text-ink">أحمد الريماوي</span>
+              <span class="text-muted">· منذ ساعتين</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2" x-show="!itemStatus[1]">
+              <button type="button" class="btn btn-success btn-sm" @click="approveItem(1, 'الخلية الكهرومائية')">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" @click="openReject(1, 'الخلية الكهرومائية')">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+              </button>
+              <button type="button" class="act" @click="previewConcept('الخلية الكهرومائية')" :aria-label="t('dash.preview')">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-xs font-bold text-muted" x-show="itemStatus[1]" x-cloak x-text="t('dash.resolvedNote')"></p>
+          </li>
+
+          <!-- عنصر 2 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-sm font-extrabold text-brand" aria-hidden="true">لأ</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">نظرية التطور الدارويني</p>
+                <p class="truncate text-xs text-muted">الأحياء</p>
+              </div>
+              <span class="badge shrink-0" :class="itemStatus[2] === 'approved' ? 'badge-success' : itemStatus[2] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                    x-text="itemStatus[2] === 'approved' ? t('dash.statusApproved') : itemStatus[2] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="badge badge-accent" x-text="t('dash.roleEditor')"></span>
+              <span class="font-bold text-ink">لينا أبو شرار</span>
+              <span class="text-muted">· منذ 4 ساعات</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2" x-show="!itemStatus[2]">
+              <button type="button" class="btn btn-success btn-sm" @click="approveItem(2, 'نظرية التطور الدارويني')">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" @click="openReject(2, 'نظرية التطور الدارويني')">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+              </button>
+              <button type="button" class="act" @click="previewConcept('نظرية التطور الدارويني')" :aria-label="t('dash.preview')">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-xs font-bold text-muted" x-show="itemStatus[2]" x-cloak x-text="t('dash.resolvedNote')"></p>
+          </li>
+
+          <!-- عنصر 3 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-sm font-extrabold text-brand" aria-hidden="true">مص</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">قوانين نيوتن للحركة</p>
+                <p class="truncate text-xs text-muted">الفيزياء</p>
+              </div>
+              <span class="badge shrink-0" :class="itemStatus[3] === 'approved' ? 'badge-success' : itemStatus[3] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                    x-text="itemStatus[3] === 'approved' ? t('dash.statusApproved') : itemStatus[3] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="badge badge-info" x-text="t('dash.roleReviewer')"></span>
+              <span class="font-bold text-ink">محمود صالح</span>
+              <span class="text-muted">· منذ 6 ساعات</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2" x-show="!itemStatus[3]">
+              <button type="button" class="btn btn-success btn-sm" @click="approveItem(3, 'قوانين نيوتن للحركة')">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" @click="openReject(3, 'قوانين نيوتن للحركة')">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+              </button>
+              <button type="button" class="act" @click="previewConcept('قوانين نيوتن للحركة')" :aria-label="t('dash.preview')">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-xs font-bold text-muted" x-show="itemStatus[3]" x-cloak x-text="t('dash.resolvedNote')"></p>
+          </li>
+
+          <!-- عنصر 4 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-sm font-extrabold text-brand" aria-hidden="true">رح</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">الأحماض والقواعد</p>
+                <p class="truncate text-xs text-muted">الكيمياء العامة</p>
+              </div>
+              <span class="badge shrink-0" :class="itemStatus[4] === 'approved' ? 'badge-success' : itemStatus[4] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                    x-text="itemStatus[4] === 'approved' ? t('dash.statusApproved') : itemStatus[4] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="badge badge-primary" x-text="t('dash.roleTeacher')"></span>
+              <span class="font-bold text-ink">رنا الحلو</span>
+              <span class="text-muted">· منذ يوم واحد</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2" x-show="!itemStatus[4]">
+              <button type="button" class="btn btn-success btn-sm" @click="approveItem(4, 'الأحماض والقواعد')">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" @click="openReject(4, 'الأحماض والقواعد')">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+              </button>
+              <button type="button" class="act" @click="previewConcept('الأحماض والقواعد')" :aria-label="t('dash.preview')">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-xs font-bold text-muted" x-show="itemStatus[4]" x-cloak x-text="t('dash.resolvedNote')"></p>
+          </li>
+
+          <!-- عنصر 5 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-sm font-extrabold text-brand" aria-hidden="true">خم</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">التمثيل الضوئي</p>
+                <p class="truncate text-xs text-muted">الأحياء</p>
+              </div>
+              <span class="badge shrink-0" :class="itemStatus[5] === 'approved' ? 'badge-success' : itemStatus[5] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                    x-text="itemStatus[5] === 'approved' ? t('dash.statusApproved') : itemStatus[5] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="badge badge-accent" x-text="t('dash.roleEditor')"></span>
+              <span class="font-bold text-ink">خالد مرعي</span>
+              <span class="text-muted">· منذ يومين</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2" x-show="!itemStatus[5]">
+              <button type="button" class="btn btn-success btn-sm" @click="approveItem(5, 'التمثيل الضوئي')">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+              </button>
+              <button type="button" class="btn btn-danger btn-sm" @click="openReject(5, 'التمثيل الضوئي')">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+              </button>
+              <button type="button" class="act" @click="previewConcept('التمثيل الضوئي')" :aria-label="t('dash.preview')">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+            <p class="mt-3 text-xs font-bold text-muted" x-show="itemStatus[5]" x-cloak x-text="t('dash.resolvedNote')"></p>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[960px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('dash.pendingTitle')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colConcept')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colAuthor')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colSubmitted')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('dash.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('dash.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <!-- صف 1 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">الخلية الكهرومائية</p>
+                    <p class="truncate text-xs text-muted">الكيمياء العامة</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">أر</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">أحمد الريماوي</p>
+                        <span class="badge badge-primary mt-0.5" x-text="t('dash.roleTeacher')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">منذ ساعتين</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge" :class="itemStatus[1] === 'approved' ? 'badge-success' : itemStatus[1] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                          x-text="itemStatus[1] === 'approved' ? t('dash.statusApproved') : itemStatus[1] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-2" x-show="!itemStatus[1]">
+                      <button type="button" class="btn btn-success btn-sm" @click="approveItem(1, 'الخلية الكهرومائية')">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" @click="openReject(1, 'الخلية الكهرومائية')">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                      </button>
+                      <button type="button" class="act" @click="previewConcept('الخلية الكهرومائية')" :aria-label="t('dash.preview')">
+                        <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <p class="text-end text-xs font-bold text-muted" x-show="itemStatus[1]" x-cloak x-text="t('dash.resolvedNote')"></p>
+                  </td>
+                </tr>
+
+                <!-- صف 2 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">نظرية التطور الدارويني</p>
+                    <p class="truncate text-xs text-muted">الأحياء</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">لأ</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">لينا أبو شرار</p>
+                        <span class="badge badge-accent mt-0.5" x-text="t('dash.roleEditor')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">منذ 4 ساعات</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge" :class="itemStatus[2] === 'approved' ? 'badge-success' : itemStatus[2] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                          x-text="itemStatus[2] === 'approved' ? t('dash.statusApproved') : itemStatus[2] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-2" x-show="!itemStatus[2]">
+                      <button type="button" class="btn btn-success btn-sm" @click="approveItem(2, 'نظرية التطور الدارويني')">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" @click="openReject(2, 'نظرية التطور الدارويني')">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                      </button>
+                      <button type="button" class="act" @click="previewConcept('نظرية التطور الدارويني')" :aria-label="t('dash.preview')">
+                        <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <p class="text-end text-xs font-bold text-muted" x-show="itemStatus[2]" x-cloak x-text="t('dash.resolvedNote')"></p>
+                  </td>
+                </tr>
+
+                <!-- صف 3 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">قوانين نيوتن للحركة</p>
+                    <p class="truncate text-xs text-muted">الفيزياء</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">مص</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">محمود صالح</p>
+                        <span class="badge badge-info mt-0.5" x-text="t('dash.roleReviewer')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">منذ 6 ساعات</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge" :class="itemStatus[3] === 'approved' ? 'badge-success' : itemStatus[3] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                          x-text="itemStatus[3] === 'approved' ? t('dash.statusApproved') : itemStatus[3] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-2" x-show="!itemStatus[3]">
+                      <button type="button" class="btn btn-success btn-sm" @click="approveItem(3, 'قوانين نيوتن للحركة')">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" @click="openReject(3, 'قوانين نيوتن للحركة')">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                      </button>
+                      <button type="button" class="act" @click="previewConcept('قوانين نيوتن للحركة')" :aria-label="t('dash.preview')">
+                        <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <p class="text-end text-xs font-bold text-muted" x-show="itemStatus[3]" x-cloak x-text="t('dash.resolvedNote')"></p>
+                  </td>
+                </tr>
+
+                <!-- صف 4 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">الأحماض والقواعد</p>
+                    <p class="truncate text-xs text-muted">الكيمياء العامة</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">رح</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">رنا الحلو</p>
+                        <span class="badge badge-primary mt-0.5" x-text="t('dash.roleTeacher')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">منذ يوم واحد</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge" :class="itemStatus[4] === 'approved' ? 'badge-success' : itemStatus[4] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                          x-text="itemStatus[4] === 'approved' ? t('dash.statusApproved') : itemStatus[4] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-2" x-show="!itemStatus[4]">
+                      <button type="button" class="btn btn-success btn-sm" @click="approveItem(4, 'الأحماض والقواعد')">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" @click="openReject(4, 'الأحماض والقواعد')">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                      </button>
+                      <button type="button" class="act" @click="previewConcept('الأحماض والقواعد')" :aria-label="t('dash.preview')">
+                        <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <p class="text-end text-xs font-bold text-muted" x-show="itemStatus[4]" x-cloak x-text="t('dash.resolvedNote')"></p>
+                  </td>
+                </tr>
+
+                <!-- صف 5 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">التمثيل الضوئي</p>
+                    <p class="truncate text-xs text-muted">الأحياء</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">خم</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">خالد مرعي</p>
+                        <span class="badge badge-accent mt-0.5" x-text="t('dash.roleEditor')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">منذ يومين</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge" :class="itemStatus[5] === 'approved' ? 'badge-success' : itemStatus[5] === 'rejected' ? 'badge-danger' : 'badge-accent'"
+                          x-text="itemStatus[5] === 'approved' ? t('dash.statusApproved') : itemStatus[5] === 'rejected' ? t('dash.statusRejected') : t('dash.statusPending')"></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-2" x-show="!itemStatus[5]">
+                      <button type="button" class="btn btn-success btn-sm" @click="approveItem(5, 'التمثيل الضوئي')">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('dash.approve')"></span>
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" @click="openReject(5, 'التمثيل الضوئي')">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('dash.reject')"></span>
+                      </button>
+                      <button type="button" class="act" @click="previewConcept('التمثيل الضوئي')" :aria-label="t('dash.preview')">
+                        <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    <p class="text-end text-xs font-bold text-muted" x-show="itemStatus[5]" x-cloak x-text="t('dash.resolvedNote')"></p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= اختصارات الإدارة السريعة وصحة النظام ================= -->
+      <section>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-lg font-extrabold text-ink" x-text="t('dash.quickMgmtTitle')"></h2>
+          <span class="badge badge-success">
+            <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+            <span x-text="t('dash.systemHealthy')"></span>
+          </span>
+        </div>
+        <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <a href="users.html" class="quick-tile">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+            <span class="min-w-0 flex-1 truncate font-extrabold" x-text="t('dash.tileUsers')"></span>
+          </a>
+          <a href="RoleMatrixEditor.html" class="quick-tile">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-user-shield"></i></span>
+            <span class="min-w-0 flex-1 truncate font-extrabold" x-text="t('dash.tileRoleMatrix')"></span>
+          </a>
+          <a href="TenantSettingsForm.html" class="quick-tile">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-sliders"></i></span>
+            <span class="min-w-0 flex-1 truncate font-extrabold" x-text="t('dash.tileOrgSettings')"></span>
+          </a>
+          <a href="ActivityTimeline.html" class="quick-tile">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <span class="min-w-0 flex-1 truncate font-extrabold" x-text="t('dash.tileAuditLog')"></span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — سبب الرفض (Rejection Reason Modal)
+     ========================================================================== -->
+<div x-cloak x-show="rejectOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="rj-title" aria-describedby="rj-desc" @keydown.escape.window="closeReject()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeReject()"></div>
+  <div x-show="rejectOpen" x-trap.noscroll="rejectOpen"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-md p-6">
+    <div class="flex items-start gap-3">
+      <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-error-100 text-error-700" aria-hidden="true"><i class="fa-solid fa-ban text-lg"></i></span>
+      <div class="min-w-0 flex-1">
+        <h3 id="rj-title" class="text-lg font-extrabold text-ink" x-text="t('dash.rejectModalTitle')"></h3>
+        <p id="rj-desc" class="mt-1 text-sm text-muted">
+          <span x-text="t('dash.rejectModalDesc')"></span> <span class="font-bold text-ink" x-text="rejectTarget && rejectTarget.title"></span>
+        </p>
+      </div>
+      <button type="button" class="icon-btn shrink-0" :disabled="busy" @click="closeReject()" :aria-label="t('dash.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </div>
+
+    <div class="mt-5">
+      <label for="rj-reason" class="label" x-text="t('dash.rejectModalTitle')"></label>
+      <textarea id="rj-reason" rows="4" x-model.trim="rejectReason" :placeholder="t('dash.rejectPlaceholder')"
+                class="field resize-none" :aria-invalid="(rejectSubmitted && !rejectReason).toString()"></textarea>
+      <p class="err" x-show="rejectSubmitted && !rejectReason"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('dash.rejectRequired')"></span></p>
+    </div>
+
+    <div class="mt-6 flex justify-end gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeReject()" x-text="t('dash.cancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="confirmReject()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('dash.rejecting') : t('dash.confirmReject')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * حالة واجهة ADM-01 — نظرة عامة على المؤسسة. مبنية على نفس هيكل "Dashboard Shell"
+   * المعتمد في صفحات مسؤول المؤسسة لضمان التكامل الكامل مع الشريط الجانبي والعلوي.
+   * بطاقات الحصص وصفوف طابور المراجعة بيانات تجريبية ثابتة (Static Mock Data) —
+   * الحسابات والفلترة والترقيم الفعلية ستُنفَّذ لاحقًا عبر Livewire + Eloquent.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة التخزين من الحد الأقصى (87%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+
+        dash: {
+          title: 'لوحة المؤسسة',
+          subtitle: 'مرحبًا بك مجددًا؛ تابع حالة اشتراكك، حصصك الاستخدامية، وطابور المراجعات المعلقة من مكان واحد.',
+          planLabel: 'الخطة الحالية', planName: 'الخطة المؤسسية الاحترافية', statusActive: 'نشطة',
+          renewalLabel: 'تاريخ التجديد القادم', renewalDate: '15 مارس 2026',
+          upgradeCta: 'ترقية الخطة / إدارة الاشتراك',
+          bannerTitle: 'تنبيه: اقتراب نفاد الحصة',
+          bannerText: 'تجاوزت حصة التخزين في منظمتك 85% من الحد المسموح به. يُرجى تنظيف الملفات غير الضرورية أو ترقية خطتك لتفادي أي انقطاع في الخدمة.',
+          bannerDismiss: 'إغلاق التنبيه',
+          quotaUsersTitle: 'حصة المستخدمين', quotaUsersCaption: 'مستخدم نشط من إجمالي المقاعد المتاحة', seatsRemaining: 'مقاعد متبقية', manageUsers: 'إدارة المستخدمين',
+          quotaStorageTitle: 'حصة التخزين', quotaStorageCaption: 'من إجمالي مساحة التخزين المخصّصة لمنظمتك', storageFree: 'متبقية', cleanupStorage: 'تنظيف التخزين',
+          quotaAITitle: 'حصة توليد الذكاء الاصطناعي', aiTokensCaption: 'رمز (Token) مستخدم هذا الشهر', aiResetHint: 'تتجدد الحصة في بداية كل شهر ميلادي',
+          kpiActiveContentTitle: 'المحتوى المنشور', kpiActiveContentCaption: 'مفهومًا وعنصرًا تعليميًا منشورًا وجاهزًا للطلاب', kpiConcepts: 'مفهوم', kpiLearningObjects: 'عنصر تعليمي',
+          pendingTitle: 'طابور المراجعات المعلقة', pendingBadge: 'معلّق', viewAllQueue: 'عرض الطابور الكامل',
+          colConcept: 'المفهوم والمادة', colAuthor: 'المؤلف', colSubmitted: 'وقت الإرسال', colStatus: 'الحالة', colActions: 'إجراءات',
+          statusPending: 'قيد المراجعة', statusApproved: 'مقبول', statusRejected: 'مرفوض', resolvedNote: 'تمت معالجة هذا العنصر (معاينة فقط)',
+          approve: 'قبول', reject: 'رفض', preview: 'معاينة المحتوى',
+          roleTeacher: 'معلّم', roleEditor: 'محرّر', roleReviewer: 'مراجع',
+          quickMgmtTitle: 'اختصارات الإدارة السريعة', systemHealthy: 'جميع الأنظمة تعمل بشكل طبيعي',
+          tileUsers: 'إدارة المستخدمين', tileRoleMatrix: 'مصفوفة الصلاحيات', tileOrgSettings: 'إعدادات المؤسسة', tileAuditLog: 'سجل التدقيق',
+          rejectModalTitle: 'سبب رفض المحتوى', rejectModalDesc: 'يرجى توضيح سبب رفض هذا المفهوم لإعلام المؤلف بالتعديلات المطلوبة:',
+          rejectPlaceholder: 'اكتب سبب الرفض هنا…', rejectRequired: 'سبب الرفض مطلوب.',
+          cancel: 'إلغاء', confirmReject: 'تأكيد الرفض', rejecting: 'جارٍ الرفض',
+          toastApprove: 'تم قبول «{title}» بنجاح (معاينة فقط)',
+          toastReject: 'تم رفض «{title}» وإشعار المؤلف (معاينة فقط)',
+          toastCleanup: 'تم فتح أداة تنظيف التخزين (معاينة فقط)',
+          toastUpgrade: 'سيتم تحويلك إلى صفحة إدارة الاشتراك (معاينة فقط)',
+          toastPreview: 'تم فتح معاينة «{title}» (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', org: 'Organization Management' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'Storage quota is nearing its limit (87%)', reset: 'A password reset link was sent successfully' },
+
+        dash: {
+          title: 'Organization Overview',
+          subtitle: 'Welcome back — track your subscription status, usage quotas, and pending content reviews in one place.',
+          planLabel: 'Current Plan', planName: 'Pro Institutional Plan', statusActive: 'Active',
+          renewalLabel: 'Next renewal date', renewalDate: 'March 15, 2026',
+          upgradeCta: 'Upgrade Plan / Manage Subscription',
+          bannerTitle: 'Warning: quota nearing capacity',
+          bannerText: "Your organization's storage quota has exceeded 85% of its allowed limit. Please clean up unnecessary files or upgrade your plan to avoid service disruption.",
+          bannerDismiss: 'Dismiss alert',
+          quotaUsersTitle: 'User Quota', quotaUsersCaption: 'Active users out of total available seats', seatsRemaining: 'seats remaining', manageUsers: 'Manage Users',
+          quotaStorageTitle: 'Storage Quota', quotaStorageCaption: 'Out of total storage allocated to your organization', storageFree: 'free', cleanupStorage: 'Clean Up Storage',
+          quotaAITitle: 'AI Generation Quota', aiTokensCaption: 'Tokens used this month', aiResetHint: 'Resets on the 1st of every month',
+          kpiActiveContentTitle: 'Published Content', kpiActiveContentCaption: 'Concepts and learning objects published and ready for students', kpiConcepts: 'concepts', kpiLearningObjects: 'learning objects',
+          pendingTitle: 'Pending Content Reviews', pendingBadge: 'Pending', viewAllQueue: 'View All Queue',
+          colConcept: 'Concept & Subject', colAuthor: 'Author', colSubmitted: 'Submitted', colStatus: 'Status', colActions: 'Actions',
+          statusPending: 'Pending', statusApproved: 'Approved', statusRejected: 'Rejected', resolvedNote: 'This item has been reviewed (preview only)',
+          approve: 'Approve', reject: 'Reject', preview: 'Preview Content',
+          roleTeacher: 'Teacher', roleEditor: 'Editor', roleReviewer: 'Reviewer',
+          quickMgmtTitle: 'Quick Management Shortcuts', systemHealthy: 'All systems operational',
+          tileUsers: 'Manage Users', tileRoleMatrix: 'Role Matrix', tileOrgSettings: 'Organization Settings', tileAuditLog: 'Audit Log',
+          rejectModalTitle: 'Rejection Reason', rejectModalDesc: 'Please explain why this concept is being rejected so the author can address it:',
+          rejectPlaceholder: 'Write the rejection reason here…', rejectRequired: 'A rejection reason is required.',
+          cancel: 'Cancel', confirmReject: 'Confirm Rejection', rejecting: 'Rejecting',
+          toastApprove: '"{title}" was approved successfully (preview only)',
+          toastReject: '"{title}" was rejected and the author notified (preview only)',
+          toastCleanup: 'Storage clean-up tool opened (preview only)',
+          toastUpgrade: 'You will be redirected to subscription management (preview only)',
+          toastPreview: '"{title}" preview opened (preview only)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'orgDashboard',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- شريط تنبيه الحصة ---------- */
+      bannerDismissed: false,
+      scrollToStorage() { document.getElementById('storage-quota')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); },
+
+      /* ---------- بطاقة الخطة الحالية ---------- */
+      upgradePlan() { this.toastSuccess(this.t('dash.toastUpgrade')); },
+
+      /* ---------- بطاقة حصة التخزين ---------- */
+      cleanupStorage() { this.toastSuccess(this.t('dash.toastCleanup')); },
+
+      /* ---------- طابور المراجعات المعلقة ---------- */
+      totalPending: 5,
+      itemStatus: {},
+      get pendingCount() { return this.totalPending - Object.values(this.itemStatus).filter(Boolean).length; },
+      approveItem(id, title) {
+        this.itemStatus[id] = 'approved';
+        this.toastSuccess(this.tf('dash.toastApprove', { title }));
+      },
+      previewConcept(title) { this.toastInfo(this.tf('dash.toastPreview', { title })); },
+
+      /* ---------- نافذة سبب الرفض ---------- */
+      rejectOpen: false, rejectTarget: null, rejectReason: '', rejectSubmitted: false, busy: false,
+      openReject(id, title) {
+        this.rejectTarget = { id, title };
+        this.rejectReason = '';
+        this.rejectSubmitted = false;
+        this.rejectOpen = true;
+      },
+      closeReject() { if (!this.busy) { this.rejectOpen = false; this.rejectTarget = null; } },
+      async confirmReject() {
+        this.rejectSubmitted = true;
+        if (!this.rejectReason.trim()) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 500));
+        this.busy = false;
+        this.itemStatus[this.rejectTarget.id] = 'rejected';
+        this.toastSuccess(this.tf('dash.toastReject', { title: this.rejectTarget.title }));
+        this.rejectOpen = false;
+        this.rejectTarget = null;
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true, position: 'top-end', icon: 'success', title: msg,
+          showConfirmButton: false, timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+      toastInfo(msg) {
+        Swal.fire({
+          toast: true, position: 'top-end', icon: 'info', title: msg,
+          showConfirmButton: false, timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        if (!this.busy) { this.rejectOpen = false; this.rejectTarget = null; }
+      },
+    };
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>تحليلات واستهلاك الذكاء الاصطناعي — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 90 104 125;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  { @apply bg-accent-500/25 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-2 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- مقطع أزرار (Segmented control) ---------- */
+    .seg { @apply inline-flex flex-wrap items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-muted transition; }
+    .seg-btn[aria-pressed="true"], .seg-btn[aria-selected="true"] { @apply bg-primary-500 text-white shadow; }
+
+    /* ---------- بطاقات المؤشرات (KPI) ---------- */
+    .kpi-track { @apply flex h-2 w-full overflow-hidden rounded-full bg-line; }
+
+    /* ---------- بطاقة الرسم البياني ---------- */
+    .chart-card { @apply panel flex flex-col p-4 sm:p-5; }
+    .chart-box  { @apply relative w-full flex-1; }
+
+    /* ---------- شارات النماذج / السياقات (ألوان ثابتة حسب الهوية) ---------- */
+    .swatch { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full; }
+
+    /* ---------- اللوحة المنبثقة الجانبية (Slide-over Drawer) ---------- */
+    .drawer-panel { @apply absolute inset-y-0 flex w-full max-w-xl flex-col border-line bg-card shadow-pop; inset-inline-end: 0; border-inline-start-width: 1px; }
+    .code-block { @apply max-h-[50dvh] overflow-auto rounded-xl border border-line bg-page/60 p-3.5 font-mono text-[11px] leading-6 text-ink; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+
+    /* ---------- [SA shell fixes] ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .combo-option.is-active.is-selected { @apply ring-1 ring-inset ring-brand/40; }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل الدرج الجانبي) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+<!-- ⑨ Flatpickr — تقويم موحّد لحقول التاريخ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="../asset/css/firob-datepicker.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ar.js"></script>
+<script src="../asset/js/firob-datepicker.js"></script>
+</head>
+
+<body x-data="aiAnalyticsData()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || drawerOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="overview.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:ring-2" :class="!expanded && 'lg:flex-none lg:justify-center'" :aria-label="t('appTitle')">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="locale === 'ar' ? 'التنقل الرئيسي' : 'Main navigation'">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="item.count && expanded"
+                        class="shrink-0 rounded-full bg-accent-500 px-2 text-xs font-extrabold text-onaccent" x-text="item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'fa-angles-right rtl:-scale-x-100' : 'fa-angles-left rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="relTime(n.mins)"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">S</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="system-settings.html" role="menuitem" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></a>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="locale === 'ar' ? 'مسار التنقل' : 'Breadcrumb'">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('appTitle')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.' + active)"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — LND-09: تحليلات واستهلاك الذكاء الاصطناعي ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1600px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));" :aria-busy="updating.toString()">
+
+      <!-- منطقة إعلانات قارئ الشاشة (نتائج الفلترة ونتائج العمليات) -->
+      <p class="sr-only" aria-live="polite" aria-atomic="true" x-text="liveMsg"></p>
+
+      <!-- العنوان + زر التصدير -->
+      <section class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="flex items-center gap-2.5 text-2xl font-extrabold text-brand sm:text-3xl">
+            <span x-text="t('ai.title')"></span>
+          </h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('ai.subtitle')"></p>
+        </div>
+        <div class="relative shrink-0" @click.outside="exportOpen = false" @keydown="onMenuKey($event)">
+          <button type="button" id="ai-export-btn" x-ref="exportBtn" class="btn btn-primary" @click="toggleExportMenu()"
+                  aria-haspopup="menu" :aria-expanded="exportOpen.toString()" aria-controls="ai-export-menu">
+            <i class="fa-solid fa-file-export" aria-hidden="true"></i><span x-text="t('ai.toolbar.export')"></span>
+            <i class="fa-solid fa-chevron-down text-xs" aria-hidden="true"></i>
+          </button>
+          <div id="ai-export-menu" x-ref="exportMenu" x-cloak x-show="exportOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-labelledby="ai-export-btn">
+            <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="exportReport('csv')"><i class="fa-regular fa-file-lines w-4 text-muted" aria-hidden="true"></i> <span x-text="t('ai.toolbar.exportCsv')"></span></button>
+            <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="exportReport('pdf')"><i class="fa-solid fa-print w-4 text-muted" aria-hidden="true"></i> <span x-text="t('ai.toolbar.exportPdf')"></span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= بطاقات المؤشرات (KPIs) — من نفس مجموعة السجلات المفلترة ================= -->
+      <section :aria-label="t('ai.kpi.region')" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+
+        <!-- إجمالي التوكنز -->
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.totalTokens')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" :title="tf('ai.kpi.exactTokens', { v: fmtNum(kpis.totalTokens) })">
+            <span aria-hidden="true" x-text="fmtTok(kpis.totalTokens)"></span>
+            <span class="sr-only" x-text="tf('ai.kpi.exactTokens', { v: fmtNum(kpis.totalTokens) })"></span>
+          </p>
+          <div class="kpi-track mt-3" aria-hidden="true">
+            <div class="bg-[#2a78d6] dark:bg-[#3987e5]" :style="'width:' + kpis.promptPct + '%'"></div>
+            <div class="bg-[#c4501f] dark:bg-[#e0703f]" :style="'width:' + kpis.completionPct + '%'"></div>
+          </div>
+          <p class="mt-1.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.tokenSplit', { p: fmtNum(kpis.promptPct), c: fmtNum(kpis.completionPct) })"></p>
+        </div>
+
+        <!-- إجمالي التكلفة (سنت → USD) -->
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.totalCost')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-500/25 text-yellow-900 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" x-text="money(kpis.totalCost)"></p>
+          <p class="mt-3.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.avgCostPerCall', { v: money(kpis.avgCostPerCall) })"></p>
+        </div>
+
+        <!-- إجمالي الاستدعاءات -->
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.totalCalls')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-blue-300" aria-hidden="true"><i class="fa-solid fa-bolt"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" x-text="fmtNum(kpis.totalCalls)"></p>
+          <div class="mt-3 flex flex-wrap items-center gap-1.5">
+            <span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="tf('ai.kpi.successRate', { v: fmtNum(kpis.successPct) })"></span></span>
+            <span class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span x-text="tf('ai.kpi.errorRate', { v: fmtNum(kpis.errorPct) })"></span></span>
+          </div>
+        </div>
+
+        <!-- متوسط زمن الاستجابة -->
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.avgResponse')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-400" aria-hidden="true"><i class="fa-solid fa-gauge-high"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" x-text="kpis.totalCalls ? fmtMs(kpis.avgResponseMs) : '—'"></p>
+          <p class="mt-3.5 text-xs font-bold" x-show="kpis.totalCalls" :class="kpis.avgResponseMs > 1800 ? 'text-warning-700 dark:text-warning-500' : 'text-success-700 dark:text-success-500'">
+            <i class="fa-solid" :class="kpis.avgResponseMs > 1800 ? 'fa-triangle-exclamation' : 'fa-circle-check'" aria-hidden="true"></i>
+            <span x-text="kpis.avgResponseMs > 1800 ? t('ai.kpi.latencyHigh') : t('ai.kpi.latencyNormal')"></span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= شريط الفلاتر (إعادة الحساب مؤجَّلة ~150ms) ================= -->
+      <section class="panel space-y-3 p-3.5 sm:p-4" :aria-label="t('ai.toolbar.region')">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <form role="search" class="relative min-w-0 flex-1" @submit.prevent>
+            <label for="ai-q" class="sr-only" x-text="t('ai.toolbar.searchLabel')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+            <input id="ai-q" type="search" x-model="filters.query" :placeholder="t('ai.toolbar.searchPlaceholder')" autocomplete="off"
+                   class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-3 ps-10 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          </form>
+
+          <span id="ai-status-label" class="sr-only" x-text="t('ai.toolbar.statusLabel')"></span>
+          <div class="seg shrink-0 overflow-x-auto" role="group" aria-labelledby="ai-status-label">
+            <template x-for="s in statusOptions" :key="s">
+              <button type="button" class="seg-btn whitespace-nowrap" :aria-pressed="(filters.status === s).toString()" @click="filters.status = s">
+                <i :class="statusIcon(s)" aria-hidden="true"></i><span x-text="s === 'all' ? t('ai.toolbar.statusAll') : t('ai.status.' + s)"></span>
+              </button>
+            </template>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="clearFilters()" :disabled="!hasActiveFilters">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.toolbar.clearFilters')"></span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="relative" x-data="selectDropdown({ id: 'ai-f-tenant', options: () => tenantOptions(), get: () => filters.tenant, set: (v) => filters.tenant = v })"
+               @click.outside="closeList()">
+            <span id="ai-f-tenant-label" class="sr-only" x-text="t('ai.toolbar.tenantLabel')"></span>
+            <button type="button" id="ai-f-tenant-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-f-tenant-list" aria-labelledby="ai-f-tenant-label ai-f-tenant-btn"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-f-tenant-list" role="listbox" aria-labelledby="ai-f-tenant-label" tabindex="-1"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="relative" x-data="selectDropdown({ id: 'ai-f-model', options: () => modelOptions(), get: () => filters.model, set: (v) => filters.model = v })"
+               @click.outside="closeList()">
+            <span id="ai-f-model-label" class="sr-only" x-text="t('ai.toolbar.modelLabel')"></span>
+            <button type="button" id="ai-f-model-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-f-model-list" aria-labelledby="ai-f-model-label ai-f-model-btn"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-f-model-list" role="listbox" aria-labelledby="ai-f-model-label" tabindex="-1"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="relative" x-data="selectDropdown({ id: 'ai-f-feature', options: () => featureOptions(), get: () => filters.feature, set: (v) => filters.feature = v })"
+               @click.outside="closeList()">
+            <span id="ai-f-feature-label" class="sr-only" x-text="t('ai.toolbar.featureLabel')"></span>
+            <button type="button" id="ai-f-feature-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-f-feature-list" aria-labelledby="ai-f-feature-label ai-f-feature-btn"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-f-feature-list" role="listbox" aria-labelledby="ai-f-feature-label" tabindex="-1"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="relative" x-data="selectDropdown({ id: 'ai-f-daterange', options: () => dateOptions(), get: () => filters.dateRange, set: (v) => setDateRange(v) })"
+               @click.outside="closeList()">
+            <span id="ai-f-daterange-label" class="sr-only" x-text="t('ai.toolbar.dateLabel')"></span>
+            <button type="button" id="ai-f-daterange-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-f-daterange-list" aria-labelledby="ai-f-daterange-label ai-f-daterange-btn"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-f-daterange-list" role="listbox" aria-labelledby="ai-f-daterange-label" tabindex="-1"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+
+        <div x-show="filters.dateRange === 'custom'" x-cloak class="grid grid-cols-1 gap-2.5 border-t border-line pt-3 sm:grid-cols-2 lg:w-1/2">
+          <div>
+            <label for="ai-from" class="label" x-text="t('ai.toolbar.dateRangeVals.from')"></label>
+            <input id="ai-from" type="date" class="field" dir="ltr" x-model="filters.customFrom" :min="dataStart" :max="todayIso"
+                   :aria-invalid="(!!rangeError).toString()" aria-describedby="ai-range-hint ai-range-err">
+          </div>
+          <div>
+            <label for="ai-to" class="label" x-text="t('ai.toolbar.dateRangeVals.to')"></label>
+            <input id="ai-to" type="date" class="field" dir="ltr" x-model="filters.customTo" :min="dataStart" :max="todayIso"
+                   :aria-invalid="(!!rangeError).toString()" aria-describedby="ai-range-hint ai-range-err">
+          </div>
+          <p id="ai-range-hint" class="hint !mt-0 sm:col-span-2" x-text="tf('ai.toolbar.rangeHint', { from: fmtDay(dataStart), to: fmtDay(todayIso) })"></p>
+          <p id="ai-range-err" class="flex items-center gap-1.5 text-sm font-bold text-danger sm:col-span-2" x-show="rangeError">
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="rangeError ? t(rangeError) : ''"></span>
+          </p>
+        </div>
+
+        <p class="flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
+          <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+          <span x-text="tf('ai.toolbar.appliedRange', { from: fmtDay(applied.from), to: fmtDay(applied.to) })"></span>
+          <span x-show="updating" class="inline-flex items-center gap-1 text-brand"><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span x-text="t('ai.toolbar.updating')"></span></span>
+        </p>
+      </section>
+
+      <!-- ================= الرسوم البيانية (SVG وصولي + جدول بيانات بديل بنفس الأرقام) ================= -->
+      <section :aria-label="t('ai.charts.region')" class="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
+
+        <!-- اتجاه استهلاك التوكنز -->
+        <div class="chart-card xl:col-span-2" style="min-height:22rem">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+              <h2 id="ai-trend-h" class="font-extrabold" x-text="t('ai.charts.trendTitle')"></h2>
+              <p class="text-xs text-muted" x-text="t('ai.charts.trendSubtitle')"></p>
+            </div>
+            <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="ai-trend-h">
+              <template x-for="(m, i) in MODELS" :key="m.key">
+                <button type="button" class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition focus-visible:ring-2"
+                        :class="modelVisible[i] ? 'border-line bg-soft text-ink' : 'border-dashed border-line-strong text-muted'"
+                        :aria-pressed="modelVisible[i].toString()" :aria-label="tf('ai.charts.toggleModel', { m: m.label })"
+                        @click="toggleModelSeries(i)">
+                  <span class="swatch" :style="'background:' + seriesColor(i)" aria-hidden="true"></span>
+                  <span x-text="m.label" :class="!modelVisible[i] && 'line-through'"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+          <div class="chart-box mt-3" style="min-height:15rem" x-show="kpis.totalCalls" x-html="trendSvg"></div>
+          <div class="chart-box mt-3 grid place-items-center text-sm font-bold text-muted" style="min-height:15rem" x-show="!kpis.totalCalls">
+            <p class="flex items-center gap-2"><i class="fa-regular fa-chart-bar" aria-hidden="true"></i><span x-text="t('ai.charts.noData')"></span></p>
+          </div>
+          <p class="mt-2 text-xs text-muted" x-show="hiddenModels" x-text="t('ai.charts.hiddenNote')"></p>
+          <details class="mt-3 rounded-xl border border-line">
+            <summary class="cursor-pointer rounded-xl px-3 py-2 text-xs font-bold text-brand focus-visible:ring-2" x-text="t('ai.charts.showTable')"></summary>
+            <div class="max-h-72 overflow-auto scroll-thin border-t border-line">
+              <table class="w-full text-xs">
+                <caption class="sr-only" x-text="t('ai.charts.trendTitle')"></caption>
+                <thead class="sticky top-0 bg-card text-muted">
+                  <tr>
+                    <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.charts.colDay')"></th>
+                    <template x-for="m in MODELS" :key="'th-' + m.key"><th scope="col" class="whitespace-nowrap px-3 py-2 text-end font-extrabold" x-text="m.label"></th></template>
+                    <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colTotal')"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="(d, i) in view.trend.days" :key="'tr-' + d">
+                    <tr>
+                      <th scope="row" class="whitespace-nowrap px-3 py-1.5 text-start font-bold" x-text="fmtDay(d)"></th>
+                      <template x-for="s in view.trend.series" :key="s.key"><td class="px-3 py-1.5 text-end tabular-nums" x-text="fmtNum(s.values[i])"></td></template>
+                      <td class="px-3 py-1.5 text-end font-bold tabular-nums" x-text="fmtNum(view.trend.totals[i])"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+        <!-- حصة نماذج الذكاء الاصطناعي -->
+        <div class="chart-card" style="min-height:22rem">
+          <h2 id="ai-model-h" class="font-extrabold" x-text="t('ai.charts.modelTitle')"></h2>
+          <p class="text-xs text-muted" x-text="t('ai.charts.modelSubtitle')"></p>
+          <div class="chart-box mt-3 mx-auto w-full max-w-[13rem]" x-show="kpis.totalCalls" x-html="modelSvg"></div>
+          <ul class="mt-3 space-y-1.5 text-xs" role="list" x-show="kpis.totalCalls">
+            <template x-for="(m, i) in view.models" :key="'ml-' + m.key">
+              <li class="flex items-center gap-2">
+                <span class="swatch" :style="'background:' + seriesColor(i)" aria-hidden="true"></span>
+                <span class="min-w-0 flex-1 truncate font-bold" x-text="modelLabel(m.key)"></span>
+                <span class="tabular-nums text-muted" x-text="tf('ai.charts.calls', { v: fmtNum(m.calls) }) + ' · ' + fmtPct(kpis.totalCalls ? m.calls / kpis.totalCalls : 0)"></span>
+              </li>
+            </template>
+          </ul>
+          <div class="chart-box mt-3 grid place-items-center text-sm font-bold text-muted" style="min-height:12rem" x-show="!kpis.totalCalls">
+            <p class="flex items-center gap-2"><i class="fa-regular fa-chart-bar" aria-hidden="true"></i><span x-text="t('ai.charts.noData')"></span></p>
+          </div>
+          <details class="mt-3 rounded-xl border border-line">
+            <summary class="cursor-pointer rounded-xl px-3 py-2 text-xs font-bold text-brand focus-visible:ring-2" x-text="t('ai.charts.showTable')"></summary>
+            <div class="overflow-x-auto border-t border-line">
+              <table class="w-full text-xs">
+                <caption class="sr-only" x-text="t('ai.charts.modelTitle')"></caption>
+                <thead class="text-muted"><tr>
+                  <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.charts.colModel')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colCalls')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colShare')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colCost')"></th>
+                </tr></thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="m in view.models" :key="'mt-' + m.key">
+                    <tr>
+                      <th scope="row" class="whitespace-nowrap px-3 py-1.5 text-start font-bold" x-text="modelLabel(m.key)"></th>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmtNum(m.calls)"></td>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmtPct(kpis.totalCalls ? m.calls / kpis.totalCalls : 0)"></td>
+                      <td class="whitespace-nowrap px-3 py-1.5 text-end tabular-nums" x-text="money(m.cost)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+        <!-- أكثر المؤسسات استهلاكًا (ضمن الفترة المفلترة) -->
+        <div class="chart-card" style="min-height:22rem">
+          <h2 id="ai-tenants-h" class="font-extrabold" x-text="t('ai.charts.tenantsTitle')"></h2>
+          <p class="text-xs text-muted" x-text="t('ai.charts.tenantsSubtitle')"></p>
+          <div class="chart-box mt-3" x-show="kpis.totalTokens" x-html="tenantsSvg"></div>
+          <div class="chart-box mt-3 grid place-items-center text-sm font-bold text-muted" style="min-height:12rem" x-show="!kpis.totalTokens">
+            <p class="flex items-center gap-2"><i class="fa-regular fa-chart-bar" aria-hidden="true"></i><span x-text="t('ai.charts.noData')"></span></p>
+          </div>
+          <details class="mt-3 rounded-xl border border-line">
+            <summary class="cursor-pointer rounded-xl px-3 py-2 text-xs font-bold text-brand focus-visible:ring-2" x-text="t('ai.charts.showTable')"></summary>
+            <div class="overflow-x-auto border-t border-line">
+              <table class="w-full text-xs">
+                <caption class="sr-only" x-text="t('ai.charts.tenantsTitle')"></caption>
+                <thead class="text-muted"><tr>
+                  <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.charts.colTenant')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colTokens')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colCost')"></th>
+                </tr></thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="r in view.tenants" :key="'tt-' + r.key">
+                    <tr>
+                      <th scope="row" class="px-3 py-1.5 text-start font-bold" x-text="bucketLabel(r.key)"></th>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmtNum(r.tokens)"></td>
+                      <td class="whitespace-nowrap px-3 py-1.5 text-end tabular-nums" x-text="money(r.cost)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+        <!-- الاستخدام حسب السياق الوظيفي -->
+        <div class="chart-card xl:col-span-2" style="min-height:22rem">
+          <h2 id="ai-feature-h" class="font-extrabold" x-text="t('ai.charts.featureTitle')"></h2>
+          <p class="text-xs text-muted" x-text="t('ai.charts.featureSubtitle')"></p>
+          <div class="chart-box mt-3" x-show="kpis.totalCalls" x-html="featureSvg"></div>
+          <div class="chart-box mt-3 grid place-items-center text-sm font-bold text-muted" style="min-height:12rem" x-show="!kpis.totalCalls">
+            <p class="flex items-center gap-2"><i class="fa-regular fa-chart-bar" aria-hidden="true"></i><span x-text="t('ai.charts.noData')"></span></p>
+          </div>
+          <details class="mt-3 rounded-xl border border-line">
+            <summary class="cursor-pointer rounded-xl px-3 py-2 text-xs font-bold text-brand focus-visible:ring-2" x-text="t('ai.charts.showTable')"></summary>
+            <div class="overflow-x-auto border-t border-line">
+              <table class="w-full text-xs">
+                <caption class="sr-only" x-text="t('ai.charts.featureTitle')"></caption>
+                <thead class="text-muted"><tr>
+                  <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.charts.colFeature')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colCalls')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.charts.colTokens')"></th>
+                </tr></thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="f in view.features" :key="'ft-' + f.key">
+                    <tr>
+                      <th scope="row" class="px-3 py-1.5 text-start font-bold" x-text="featureLabel(f.key)"></th>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmtNum(f.calls)"></td>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="fmtNum(f.tokens)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+        <!-- حصص التوكنز الشهرية (عدّادات الاشتراك للفترة الحالية) -->
+        <div class="chart-card" style="min-height:22rem" role="region" aria-labelledby="ai-quota-h">
+          <h2 id="ai-quota-h" class="font-extrabold" x-text="t('ai.quota.title')"></h2>
+          <p class="text-xs text-muted" x-text="t('ai.quota.subtitle')"></p>
+          <p class="mt-2 text-xs font-bold" x-text="quotaSummaryText"></p>
+          <ul class="mt-3 space-y-3" role="list" x-show="quotaRows.length">
+            <template x-for="q in quotaRows" :key="'q-' + q.id">
+              <li class="min-w-0">
+                <div class="flex items-center justify-between gap-2 text-xs">
+                  <span class="min-w-0 truncate font-bold" x-text="q.name" :title="q.name"></span>
+                  <span class="badge shrink-0" :class="quotaBadgeClass(q.state)">
+                    <i :class="quotaIcon(q.state)" aria-hidden="true"></i><span x-text="t('ai.quota.state.' + q.state)"></span>
+                  </span>
+                </div>
+                <div class="kpi-track mt-1.5" x-show="q.pct !== null" aria-hidden="true">
+                  <div :class="q.state === 'over' ? 'bg-error-600 dark:bg-red-400' : q.state === 'near' ? 'bg-warning-500' : 'bg-primary-500 dark:bg-[#6ecde4]'" :style="'width:' + Math.min(100, Math.round((q.pct || 0) * 100)) + '%'"></div>
+                </div>
+                <p class="mt-1 text-[11px] tabular-nums text-muted" x-text="quotaLine(q)"></p>
+              </li>
+            </template>
+          </ul>
+          <p class="mt-4 text-sm text-muted" x-show="!quotaRows.length" x-text="t('ai.quota.empty')"></p>
+          <details class="mt-3 rounded-xl border border-line">
+            <summary class="cursor-pointer rounded-xl px-3 py-2 text-xs font-bold text-brand focus-visible:ring-2" x-text="t('ai.charts.showTable')"></summary>
+            <div class="overflow-x-auto border-t border-line">
+              <table class="w-full text-xs">
+                <caption class="sr-only" x-text="t('ai.quota.title')"></caption>
+                <thead class="text-muted"><tr>
+                  <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.quota.colTenant')"></th>
+                  <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.quota.colPlan')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.quota.colUsed')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.quota.colQuota')"></th>
+                  <th scope="col" class="px-3 py-2 text-end font-extrabold" x-text="t('ai.quota.colUsage')"></th>
+                  <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('ai.quota.colStatus')"></th>
+                </tr></thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="q in quotaRows" :key="'qt-' + q.id">
+                    <tr>
+                      <th scope="row" class="px-3 py-1.5 text-start font-bold" x-text="q.name"></th>
+                      <td class="px-3 py-1.5" x-text="q.planName || '—'"></td>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="q.used === null ? '—' : fmtNum(q.used)"></td>
+                      <td class="px-3 py-1.5 text-end tabular-nums">
+                        <span x-show="q.unlimited" aria-hidden="true">∞</span><span x-show="q.unlimited" class="sr-only" x-text="t('ai.quota.unlimited')"></span>
+                        <span x-show="!q.unlimited" x-text="q.quota === null ? '—' : fmtNum(q.quota)"></span>
+                      </td>
+                      <td class="px-3 py-1.5 text-end tabular-nums" x-text="q.pct === null ? '—' : fmtPct(q.pct)"></td>
+                      <td class="whitespace-nowrap px-3 py-1.5"><i :class="quotaIcon(q.state)" aria-hidden="true"></i> <span x-text="t('ai.quota.state.' + q.state)"></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ================= جدول سجلات الاستخدام ================= -->
+      <section class="panel" aria-labelledby="ai-table-title">
+        <div class="flex items-center justify-between gap-3 border-b border-line p-4 sm:p-5">
+          <div>
+            <h2 id="ai-table-title" class="font-extrabold" x-text="t('ai.table.title')"></h2>
+            <p class="text-xs text-muted" x-text="tf('ai.table.showingCount', { n: fmtNum(visibleLogs.length), total: fmtNum(view.rows.length) })"></p>
+          </div>
+        </div>
+
+        <!-- حالة فارغة -->
+        <div x-show="!view.rows.length" class="py-14 text-center">
+          <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <p class="font-bold" x-text="t('ai.table.emptyTitle')"></p>
+          <p class="mt-1 text-xs text-muted" x-text="t('ai.table.emptyDesc')"></p>
+          <button type="button" class="btn btn-outline btn-sm mt-3" @click="clearFilters()" x-show="hasActiveFilters" x-text="t('ai.table.clearSearch')"></button>
+        </div>
+
+        <!-- بطاقات — جوال/تابلت (عرض واحد فقط حسب العرض) -->
+        <template x-if="view.rows.length && !wide">
+          <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4" role="list">
+            <template x-for="log in visibleLogs" :key="'card-' + log.id">
+              <li class="min-w-0 rounded-xl border border-line p-4">
+                <div class="flex items-start justify-between gap-2">
+                  <span class="badge" :class="modelBadgeClass(log.model)" x-text="modelLabel(log.model)"></span>
+                  <span class="badge" :class="statusBadgeClass(log.status)"><i :class="statusIcon(log.status)" aria-hidden="true"></i><span x-text="t('ai.status.' + log.status)"></span></span>
+                </div>
+                <p class="mt-2.5 truncate font-bold leading-6" x-text="tenantName(log)" :title="tenantName(log)"></p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="tenantDomain(log)"></p>
+                <p class="mt-1 text-xs tabular-nums text-muted" x-text="fmtDateTime(log.ts)"></p>
+                <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                  <div><dt class="text-muted" x-text="t('ai.table.colFeature')"></dt><dd class="mt-0.5 truncate font-bold" x-text="featureLabel(log.feature)"></dd></div>
+                  <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" x-text="fmtNum(log.total_tokens)"></dd></div>
+                  <div><dt class="text-muted" x-text="t('ai.table.colResponse')"></dt><dd class="mt-0.5 font-bold tabular-nums" x-text="fmtMs(log.response_time_ms)"></dd></div>
+                  <div><dt class="text-muted" x-text="t('ai.table.colCost')"></dt><dd class="mt-0.5 font-bold tabular-nums" x-text="money(log.cost)"></dd></div>
+                </dl>
+                <button type="button" class="btn btn-outline btn-sm mt-3 w-full" @click="openDrawer(log, $event)" :aria-label="inspectLabel(log)"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.inspect')"></span></button>
+              </li>
+            </template>
+          </ul>
+        </template>
+
+        <!-- جدول — سطح المكتب -->
+        <template x-if="view.rows.length && wide">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <caption class="sr-only" x-text="t('ai.table.title') + ' — ' + tf('ai.table.showingCount', { n: fmtNum(visibleLogs.length), total: fmtNum(view.rows.length) })"></caption>
+              <thead class="bg-soft/60 text-xs text-muted">
+                <tr>
+                  <th scope="col" class="whitespace-nowrap px-5 py-3 text-start font-extrabold" :aria-sort="ariaSort('ts')">
+                    <button type="button" class="inline-flex items-center gap-1.5 rounded font-extrabold hover:text-brand focus-visible:ring-2" @click="sortBy('ts')"><span x-text="t('ai.table.colTimestamp')"></span><i class="fa-solid" :class="sortIcon('ts')" aria-hidden="true"></i></button>
+                  </th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colTenant')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colModel')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colFeature')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" :aria-sort="ariaSort('total_tokens')">
+                    <button type="button" class="inline-flex items-center gap-1.5 rounded font-extrabold hover:text-brand focus-visible:ring-2" @click="sortBy('total_tokens')"><span x-text="t('ai.table.colTokens')"></span><i class="fa-solid" :class="sortIcon('total_tokens')" aria-hidden="true"></i></button>
+                  </th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" :aria-sort="ariaSort('response_time_ms')">
+                    <button type="button" class="inline-flex items-center gap-1.5 rounded font-extrabold hover:text-brand focus-visible:ring-2" @click="sortBy('response_time_ms')"><span x-text="t('ai.table.colResponse')"></span><i class="fa-solid" :class="sortIcon('response_time_ms')" aria-hidden="true"></i></button>
+                  </th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" :aria-sort="ariaSort('cost')">
+                    <button type="button" class="inline-flex items-center gap-1.5 rounded font-extrabold hover:text-brand focus-visible:ring-2" @click="sortBy('cost')"><span x-text="t('ai.table.colCost')"></span><i class="fa-solid" :class="sortIcon('cost')" aria-hidden="true"></i></button>
+                  </th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colStatus')"></th>
+                  <th scope="col" class="whitespace-nowrap px-5 py-3 text-end font-extrabold" x-text="t('ai.table.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="log in visibleLogs" :key="'row-' + log.id">
+                  <tr class="transition hover:bg-soft/40">
+                    <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" x-text="fmtDateTime(log.ts)"></td>
+                    <td class="max-w-[12rem] px-4 py-3.5">
+                      <p class="truncate font-bold" x-text="tenantName(log)" :title="tenantName(log)"></p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="tenantDomain(log)"></p>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3.5"><span class="badge" :class="modelBadgeClass(log.model)" x-text="modelLabel(log.model)"></span></td>
+                    <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="featureLabel(log.feature)"></span></td>
+                    <td class="whitespace-nowrap px-4 py-3.5">
+                      <p class="font-extrabold tabular-nums" x-text="fmtNum(log.total_tokens)"></p>
+                      <p class="text-[11px] tabular-nums text-muted" x-text="tf('ai.table.tokenParts', { p: fmtNum(log.prompt_tokens), c: fmtNum(log.completion_tokens) })"></p>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-3.5 tabular-nums" x-text="fmtMs(log.response_time_ms)"></td>
+                    <td class="whitespace-nowrap px-4 py-3.5 font-bold tabular-nums" x-text="money(log.cost)"></td>
+                    <td class="whitespace-nowrap px-4 py-3.5"><span class="badge" :class="statusBadgeClass(log.status)"><i :class="statusIcon(log.status)" aria-hidden="true"></i><span x-text="t('ai.status.' + log.status)"></span></span></td>
+                    <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                      <button type="button" class="act group relative ms-auto" @click="openDrawer(log, $event)" :aria-label="inspectLabel(log)">
+                        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                        <span class="tooltip-bubble" aria-hidden="true" x-text="t('ai.table.inspect')"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <!-- تحميل المزيد -->
+        <div class="flex justify-center border-t border-line p-4" x-show="view.rows.length && visibleLogs.length < view.rows.length" x-cloak>
+          <button type="button" class="btn btn-outline btn-sm" @click="loadMore()">
+            <i class="fa-solid fa-angles-down" aria-hidden="true"></i><span x-text="t('ai.table.loadMore')"></span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     الدرج الجانبي — فاحص الاستدعاء والحمولة (Prompt / Response Inspector)
+     ========================================================================== -->
+<div x-show="drawerOpen" x-cloak class="fixed inset-0 z-[60]">
+  <div x-show="drawerOpen" x-transition.opacity class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDrawer()" aria-hidden="true"></div>
+
+  <div x-show="drawerOpen" x-trap.noscroll="drawerOpen" role="dialog" aria-modal="true" aria-labelledby="drawer-title"
+       @keydown.escape.stop="closeDrawer()"
+       x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition-transform duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="drawer-panel">
+
+    <template x-if="selectedLog">
+      <div class="flex h-full min-h-0 flex-col">
+        <!-- رأس الدرج -->
+        <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4 sm:p-5">
+          <div class="min-w-0">
+            <h2 id="drawer-title" class="text-lg font-extrabold text-brand" x-text="t('ai.drawer.title')"></h2>
+            <p class="mt-1 truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="'#' + selectedLog.id"></p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <span class="badge" :class="modelBadgeClass(selectedLog.model)" x-text="modelLabel(selectedLog.model)"></span>
+              <span class="badge badge-muted" x-text="featureLabel(selectedLog.feature)"></span>
+              <span class="badge" :class="statusBadgeClass(selectedLog.status)"><i :class="statusIcon(selectedLog.status)" aria-hidden="true"></i><span x-text="t('ai.status.' + selectedLog.status)"></span></span>
+            </div>
+          </div>
+          <button type="button" class="icon-btn shrink-0" @click="closeDrawer()" :aria-label="t('ai.drawer.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </header>
+
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+
+          <!-- خطأ (إن وُجد) -->
+          <div x-show="selectedLog.status !== 'success'" class="rounded-xl border p-3.5"
+               :class="selectedLog.status === 'failed' ? 'border-error-500/30 bg-error-500/5' : 'border-warning-500/30 bg-warning-500/5'">
+            <p class="flex items-center gap-2 text-xs font-extrabold" :class="selectedLog.status === 'failed' ? 'text-error-700 dark:text-red-300' : 'text-warning-700 dark:text-warning-500'">
+              <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span x-text="t('ai.drawer.errorTitle')"></span>
+            </p>
+            <p class="mt-1.5 text-sm font-bold" x-text="errorText(selectedLog)"></p>
+          </div>
+
+          <!-- بيانات الطلب الوصفية -->
+          <div class="rounded-xl border border-line p-4">
+            <p class="mb-3 text-xs font-extrabold uppercase tracking-wide text-muted" x-text="t('ai.drawer.metaTitle')"></p>
+            <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <dt class="text-xs font-bold text-muted" x-text="t('ai.drawer.meta.tenant')"></dt>
+                <dd class="mt-1 truncate font-bold" x-text="tenantName(selectedLog)"></dd>
+                <dd class="truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="selectedLog.tenant_id || '—'"></dd>
+              </div>
+              <div>
+                <dt class="text-xs font-bold text-muted" x-text="t('ai.drawer.meta.user')"></dt>
+                <dd class="mt-1 truncate font-bold" x-text="userName(selectedLog)"></dd>
+                <dd class="truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="selectedLog.user_email || '—'"></dd>
+              </div>
+              <div>
+                <dt class="text-xs font-bold text-muted" x-text="t('ai.drawer.meta.latency')"></dt>
+                <dd class="mt-1 font-bold tabular-nums" x-text="fmtMs(selectedLog.response_time_ms)"></dd>
+              </div>
+              <div>
+                <dt class="text-xs font-bold text-muted" x-text="t('ai.drawer.meta.timestamp')"></dt>
+                <dd class="mt-1 font-bold tabular-nums" x-text="fmtDateTime(selectedLog.ts, true)"></dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- تفصيل التوكنز والتكلفة -->
+          <div>
+            <p class="mb-2 text-xs font-extrabold uppercase tracking-wide text-muted" x-text="t('ai.drawer.tokensTitle')"></p>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div class="rounded-xl border border-line p-3 text-center">
+                <p class="text-[11px] font-bold text-muted" x-text="t('ai.drawer.promptTokens')"></p>
+                <p class="mt-1 text-lg font-extrabold tabular-nums" x-text="fmtNum(selectedLog.prompt_tokens)"></p>
+              </div>
+              <div class="rounded-xl border border-line p-3 text-center">
+                <p class="text-[11px] font-bold text-muted" x-text="t('ai.drawer.completionTokens')"></p>
+                <p class="mt-1 text-lg font-extrabold tabular-nums" x-text="fmtNum(selectedLog.completion_tokens)"></p>
+              </div>
+              <div class="rounded-xl border border-primary-500/30 bg-primary-500/5 p-3 text-center">
+                <p class="text-[11px] font-bold text-muted" x-text="t('ai.drawer.totalCost')"></p>
+                <p class="mt-1 text-lg font-extrabold tabular-nums text-brand" x-text="money(selectedLog.cost)"></p>
+              </div>
+            </div>
+            <div class="kpi-track mt-2.5" aria-hidden="true">
+              <div class="bg-[#2a78d6] dark:bg-[#3987e5]" :style="'width:' + drawerPromptPct + '%'"></div>
+              <div class="bg-[#c4501f] dark:bg-[#e0703f]" :style="'width:' + (100 - drawerPromptPct) + '%'"></div>
+            </div>
+            <p class="mt-1.5 text-[11px] text-muted" x-text="t('ai.drawer.rateNote')"></p>
+          </div>
+
+          <!-- فاحص الحمولة (Prompt / Response) -->
+          <div>
+            <div class="mb-2 flex items-center justify-between gap-2">
+              <p class="text-xs font-extrabold uppercase tracking-wide text-muted" x-text="t('ai.drawer.payloadTitle')"></p>
+              <div class="flex gap-1.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="copyRequestId()"><i class="fa-regular fa-copy" aria-hidden="true"></i><span x-text="t('ai.drawer.copyId')"></span></button>
+                <button type="button" class="btn btn-outline btn-sm" @click="copyPayloadJson()"><i class="fa-solid fa-code" aria-hidden="true"></i><span x-text="t('ai.drawer.copyJson')"></span></button>
+              </div>
+            </div>
+            <pre class="code-block" dir="ltr" tabindex="0" :aria-label="t('ai.drawer.payloadTitle')" x-text="payloadJson"></pre>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /* قائمة اختيار مخصّصة (Combobox + Listbox): Home/End، بحث بالكتابة، Tab يغلق، Escape لا يتسرّب */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : (typeof placeholder === 'function' ? placeholder() : placeholder); },
+      optId(item) { return this.id + '-opt-' + item.value; },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      // children[0] هو <template x-for> — لذا +1
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * LND-09 — تحليلات واستهلاك الذكاء الاصطناعي (المسؤول العام).
+   * - السجلات مولَّدة بمولّد شبه عشوائي ثابت البذرة (mulberry32) نسبةً إلى SA.today() — لا تواريخ مستقبلية.
+   * - المؤسسات والباقات والحصص من SA (مصدر واحد)؛ التكلفة بالهللة وتُعرض عبر SA.money.
+   * - مجموعة سجلات مفلترة واحدة (view.rows) تُشتق منها المؤشرات والرسوم وجداول البيانات معًا،
+   *   وتُعاد حسابها مؤجَّلة ~150ms بعد آخر تغيير في الفلاتر.
+   * في Laravel: جدول ai_usage_logs (tokens/cost_halalas bigint) + استعلامات تجميع مفهرسة على created_at/tenant_id.
+   */
+  function aiAnalyticsData() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+
+  /* =====================================================================================
+     FirOb — بيانات المسؤول العام المشتركة (Single Source of Truth) — SA
+     تُضمَّن حرفيًا في كل صفحات super-admin عند البناء، فلا تتعارض الصفحات أبدًا.
+     - العملة واحدة: USD (لا تتغير مع اللغة)، وضريبة القيمة المضافة 15% محسوبة على البنود.
+     - كل الحساب المالي بالهللة (أعداد صحيحة) عبر SA.m — لا جمع لأعداد عشرية.
+     - التواريخ محلية YYYY-MM-DD (لا toISOString) — لا انزياح يوم في UTC+3.
+     - حالة الفاتورة مشتقة من المدفوعات وتاريخ الاستحقاق (إلا void/draft المخزّنتين).
+     في Laravel: نفس الجداول (plans, tenants, subscriptions, invoices, invoice_items, payments, refunds)
+     والمبالغ bigint بالهللة، والحالات تُحسب في Model accessors/Jobs.
+     ===================================================================================== */
+  const SA = (() => {
+    /* ---------- التواريخ (محلية) ---------- */
+    const pad = (n) => String(n).padStart(2, '0');
+    const isoLocal = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    const parseLocal = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d, 12, 0, 0, 0); };
+    const today = () => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; };
+    const addDays = (n, from) => { const d = from ? parseLocal(from) : today(); d.setDate(d.getDate() + n); return isoLocal(d); };
+    const daysBetween = (a, b) => Math.round((parseLocal(b) - parseLocal(a)) / 864e5);   // b − a بالأيام
+    const startOfDay = (s) => { const d = parseLocal(s); d.setHours(0, 0, 0, 0); return d; };
+    const endOfDay = (s) => { const d = parseLocal(s); d.setHours(23, 59, 59, 999); return d; };
+    const todayIso = () => isoLocal(today());
+
+    /* ---------- المال (هللة) ---------- */
+    const CURRENCY = 'USD';
+    const VAT_RATE = 0.15;
+    const m = {
+      toMinor: (usd) => Math.round(Number(usd || 0) * 100),
+      toMajor: (minor) => minor / 100,
+      sum: (arr) => arr.reduce((s, x) => s + Math.round(x), 0),
+    };
+    const fmtLocale = (loc) => (loc === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US');
+    const money = (minor, loc) => new Intl.NumberFormat(fmtLocale(loc), { style: 'currency', currency: CURRENCY, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((minor || 0) / 100);
+    const moneyShort = (minor, loc) => new Intl.NumberFormat(fmtLocale(loc), { style: 'currency', currency: CURRENCY, notation: 'compact', maximumFractionDigits: 1 }).format((minor || 0) / 100);
+    const fmtDate = (s, loc, opts) => s ? new Intl.DateTimeFormat(fmtLocale(loc), opts || { day: 'numeric', month: 'short', year: 'numeric' }).format(parseLocal(s)) : '—';
+    const fmtNum = (n, loc) => new Intl.NumberFormat(fmtLocale(loc)).format(n || 0);
+
+    /* ---------- الباقات (الأسعار شهرية بالهللة، قبل الضريبة) ---------- */
+    const PLANS = [
+      { id: 1, code: 'trial',      name: { ar: 'الباقة التجريبية', en: 'Trial Plan' },       price_monthly: 0,     max_users: 5,   max_storage_mb: 1024,    ai_token_quota_monthly: 10000,   trial_days: 14, is_active: true,  sort_order: 1 },
+      { id: 2, code: 'basic',      name: { ar: 'الباقة الأساسية', en: 'Basic Plan' },        price_monthly: 4900,  max_users: 10,  max_storage_mb: 5120,    ai_token_quota_monthly: 50000,   trial_days: 0,  is_active: true,  sort_order: 2 },
+      { id: 3, code: 'pro',        name: { ar: 'الباقة الاحترافية', en: 'Pro Plan' },        price_monthly: 14900, max_users: 50,  max_storage_mb: 10240,   ai_token_quota_monthly: 100000,  trial_days: 0,  is_active: true,  sort_order: 3 },
+      { id: 4, code: 'enterprise', name: { ar: 'باقة المؤسسات', en: 'Enterprise Plan' },     price_monthly: 49900, max_users: 500, max_storage_mb: 1048576, ai_token_quota_monthly: 2000000, trial_days: 0,  is_active: true,  sort_order: 4 },
+      { id: 5, code: 'legacy',     name: { ar: 'الباقة القديمة', en: 'Legacy Plan' },        price_monthly: 2900,  max_users: 20,  max_storage_mb: 2048,    ai_token_quota_monthly: 20000,   trial_days: 0,  is_active: false, sort_order: 5 },
+    ];
+
+    /* ---------- المؤسسات (status: active | trial | suspended | inactive — متّسقة مع اشتراكاتها) ---------- */
+    const TENANTS = [
+      { id: 't1',  name: { ar: 'جامعة الأقصى', en: 'Al-Aqsa University' },               domain: 'aqsa-univ.firob.sa',   color: '#0E80A1', created_at: addDays(-900), status: 'active', country: 'PS', contact: { name: { ar: 'د. سامي الحلو', en: 'Sami Al-Helou' }, email: 'admin@aqsa-univ.edu.ps', phone: '+970 8 284 1234' } },
+      { id: 't2',  name: { ar: 'مدارس الرواد الأهلية', en: 'Al-Ruwad Schools' },          domain: 'alruwad.firob.sa',     color: '#0B6680', created_at: addDays(-200), status: 'active', country: 'SA', contact: { name: { ar: 'أ. نورة القحطاني', en: 'Noura Al-Qahtani' }, email: 'it@alruwad.edu.sa', phone: '+966 11 456 7788' } },
+      { id: 't3',  name: { ar: 'أكاديمية المستقبل', en: 'Future Academy' },               domain: 'future-acad.firob.sa', color: '#094F63', created_at: addDays(-10), status: 'trial', country: 'SA', contact: { name: { ar: 'م. خالد العتيبي', en: 'Khaled Al-Otaibi' }, email: 'khaled@future-acad.sa', phone: '+966 12 610 2200' } },
+      { id: 't4',  name: { ar: 'معهد النور التقني', en: 'Al-Noor Tech Institute' },       domain: 'alnoor-tech.firob.sa', color: '#0C6F8B', created_at: addDays(-95), status: 'active', country: 'SA', contact: { name: { ar: 'أ. ريم السبيعي', en: 'Reem Al-Subaie' }, email: 'admin@alnoor-tech.sa', phone: '+966 13 812 4410' } },
+      { id: 't5',  name: { ar: 'مدرسة ألفا الدولية', en: 'Alpha International School' }, domain: 'alpha-intl.firob.sa',  color: '#586670', created_at: addDays(-60), status: 'active', country: 'AE', contact: { name: { ar: 'Ms. Laura Chen', en: 'Laura Chen' }, email: 'ops@alpha-intl.ae', phone: '+971 4 330 1200' } },
+      { id: 't6',  name: { ar: 'جامعة الرياض الأهلية', en: 'Riyadh National University' }, domain: 'riyadh-nu.firob.sa', color: '#5A687D', created_at: addDays(-500), status: 'active', country: 'SA', contact: { name: { ar: 'د. فهد الشمري', en: 'Fahad Al-Shammari' }, email: 'it@riyadh-nu.edu.sa', phone: '+966 11 210 9000' } },
+      { id: 't7',  name: { ar: 'مركز إبداع للتدريب', en: 'Ibdaa Training Center' },       domain: 'ibdaa-center.firob.sa', color: '#0E80A1', created_at: addDays(-450), status: 'inactive', country: 'SA', contact: { name: { ar: 'أ. منى الزهراني', en: 'Mona Al-Zahrani' }, email: 'info@ibdaa-center.sa', phone: '+966 12 655 0303' } },
+      { id: 't8',  name: { ar: 'مدارس الفيصل النموذجية', en: 'Al-Faisal Model Schools' }, domain: 'alfaisal.firob.sa',    color: '#0B6680', created_at: addDays(-3), status: 'trial', country: 'SA', contact: { name: { ar: 'أ. عبدالله الفيصل', en: 'Abdullah Al-Faisal' }, email: 'admin@alfaisal.edu.sa', phone: '+966 11 470 1515' } },
+      { id: 't9',  name: { ar: 'كلية الطب الأهلية', en: 'National Medical College' },     domain: 'med-college.firob.sa', color: '#094F63', created_at: addDays(-370), status: 'active', country: 'SA', contact: { name: { ar: 'د. هالة الدوسري', en: 'Hala Al-Dosari' }, email: 'it@med-college.edu.sa', phone: '+966 11 880 4400' } },
+      { id: 't10', name: { ar: 'معهد اللغات الحديث', en: 'Modern Languages Institute' },  domain: 'mli.firob.sa',         color: '#0C6F8B', created_at: addDays(-500), status: 'active', country: 'JO', contact: { name: { ar: 'أ. ليث حداد', en: 'Laith Haddad' }, email: 'admin@mli.edu.jo', phone: '+962 6 555 1200' } },
+      { id: 't11', name: { ar: 'أكاديمية البرمجة الذكية', en: 'Smart Coding Academy' },  domain: 'smartcode.firob.sa',   color: '#586670', created_at: addDays(-30), status: 'active', country: 'PS', contact: { name: { ar: 'م. يوسف النجار', en: 'Yousef Al-Najjar' }, email: 'hello@smartcode.ps', phone: '+970 59 912 3456' } },
+      { id: 't12', name: { ar: 'مدرسة نجوم الغد', en: 'Stars of Tomorrow School' },      domain: 'starsedu.firob.sa',    color: '#5A687D', created_at: addDays(-800), status: 'suspended', country: 'SA', contact: { name: { ar: 'أ. سارة المطيري', en: 'Sara Al-Mutairi' }, email: 'admin@starsedu.sa', phone: '+966 11 230 7070' } },
+    ];
+
+    /* ---------- الاشتراكات (استخدام ≤ حدود الباقة دائمًا) ---------- */
+    const SUB = (id, tenant_id, plan_id, status, auto_renew, s, e, extra) => Object.assign(
+      { id, tenant_id, plan_id, status, auto_renew, starts_at: addDays(s), ends_at: addDays(e), cancelled_at: null, cancel_reason: null, scheduledPlanId: null,
+        usage: { usersUsed: 0, storageUsedMb: 0, aiTokensUsed: 0 } }, extra || {});
+    const SUBSCRIPTIONS = [
+      SUB(1001, 't1', 4, 'active',   true,  -400,  65,  { usage: { usersUsed: 340, storageUsedMb: 612000, aiTokensUsed: 1450000 } }),
+      SUB(1014, 't1', 3, 'cancelled', false, -900, -410, { cancelled_at: addDays(-420), cancel_reason: 'upgraded', usage: { usersUsed: 46, storageUsedMb: 9100, aiTokensUsed: 88000 } }),
+      SUB(1002, 't2', 3, 'active',   true,  -200,   5,  { usage: { usersUsed: 48, storageUsedMb: 9850, aiTokensUsed: 96500 } }),
+      SUB(1003, 't3', 1, 'trialing', false,  -10,   4,  { usage: { usersUsed: 3, storageUsedMb: 210, aiTokensUsed: 2200 } }),
+      SUB(1004, 't4', 2, 'past_due', true,   -95,  -3,  { usage: { usersUsed: 9, storageUsedMb: 4700, aiTokensUsed: 47000 } }),
+      SUB(1005, 't5', 3, 'active',   true,   -60, 300,  { scheduledPlanId: 4, usage: { usersUsed: 31, storageUsedMb: 6100, aiTokensUsed: 41000 } }),
+      SUB(1006, 't6', 4, 'active',   true,  -500, 180,  { usage: { usersUsed: 410, storageUsedMb: 780000, aiTokensUsed: 1800000 } }),
+      SUB(1007, 't7', 2, 'expired',  false, -400, -30,  { usage: { usersUsed: 6, storageUsedMb: 3100, aiTokensUsed: 18500 } }),
+      SUB(1013, 't7', 1, 'cancelled', false, -450, -400, { cancelled_at: addDays(-410), cancel_reason: 'not_needed', usage: { usersUsed: 2, storageUsedMb: 90, aiTokensUsed: 900 } }),
+      SUB(1008, 't8', 1, 'trialing', true,    -3,  11,  { usage: { usersUsed: 4, storageUsedMb: 340, aiTokensUsed: 3100 } }),
+      SUB(1009, 't9', 4, 'past_due', true,  -370,  -1,  { usage: { usersUsed: 388, storageUsedMb: 690000, aiTokensUsed: 1950000 } }),
+      SUB(1010, 't10', 3, 'cancelled', false, -250, 40, { cancelled_at: addDays(-15), cancel_reason: 'too_expensive', usage: { usersUsed: 22, storageUsedMb: 5200, aiTokensUsed: 51000 } }),
+      SUB(1015, 't10', 2, 'expired',  false, -500, -260, { usage: { usersUsed: 8, storageUsedMb: 3900, aiTokensUsed: 22000 } }),
+      SUB(1011, 't11', 2, 'active',  true,   -30, 335,  { usage: { usersUsed: 7, storageUsedMb: 2600, aiTokensUsed: 31000 } }),
+      SUB(1012, 't12', 5, 'paused',  false, -800,  20,  { usage: { usersUsed: 18, storageUsedMb: 1950, aiTokensUsed: 19500 } }),
+    ];
+
+    /* ---------- الفواتير (البنود بالهللة قبل الضريبة؛ الإجمالي = المجموع + 15%) ---------- */
+    const SUBLINE = (plan_id) => ({ description_key: 'sub', plan_id, qty: 1, unit_price: PLANS.find(p => p.id === plan_id).price_monthly });
+    const INV = (id, number, tenant_id, subscription_id, issue, due, items, extra) => Object.assign(
+      { id, invoice_number: number, tenant_id, subscription_id, issue_date: addDays(issue), due_date: addDays(due), items, voided_at: null, void_reason: null, status_override: null }, extra || {});
+    const INVOICES = [
+      INV(5001, 'INV-2026-0097', 't1', 1001, -35, -20, [SUBLINE(4)]),
+      INV(5002, 'INV-2026-0071', 't1', 1001, -65, -50, [SUBLINE(4)]),
+      INV(5015, 'INV-2025-0140', 't1', null, -400, -385, [{ description: { ar: 'حزمة تراخيص مستخدمين إضافية', en: 'Additional user license pack' }, qty: 2, unit_price: 25000 }]),
+      INV(5003, 'INV-2026-0088', 't2', 1002, -15, 0, [SUBLINE(3)]),
+      INV(5004, 'INV-2026-0055', 't2', 1002, -45, -30, [SUBLINE(3)]),
+      INV(5016, 'INV-2025-0119', 't2', null, -195, -180, [{ description: { ar: 'رسوم إعداد أولي', en: 'Initial setup fee' }, qty: 1, unit_price: 4900 }],
+          { status_override: 'void', voided_at: addDays(-190), void_reason: { ar: 'أُعفي من رسوم الإعداد ضمن العرض الترحيبي', en: 'Setup fee waived as part of the welcome offer' } }),
+      INV(5005, 'INV-2026-0090', 't3', null, -4, 11, [
+        { description: { ar: 'رسوم تفعيل نطاق مخصص', en: 'Custom domain setup fee' }, qty: 1, unit_price: 15000 },
+        { description: { ar: 'إضافة تخزين سحابي 50GB', en: 'Extra 50GB storage add-on' }, qty: 1, unit_price: 10000 }]),
+      INV(5007, 'INV-2026-0095', 't4', 1004, -33, -3, [SUBLINE(2)]),
+      INV(5008, 'INV-2026-0064', 't4', 1004, -63, -33, [SUBLINE(2)]),
+      INV(5009, 'INV-2026-0079', 't5', 1005, -30, -15, [SUBLINE(3)]),
+      INV(5010, 'INV-2026-0020', 't5', null, -90, -75, [{ description: { ar: 'رسوم دعم فني إضافي', en: 'Extra technical support' }, qty: 1, unit_price: 9900 }],
+          { status_override: 'void', voided_at: addDays(-80), void_reason: { ar: 'خدمة لم تُقدَّم', en: 'Service not delivered' } }),
+      INV(5011, 'INV-2026-0083', 't6', 1006, -30, -15, [SUBLINE(4)]),
+      INV(5012, 'INV-2026-0052', 't6', 1006, -60, -45, [SUBLINE(4)]),
+      INV(5013, 'INV-2025-0151', 't7', 1007, -60, -45, [SUBLINE(2)]),
+      INV(5017, 'INV-2026-0099', 't9', 1009, -8, -1, [SUBLINE(4)]),
+      INV(5018, 'INV-2026-0068', 't9', 1009, -31, -16, [SUBLINE(4)]),
+      INV(5019, 'INV-2026-0044', 't10', 1010, -45, -30, [SUBLINE(3)]),
+      INV(5020, 'INV-2026-0080', 't11', 1011, -30, -15, [SUBLINE(2)]),
+      INV(5021, 'INV-2026-0077', 't12', 1012, -30, -15, [SUBLINE(5)]),
+    ];
+
+    /* ---------- المدفوعات (refunds[] سجل استرداد جزئي/كلي مع السبب) ---------- */
+    const PAY = (id, invoice_id, tenant_id, amount, method, ref, status, at, extra) => Object.assign(
+      { id, invoice_id, tenant_id, amount, payment_method: method, transaction_reference: ref, status, paid_at: addDays(at), refunds: [] }, extra || {});
+    const PAYMENTS = [
+      PAY(9001, 5001, 't1', 34500, 'stripe', 'TXN-518820', 'completed', -32),
+      PAY(9002, 5001, 't1', 22885, 'stripe', 'TXN-518955', 'completed', -30),
+      PAY(9003, 5002, 't1', 57385, 'bank_transfer', 'WIRE-88213', 'completed', -60),
+      PAY(9016, 5015, 't1', 57500, 'paypal', 'PAY-10023', 'completed', -390),
+      PAY(9004, 5003, 't2', 17135, 'credit_card', 'TXN-519850', 'failed', -16),
+      PAY(9005, 5003, 't2', 8600, 'credit_card', 'TXN-520011', 'completed', -14),
+      PAY(9006, 5004, 't2', 17135, 'stripe', 'TXN-517700', 'completed', -40),
+      PAY(9007, 5005, 't3', 28750, 'bank_transfer', 'WIRE-91004', 'pending', -1),
+      PAY(9009, 5007, 't4', 5635, 'paypal', 'PAY-33210', 'failed', -2),
+      PAY(9010, 5008, 't4', 5635, 'cash', 'CASH-0031', 'completed', -58),
+      PAY(9011, 5009, 't5', 17135, 'stripe', 'TXN-521500', 'completed', -25),
+      PAY(9013, 5011, 't6', 57385, 'bank_transfer', 'WIRE-92100', 'completed', -28),
+      PAY(9014, 5012, 't6', 57385, 'stripe', 'TXN-516200', 'completed', -55,
+          { refunds: [{ id: 'R-301', amount: 5000, reason: { ar: 'تعويض عن انقطاع الخدمة يومين', en: 'Credit for a two-day service outage' }, by: 'Eman Kullab', at: addDays(-50) }] }),
+      PAY(9015, 5013, 't7', 5635, 'credit_card', 'TXN-509900', 'completed', -50),
+      PAY(9017, 5017, 't9', 57385, 'credit_card', 'TXN-523300', 'failed', -1),
+      PAY(9018, 5018, 't9', 57385, 'bank_transfer', 'WIRE-90770', 'completed', -20),
+      PAY(9019, 5019, 't10', 17135, 'stripe', 'TXN-519000', 'completed', -40),
+      PAY(9020, 5020, 't11', 5635, 'credit_card', 'TXN-520700', 'completed', -28),
+      PAY(9021, 5021, 't12', 3335, 'check', 'CHK-1182', 'completed', -25),
+    ];
+
+    /* ---------- حسابات مشتقة ---------- */
+    const plan = (id) => PLANS.find(p => p.id === id) || null;
+    const tenant = (id) => TENANTS.find(t => t.id === id) || null;
+    /* الاشتراك الحالي للمؤسسة = الأحدث بدءًا من غير الملغاة/المنتهية، وإلا الأحدث مطلقًا */
+    const currentSubscription = (tenantId) => {
+      const list = SUBSCRIPTIONS.filter(s => s.tenant_id === tenantId).sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1));
+      return list.find(s => !['cancelled', 'expired'].includes(s.status)) || list[0] || null;
+    };
+    /* الإيراد الشهري المتكرر (MRR) بالهللة: الاشتراكات التي تُفوتر فعلًا (active / past_due) */
+    const mrr = () => m.sum(SUBSCRIPTIONS.filter(s => ['active', 'past_due'].includes(s.status)).map(s => plan(s.plan_id).price_monthly));
+    const invoiceTotals = (inv) => {
+      const subtotal = m.sum(inv.items.map(i => i.qty * i.unit_price));
+      const vat = Math.round(subtotal * VAT_RATE);
+      return { subtotal, vat, total: subtotal + vat };
+    };
+    const refundedOf = (p) => m.sum((p.refunds || []).map(r => r.amount));
+    const refundableOf = (p) => (p.status === 'completed' ? p.amount - refundedOf(p) : 0);
+    /* المدفوع (إجمالي المدفوعات المكتملة) يغلق الفاتورة؛ الاسترداد لا يعيد فتحها بل يُسجَّل كإشعار دائن منفصل */
+    const paidOf = (inv, payments) => m.sum((payments || PAYMENTS).filter(p => p.invoice_id === inv.id && p.status === 'completed').map(p => p.amount));
+    const refundedOfInvoice = (inv, payments) => m.sum((payments || PAYMENTS).filter(p => p.invoice_id === inv.id).map(refundedOf));
+    /* الحالة المشتقة: void | refunded | paid | partially_paid | overdue | unpaid  (+ overdue منفصلة لتلوين «جزئي متأخر») */
+    const invoiceState = (inv, payments) => {
+      const { total } = invoiceTotals(inv);
+      const paid = paidOf(inv, payments), refunded = refundedOfInvoice(inv, payments);
+      const balance = inv.status_override === 'void' ? 0 : Math.max(0, total - paid);
+      const overdue = inv.status_override !== 'void' && balance > 0 && daysBetween(inv.due_date, todayIso()) > 0;
+      let status;
+      if (inv.status_override === 'void') status = 'void';
+      else if (paid > 0 && refunded >= paid) status = 'refunded';
+      else if (balance === 0 && total > 0) status = 'paid';
+      else if (paid > 0) status = 'partially_paid';
+      else status = overdue ? 'overdue' : 'unpaid';
+      return { total, paid, refunded, net: paid - refunded, balance, overdue, status };
+    };
+
+    return { CURRENCY, VAT_RATE, PLANS, TENANTS, SUBSCRIPTIONS, INVOICES, PAYMENTS,
+             pad, isoLocal, parseLocal, today, todayIso, addDays, daysBetween, startOfDay, endOfDay,
+             m, money, moneyShort, fmtDate, fmtNum, fmtLocale, plan, tenant, currentSubscription, mrr, invoiceTotals, refundedOf, refundableOf, paidOf, refundedOfInvoice, invoiceState };
+  })();
+
+    const DEBOUNCE_MS = 150;
+    const PAGE = 20;
+    const DATA_DAYS = 90;          // مدة الاحتفاظ بالسجلات (يوم)
+    const SEED = 20260509;
+
+    /* ================= قاموس الترجمة ================= */
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة المسؤول العام', roleName: 'المسؤول العام',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'إدارة المحتوى', system: 'النظام' },
+        navItems: {
+          dashboard: 'لوحة القيادة', aiAnalytics: 'تحليلات AI', tenants: 'المؤسسات',
+          plans: 'الباقات', subscriptions: 'الاشتراكات', payments: 'المدفوعات والفواتير', users: 'المستخدمون', roles: 'الأدوار والصلاحيات',
+          repository: 'المستودع', reviewQueue: 'طابور المراجعة', activityLog: 'سجل النشاط', systemSettings: 'إعدادات النظام',
+        },
+        notif: { upload: 'رفعت «جامعة الأقصى» 12 عنصرًا جديدًا للمراجعة', quota: 'تجاوزت «كلية الطب الأهلية» 90% من حصتها الشهرية من التوكنز', backup: 'اكتمل النسخ الاحتياطي الليلي بنجاح' },
+
+        ai: {
+          docTitle: 'تحليلات واستهلاك الذكاء الاصطناعي — FirOb',
+          title: 'تحليلات واستهلاك الذكاء الاصطناعي', subtitle: 'رصد شامل لاستهلاك التوكنز والتكلفة والأداء عبر كل نماذج AI والمؤسسات على المنصّة.',
+          kpi: {
+            region: 'مؤشرات استهلاك الذكاء الاصطناعي',
+            totalTokens: 'إجمالي استهلاك التوكنز', tokenSplit: 'مدخل {p}% · مخرج {c}%', exactTokens: '{v} توكن',
+            totalCost: 'إجمالي التكلفة التقديرية', avgCostPerCall: 'متوسط التكلفة لكل استدعاء: {v}',
+            totalCalls: 'إجمالي استدعاءات API', successRate: 'نجاح {v}%', errorRate: 'أخطاء {v}%',
+            avgResponse: 'متوسط زمن الاستجابة', latencyNormal: 'ضمن المعدل الطبيعي', latencyHigh: 'أعلى من المعتاد',
+          },
+          toolbar: {
+            region: 'فلاتر التحليلات',
+            searchLabel: 'بحث في سجلات الاستدعاء', searchPlaceholder: 'ابحث باسم المؤسسة، النطاق، النموذج أو رقم الطلب…',
+            tenantLabel: 'المؤسسة', modelLabel: 'النموذج', featureLabel: 'السياق الوظيفي', dateLabel: 'الفترة الزمنية', statusLabel: 'حالة الاستدعاء',
+            tenantAll: 'كل المؤسسات', modelAll: 'كل النماذج', featureAll: 'كل السياقات الوظيفية', statusAll: 'كل الحالات',
+            dateRange: { today: 'اليوم', last7: 'آخر 7 أيام', last30: 'آخر 30 يومًا', month: 'هذا الشهر', last90: 'آخر 90 يومًا', custom: 'فترة مخصّصة' },
+            dateRangeVals: { from: 'من تاريخ', to: 'إلى تاريخ' },
+            rangeHint: 'السجلات متاحة من {from} حتى {to} (شاملة اليومين).',
+            appliedRange: 'الفترة المعروضة: {from} — {to}',
+            updating: 'جارٍ التحديث…',
+            export: 'تصدير التحليلات', exportCsv: 'تصدير السجلات المفلترة (CSV)', exportPdf: 'طباعة / حفظ PDF',
+            clearFilters: 'مسح الفلاتر',
+          },
+          errors: {
+            rangeRequired: 'اختر تاريخَي البداية والنهاية.',
+            rangeOrder: 'تاريخ البداية يجب أن يسبق تاريخ النهاية أو يساويه.',
+            rangeFuture: 'لا يمكن اختيار تاريخ في المستقبل.',
+            rangeTooOld: 'السجلات محفوظة لآخر 90 يومًا فقط.',
+          },
+          charts: {
+            region: 'الرسوم البيانية التحليلية',
+            trendTitle: 'اتجاه استهلاك التوكنز', trendSubtitle: 'إجمالي التوكنز اليومية لكل نموذج — اضغط شارة النموذج لإخفائه/إظهاره في الرسم.',
+            trendDesc: 'رسم خطي لـ {days} يومًا من {from} إلى {to}. إجمالي {total} توكن؛ أعلى يوم {peakDay} بـ {peak} توكن.',
+            modelTitle: 'حصة نماذج الذكاء الاصطناعي', modelSubtitle: 'نسبة الاستدعاءات حسب النموذج.',
+            tenantsTitle: 'أكثر المؤسسات استهلاكًا', tenantsSubtitle: 'التوكنز ضمن الفترة والفلاتر المختارة — أعلى 5 مؤسسات والباقي مجمّع.',
+            featureTitle: 'الاستخدام حسب السياق الوظيفي', featureSubtitle: 'عدد الاستدعاءات حسب ميزة المنصّة.',
+            listDesc: 'رسم بياني: {items}.',
+            showTable: 'عرض البيانات كجدول', noData: 'لا توجد بيانات ضمن الفلاتر الحالية',
+            hiddenNote: 'بعض النماذج مخفية من الرسم فقط؛ المؤشرات والجدول يشملان كل النماذج المطابقة للفلاتر.',
+            toggleModel: 'إظهار/إخفاء {m} في الرسم', calls: '{v} استدعاء',
+            colDay: 'اليوم', colTotal: 'الإجمالي', colModel: 'النموذج', colCalls: 'الاستدعاءات', colShare: 'الحصة', colCost: 'التكلفة',
+            colTenant: 'المؤسسة', colTokens: 'التوكنز', colFeature: 'السياق الوظيفي',
+            others: 'مؤسسات أخرى', totalCalls: 'استدعاء',
+          },
+          quota: {
+            title: 'الحصة الشهرية من التوكنز', subtitle: 'عدّادات دورة الفوترة الحالية من الاشتراك مقابل حد الباقة — تتأثر بفلتر المؤسسة فقط.',
+            summary: 'الإجمالي {used} من {quota} ({pct}) للباقات المحدودة — الباقات غير المحدودة مستثناة من النسبة.',
+            summaryNone: 'لا توجد باقات محدودة ضمن الاختيار لحساب نسبة إجمالية.',
+            line: '{used} من {quota}', lineUnlimited: '{used} من ∞ (غير محدودة)', overBy: 'متجاوزة بـ {v} توكن', noSub: 'لا يوجد اشتراك حالي',
+            colTenant: 'المؤسسة', colPlan: 'الباقة', colUsed: 'المستهلك', colQuota: 'الحصة', colUsage: 'النسبة', colStatus: 'الحالة',
+            unlimited: 'غير محدودة', empty: 'لا توجد مؤسسات مطابقة.',
+            state: { ok: 'ضمن الحصة', near: 'قريبة من الحد', over: 'تجاوزت الحصة', unlimited: 'غير محدودة', none: 'بلا اشتراك' },
+          },
+          table: {
+            title: 'سجل استدعاءات الذكاء الاصطناعي',
+            colTimestamp: 'التوقيت', colTenant: 'المؤسسة', colModel: 'النموذج', colFeature: 'السياق الوظيفي',
+            colTokens: 'التوكنز', colResponse: 'زمن الاستجابة', colCost: 'التكلفة', colStatus: 'الحالة', colActions: 'فحص',
+            inspect: 'فحص', inspectRow: 'فحص الاستدعاء #{id} — {t}', tokenParts: 'مدخل {p} · مخرج {c}',
+            emptyTitle: 'لا توجد سجلات مطابقة', emptyDesc: 'جرّب تعديل الفلاتر أو مسح كلمة البحث.', clearSearch: 'مسح الفلاتر',
+            showingCount: 'عرض {n} من أصل {total} سجلًا', loadMore: 'تحميل المزيد',
+          },
+          drawer: {
+            title: 'فاحص الاستدعاء', close: 'إغلاق', errorTitle: 'تفاصيل الخطأ',
+            metaTitle: 'بيانات الطلب', tokensTitle: 'تفصيل التوكنز والتكلفة', payloadTitle: 'فاحص الحمولة (Prompt / Response)',
+            meta: { tenant: 'المؤسسة (Tenant ID)', user: 'المستخدم', latency: 'زمن الاستجابة', timestamp: 'تاريخ التنفيذ الدقيق' },
+            promptTokens: 'توكنز الإدخال', completionTokens: 'توكنز الإخراج', totalCost: 'التكلفة التقديرية',
+            rateNote: 'التكلفة تقديرية بأسعار مرجعية لكل مليون توكن محوّلة إلى الدولار ومقرّبة إلى أقرب سنت.',
+            copyId: 'نسخ رقم الطلب', copyJson: 'نسخ JSON الكامل', copied: 'تم النسخ إلى الحافظة', copyFailed: 'تعذّر النسخ — المتصفح منع الوصول إلى الحافظة.',
+          },
+          status: { success: 'ناجح', failed: 'فاشل', rate_limited: 'تجاوز الحد' },
+          toast: { exportedCsv: 'تم تنزيل ملف CSV بـ {n} سجلًا', exportEmpty: 'لا توجد سجلات مطابقة للتصدير.', printing: 'افتح نافذة الطباعة واختر «حفظ بصيغة PDF».' },
+          live: { updated: '{n} استدعاء مطابق · {tokens} توكن · {cost}', rangeInvalid: 'لم تُطبَّق الفترة: {msg}' },
+          systemWide: 'مهمة على مستوى النظام', automatedJob: 'مهمة آلية مجدولة',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Super Admin Dashboard', roleName: 'Super Admin',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse menu',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content management', system: 'System' },
+        navItems: {
+          dashboard: 'Dashboard', aiAnalytics: 'AI Analytics', tenants: 'Tenants',
+          plans: 'Plans', subscriptions: 'Subscriptions', payments: 'Payments & Invoices', users: 'Users', roles: 'Roles & Permissions',
+          repository: 'Repository', reviewQueue: 'Review Queue', activityLog: 'Activity Log', systemSettings: 'System Settings',
+        },
+        notif: { upload: '"Al-Aqsa University" uploaded 12 new items for review', quota: '"National Medical College" crossed 90% of its monthly token quota', backup: 'Nightly backup completed successfully' },
+
+        ai: {
+          docTitle: 'AI Analytics & Consumption — FirOb',
+          title: 'Global AI Analytics & Consumption Log', subtitle: 'Full visibility into token usage, cost, and performance across every AI model and tenant on the platform.',
+          kpi: {
+            region: 'AI consumption indicators',
+            totalTokens: 'Total Token Consumption', tokenSplit: 'Prompt {p}% · Completion {c}%', exactTokens: '{v} tokens',
+            totalCost: 'Total Estimated AI Cost', avgCostPerCall: 'Avg. cost per call: {v}',
+            totalCalls: 'Total AI API Calls', successRate: '{v}% success', errorRate: '{v}% errors',
+            avgResponse: 'Average Response Time', latencyNormal: 'Within normal range', latencyHigh: 'Higher than usual',
+          },
+          toolbar: {
+            region: 'Analytics filters',
+            searchLabel: 'Search call logs', searchPlaceholder: 'Search by tenant, domain, model or request ID…',
+            tenantLabel: 'Tenant', modelLabel: 'Model', featureLabel: 'Feature context', dateLabel: 'Date range', statusLabel: 'Call status',
+            tenantAll: 'All Tenants', modelAll: 'All Models', featureAll: 'All Feature Contexts', statusAll: 'All Statuses',
+            dateRange: { today: 'Today', last7: 'Last 7 Days', last30: 'Last 30 Days', month: 'This Month', last90: 'Last 90 Days', custom: 'Custom Range' },
+            dateRangeVals: { from: 'From', to: 'To' },
+            rangeHint: 'Logs are available from {from} to {to} (both days inclusive).',
+            appliedRange: 'Showing: {from} — {to}',
+            updating: 'Updating…',
+            export: 'Export AI Analytics', exportCsv: 'Export filtered logs (CSV)', exportPdf: 'Print / Save as PDF',
+            clearFilters: 'Clear Filters',
+          },
+          errors: {
+            rangeRequired: 'Choose both a start and an end date.',
+            rangeOrder: 'The start date must be on or before the end date.',
+            rangeFuture: 'Dates in the future cannot be selected.',
+            rangeTooOld: 'Logs are only retained for the last 90 days.',
+          },
+          charts: {
+            region: 'Analytics charts',
+            trendTitle: 'Token Consumption Trend', trendSubtitle: 'Daily tokens per model — press a model chip to hide/show it in the chart.',
+            trendDesc: 'Line chart of {days} days from {from} to {to}. {total} tokens in total; peak day {peakDay} with {peak} tokens.',
+            modelTitle: 'AI Model Share', modelSubtitle: 'Share of requests per model.',
+            tenantsTitle: 'Top Consuming Tenants', tenantsSubtitle: 'Tokens within the selected range and filters — top 5 tenants, the rest grouped.',
+            featureTitle: 'Usage by Feature Context', featureSubtitle: 'Number of AI requests per platform feature.',
+            listDesc: 'Chart: {items}.',
+            showTable: 'Show data as a table', noData: 'No data for the current filters',
+            hiddenNote: 'Some models are hidden from the chart only; KPIs and the table include every model matching the filters.',
+            toggleModel: 'Show/hide {m} in the chart', calls: '{v} calls',
+            colDay: 'Day', colTotal: 'Total', colModel: 'Model', colCalls: 'Calls', colShare: 'Share', colCost: 'Cost',
+            colTenant: 'Tenant', colTokens: 'Tokens', colFeature: 'Feature context',
+            others: 'Other tenants', totalCalls: 'calls',
+          },
+          quota: {
+            title: 'Monthly Token Quota', subtitle: 'Current billing-period counters from each subscription vs. the plan limit — only the tenant filter applies.',
+            summary: 'Total {used} of {quota} ({pct}) across limited plans — unlimited plans are excluded from the percentage.',
+            summaryNone: 'No limited plans in the selection to compute an overall percentage.',
+            line: '{used} of {quota}', lineUnlimited: '{used} of ∞ (unlimited)', overBy: '{v} tokens over quota', noSub: 'No current subscription',
+            colTenant: 'Tenant', colPlan: 'Plan', colUsed: 'Used', colQuota: 'Quota', colUsage: 'Usage', colStatus: 'Status',
+            unlimited: 'Unlimited', empty: 'No matching tenants.',
+            state: { ok: 'Within quota', near: 'Near limit', over: 'Over quota', unlimited: 'Unlimited', none: 'No subscription' },
+          },
+          table: {
+            title: 'AI Usage Log',
+            colTimestamp: 'Timestamp', colTenant: 'Tenant', colModel: 'Model', colFeature: 'Feature Context',
+            colTokens: 'Tokens', colResponse: 'Response Time', colCost: 'Cost', colStatus: 'Status', colActions: 'Inspect',
+            inspect: 'Inspect', inspectRow: 'Inspect call #{id} — {t}', tokenParts: 'In {p} · Out {c}',
+            emptyTitle: 'No matching records', emptyDesc: 'Try adjusting the filters or clearing your search.', clearSearch: 'Clear filters',
+            showingCount: 'Showing {n} of {total} records', loadMore: 'Load more',
+          },
+          drawer: {
+            title: 'Call Inspector', close: 'Close', errorTitle: 'Error Details',
+            metaTitle: 'Request Metadata', tokensTitle: 'Token & Cost Breakdown', payloadTitle: 'Prompt / Response Payload Inspector',
+            meta: { tenant: 'Tenant (Tenant ID)', user: 'User', latency: 'Response Latency', timestamp: 'Exact Execution Date' },
+            promptTokens: 'Prompt Tokens', completionTokens: 'Completion Tokens', totalCost: 'Estimated Cost',
+            rateNote: 'Estimated cost from reference per-million-token rates converted to USD and rounded to the nearest cent.',
+            copyId: 'Copy Request ID', copyJson: 'Copy Full JSON', copied: 'Copied to clipboard', copyFailed: 'Copy failed — the browser blocked clipboard access.',
+          },
+          status: { success: 'Success', failed: 'Failed', rate_limited: 'Rate Limited' },
+          toast: { exportedCsv: 'Downloaded a CSV file with {n} records', exportEmpty: 'There are no matching records to export.', printing: 'Use the print dialog and choose “Save as PDF”.' },
+          live: { updated: '{n} matching calls · {tokens} tokens · {cost}', rangeInvalid: 'Range not applied: {msg}' },
+          systemWide: 'System-wide task', automatedJob: 'Automated scheduled job',
+        },
+      },
+    };
+
+    /* ================= لوحة الألوان (تباين ≥ 3:1 للرسوم على خلفية البطاقة في الوضعين) ================= */
+    const SLOTS = {
+      light: ['#2a78d6', '#c4501f', '#12805a', '#9a6200', '#7c3aed'],
+      dark:  ['#4a94ec', '#e0703f', '#2bb583', '#d79a1c', '#a78bfa'],
+    };
+
+    /* ================= النماذج الحالية — أسعار مرجعية بالهللة لكل مليون توكن (USD × 3.75) ================= */
+    const MODELS = [
+      { key: 'claude-opus-4-5',   label: 'Claude Opus 4.5',   provider: 'Anthropic', inRate: 1875, outRate: 9375, weight: 10 },
+      { key: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', provider: 'Anthropic', inRate: 1125, outRate: 5625, weight: 30 },
+      { key: 'claude-haiku-4-5',  label: 'Claude Haiku 4.5',  provider: 'Anthropic', inRate: 375,  outRate: 1875, weight: 20 },
+      { key: 'gpt-5',             label: 'GPT-5',             provider: 'OpenAI',    inRate: 469,  outRate: 3750, weight: 25 },
+      { key: 'gemini-2.5-pro',    label: 'Gemini 2.5 Pro',    provider: 'Google',    inRate: 469,  outRate: 3750, weight: 15 },
+    ];
+    const FEATURES = [
+      { key: 'question_generation', ar: 'مولّد بنك الأسئلة', en: 'Question Bank Generator', weight: 30 },
+      { key: 'lesson_planner', ar: 'مخطط الدروس', en: 'Lesson Planner', weight: 24 },
+      { key: 'auto_grading', ar: 'التصحيح الآلي', en: 'Auto Grading', weight: 26 },
+      { key: 'ai_tutor', ar: 'المعلم الافتراضي (Chatbot)', en: 'AI Tutor / Chatbot', weight: 20 },
+    ];
+    const ERRORS = {
+      failed: [
+        { ar: 'انتهت مهلة الاتصال بخادم النموذج (Timeout) بعد 30 ثانية', en: 'Model server connection timed out after 30s' },
+        { ar: 'تجاوز طول السياق (Prompt) الحد الأقصى المسموح به للنموذج', en: 'Prompt exceeded the model\'s maximum context length' },
+        { ar: 'فشل التحقق من مفتاح API الخاص بمزوّد النموذج', en: 'Upstream API key authentication failed' },
+        { ar: 'خطأ داخلي غير متوقع من واجهة برمجة النموذج (HTTP 500)', en: 'Unexpected internal error from the model API (HTTP 500)' },
+      ],
+      rate_limited: [
+        { ar: 'تم تجاوز حد الطلبات المسموح للمؤسسة خلال الدقيقة الحالية', en: 'Tenant exceeded its allowed request rate for the current minute' },
+        { ar: 'تم الوصول إلى الحد الأقصى لباقة الاشتراك الشهرية من التوكنز', en: 'Monthly subscription token quota has been reached' },
+      ],
+    };
+    const PAYLOAD_SAMPLES = {
+      question_generation: {
+        system: 'You are FirOb\'s question-generation assistant. Produce curriculum-aligned multiple-choice questions with 4 options and one correct answer.',
+        user: 'Generate 10 multiple-choice questions for grade 5 on the topic "Decimal Fractions", medium difficulty.',
+        response: '1. What is 0.25 + 0.50?\nA) 0.65  B) 0.75  C) 0.85  D) 1.00\nCorrect: B\n2. Which decimal is equivalent to 3/4?\n...',
+      },
+      lesson_planner: {
+        system: 'You are FirOb\'s lesson-planning assistant. Produce a structured 45-minute lesson plan with objectives, activities, and assessment.',
+        user: 'Plan a 45-minute lesson on "Photosynthesis" for grade 7 science, including a hands-on activity.',
+        response: 'Objective: Students explain the process of photosynthesis...\nWarm-up (5m): ...\nDirect instruction (15m): ...\nActivity (15m): ...\nAssessment (10m): ...',
+      },
+      auto_grading: {
+        system: 'You are FirOb\'s auto-grading assistant. Score the student answer against the provided rubric and return a score with feedback.',
+        user: 'Rubric: max 10 points. Student answer: "Photosynthesis is how plants make food using sunlight, water and CO2."',
+        response: '{"score": 8, "feedback": "Correct core concept. Missing mention of chlorophyll/oxygen release for full marks."}',
+      },
+      ai_tutor: {
+        system: 'You are FirOb\'s AI tutor. Answer student questions clearly, encouraging step-by-step understanding.',
+        user: 'Can you explain why the sky is blue in simple terms?',
+        response: 'Great question! Sunlight looks white but is made of many colors. When it hits our atmosphere, blue light scatters more than other colors because...',
+      },
+    };
+
+    /* ================= مولّد ثابت البذرة (mulberry32) ================= */
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    const weighted = (arr, r, w = (a) => a.weight) => {
+      const total = arr.reduce((s, a) => s + w(a), 0);
+      let x = r * total;
+      for (const a of arr) { if ((x -= w(a)) <= 0) return a; }
+      return arr[arr.length - 1];
+    };
+
+    /* المؤسسات المولِّدة للسجلات: من SA — الوزن = جذر استهلاك الاشتراك الحالي؛ المنتهية/الموقوفة لا تستهلك */
+    const TENANT_POOL = SA.TENANTS.map(tn => {
+      const sub = SA.currentSubscription(tn.id);
+      const active = !!sub && !['expired', 'paused'].includes(sub.status);
+      const since = [tn.created_at, sub ? sub.starts_at : tn.created_at].sort()[1];
+      return { tn, since, weight: active ? Math.sqrt(sub.usage?.aiTokensUsed || 0) : 0 };
+    }).filter(p => p.weight > 0);
+
+    /* يولّد سجلات DATA_DAYS يومًا حتى «now» — عدد السحبات ثابت لكل سجل، فالنتيجة حتمية لنفس اليوم */
+    function generateLogs(now) {
+      now = now || new Date();
+      const rnd = mulberry32(SEED);
+      const todayIso = SA.isoLocal(now);
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const logs = [];
+      let id = 1;
+      for (let d = 0; d < DATA_DAYS; d++) {
+        const dayIso = SA.addDays(-d, todayIso);
+        const count = (d < 7 ? 6 : 2) + Math.floor(rnd() * 6);
+        const pool = TENANT_POOL.filter(p => p.since <= dayIso);
+        for (let i = 0; i < count; i++) {
+          const r = Array.from({ length: 12 }, rnd);   // 12 سحبة ثابتة لكل سجل
+          const p = (r[0] < 0.92 && pool.length) ? weighted(pool, r[1]) : null;
+          const tn = p ? p.tn : null;
+          const model = weighted(MODELS, r[2]);
+          const feature = weighted(FEATURES, r[3]);
+          const status = r[4] < 0.93 ? 'success' : (r[4] < 0.97 ? 'rate_limited' : 'failed');
+          const baseP = feature.key === 'auto_grading' ? [400, 3800] : feature.key === 'ai_tutor' ? [80, 900] : [200, 2400];
+          const baseC = feature.key === 'lesson_planner' ? [300, 2000] : feature.key === 'auto_grading' ? [40, 260] : [80, 1400];
+          let prompt = 0, completion = 0, ms;
+          if (status === 'success') {
+            prompt = Math.floor(baseP[0] + r[5] * (baseP[1] - baseP[0]));
+            completion = Math.floor(baseC[0] + r[6] * (baseC[1] - baseC[0]));
+            ms = Math.floor(280 + r[7] * 3500);
+          } else if (status === 'rate_limited') {
+            ms = Math.floor(40 + r[7] * 200);
+          } else {
+            prompt = Math.floor(baseP[0] + r[5] * (baseP[1] - baseP[0]));
+            ms = Math.floor(150 + r[7] * 5800);
+          }
+          // الفاشل يُحتسب عليه الإدخال المُرسل فقط؛ تجاوز الحد لا يُرسَل فلا تكلفة
+          const cost = Math.round((prompt * model.inRate + completion * model.outRate) / 1e6);
+          const maxMin = d === 0 ? Math.max(0, nowMin - 1) : 1439;
+          const minute = Math.floor(r[8] * (maxMin + 1));
+          const dt = SA.parseLocal(dayIso);
+          dt.setHours(Math.floor(minute / 60), minute % 60, Math.floor(r[9] * 60), 0);
+          const ts = Math.min(dt.getTime(), now.getTime());
+          const errList = status !== 'success' ? ERRORS[status] : null;
+          logs.push({
+            id: 8400000 + id++,
+            tenant_id: tn ? tn.id : null,
+            user_name: tn ? tn.contact.name : null, user_email: tn ? tn.contact.email : null,
+            model: model.key, feature: feature.key,
+            prompt_tokens: prompt, completion_tokens: completion, total_tokens: prompt + completion,
+            cost, response_time_ms: ms, status,
+            error: errList ? errList[Math.floor(r[10] * errList.length)] : null,
+            ts, day: SA.isoLocal(new Date(ts)),
+            hay: [tn ? tn.name.ar : '', tn ? tn.name.en : '', tn ? tn.domain : '', tn ? tn.contact.name.ar : '', tn ? tn.contact.name.en : '',
+                  model.label, model.key, feature.ar, feature.en, String(8400000 + id - 1)].join(' ').toLowerCase(),
+          });
+        }
+      }
+      logs.sort((a, b) => b.ts - a.ts);
+      return logs;
+    }
+
+    /* تجميع واحد يغذّي المؤشرات والرسوم والجداول — كل الأرقام من نفس الصفوف */
+    function aggregate(rows, from, to) {
+      const days = [];
+      for (let d = from; d <= to; d = SA.addDays(1, d)) days.push(d);
+      const dayIdx = Object.fromEntries(days.map((d, i) => [d, i]));
+      const series = MODELS.map(m => ({ key: m.key, values: days.map(() => 0) }));
+      const models = MODELS.map(m => ({ key: m.key, calls: 0, tokens: 0, cost: 0 }));
+      const features = FEATURES.map(f => ({ key: f.key, calls: 0, tokens: 0 }));
+      const byTenant = new Map();
+      let totalTokens = 0, promptTokens = 0, totalCost = 0, success = 0, msSum = 0;
+      for (const l of rows) {
+        const mi = MODELS.findIndex(m => m.key === l.model);
+        const fi = FEATURES.findIndex(f => f.key === l.feature);
+        const di = dayIdx[l.day];
+        if (di !== undefined) series[mi].values[di] += l.total_tokens;
+        models[mi].calls++; models[mi].tokens += l.total_tokens; models[mi].cost += l.cost;
+        features[fi].calls++; features[fi].tokens += l.total_tokens;
+        const tk = l.tenant_id || '_system';
+        const b = byTenant.get(tk) || { key: tk, tokens: 0, cost: 0, calls: 0 };
+        b.tokens += l.total_tokens; b.cost += l.cost; b.calls++;
+        byTenant.set(tk, b);
+        totalTokens += l.total_tokens; promptTokens += l.prompt_tokens; totalCost += l.cost;
+        if (l.status === 'success') success++;
+        msSum += l.response_time_ms;
+      }
+      const totals = days.map((_, i) => series.reduce((s, x) => s + x.values[i], 0));
+      // أعلى 5 مؤسسات + «أخرى» (تشمل مهام النظام) — مجموعها = إجمالي التوكنز
+      const ranked = [...byTenant.values()].filter(b => b.key !== '_system').sort((a, b) => b.tokens - a.tokens || a.key.localeCompare(b.key));
+      const top = ranked.slice(0, 5);
+      const rest = [...ranked.slice(5), ...(byTenant.has('_system') ? [byTenant.get('_system')] : [])];
+      const tenants = top.slice();
+      if (rest.length) tenants.push(rest.reduce((o, b) => ({ key: '_others', tokens: o.tokens + b.tokens, cost: o.cost + b.cost, calls: o.calls + b.calls }), { key: '_others', tokens: 0, cost: 0, calls: 0 }));
+      const calls = rows.length;
+      const promptPct = totalTokens ? Math.round(promptTokens / totalTokens * 100) : 0;
+      const successPct = calls ? Math.round(success / calls * 100) : 0;
+      return {
+        rows, from, to,
+        trend: { days, series, totals },
+        models, features, tenants,
+        kpis: {
+          totalTokens, promptTokens, completionTokens: totalTokens - promptTokens,
+          promptPct, completionPct: totalTokens ? 100 - promptPct : 0,
+          totalCost, avgCostPerCall: calls ? Math.round(totalCost / calls) : 0,
+          totalCalls: calls, successCount: success, errorCount: calls - success,
+          successPct, errorPct: calls ? 100 - successPct : 0,
+          avgResponseMs: calls ? Math.round(msSum / calls) : 0,
+        },
+      };
+    }
+
+    /* هروب نص SVG (أسماء المؤسسات تدخل في x-html) */
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const DEFAULT_FILTERS = () => ({ query: '', tenant: 'all', model: 'all', feature: 'all', status: 'all', dateRange: 'last30', customFrom: '', customTo: '' });
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: wideMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false, exportOpen: false,
+      active: 'aiAnalytics',
+      drawerOpen: false,
+      selectedLog: null,
+      _opener: null,
+      liveMsg: '',
+
+      t(path) {
+        const dict = I18N[this.locale];
+        const v = path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict);
+        return typeof v === 'string' ? v : path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('ai.docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'overview.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-robot', href: 'ai-analytics.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'tenants', icon: 'fa-solid fa-building-columns', href: 'tenants.html' },
+          { key: 'plans', icon: 'fa-solid fa-cubes', href: 'plans.html' },
+          { key: 'subscriptions', icon: 'fa-solid fa-layer-group', href: 'subscriptions.html' },
+          { key: 'payments', icon: 'fa-solid fa-file-invoice-dollar', href: 'payments.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'activity-log.html' },
+          { key: 'systemSettings', icon: 'fa-solid fa-sliders', href: 'system-settings.html' },
+        ]},
+      ],
+
+      notifications: [
+        { id: 1, key: 'upload', mins: 5, read: false, icon: 'fa-solid fa-upload', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', mins: 60, read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'backup', mins: 360, read: true, icon: 'fa-solid fa-database', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      relTime(mins) {
+        const rtf = new Intl.RelativeTimeFormat(SA.fmtLocale(this.locale), { numeric: 'auto' });
+        return mins < 60 ? rtf.format(-mins, 'minute') : rtf.format(-Math.round(mins / 60), 'hour');
+      },
+
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('ai.docTitle');
+        this.todayIso = SA.todayIso();
+        this.dataStart = SA.addDays(-(DATA_DAYS - 1), this.todayIso);
+        this._rawLogs = generateLogs(new Date());
+        this.recompute();
+        this.$watch(() => JSON.stringify(this.filters), () => this.queueRecompute());
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      /* Escape على مستوى النافذة لا يغلق الدرج — الدرج يعالج Escape بنفسه (.stop) */
+      closeAll() {
+        const hadExport = this.exportOpen;
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; this.exportOpen = false;
+        if (hadExport) this.$refs.exportBtn?.focus();
+      },
+
+      /* ================= LND-09 ================= */
+      MODELS, FEATURES,
+      _rawLogs: [],
+      todayIso: '', dataStart: '',
+      visibleCount: PAGE,
+      sortKey: 'ts', sortDir: 'desc',
+      modelVisible: MODELS.map(() => true),
+      statusOptions: ['all', 'success', 'failed', 'rate_limited'],
+      filters: DEFAULT_FILTERS(),
+      applied: { from: '', to: '', tenant: 'all' },
+      rangeError: '',
+      view: aggregate([], SA.todayIso(), SA.todayIso()),
+      updating: false,
+      _timer: null,
+      _recomputes: 0,
+
+      /* ---------- تنسيق (Intl حسب اللغة) ---------- */
+      get loc() { return SA.fmtLocale(this.locale); },
+      fmtNum(n) { return SA.fmtNum(n, this.locale); },
+      fmtTok(n) { return new Intl.NumberFormat(this.loc, { notation: 'compact', maximumFractionDigits: 1 }).format(n || 0); },
+      fmtPct(r) { return new Intl.NumberFormat(this.loc, { style: 'percent', maximumFractionDigits: 1 }).format(r || 0); },
+      fmtMs(n) { return new Intl.NumberFormat(this.loc, { style: 'unit', unit: 'millisecond', unitDisplay: 'short' }).format(n || 0); },
+      money(minor) { return SA.money(minor, this.locale); },
+      fmtDay(iso) { return iso ? SA.fmtDate(iso, this.locale) : '—'; },
+      fmtDayShort(iso) { return SA.fmtDate(iso, this.locale, { day: 'numeric', month: 'short' }); },
+      fmtDateTime(ts, seconds) {
+        return new Intl.DateTimeFormat(this.loc, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: seconds ? '2-digit' : undefined }).format(new Date(ts));
+      },
+
+      /* ---------- الفترة الزمنية: شاملة لليومين، من ≤ إلى، بلا مستقبل ---------- */
+      setDateRange(v) {
+        if (v === 'custom' && (!this.filters.customFrom || !this.filters.customTo)) {
+          this.filters.customFrom = this.applied.from || SA.addDays(-29, this.todayIso);
+          this.filters.customTo = this.applied.to || this.todayIso;
+        }
+        this.filters.dateRange = v;
+      },
+      resolveRange(f) {
+        f = f || this.filters;
+        const today = this.todayIso || SA.todayIso();
+        switch (f.dateRange) {
+          case 'today': return { from: today, to: today };
+          case 'last7': return { from: SA.addDays(-6, today), to: today };
+          case 'month': return { from: today.slice(0, 8) + '01', to: today };
+          case 'last90': return { from: SA.addDays(-(DATA_DAYS - 1), today), to: today };
+          case 'custom': {
+            const a = f.customFrom, b = f.customTo;
+            if (!a || !b) return { error: 'ai.errors.rangeRequired' };
+            if (a > b) return { error: 'ai.errors.rangeOrder' };
+            if (b > today) return { error: 'ai.errors.rangeFuture' };
+            if (a < SA.addDays(-(DATA_DAYS - 1), today)) return { error: 'ai.errors.rangeTooOld' };
+            return { from: a, to: b };
+          }
+          default: return { from: SA.addDays(-29, today), to: today };
+        }
+      },
+      /* فلترة نقية: نفس الدالة للمؤشرات والرسوم والجدول والتصدير */
+      filterRows(rows, f, range) {
+        const start = SA.startOfDay(range.from).getTime(), end = SA.endOfDay(range.to).getTime();
+        const q = (f.query || '').trim().toLowerCase();
+        return rows.filter(l =>
+          l.ts >= start && l.ts <= end &&
+          (f.tenant === 'all' || l.tenant_id === f.tenant) &&
+          (f.model === 'all' || l.model === f.model) &&
+          (f.feature === 'all' || l.feature === f.feature) &&
+          (f.status === 'all' || l.status === f.status) &&
+          (!q || l.hay.includes(q)));
+      },
+      queueRecompute() {
+        clearTimeout(this._timer);
+        this.updating = true;
+        this._timer = setTimeout(() => { this._timer = null; this.recompute(); }, DEBOUNCE_MS);
+      },
+      recompute() {
+        this._recomputes++;
+        this.updating = false;
+        const r = this.resolveRange();
+        if (r.error) {        // تبقى آخر نتيجة صالحة معروضة
+          this.rangeError = r.error;
+          this.liveMsg = this.tf('ai.live.rangeInvalid', { msg: this.t(r.error) });
+          return;
+        }
+        this.rangeError = '';
+        this.applied = { from: r.from, to: r.to, tenant: this.filters.tenant };
+        this.view = aggregate(this.filterRows(this._rawLogs, this.filters, r), r.from, r.to);
+        this.visibleCount = PAGE;
+        const k = this.view.kpis;
+        this.liveMsg = this.tf('ai.live.updated', { n: this.fmtNum(k.totalCalls), tokens: this.fmtTok(k.totalTokens), cost: this.money(k.totalCost) });
+      },
+      get kpis() { return this.view.kpis; },
+      get hasActiveFilters() { return JSON.stringify(this.filters) !== JSON.stringify(DEFAULT_FILTERS()); },
+      clearFilters() { this.filters = DEFAULT_FILTERS(); },
+
+      /* ---------- الجدول ---------- */
+      get sortedLogs() {
+        const rows = [...this.view.rows];
+        const key = this.sortKey, dir = this.sortDir === 'asc' ? 1 : -1;
+        rows.sort((a, b) => (a[key] - b[key]) * dir || (b.ts - a.ts));
+        return rows;
+      },
+      get visibleLogs() { return this.sortedLogs.slice(0, this.visibleCount); },
+      loadMore() {
+        this.visibleCount += PAGE;
+        this.liveMsg = this.tf('ai.table.showingCount', { n: this.fmtNum(this.visibleLogs.length), total: this.fmtNum(this.view.rows.length) });
+      },
+      sortBy(key) {
+        if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        else { this.sortKey = key; this.sortDir = 'desc'; }
+      },
+      ariaSort(key) { return this.sortKey === key ? (this.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'; },
+      sortIcon(key) { if (this.sortKey !== key) return 'fa-sort text-muted'; return this.sortDir === 'asc' ? 'fa-sort-up text-brand' : 'fa-sort-down text-brand'; },
+      inspectLabel(log) { return this.tf('ai.table.inspectRow', { id: log.id, t: this.tenantName(log) }); },
+
+      /* ---------- تسميات ---------- */
+      tenantName(l) { const tn = l.tenant_id ? SA.tenant(l.tenant_id) : null; return tn ? tn.name[this.locale] : this.t('ai.systemWide'); },
+      tenantDomain(l) { const tn = l.tenant_id ? SA.tenant(l.tenant_id) : null; return tn ? tn.domain : '—'; },
+      userName(l) { return l.user_name ? l.user_name[this.locale] : this.t('ai.automatedJob'); },
+      errorText(l) { return l.error ? l.error[this.locale] : ''; },
+      modelLabel(key) { const m = MODELS.find(x => x.key === key); return m ? m.label : key; },
+      featureLabel(key) { const f = FEATURES.find(x => x.key === key); return f ? f[this.locale] : key; },
+      bucketLabel(key) { return key === '_others' ? this.t('ai.charts.others') : (SA.tenant(key)?.name[this.locale] || key); },
+      tenantOptions() { return [{ value: 'all', label: this.t('ai.toolbar.tenantAll') }, ...SA.TENANTS.map(tn => ({ value: tn.id, label: tn.name[this.locale] }))]; },
+      modelOptions() { return [{ value: 'all', label: this.t('ai.toolbar.modelAll') }, ...MODELS.map(m => ({ value: m.key, label: m.label }))]; },
+      featureOptions() { return [{ value: 'all', label: this.t('ai.toolbar.featureAll') }, ...FEATURES.map(f => ({ value: f.key, label: f[this.locale] }))]; },
+      dateOptions() { return ['today', 'last7', 'last30', 'month', 'last90', 'custom'].map(v => ({ value: v, label: this.t('ai.toolbar.dateRange.' + v) })); },
+
+      /* ---------- ألوان وهوية بصرية ---------- */
+      seriesColor(idx) { const s = SLOTS[this.dark ? 'dark' : 'light']; return s[idx % s.length]; },
+      modelBadgeClass(key) {
+        const idx = MODELS.findIndex(x => x.key === key);
+        const map = ['bg-[#2a78d6]/15 text-[#1c5cab] dark:text-[#86b6ef]', 'bg-[#c4501f]/15 text-[#a3421a] dark:text-[#f0946a]', 'bg-[#12805a]/15 text-[#0e6b4b] dark:text-[#5cd1a6]', 'bg-[#9a6200]/15 text-[#7a4e00] dark:text-[#f0c060]', 'bg-[#7c3aed]/15 text-[#6d28d9] dark:text-[#c4b5fd]'];
+        return map[idx] || 'badge-muted';
+      },
+      statusBadgeClass(s) { return s === 'success' ? 'badge-success' : s === 'failed' ? 'badge-danger' : 'badge-warning'; },
+      statusIcon(s) { return s === 'success' ? 'fa-solid fa-circle-check' : s === 'failed' ? 'fa-solid fa-circle-xmark' : s === 'rate_limited' ? 'fa-solid fa-hourglass-half' : 'fa-solid fa-layer-group'; },
+      get hiddenModels() { return this.modelVisible.some(v => !v); },
+      toggleModelSeries(i) { this.modelVisible[i] = !this.modelVisible[i]; },
+
+      /* ---------- رسوم SVG وصولية (role=img + title/desc عبر aria-labelledby) ---------- */
+      get rtl() { return this.locale === 'ar'; },
+      txtStyle(size, weight) { return 'fill:rgb(var(--muted));font-size:' + (size || 11) + 'px;font-weight:' + (weight || 600) + ';font-family:inherit'; },
+      svgOpen(id, w, h, title, desc) {
+        return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" role="img" direction="ltr" aria-labelledby="' + id + '-t ' + id + '-d" class="block h-auto w-full overflow-visible">' +
+          '<title id="' + id + '-t">' + esc(title) + '</title><desc id="' + id + '-d">' + esc(desc) + '</desc>';
+      },
+      niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; },
+
+      trendDesc() {
+        const tr = this.view.trend;
+        let peakI = 0; tr.totals.forEach((v, i) => { if (v > tr.totals[peakI]) peakI = i; });
+        return this.tf('ai.charts.trendDesc', {
+          days: this.fmtNum(tr.days.length), from: this.fmtDay(this.view.from), to: this.fmtDay(this.view.to),
+          total: this.fmtNum(this.kpis.totalTokens), peakDay: tr.days.length ? this.fmtDay(tr.days[peakI]) : '—', peak: this.fmtNum(tr.totals[peakI] || 0),
+        });
+      },
+      get trendSvg() {
+        const W = 640, H = 250, top = 12, bottom = 30, axisW = 52, edge = 14;
+        const tr = this.view.trend, n = tr.days.length;
+        const left = this.rtl ? edge : axisW, right = this.rtl ? W - axisW : W - edge;
+        const plotH = H - top - bottom, step = n > 1 ? (right - left) / (n - 1) : 0;
+        const x = (i) => n === 1 ? (left + right) / 2 : (this.rtl ? right - i * step : left + i * step);
+        const visible = tr.series.filter((s, i) => this.modelVisible[i]);
+        const max = this.niceMax(Math.max(0, ...visible.flatMap(s => s.values)));
+        const y = (v) => top + plotH - (v / max) * plotH;
+        let out = this.svgOpen('ai-trend-svg', W, H, this.t('ai.charts.trendTitle'), this.trendDesc());
+        for (let g = 0; g <= 4; g++) {
+          const v = max * g / 4, yy = y(v).toFixed(1);
+          out += '<line x1="' + left + '" x2="' + right + '" y1="' + yy + '" y2="' + yy + '" style="stroke:rgb(var(--line))" stroke-width="1"/>';
+          out += '<text x="' + (this.rtl ? right + 6 : left - 6) + '" y="' + yy + '" dy="4" text-anchor="' + (this.rtl ? 'start' : 'end') + '" style="' + this.txtStyle(10) + '">' + esc(this.fmtTok(v)) + '</text>';
+        }
+        const every = Math.max(1, Math.ceil(n / 6));
+        tr.days.forEach((d, i) => {
+          if (i % every && i !== n - 1) return;
+          out += '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" style="' + this.txtStyle(10) + '">' + esc(this.fmtDayShort(d)) + '</text>';
+        });
+        tr.series.forEach((s, si) => {
+          if (!this.modelVisible[si]) return;
+          const color = this.seriesColor(si), label = this.modelLabel(s.key);
+          if (n > 1) out += '<polyline fill="none" stroke="' + color + '" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round" points="' + s.values.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ') + '"/>';
+          if (n <= 31) s.values.forEach((v, i) => {
+            out += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="' + color + '" style="stroke:rgb(var(--card))" stroke-width="1"><title>' + esc(label + ' · ' + this.fmtDay(tr.days[i]) + ': ' + this.fmtNum(v)) + '</title></circle>';
+          });
+        });
+        return out + '</svg>';
+      },
+      get modelSvg() {
+        const S = 200, c = 100, R = 72, C = 2 * Math.PI * R, total = this.kpis.totalCalls || 1;
+        const items = this.view.models.map(m => this.modelLabel(m.key) + ' ' + this.fmtNum(m.calls) + ' (' + this.fmtPct(m.calls / total) + ')').join('، ');
+        let out = this.svgOpen('ai-model-svg', S, S, this.t('ai.charts.modelTitle'), this.tf('ai.charts.listDesc', { items }));
+        out += '<circle cx="' + c + '" cy="' + c + '" r="' + R + '" fill="none" style="stroke:rgb(var(--line))" stroke-width="26"/>';
+        let off = 0;
+        this.view.models.forEach((m, i) => {
+          if (!m.calls) return;
+          const len = m.calls / total * C;
+          out += '<circle cx="' + c + '" cy="' + c + '" r="' + R + '" fill="none" stroke="' + this.seriesColor(i) + '" stroke-width="26" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + c + ' ' + c + ')"><title>' + esc(this.modelLabel(m.key) + ': ' + this.fmtNum(m.calls) + ' (' + this.fmtPct(m.calls / total) + ')') + '</title></circle>';
+          off += len;
+        });
+        out += '<text x="' + c + '" y="' + (c - 2) + '" text-anchor="middle" style="fill:rgb(var(--ink));font-size:26px;font-weight:800;font-family:inherit">' + esc(this.fmtTok(this.kpis.totalCalls)) + '</text>';
+        out += '<text x="' + c + '" y="' + (c + 20) + '" text-anchor="middle" style="' + this.txtStyle(12) + '">' + esc(this.t('ai.charts.totalCalls')) + '</text>';
+        return out + '</svg>';
+      },
+      /* أشرطة أفقية تبدأ من جهة البداية (يمين في العربية) */
+      barsSvg(id, title, items, color) {
+        const W = 420, rowH = 42, H = Math.max(rowH, items.length * rowH), valW = 64, maxW = W - valW;
+        const max = Math.max(1, ...items.map(it => it.value));
+        const desc = this.tf('ai.charts.listDesc', { items: items.map(it => it.label + ' ' + it.display).join('، ') });
+        let out = this.svgOpen(id, W, H, title, desc);
+        items.forEach((it, i) => {
+          const y0 = i * rowH, w = Math.max(it.value ? 2 : 0, it.value / max * maxW);
+          const bx = this.rtl ? W - w : 0;
+          out += '<text x="' + (this.rtl ? W : 0) + '" y="' + (y0 + 13) + '" text-anchor="' + (this.rtl ? 'end' : 'start') + '" style="fill:rgb(var(--ink));font-size:12px;font-weight:700;font-family:inherit">' + esc(it.label) + '</text>';
+          out += '<rect x="0" y="' + (y0 + 19) + '" width="' + maxW + '" height="14" rx="7" transform="translate(' + (this.rtl ? valW : 0) + ' 0)" style="fill:rgb(var(--line))"/>';
+          out += '<rect x="' + bx.toFixed(1) + '" y="' + (y0 + 19) + '" width="' + w.toFixed(1) + '" height="14" rx="7" fill="' + color(i) + '"><title>' + esc(it.label + ': ' + it.display) + '</title></rect>';
+          out += '<text x="' + (this.rtl ? W - maxW - 6 : maxW + 6) + '" y="' + (y0 + 30) + '" text-anchor="' + (this.rtl ? 'end' : 'start') + '" style="' + this.txtStyle(11, 700) + '">' + esc(it.display) + '</text>';
+        });
+        return out + '</svg>';
+      },
+      get tenantsSvg() {
+        return this.barsSvg('ai-tenants-svg', this.t('ai.charts.tenantsTitle'),
+          this.view.tenants.map(r => ({ label: this.bucketLabel(r.key), value: r.tokens, display: this.fmtNum(r.tokens) })),
+          (i) => this.view.tenants[i].key === '_others' ? (this.dark ? '#7d93a3' : '#5a687d') : this.seriesColor(0));
+      },
+      get featureSvg() {
+        return this.barsSvg('ai-feature-svg', this.t('ai.charts.featureTitle'),
+          this.view.features.map(f => ({ label: this.featureLabel(f.key), value: f.calls, display: this.fmtNum(f.calls) })),
+          (i) => this.seriesColor(i));
+      },
+
+      /* ---------- الحصص: استهلاك دورة الفوترة مقابل حد الباقة (null = غير محدودة) ---------- */
+      quotaOf(tenantId) {
+        const sub = SA.currentSubscription(tenantId);
+        const plan = sub ? SA.plan(sub.plan_id) : null;
+        const tn = SA.tenant(tenantId);
+        if (!sub || !plan) return { id: tenantId, name: tn.name[this.locale], planName: null, used: null, quota: null, unlimited: false, pct: null, over: 0, state: 'none' };
+        const raw = plan.ai_token_quota_monthly;
+        const unlimited = raw === null || raw === undefined || raw < 0;
+        const used = sub.usage && typeof sub.usage.aiTokensUsed === 'number' ? sub.usage.aiTokensUsed : null;
+        const quota = unlimited ? null : raw;
+        const pct = (!unlimited && quota > 0 && used !== null) ? used / quota : null;
+        const state = unlimited ? 'unlimited' : pct === null ? 'ok' : pct > 1 ? 'over' : pct >= 0.9 ? 'near' : 'ok';
+        return { id: tenantId, name: tn.name[this.locale], planName: plan.name[this.locale], used, quota, unlimited, pct, over: state === 'over' ? used - quota : 0, state };
+      },
+      get quotaRows() {
+        const sel = this.applied.tenant;
+        const rank = (q) => q.pct !== null ? q.pct : q.unlimited ? -1 : -2;
+        return SA.TENANTS.filter(tn => sel === 'all' || tn.id === sel).map(tn => this.quotaOf(tn.id)).sort((a, b) => rank(b) - rank(a) || a.id.localeCompare(b.id));
+      },
+      get quotaSummary() {
+        const limited = this.quotaRows.filter(q => q.pct !== null);
+        const used = limited.reduce((s, q) => s + q.used, 0), quota = limited.reduce((s, q) => s + q.quota, 0);
+        return { used, quota, pct: quota ? used / quota : null, unlimitedCount: this.quotaRows.filter(q => q.unlimited).length };
+      },
+      get quotaSummaryText() {
+        const s = this.quotaSummary;
+        return s.pct === null ? this.t('ai.quota.summaryNone') : this.tf('ai.quota.summary', { used: this.fmtTok(s.used), quota: this.fmtTok(s.quota), pct: this.fmtPct(s.pct) });
+      },
+      quotaLine(q) {
+        if (q.state === 'none') return this.t('ai.quota.noSub');
+        const used = q.used === null ? '—' : this.fmtNum(q.used);
+        if (q.unlimited) return this.tf('ai.quota.lineUnlimited', { used });
+        let s = this.tf('ai.quota.line', { used, quota: this.fmtNum(q.quota) }) + (q.pct !== null ? ' (' + this.fmtPct(q.pct) + ')' : '');
+        if (q.state === 'over') s += ' — ' + this.tf('ai.quota.overBy', { v: this.fmtNum(q.over) });
+        return s;
+      },
+      quotaBadgeClass(s) { return s === 'over' ? 'badge-danger' : s === 'near' ? 'badge-warning' : s === 'unlimited' ? 'badge-info' : s === 'none' ? 'badge-muted' : 'badge-success'; },
+      quotaIcon(s) { return s === 'over' ? 'fa-solid fa-circle-exclamation' : s === 'near' ? 'fa-solid fa-triangle-exclamation' : s === 'unlimited' ? 'fa-solid fa-infinity' : s === 'none' ? 'fa-solid fa-minus' : 'fa-solid fa-circle-check'; },
+
+      /* ---------- قائمة التصدير (لوحة مفاتيح) ---------- */
+      menuItems() { return [...(this.$refs.exportMenu?.querySelectorAll('[role="menuitem"]') || [])]; },
+      toggleExportMenu() {
+        this.exportOpen = !this.exportOpen;
+        if (this.exportOpen) this.$nextTick(() => this.menuItems()[0]?.focus());
+      },
+      onMenuKey(e) {
+        if (!this.exportOpen) return;
+        const items = this.menuItems(), i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = items.length; items[(i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n]?.focus(); }
+        else if (e.key === 'Home') { e.preventDefault(); items[0]?.focus(); }
+        else if (e.key === 'End') { e.preventDefault(); items[items.length - 1]?.focus(); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.exportOpen = false; this.$refs.exportBtn?.focus(); }
+        else if (e.key === 'Tab') { this.exportOpen = false; }
+      },
+
+      /* ---------- CSV حقيقي: BOM + اقتباس + تحييد الصيغ ---------- */
+      csvCell(v) {
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'number') return String(v);
+        let s = String(v);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;          // منع حقن الصيغ في Excel/Sheets
+        if (/[",\r\n;]/.test(s) || /^\s|\s$/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      },
+      buildCsv(rows) {
+        const pad = (n) => String(n).padStart(2, '0');
+        const stamp = (ts) => { const d = new Date(ts); return SA.isoLocal(d) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+        const head = ['request_id', 'timestamp_local', 'tenant_id', 'tenant', 'domain', 'user', 'model', 'feature', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cost_halalas', 'cost_sar', 'response_ms', 'status', 'error'];
+        const lines = [head.join(',')];
+        for (const l of rows) {
+          lines.push([l.id, stamp(l.ts), l.tenant_id || '', this.tenantName(l), this.tenantDomain(l), this.userName(l), this.modelLabel(l.model), this.featureLabel(l.feature),
+            l.prompt_tokens, l.completion_tokens, l.total_tokens, l.cost, SA.m.toMajor(l.cost), l.response_time_ms, this.t('ai.status.' + l.status), this.errorText(l)]
+            .map(v => this.csvCell(v)).join(','));
+        }
+        return '﻿' + lines.join('\r\n') + '\r\n';
+      },
+      toast(icon, text) {
+        if (!window.Swal) return;
+        window.Swal.fire({ toast: true, position: 'top-end', icon, titleText: text, showConfirmButton: false, timer: 3000, customClass: { popup: 'firob-swal firob-toast' } });
+      },
+      exportReport(type) {
+        this.exportOpen = false;
+        this.$refs.exportBtn?.focus();
+        if (type === 'pdf') {
+          this.liveMsg = this.t('ai.toast.printing');
+          this.toast('info', this.t('ai.toast.printing'));
+          window.print?.();
+          return;
+        }
+        const rows = this.sortedLogs;
+        if (!rows.length) { this.liveMsg = this.t('ai.toast.exportEmpty'); this.toast('info', this.liveMsg); return null; }
+        const csv = this.buildCsv(rows);
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'ai-usage_' + this.applied.from + '_' + this.applied.to + '.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.liveMsg = this.tf('ai.toast.exportedCsv', { n: this.fmtNum(rows.length) });
+        this.toast('success', this.liveMsg);
+        return csv;
+      },
+
+      /* ---------- الدرج الجانبي ---------- */
+      openDrawer(log, e) {
+        this._opener = (e && e.currentTarget) || document.activeElement;
+        this.selectedLog = log;
+        this.drawerOpen = true;
+      },
+      closeDrawer() {
+        this.drawerOpen = false;
+        const el = this._opener; this._opener = null;
+        this.$nextTick(() => el?.focus?.());
+      },
+      get drawerPromptPct() {
+        if (!this.selectedLog || !this.selectedLog.total_tokens) return 50;
+        return Math.round((this.selectedLog.prompt_tokens / this.selectedLog.total_tokens) * 100);
+      },
+      get payloadJson() {
+        if (!this.selectedLog) return '';
+        const l = this.selectedLog;
+        return JSON.stringify({ request_id: l.id, model: l.model, feature: l.feature, status: l.status,
+          usage: { prompt_tokens: l.prompt_tokens, completion_tokens: l.completion_tokens, total_tokens: l.total_tokens },
+          payload: PAYLOAD_SAMPLES[l.feature] || {} }, null, 2);
+      },
+      async copyText(text) {
+        try {
+          if (!navigator.clipboard?.writeText) throw new Error('no clipboard');
+          await navigator.clipboard.writeText(text);
+          this.liveMsg = this.t('ai.drawer.copied'); this.toast('success', this.liveMsg); return true;
+        } catch (e) {
+          this.liveMsg = this.t('ai.drawer.copyFailed'); this.toast('error', this.liveMsg); return false;
+        }
+      },
+      copyRequestId() { return this.selectedLog ? this.copyText(String(this.selectedLog.id)) : false; },
+      copyPayloadJson() { return this.selectedLog ? this.copyText(this.payloadJson) : false; },
+
+      /* للاختبارات */
+      _generateLogs: generateLogs, _aggregate: aggregate, _mulberry32: mulberry32, _SA: SA,
+    };
+  }
+</script>
+</body>
+</html>

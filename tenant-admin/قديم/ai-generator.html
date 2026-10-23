@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>مولّد المحتوى والأسئلة العام — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-white/10 bg-slate-900/90 px-2.5 py-1 text-xs font-medium tracking-wide text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 ease-out;
+      @apply dark:border-slate-800/20 dark:bg-slate-100 dark:text-slate-900;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-slate-900/90 opacity-0 transition-all duration-200 ease-out;
+      @apply dark:border-t-slate-100;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-accent-700 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-2.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill  { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- أزرار التبويب / الأقراص (Tabs & Pills) ---------- */
+    .pill-option { @apply flex cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-line-strong px-3 py-2.5 text-center text-sm font-bold text-ink transition hover:border-primary-500; }
+    .pill-option.is-checked { @apply border-primary-700 bg-soft text-brand; }
+    .mode-tab { @apply flex min-w-0 flex-1 cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-line-strong px-3 py-3 text-center text-sm font-extrabold text-muted transition hover:border-primary-500 hover:text-ink; }
+    .mode-tab.is-checked { @apply border-primary-700 bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+
+    /* ---------- بطاقات نتائج التوليد ---------- */
+    .gen-card { @apply rounded-xl border border-line bg-card p-4 transition; }
+    .gen-skeleton { @apply h-24 animate-pulse rounded-xl border border-line bg-soft/60; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="aiGenerator()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || logsOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('navGroups.aiTools')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.aiGenerator')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — مولّد المحتوى والأسئلة العام ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-6 px-3 py-4 focus:outline-none sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('aig.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('aig.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-outline shrink-0" @click="openLogs()">
+          <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+          <span x-text="t('aig.logsBtn')"></span>
+        </button>
+      </section>
+
+      <!-- ================= شعار استهلاك التوكنز (AI Tokens Usage Banner — ai_usage_logs) ================= -->
+      <section class="panel p-4 sm:p-5" aria-labelledby="tokens-title">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex min-w-0 items-start gap-3">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-lg text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-coins"></i></span>
+            <div class="min-w-0">
+              <p id="tokens-title" class="font-extrabold text-ink" x-text="t('aig.tokens.title')"></p>
+              <p class="mt-0.5 text-xs text-muted sm:text-sm" x-text="t('aig.tokens.caption')"></p>
+            </div>
+          </div>
+
+          <div class="min-w-0 flex-1 lg:max-w-md">
+            <div class="flex items-center justify-between gap-2 text-xs font-bold">
+              <span class="text-accent-700 dark:text-accent-500" x-text="tf('aig.tokens.usedPct', { v: 64 })"></span>
+              <span class="tabular-nums text-muted" dir="ltr">32,000 / 50,000</span>
+            </div>
+            <div class="quota-track mt-1.5" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" :aria-label="t('aig.tokens.title')">
+              <div class="quota-fill bg-accent-500" style="width:64%"></div>
+            </div>
+            <p class="mt-1.5 text-xs text-muted" x-text="tf('aig.tokens.remaining', { n: '18,000' })"></p>
+          </div>
+
+          <a href="SubscriptionsAndInvoices.html" class="badge badge-accent shrink-0 px-3 py-1.5 text-sm transition hover:bg-accent-500/30">
+            <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+            <span x-text="t('aig.tokens.recharge')"></span>
+          </a>
+        </div>
+      </section>
+
+      <!-- ================= استوديو التوليد (تخطيط عمودين) ================= -->
+      <section class="grid grid-cols-1 items-start gap-5 lg:grid-cols-2" aria-label="استوديو التوليد بالذكاء الاصطناعي">
+
+        <!-- ========== اللوحة اليسرى: التهيئة والمدخلات ========== -->
+        <div class="panel space-y-5 p-5 sm:p-6">
+
+          <!-- تبويبات وضع التوليد -->
+          <fieldset>
+            <legend class="label" x-text="t('aig.modeLegend')"></legend>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-3" role="tablist">
+              <label class="mode-tab" :class="generationMode === 'questions' && 'is-checked'">
+                <input type="radio" name="gen-mode" value="questions" x-model="generationMode" @change="switchMode()" class="sr-only">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                <span x-text="t('aig.modeQuestions')"></span>
+              </label>
+              <label class="mode-tab" :class="generationMode === 'concepts' && 'is-checked'">
+                <input type="radio" name="gen-mode" value="concepts" x-model="generationMode" @change="switchMode()" class="sr-only">
+                <i class="fa-solid fa-lightbulb" aria-hidden="true"></i>
+                <span x-text="t('aig.modeConcepts')"></span>
+              </label>
+              <label class="mode-tab" :class="generationMode === 'summaries' && 'is-checked'">
+                <input type="radio" name="gen-mode" value="summaries" x-model="generationMode" @change="switchMode()" class="sr-only">
+                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                <span x-text="t('aig.modeSummaries')"></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- الهيكل الأكاديمي -->
+          <div>
+            <p class="label mb-2" x-text="t('aig.hierarchyTitle')"></p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+              <!-- المقرر (إلزامي) -->
+              <div class="relative"
+                   x-data="selectDropdown({
+                     options: () => [
+                       { value: 'math', label: 'الرياضيات' },
+                       { value: 'science', label: 'العلوم العامة' },
+                       { value: 'arabic', label: 'اللغة العربية' },
+                     ],
+                     get: () => aiForm.course, set: (v) => aiForm.course = v,
+                     placeholder: t('aig.fieldCoursePh'),
+                   })"
+                   @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+                <label for="ai-course" class="label"><span x-text="t('aig.fieldCourse')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <button type="button" id="ai-course" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="ai-course-list"
+                        :aria-activedescendant="active > -1 ? 'ai-course-opt-' + items[active].value : null"
+                        class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                        @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()" @keydown.space.prevent="toggleList()">
+                  <span class="truncate" :class="!selectedItem && 'text-line-strong'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-course-list" role="listbox" aria-labelledby="ai-course"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="'ai-course-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+
+              <!-- الصف -->
+              <div class="relative"
+                   x-data="selectDropdown({
+                     options: () => [
+                       { value: 'g7', label: 'الصف السابع' },
+                       { value: 'g8', label: 'الصف الثامن' },
+                       { value: 'g9', label: 'الصف التاسع' },
+                     ],
+                     get: () => aiForm.grade, set: (v) => aiForm.grade = v,
+                     placeholder: t('aig.fieldOptionalPh'),
+                   })"
+                   @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+                <label for="ai-grade" class="label" x-text="t('aig.fieldGrade')"></label>
+                <button type="button" id="ai-grade" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="ai-grade-list"
+                        :aria-activedescendant="active > -1 ? 'ai-grade-opt-' + items[active].value : null"
+                        class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                        @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()" @keydown.space.prevent="toggleList()">
+                  <span class="truncate" :class="!selectedItem && 'text-line-strong'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-grade-list" role="listbox" aria-labelledby="ai-grade"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="'ai-grade-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+
+              <!-- الوحدة -->
+              <div class="relative"
+                   x-data="selectDropdown({
+                     options: () => [
+                       { value: 'u101', label: 'الوحدة الأولى: الأعداد الصحيحة' },
+                       { value: 'u201', label: 'الوحدة الأولى: الخلية ومكوناتها' },
+                       { value: 'u202', label: 'الوحدة الثانية: التفاعلات الكيميائية' },
+                     ],
+                     get: () => aiForm.unit, set: (v) => aiForm.unit = v,
+                     placeholder: t('aig.fieldOptionalPh'),
+                   })"
+                   @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+                <label for="ai-unit" class="label" x-text="t('aig.fieldUnit')"></label>
+                <button type="button" id="ai-unit" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="ai-unit-list"
+                        :aria-activedescendant="active > -1 ? 'ai-unit-opt-' + items[active].value : null"
+                        class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                        @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()" @keydown.space.prevent="toggleList()">
+                  <span class="truncate" :class="!selectedItem && 'text-line-strong'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-unit-list" role="listbox" aria-labelledby="ai-unit"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="'ai-unit-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+
+              <!-- الدرس -->
+              <div class="relative"
+                   x-data="selectDropdown({
+                     options: () => [
+                       { value: 'l1011', label: 'جمع الأعداد الصحيحة وطرحها' },
+                       { value: 'l1012', label: 'ضرب الأعداد الصحيحة وقسمتها' },
+                       { value: 'l2012', label: 'تركيب الخلية النباتية والحيوانية' },
+                     ],
+                     get: () => aiForm.lesson, set: (v) => aiForm.lesson = v,
+                     placeholder: t('aig.fieldOptionalPh'),
+                   })"
+                   @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+                <label for="ai-lesson" class="label" x-text="t('aig.fieldLesson')"></label>
+                <button type="button" id="ai-lesson" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="ai-lesson-list"
+                        :aria-activedescendant="active > -1 ? 'ai-lesson-opt-' + items[active].value : null"
+                        class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                        @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()" @keydown.space.prevent="toggleList()">
+                  <span class="truncate" :class="!selectedItem && 'text-line-strong'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-lesson-list" role="listbox" aria-labelledby="ai-lesson"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="'ai-lesson-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+            <p class="hint" x-text="t('aig.hierarchyHint')"></p>
+          </div>
+
+          <!-- ========== معطيات توليد الأسئلة (تظهر فقط في وضع الأسئلة) ========== -->
+          <div x-show="generationMode === 'questions'" x-cloak class="space-y-4 border-t border-line pt-5">
+            <p class="label" x-text="t('aig.paramsTitle')"></p>
+
+            <!-- مستوى بلوم المعرفي -->
+            <div class="relative"
+                 x-data="selectDropdown({
+                   options: () => [
+                     { value: 'remembering', label: t('aig.bloomRemembering') },
+                     { value: 'understanding', label: t('aig.bloomUnderstanding') },
+                     { value: 'applying', label: t('aig.bloomApplying') },
+                     { value: 'analyzing', label: t('aig.bloomAnalyzing') },
+                     { value: 'evaluating', label: t('aig.bloomEvaluating') },
+                     { value: 'creating', label: t('aig.bloomCreating') },
+                   ],
+                   get: () => aiForm.bloom, set: (v) => aiForm.bloom = v,
+                 })"
+                 @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+              <label for="ai-bloom" class="label" x-text="t('aig.fieldBloom')"></label>
+              <button type="button" id="ai-bloom" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="ai-bloom-list"
+                      :aria-activedescendant="active > -1 ? 'ai-bloom-opt-' + items[active].value : null"
+                      class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                      @click="toggleList()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                      @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()" @keydown.space.prevent="toggleList()">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="ai-bloom-list" role="listbox" aria-labelledby="ai-bloom"
+                  x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="'ai-bloom-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <!-- نوع السؤال -->
+            <fieldset>
+              <legend class="label" x-text="t('aig.fieldQType')"></legend>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="pill-option" :class="aiForm.qtype === 'mcq' && 'is-checked'">
+                  <input type="radio" name="ai-qtype" value="mcq" x-model="aiForm.qtype" class="sr-only">
+                  <span x-text="t('aig.qTypeMcq')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.qtype === 'tf' && 'is-checked'">
+                  <input type="radio" name="ai-qtype" value="tf" x-model="aiForm.qtype" class="sr-only">
+                  <span x-text="t('aig.qTypeTrueFalse')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.qtype === 'fillblank' && 'is-checked'">
+                  <input type="radio" name="ai-qtype" value="fillblank" x-model="aiForm.qtype" class="sr-only">
+                  <span x-text="t('aig.qTypeFillBlank')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.qtype === 'essay' && 'is-checked'">
+                  <input type="radio" name="ai-qtype" value="essay" x-model="aiForm.qtype" class="sr-only">
+                  <span x-text="t('aig.qTypeEssay')"></span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- مستوى الصعوبة -->
+            <fieldset>
+              <legend class="label" x-text="t('aig.fieldDifficulty')"></legend>
+              <div class="grid grid-cols-3 gap-2">
+                <label class="pill-option" :class="aiForm.difficulty === 'easy' && 'is-checked'">
+                  <input type="radio" name="ai-difficulty" value="easy" x-model="aiForm.difficulty" class="sr-only">
+                  <span x-text="t('aig.difficultyEasy')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.difficulty === 'medium' && 'is-checked'">
+                  <input type="radio" name="ai-difficulty" value="medium" x-model="aiForm.difficulty" class="sr-only">
+                  <span x-text="t('aig.difficultyMedium')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.difficulty === 'hard' && 'is-checked'">
+                  <input type="radio" name="ai-difficulty" value="hard" x-model="aiForm.difficulty" class="sr-only">
+                  <span x-text="t('aig.difficultyHard')"></span>
+                </label>
+              </div>
+            </fieldset>
+
+            <!-- عدد الأسئلة -->
+            <div>
+              <label for="ai-count" class="label"><span x-text="t('aig.fieldCount')"></span> <span class="font-mono text-brand" x-text="aiForm.count"></span></label>
+              <input id="ai-count" x-model.number="aiForm.count" type="range" min="3" max="20" step="1" class="h-2 w-full cursor-pointer appearance-none rounded-full bg-line accent-primary-500">
+            </div>
+          </div>
+
+          <!-- ========== معطيات توليد المفاهيم ========== -->
+          <div x-show="generationMode === 'concepts'" x-cloak class="space-y-4 border-t border-line pt-5">
+            <p class="label" x-text="t('aig.paramsTitle')"></p>
+            <div>
+              <label for="ai-concept-count" class="label"><span x-text="t('aig.fieldConceptCount')"></span> <span class="font-mono text-brand" x-text="aiForm.conceptCount"></span></label>
+              <input id="ai-concept-count" x-model.number="aiForm.conceptCount" type="range" min="1" max="10" step="1" class="h-2 w-full cursor-pointer appearance-none rounded-full bg-line accent-primary-500">
+            </div>
+          </div>
+
+          <!-- ========== معطيات توليد الملخصات ========== -->
+          <div x-show="generationMode === 'summaries'" x-cloak class="space-y-4 border-t border-line pt-5">
+            <p class="label" x-text="t('aig.paramsTitle')"></p>
+            <fieldset>
+              <legend class="label" x-text="t('aig.fieldSummaryLength')"></legend>
+              <div class="grid grid-cols-3 gap-2">
+                <label class="pill-option" :class="aiForm.summaryLength === 'short' && 'is-checked'">
+                  <input type="radio" name="ai-summary-len" value="short" x-model="aiForm.summaryLength" class="sr-only">
+                  <span x-text="t('aig.summaryShort')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.summaryLength === 'medium' && 'is-checked'">
+                  <input type="radio" name="ai-summary-len" value="medium" x-model="aiForm.summaryLength" class="sr-only">
+                  <span x-text="t('aig.summaryMedium')"></span>
+                </label>
+                <label class="pill-option" :class="aiForm.summaryLength === 'long' && 'is-checked'">
+                  <input type="radio" name="ai-summary-len" value="long" x-model="aiForm.summaryLength" class="sr-only">
+                  <span x-text="t('aig.summaryLong')"></span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <!-- السياق النصي المخصص -->
+          <div class="border-t border-line pt-5">
+            <label for="ai-prompt" class="label" x-text="t('aig.promptLabel')"></label>
+            <textarea id="ai-prompt" rows="4" x-model.trim="aiForm.prompt" class="field resize-none" :placeholder="t('aig.promptPlaceholder')"></textarea>
+            <p class="hint" x-text="t('aig.promptHint')"></p>
+
+            <div class="mt-2.5">
+              <button type="button" x-show="!attachedFile" class="btn btn-outline btn-sm" @click="attachFile()">
+                <i class="fa-solid fa-paperclip" aria-hidden="true"></i>
+                <span x-text="t('aig.attachFile')"></span>
+              </button>
+              <span x-show="attachedFile" x-cloak class="badge badge-info">
+                <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                <span x-text="attachedFile"></span>
+                <button type="button" class="ms-1 text-info-700 hover:text-error-600 dark:text-info-500" @click="removeFile()" :aria-label="t('aig.removeFile')">
+                  <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+              </span>
+            </div>
+          </div>
+
+          <!-- زر التوليد الأساسي -->
+          <button type="button" class="btn btn-accent btn-lg w-full justify-center py-3.5 text-base" @click="generate()" :disabled="busy || !aiForm.course" :aria-busy="busy">
+            <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+            <i class="fa-solid fa-wand-magic-sparkles" x-show="!busy" aria-hidden="true"></i>
+            <span x-text="busy ? t('aig.generating') : t('aig.generateBtn')"></span>
+          </button>
+          <p class="hint text-center" x-show="!aiForm.course" x-cloak x-text="t('aig.courseRequiredHint')"></p>
+        </div>
+
+        <!-- ========== اللوحة اليمنى: المعاينة والنتائج ========== -->
+        <div class="panel min-h-[32rem] p-5 sm:p-6">
+
+          <!-- حالة فراغ (قبل التوليد) -->
+          <div x-show="!busy && !generated" class="flex h-full min-h-[28rem] flex-col items-center justify-center text-center">
+            <span class="mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-primary-500/10 text-2xl text-brand" aria-hidden="true"><i class="fa-solid fa-sparkles"></i></span>
+            <p class="font-extrabold text-ink" x-text="t('aig.emptyTitle')"></p>
+            <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('aig.emptySubtitle')"></p>
+            <ul class="mx-auto mt-5 max-w-sm space-y-2.5 text-start text-sm text-muted" role="list">
+              <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle-check mt-0.5 shrink-0 text-success-500" aria-hidden="true"></i> <span x-text="t('aig.tip1')"></span></li>
+              <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle-check mt-0.5 shrink-0 text-success-500" aria-hidden="true"></i> <span x-text="t('aig.tip2')"></span></li>
+              <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle-check mt-0.5 shrink-0 text-success-500" aria-hidden="true"></i> <span x-text="t('aig.tip3')"></span></li>
+            </ul>
+          </div>
+
+          <!-- حالة التحميل (محاكاة التوليد) -->
+          <div x-show="busy" x-cloak class="flex h-full min-h-[28rem] flex-col items-center justify-center gap-5 text-center">
+            <span class="grid h-14 w-14 place-items-center rounded-2xl bg-accent-500/20 text-xl text-accent-700 dark:text-accent-500" aria-hidden="true">
+              <i class="fa-solid fa-circle-notch animate-spin"></i>
+            </span>
+            <div>
+              <p class="font-extrabold text-ink" x-text="t('aig.busyTitle')"></p>
+              <p class="mt-1 text-sm text-muted" x-text="t('aig.busySubtitle')"></p>
+            </div>
+            <div class="w-full max-w-sm space-y-2.5">
+              <div class="gen-skeleton"></div>
+              <div class="gen-skeleton"></div>
+            </div>
+          </div>
+
+          <!-- حالة النتائج — وضع الأسئلة والاختبارات -->
+          <div x-show="generated && generationMode === 'questions'" x-cloak class="space-y-4">
+            <p class="flex items-center gap-2 text-sm font-bold text-success-700 dark:text-success-500">
+              <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+              <span x-text="t('aig.resultsReady')"></span>
+            </p>
+
+            <!-- سؤال مُولَّد 1 — اختيار من متعدد -->
+            <article class="gen-card" x-data="{ editing: false, saved: false, added: false }">
+              <header class="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="badge badge-primary" x-text="t('aig.qTypeMcq')"></span>
+                  <span class="badge badge-info" x-text="t('aig.bloomApplying')"></span>
+                  <span class="badge badge-accent" x-text="t('aig.difficultyMedium')"></span>
+                </div>
+                <span class="badge badge-muted shrink-0"><i class="fa-solid fa-star text-[9px]" aria-hidden="true"></i> <span x-text="tf('aig.cardMarks', { n: 2 })"></span></span>
+              </header>
+
+              <template x-if="!editing">
+                <div>
+                  <p class="text-sm font-bold leading-6 text-ink">ما نتيجة ضرب (-٤) × (-٣)؟</p>
+                  <ul class="mt-3 space-y-1.5 text-sm text-muted">
+                    <li class="flex items-center gap-2 rounded-lg bg-success-50 px-3 py-2 dark:bg-success-500/10">
+                      <i class="fa-regular fa-circle-dot shrink-0 text-success-500" aria-hidden="true"></i> ١٢
+                      <span class="ms-auto shrink-0 text-xs font-bold text-success-700 dark:text-success-500" x-text="t('aig.correctAnswer')"></span>
+                    </li>
+                    <li class="flex items-center gap-2 px-3 py-1"><i class="fa-regular fa-circle shrink-0" aria-hidden="true"></i> -١٢</li>
+                    <li class="flex items-center gap-2 px-3 py-1"><i class="fa-regular fa-circle shrink-0" aria-hidden="true"></i> ٧</li>
+                    <li class="flex items-center gap-2 px-3 py-1"><i class="fa-regular fa-circle shrink-0" aria-hidden="true"></i> -٧</li>
+                  </ul>
+                  <p class="mt-3 rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                    <i class="fa-regular fa-lightbulb ms-1 text-brand" aria-hidden="true"></i>
+                    <span class="font-bold text-ink" x-text="t('aig.cardExplanation') + ': '"></span>
+                    حاصل ضرب عددين سالبين موجب دائمًا؛ لذلك (-٤) × (-٣) = ١٢.
+                  </p>
+                </div>
+              </template>
+              <template x-if="editing">
+                <div>
+                  <label class="label" x-text="t('aig.qTextLabel')"></label>
+                  <textarea rows="2" class="field resize-none">ما نتيجة ضرب (-٤) × (-٣)؟</textarea>
+                </div>
+              </template>
+
+              <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="if (editing) { editing = false; toastSuccess(t('aig.toastEditSaved')); } else { editing = true; }">
+                  <i class="fa-solid" :class="editing ? 'fa-check' : 'fa-pen'" aria-hidden="true"></i>
+                  <span x-text="editing ? t('aig.actSaveEdit') : t('aig.actEdit')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="saved ? 'btn-outline' : 'btn-primary'" :disabled="saved" @click="saved = true; toastSuccess(t('aig.toastSavedBank'))">
+                  <i class="fa-solid" :class="saved ? 'fa-check' : 'fa-box-archive'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actSaveBank')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="added ? 'btn-outline' : 'btn-primary'" :disabled="added" @click="added = true; toastSuccess(t('aig.toastAddedQuiz'))">
+                  <i class="fa-solid" :class="added ? 'fa-check' : 'fa-plus'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actAddQuiz')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm ms-auto" @click="toastSuccess(t('aig.toastRegenerated'))">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                  <span x-text="t('aig.actRegenerate')"></span>
+                </button>
+              </div>
+            </article>
+
+            <!-- سؤال مُولَّد 2 — صح / خطأ -->
+            <article class="gen-card" x-data="{ editing: false, saved: false, added: false }">
+              <header class="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="badge badge-info" x-text="t('aig.qTypeTrueFalse')"></span>
+                  <span class="badge badge-info" x-text="t('aig.bloomRemembering')"></span>
+                  <span class="badge badge-success" x-text="t('aig.difficultyEasy')"></span>
+                </div>
+                <span class="badge badge-muted shrink-0"><i class="fa-solid fa-star text-[9px]" aria-hidden="true"></i> <span x-text="tf('aig.cardMarks', { n: 1 })"></span></span>
+              </header>
+
+              <template x-if="!editing">
+                <div>
+                  <p class="text-sm font-bold leading-6 text-ink">كل عدد صحيح موجب أكبر من أي عدد صحيح سالب.</p>
+                  <p class="mt-3 flex items-center gap-2 rounded-lg bg-success-50 px-3 py-2 text-sm text-muted dark:bg-success-500/10">
+                    <i class="fa-regular fa-circle-dot shrink-0 text-success-500" aria-hidden="true"></i>
+                    <span x-text="t('aig.trueLabel')"></span>
+                    <span class="ms-auto shrink-0 text-xs font-bold text-success-700 dark:text-success-500" x-text="t('aig.correctAnswer')"></span>
+                  </p>
+                  <p class="mt-3 rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                    <i class="fa-regular fa-lightbulb ms-1 text-brand" aria-hidden="true"></i>
+                    <span class="font-bold text-ink" x-text="t('aig.cardExplanation') + ': '"></span>
+                    جميع الأعداد الصحيحة الموجبة تقع على يمين الصفر في خط الأعداد، وجميع الأعداد السالبة تقع على يساره.
+                  </p>
+                </div>
+              </template>
+              <template x-if="editing">
+                <div>
+                  <label class="label" x-text="t('aig.qTextLabel')"></label>
+                  <textarea rows="2" class="field resize-none">كل عدد صحيح موجب أكبر من أي عدد صحيح سالب.</textarea>
+                </div>
+              </template>
+
+              <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="if (editing) { editing = false; toastSuccess(t('aig.toastEditSaved')); } else { editing = true; }">
+                  <i class="fa-solid" :class="editing ? 'fa-check' : 'fa-pen'" aria-hidden="true"></i>
+                  <span x-text="editing ? t('aig.actSaveEdit') : t('aig.actEdit')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="saved ? 'btn-outline' : 'btn-primary'" :disabled="saved" @click="saved = true; toastSuccess(t('aig.toastSavedBank'))">
+                  <i class="fa-solid" :class="saved ? 'fa-check' : 'fa-box-archive'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actSaveBank')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="added ? 'btn-outline' : 'btn-primary'" :disabled="added" @click="added = true; toastSuccess(t('aig.toastAddedQuiz'))">
+                  <i class="fa-solid" :class="added ? 'fa-check' : 'fa-plus'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actAddQuiz')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm ms-auto" @click="toastSuccess(t('aig.toastRegenerated'))">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                  <span x-text="t('aig.actRegenerate')"></span>
+                </button>
+              </div>
+            </article>
+
+            <!-- سؤال مُولَّد 3 — إكمال الفراغ -->
+            <article class="gen-card" x-data="{ editing: false, saved: false, added: false }">
+              <header class="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="badge badge-neutral" x-text="t('aig.qTypeFillBlank')"></span>
+                  <span class="badge badge-info" x-text="t('aig.bloomUnderstanding')"></span>
+                  <span class="badge badge-accent" x-text="t('aig.difficultyMedium')"></span>
+                </div>
+                <span class="badge badge-muted shrink-0"><i class="fa-solid fa-star text-[9px]" aria-hidden="true"></i> <span x-text="tf('aig.cardMarks', { n: 2 })"></span></span>
+              </header>
+
+              <template x-if="!editing">
+                <div>
+                  <p class="text-sm font-bold leading-6 text-ink">القيمة المطلقة للعدد (-٩) تساوي <span class="rounded bg-line px-2 py-0.5 font-mono">____</span>.</p>
+                  <p class="mt-3 flex items-center gap-2 rounded-lg bg-success-50 px-3 py-2 text-sm text-muted dark:bg-success-500/10">
+                    <i class="fa-regular fa-circle-dot shrink-0 text-success-500" aria-hidden="true"></i> ٩
+                    <span class="ms-auto shrink-0 text-xs font-bold text-success-700 dark:text-success-500" x-text="t('aig.correctAnswer')"></span>
+                  </p>
+                  <p class="mt-3 rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                    <i class="fa-regular fa-lightbulb ms-1 text-brand" aria-hidden="true"></i>
+                    <span class="font-bold text-ink" x-text="t('aig.cardExplanation') + ': '"></span>
+                    القيمة المطلقة لأي عدد هي المسافة بينه وبين الصفر، وهي قيمة غير سالبة دائمًا.
+                  </p>
+                </div>
+              </template>
+              <template x-if="editing">
+                <div>
+                  <label class="label" x-text="t('aig.qTextLabel')"></label>
+                  <textarea rows="2" class="field resize-none">القيمة المطلقة للعدد (-٩) تساوي ____.</textarea>
+                </div>
+              </template>
+
+              <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="if (editing) { editing = false; toastSuccess(t('aig.toastEditSaved')); } else { editing = true; }">
+                  <i class="fa-solid" :class="editing ? 'fa-check' : 'fa-pen'" aria-hidden="true"></i>
+                  <span x-text="editing ? t('aig.actSaveEdit') : t('aig.actEdit')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="saved ? 'btn-outline' : 'btn-primary'" :disabled="saved" @click="saved = true; toastSuccess(t('aig.toastSavedBank'))">
+                  <i class="fa-solid" :class="saved ? 'fa-check' : 'fa-box-archive'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actSaveBank')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="added ? 'btn-outline' : 'btn-primary'" :disabled="added" @click="added = true; toastSuccess(t('aig.toastAddedQuiz'))">
+                  <i class="fa-solid" :class="added ? 'fa-check' : 'fa-plus'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actAddQuiz')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm ms-auto" @click="toastSuccess(t('aig.toastRegenerated'))">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                  <span x-text="t('aig.actRegenerate')"></span>
+                </button>
+              </div>
+            </article>
+
+            <!-- سؤال مُولَّد 4 — مقالي -->
+            <article class="gen-card" x-data="{ editing: false, saved: false, added: false }">
+              <header class="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="badge badge-neutral" x-text="t('aig.qTypeEssay')"></span>
+                  <span class="badge badge-info" x-text="t('aig.bloomAnalyzing')"></span>
+                  <span class="badge badge-danger" x-text="t('aig.difficultyHard')"></span>
+                </div>
+                <span class="badge badge-muted shrink-0"><i class="fa-solid fa-star text-[9px]" aria-hidden="true"></i> <span x-text="tf('aig.cardMarks', { n: 5 })"></span></span>
+              </header>
+
+              <template x-if="!editing">
+                <div>
+                  <p class="text-sm font-bold leading-6 text-ink">وضّح الفرق بين القيمة المطلقة لعدد صحيح موجب وعدد صحيح سالب له نفس المقدار، مع ذكر مثال واحد.</p>
+                  <p class="mt-3 rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted" x-text="t('aig.essayNote')"></p>
+                </div>
+              </template>
+              <template x-if="editing">
+                <div>
+                  <label class="label" x-text="t('aig.qTextLabel')"></label>
+                  <textarea rows="2" class="field resize-none">وضّح الفرق بين القيمة المطلقة لعدد صحيح موجب وعدد صحيح سالب له نفس المقدار، مع ذكر مثال واحد.</textarea>
+                </div>
+              </template>
+
+              <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="if (editing) { editing = false; toastSuccess(t('aig.toastEditSaved')); } else { editing = true; }">
+                  <i class="fa-solid" :class="editing ? 'fa-check' : 'fa-pen'" aria-hidden="true"></i>
+                  <span x-text="editing ? t('aig.actSaveEdit') : t('aig.actEdit')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="saved ? 'btn-outline' : 'btn-primary'" :disabled="saved" @click="saved = true; toastSuccess(t('aig.toastSavedBank'))">
+                  <i class="fa-solid" :class="saved ? 'fa-check' : 'fa-box-archive'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actSaveBank')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="added ? 'btn-outline' : 'btn-primary'" :disabled="added" @click="added = true; toastSuccess(t('aig.toastAddedQuiz'))">
+                  <i class="fa-solid" :class="added ? 'fa-check' : 'fa-plus'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actAddQuiz')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm ms-auto" @click="toastSuccess(t('aig.toastRegenerated'))">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                  <span x-text="t('aig.actRegenerate')"></span>
+                </button>
+              </div>
+            </article>
+
+            <!-- خيارات التصدير -->
+            <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-line pt-4">
+              <button type="button" class="btn btn-outline" @click="toastSuccess(t('aig.toastExportWord'))">
+                <i class="fa-regular fa-file-word text-info-700 dark:text-info-500" aria-hidden="true"></i>
+                <span x-text="t('aig.exportWord')"></span>
+              </button>
+              <button type="button" class="btn btn-outline" @click="toastSuccess(t('aig.toastExportPdf'))">
+                <i class="fa-regular fa-file-pdf text-error-600" aria-hidden="true"></i>
+                <span x-text="t('aig.exportPdf')"></span>
+              </button>
+              <button type="button" class="btn btn-accent" @click="toastSuccess(t('aig.toastSaveAll'))">
+                <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i>
+                <span x-text="t('aig.saveAll')"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- حالة النتائج — وضع المفاهيم -->
+          <div x-show="generated && generationMode === 'concepts'" x-cloak class="space-y-4">
+            <p class="flex items-center gap-2 text-sm font-bold text-success-700 dark:text-success-500">
+              <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+              <span x-text="t('aig.resultsReady')"></span>
+            </p>
+
+            <article class="gen-card" x-data="{ editing: false, saved: false }">
+              <header class="mb-3 flex items-start justify-between gap-2">
+                <h3 class="font-extrabold text-ink">القيمة المطلقة للعدد الصحيح</h3>
+                <span class="badge badge-info shrink-0" x-text="t('aig.modeConcepts')"></span>
+              </header>
+              <template x-if="!editing">
+                <p class="text-sm leading-6 text-muted">القيمة المطلقة لعدد صحيح هي المسافة بين ذلك العدد والصفر على خط الأعداد، وهي قيمة غير سالبة دائمًا. يُرمز لها بوضع العدد بين خطين رأسيين، مثل |-٥| = ٥.</p>
+              </template>
+              <template x-if="editing">
+                <textarea rows="3" class="field resize-none">القيمة المطلقة لعدد صحيح هي المسافة بين ذلك العدد والصفر على خط الأعداد، وهي قيمة غير سالبة دائمًا.</textarea>
+              </template>
+              <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="if (editing) { editing = false; toastSuccess(t('aig.toastEditSaved')); } else { editing = true; }">
+                  <i class="fa-solid" :class="editing ? 'fa-check' : 'fa-pen'" aria-hidden="true"></i>
+                  <span x-text="editing ? t('aig.actSaveEdit') : t('aig.actEdit')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="saved ? 'btn-outline' : 'btn-primary'" :disabled="saved" @click="saved = true; toastSuccess(t('aig.toastSavedBank'))">
+                  <i class="fa-solid" :class="saved ? 'fa-check' : 'fa-box-archive'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actSaveBank')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm ms-auto" @click="toastSuccess(t('aig.toastRegenerated'))">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                  <span x-text="t('aig.actRegenerate')"></span>
+                </button>
+              </div>
+            </article>
+
+            <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-line pt-4">
+              <button type="button" class="btn btn-outline" @click="toastSuccess(t('aig.toastExportWord'))">
+                <i class="fa-regular fa-file-word text-info-700 dark:text-info-500" aria-hidden="true"></i>
+                <span x-text="t('aig.exportWord')"></span>
+              </button>
+              <button type="button" class="btn btn-outline" @click="toastSuccess(t('aig.toastExportPdf'))">
+                <i class="fa-regular fa-file-pdf text-error-600" aria-hidden="true"></i>
+                <span x-text="t('aig.exportPdf')"></span>
+              </button>
+              <button type="button" class="btn btn-accent" @click="toastSuccess(t('aig.toastSaveAll'))">
+                <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i>
+                <span x-text="t('aig.saveAll')"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- حالة النتائج — وضع الملخصات -->
+          <div x-show="generated && generationMode === 'summaries'" x-cloak class="space-y-4">
+            <p class="flex items-center gap-2 text-sm font-bold text-success-700 dark:text-success-500">
+              <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+              <span x-text="t('aig.resultsReady')"></span>
+            </p>
+
+            <article class="gen-card" x-data="{ editing: false, saved: false }">
+              <header class="mb-3 flex items-start justify-between gap-2">
+                <h3 class="font-extrabold text-ink">ملخص: الأعداد الصحيحة وعملياتها</h3>
+                <span class="badge badge-info shrink-0" x-text="t('aig.modeSummaries')"></span>
+              </header>
+              <template x-if="!editing">
+                <ul class="space-y-2 text-sm leading-6 text-muted" role="list">
+                  <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle mt-1.5 shrink-0 text-[6px] text-brand" aria-hidden="true"></i> الأعداد الصحيحة تشمل الموجبة والسالبة والصفر.</li>
+                  <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle mt-1.5 shrink-0 text-[6px] text-brand" aria-hidden="true"></i> ناتج ضرب أو قسمة عددين لهما نفس الإشارة يكون موجبًا.</li>
+                  <li class="flex items-start gap-2.5"><i class="fa-solid fa-circle mt-1.5 shrink-0 text-[6px] text-brand" aria-hidden="true"></i> القيمة المطلقة لأي عدد صحيح قيمة غير سالبة دائمًا.</li>
+                </ul>
+              </template>
+              <template x-if="editing">
+                <textarea rows="4" class="field resize-none">الأعداد الصحيحة تشمل الموجبة والسالبة والصفر. ناتج ضرب أو قسمة عددين لهما نفس الإشارة يكون موجبًا. القيمة المطلقة لأي عدد صحيح قيمة غير سالبة دائمًا.</textarea>
+              </template>
+              <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+                <button type="button" class="btn btn-outline btn-sm" @click="if (editing) { editing = false; toastSuccess(t('aig.toastEditSaved')); } else { editing = true; }">
+                  <i class="fa-solid" :class="editing ? 'fa-check' : 'fa-pen'" aria-hidden="true"></i>
+                  <span x-text="editing ? t('aig.actSaveEdit') : t('aig.actEdit')"></span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="saved ? 'btn-outline' : 'btn-primary'" :disabled="saved" @click="saved = true; toastSuccess(t('aig.toastSavedBank'))">
+                  <i class="fa-solid" :class="saved ? 'fa-check' : 'fa-box-archive'" aria-hidden="true"></i>
+                  <span x-text="t('aig.actSaveBank')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm ms-auto" @click="toastSuccess(t('aig.toastRegenerated'))">
+                  <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                  <span x-text="t('aig.actRegenerate')"></span>
+                </button>
+              </div>
+            </article>
+
+            <div class="flex flex-wrap items-center justify-end gap-2.5 border-t border-line pt-4">
+              <button type="button" class="btn btn-outline" @click="toastSuccess(t('aig.toastExportWord'))">
+                <i class="fa-regular fa-file-word text-info-700 dark:text-info-500" aria-hidden="true"></i>
+                <span x-text="t('aig.exportWord')"></span>
+              </button>
+              <button type="button" class="btn btn-outline" @click="toastSuccess(t('aig.toastExportPdf'))">
+                <i class="fa-regular fa-file-pdf text-error-600" aria-hidden="true"></i>
+                <span x-text="t('aig.exportPdf')"></span>
+              </button>
+              <button type="button" class="btn btn-accent" @click="toastSuccess(t('aig.toastSaveAll'))">
+                <i class="fa-regular fa-floppy-disk" aria-hidden="true"></i>
+                <span x-text="t('aig.saveAll')"></span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — سجل التوليد الأخير (ai_usage_logs)
+     ========================================================================== -->
+<div x-show="logsOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]"
+     role="dialog" aria-modal="true" aria-labelledby="logs-title" @keydown.escape.window="closeLogs()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeLogs()"></div>
+
+  <div x-show="logsOpen" x-trap.noscroll="logsOpen"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+        class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <div class="min-w-0">
+        <h2 id="logs-title" class="text-lg font-extrabold text-ink" x-text="t('aig.logsTitle')"></h2>
+        <p class="mt-0.5 text-xs text-muted" x-text="t('aig.logsSubtitle')"></p>
+      </div>
+      <button type="button" class="icon-btn shrink-0" @click="closeLogs()" :aria-label="t('aig.logsClose')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <ul class="min-h-0 flex-1 space-y-3 overflow-y-auto p-5" role="list">
+
+      <li class="rounded-xl border border-line p-4">
+        <div class="flex items-start justify-between gap-3">
+          <p class="min-w-0 truncate text-sm font-extrabold text-ink">توليد أسئلة — جمع وطرح الأعداد الصحيحة</p>
+          <span class="badge badge-primary shrink-0" x-text="t('aig.modeQuestions')"></span>
+        </div>
+        <p class="mt-1 text-xs text-muted">اليوم، ١٠:٢٤ ص · <span x-text="t('aig.logsByUser')"></span>: سارة أحمد المصري</p>
+        <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+          <span><i class="fa-solid fa-list-check ms-1 text-brand" aria-hidden="true"></i> <span x-text="tf('aig.logsItemsCount', { n: 8 })"></span></span>
+          <span dir="ltr"><i class="fa-solid fa-coins ms-1 text-accent-600" aria-hidden="true"></i> 1,280 Tokens</span>
+        </div>
+      </li>
+
+      <li class="rounded-xl border border-line p-4">
+        <div class="flex items-start justify-between gap-3">
+          <p class="min-w-0 truncate text-sm font-extrabold text-ink">توليد ملخص — تركيب الخلية ومكوناتها</p>
+          <span class="badge badge-info shrink-0" x-text="t('aig.modeSummaries')"></span>
+        </div>
+        <p class="mt-1 text-xs text-muted">أمس، ٠٤:١١ م · <span x-text="t('aig.logsByUser')"></span>: محمد خالد يوسف</p>
+        <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+          <span><i class="fa-solid fa-list-check ms-1 text-brand" aria-hidden="true"></i> <span x-text="tf('aig.logsItemsCount', { n: 1 })"></span></span>
+          <span dir="ltr"><i class="fa-solid fa-coins ms-1 text-accent-600" aria-hidden="true"></i> 640 Tokens</span>
+        </div>
+      </li>
+
+      <li class="rounded-xl border border-line p-4">
+        <div class="flex items-start justify-between gap-3">
+          <p class="min-w-0 truncate text-sm font-extrabold text-ink">توليد مفاهيم — موازنة المعادلات الكيميائية</p>
+          <span class="badge badge-accent shrink-0" x-text="t('aig.modeConcepts')"></span>
+        </div>
+        <p class="mt-1 text-xs text-muted">أمس، ١١:٤٨ ص · <span x-text="t('aig.logsByUser')"></span>: ليان عمر الشريف</p>
+        <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+          <span><i class="fa-solid fa-list-check ms-1 text-brand" aria-hidden="true"></i> <span x-text="tf('aig.logsItemsCount', { n: 4 })"></span></span>
+          <span dir="ltr"><i class="fa-solid fa-coins ms-1 text-accent-600" aria-hidden="true"></i> 910 Tokens</span>
+        </div>
+      </li>
+
+      <li class="rounded-xl border border-line p-4">
+        <div class="flex items-start justify-between gap-3">
+          <p class="min-w-0 truncate text-sm font-extrabold text-ink">توليد أسئلة — خصائص الضرب والقسمة</p>
+          <span class="badge badge-primary shrink-0" x-text="t('aig.modeQuestions')"></span>
+        </div>
+        <p class="mt-1 text-xs text-muted">٣ أكتوبر ٢٠٢٦، ٠٢:٠٥ م · <span x-text="t('aig.logsByUser')"></span>: يوسف إبراهيم النجار</p>
+        <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+          <span><i class="fa-solid fa-list-check ms-1 text-brand" aria-hidden="true"></i> <span x-text="tf('aig.logsItemsCount', { n: 12 })"></span></span>
+          <span dir="ltr"><i class="fa-solid fa-coins ms-1 text-accent-600" aria-hidden="true"></i> 2,140 Tokens</span>
+        </div>
+      </li>
+
+      <li class="rounded-xl border border-line p-4">
+        <div class="flex items-start justify-between gap-3">
+          <p class="min-w-0 truncate text-sm font-extrabold text-ink">توليد أسئلة — تركيب الخلية النباتية والحيوانية</p>
+          <span class="badge badge-primary shrink-0" x-text="t('aig.modeQuestions')"></span>
+        </div>
+        <p class="mt-1 text-xs text-muted">١ أكتوبر ٢٠٢٦، ٠٩:١٥ ص · <span x-text="t('aig.logsByUser')"></span>: نور حسن عودة</p>
+        <div class="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-bold text-muted">
+          <span><i class="fa-solid fa-list-check ms-1 text-brand" aria-hidden="true"></i> <span x-text="tf('aig.logsItemsCount', { n: 6 })"></span></span>
+          <span dir="ltr"><i class="fa-solid fa-coins ms-1 text-accent-600" aria-hidden="true"></i> 980 Tokens</span>
+        </div>
+      </li>
+    </ul>
+
+    <footer class="shrink-0 border-t border-line p-4">
+      <a href="AIUsageAnalytics.html" class="btn btn-outline w-full justify-center">
+        <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+        <span x-text="t('aig.logsViewAll')"></span>
+      </a>
+    </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة مولّد المحتوى والأسئلة العام — مبنية على نفس هيكل "Dashboard Shell" المعتمد
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد (مطابقة quiz-builder.html / users.html).
+   * بطاقات النتائج أدناه ثابتة (Static Mock Cards) — التوليد الفعلي بالذكاء الاصطناعي، حفظ النتائج،
+   * والتصدير الحقيقي سيُنفَّذ لاحقًا عبر Livewire + Eloquent + مزوّد AI خارجي؛ أزرار الإجراءات هنا
+   * تعرض إشعار تأكيد فقط (معاينة واجهة) دون أي تعديل حقيقي على البيانات.
+   */
+  function aiGenerator() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد المحتوى والأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { quota: 'اقتربت حصة توكنز الذكاء الاصطناعي من الحد الأقصى (64%)', ready: 'اكتمل توليد مسودة أسئلة جديدة بنجاح', log: 'تم تسجيل عملية توليد جديدة في سجل الاستخدام' },
+
+        aig: {
+          title: 'مولّد المحتوى والأسئلة العام', subtitle: 'ولّد أسئلة واختبارات، مفاهيم وشروحات، أو ملخصات دراسية جاهزة بالذكاء الاصطناعي، بالاستناد إلى الهيكل الأكاديمي أو سياق نصي مخصص.',
+
+          tokens: {
+            title: 'استهلاك توكنز الذكاء الاصطناعي الشهري', caption: 'الحصة الشهرية المتاحة لمنشأتك (ai_usage_logs)',
+            usedPct: '{v}% من الحصة', remaining: 'المتبقي: {n} توكن حتى تجديد الحصة',
+            recharge: 'شحن / ترقية الباقة',
+          },
+
+          logsBtn: 'سجل التوليد الأخير',
+          logsTitle: 'سجل التوليد الأخير', logsSubtitle: 'آخر عمليات التوليد بالذكاء الاصطناعي في منشأتك (ai_usage_logs)',
+          logsByUser: 'بواسطة', logsItemsCount: '{n} عنصر مُولَّد', logsClose: 'إغلاق السجل', logsViewAll: 'عرض كل سجلات الاستخدام',
+
+          modeLegend: 'نوع المحتوى المطلوب توليده',
+          modeQuestions: 'أسئلة واختبارات', modeConcepts: 'مفاهيم وشروحات', modeSummaries: 'ملخصات دراسية',
+
+          hierarchyTitle: 'الموضع الأكاديمي', hierarchyHint: 'حدّد المقرر على الأقل؛ كل تفصيل إضافي (الصف، الوحدة، الدرس) يحسّن دقة المحتوى المُولَّد.',
+          fieldCourse: 'المقرر', fieldCoursePh: 'اختر المقرر…', fieldGrade: 'الصف', fieldUnit: 'الوحدة', fieldLesson: 'الدرس', fieldOptionalPh: 'اختياري…',
+          courseRequiredHint: 'حدّد المقرر لتفعيل زر التوليد.',
+
+          paramsTitle: 'معطيات التوليد',
+          fieldBloom: 'مستوى بلوم المعرفي',
+          bloomRemembering: 'التذكر', bloomUnderstanding: 'الفهم', bloomApplying: 'التطبيق', bloomAnalyzing: 'التحليل', bloomEvaluating: 'التقييم', bloomCreating: 'الإبداع',
+          fieldQType: 'نوع السؤال',
+          qTypeMcq: 'اختيار من متعدد', qTypeTrueFalse: 'صح / خطأ', qTypeFillBlank: 'إكمال الفراغ', qTypeEssay: 'مقالي',
+          fieldDifficulty: 'مستوى الصعوبة', difficultyEasy: 'سهل', difficultyMedium: 'متوسط', difficultyHard: 'صعب',
+          fieldCount: 'عدد الأسئلة المطلوب',
+          fieldConceptCount: 'عدد المفاهيم المطلوبة',
+          fieldSummaryLength: 'طول الملخص', summaryShort: 'قصير', summaryMedium: 'متوسط', summaryLong: 'طويل',
+
+          promptLabel: 'سياق نصي مخصص (اختياري)', promptPlaceholder: 'الصق نصًا من الكتاب المدرسي، أو اكتب تعليمات إضافية لتوجيه الذكاء الاصطناعي…',
+          promptHint: 'يساعد هذا السياق في تحسين دقة ومناسبة المحتوى المُولَّد لمحتوى الدرس الفعلي.',
+          attachFile: 'إرفاق ملف مرجعي', removeFile: 'إزالة الملف المرفق',
+
+          generateBtn: 'توليد بالذكاء الاصطناعي', generating: 'جارِ التوليد بالذكاء الاصطناعي…',
+
+          emptyTitle: 'ابدأ أول توليد لك', emptySubtitle: 'حدّد معطيات التوليد من اللوحة اليسرى، ثم اضغط «توليد بالذكاء الاصطناعي» لمعاينة النتائج هنا.',
+          tip1: 'حدّد المقرر والوحدة لتحسين دقة المحتوى المُولَّد.', tip2: 'أضف سياقًا نصيًا واضحًا أو أرفق ملفًا مرجعيًا لنتائج أدق.', tip3: 'جرّب تغيير مستوى بلوم المعرفي أو الصعوبة لتنويع الأسئلة.',
+
+          busyTitle: 'جارِ تحليل المحتوى وتوليد النتائج…', busySubtitle: 'قد تستغرق هذه العملية بضع ثوانٍ بحسب كمية المحتوى المطلوب.',
+
+          resultsReady: 'تم توليد المحتوى بنجاح — راجعه ثم احفظه أو أضفه مباشرة',
+          cardMarks: 'الدرجة: {n}', cardExplanation: 'التفسير', correctAnswer: 'الإجابة الصحيحة',
+          qTextLabel: 'نص السؤال', trueLabel: 'صحيح', falseLabel: 'خاطئ',
+          essayNote: 'هذا السؤال من النوع المقالي؛ يُجيب الطالب بنص مفتوح يُقيَّم يدويًا من قِبل المعلّم.',
+
+          actEdit: 'تعديل', actSaveEdit: 'حفظ التعديل', actSaveBank: 'حفظ إلى بنك الأسئلة', actAddQuiz: 'إضافة إلى اختبار', actRegenerate: 'إعادة توليد',
+
+          exportWord: 'تصدير Word', exportPdf: 'تصدير PDF', saveAll: 'حفظ الكل',
+
+          toastEditSaved: 'تم حفظ التعديل على العنصر (معاينة فقط)',
+          toastSavedBank: 'تم حفظ العنصر إلى بنك الأسئلة بنجاح (معاينة فقط)',
+          toastAddedQuiz: 'تمت إضافة العنصر إلى الاختبار بنجاح (معاينة فقط)',
+          toastRegenerated: 'تمت إعادة توليد العنصر بنجاح (معاينة فقط)',
+          toastExportWord: 'سيتم تصدير النتائج كملف Word (معاينة فقط)',
+          toastExportPdf: 'سيتم تصدير النتائج كملف PDF (معاينة فقط)',
+          toastSaveAll: 'تم حفظ جميع العناصر المُولَّدة بنجاح (معاينة فقط)',
+          toastAttach: 'تم إرفاق الملف المرجعي بنجاح (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Content & Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { quota: 'AI token quota is nearing its limit (64%)', ready: 'A new question draft was generated successfully', log: 'A new generation run was recorded in the usage log' },
+
+        aig: {
+          title: 'General AI Content & Question Generator', subtitle: 'Generate ready-to-use questions and quizzes, concepts and explanations, or study summaries with AI, based on the academic hierarchy or a custom text context.',
+
+          tokens: {
+            title: 'Monthly AI Token Usage', caption: "Your organization's available monthly allowance (ai_usage_logs)",
+            usedPct: '{v}% of quota used', remaining: '{n} tokens remaining until quota renewal',
+            recharge: 'Recharge / Upgrade Plan',
+          },
+
+          logsBtn: 'Recent Generation Log',
+          logsTitle: 'Recent Generation Log', logsSubtitle: "Latest AI generation runs in your organization (ai_usage_logs)",
+          logsByUser: 'By', logsItemsCount: '{n} items generated', logsClose: 'Close log', logsViewAll: 'View all usage logs',
+
+          modeLegend: 'Type of content to generate',
+          modeQuestions: 'Questions & Quizzes', modeConcepts: 'Concepts & Explanations', modeSummaries: 'Study Summaries',
+
+          hierarchyTitle: 'Academic Position', hierarchyHint: 'Select at least the course; every extra detail (grade, unit, lesson) improves the accuracy of the generated content.',
+          fieldCourse: 'Course', fieldCoursePh: 'Select a course…', fieldGrade: 'Grade', fieldUnit: 'Unit', fieldLesson: 'Lesson', fieldOptionalPh: 'Optional…',
+          courseRequiredHint: 'Select a course to enable the generate button.',
+
+          paramsTitle: 'Generation Parameters',
+          fieldBloom: "Bloom's Taxonomy Level",
+          bloomRemembering: 'Remembering', bloomUnderstanding: 'Understanding', bloomApplying: 'Applying', bloomAnalyzing: 'Analyzing', bloomEvaluating: 'Evaluating', bloomCreating: 'Creating',
+          fieldQType: 'Question Type',
+          qTypeMcq: 'Multiple Choice', qTypeTrueFalse: 'True / False', qTypeFillBlank: 'Fill in the Blanks', qTypeEssay: 'Essay',
+          fieldDifficulty: 'Difficulty Level', difficultyEasy: 'Easy', difficultyMedium: 'Medium', difficultyHard: 'Hard',
+          fieldCount: 'Number of Questions',
+          fieldConceptCount: 'Number of Concepts',
+          fieldSummaryLength: 'Summary Length', summaryShort: 'Short', summaryMedium: 'Medium', summaryLong: 'Long',
+
+          promptLabel: 'Custom Prompt / Source Context (optional)', promptPlaceholder: 'Paste text from the textbook, or add extra instructions to guide the AI…',
+          promptHint: 'This context helps improve the accuracy and relevance of the generated content to the actual lesson content.',
+          attachFile: 'Attach Reference File', removeFile: 'Remove attached file',
+
+          generateBtn: 'Generate with AI', generating: 'Generating with AI…',
+
+          emptyTitle: 'Start your first generation', emptySubtitle: 'Set the generation parameters on the left panel, then click "Generate with AI" to preview results here.',
+          tip1: 'Select the course and unit to improve the accuracy of the generated content.', tip2: 'Add clear text context or attach a reference file for more accurate results.', tip3: "Try changing Bloom's level or difficulty to vary the questions.",
+
+          busyTitle: 'Analyzing content and generating results…', busySubtitle: 'This may take a few seconds depending on the amount of content requested.',
+
+          resultsReady: 'Content generated successfully — review it, then save or add it directly',
+          cardMarks: 'Marks: {n}', cardExplanation: 'Explanation', correctAnswer: 'Correct Answer',
+          qTextLabel: 'Question Text', trueLabel: 'True', falseLabel: 'False',
+          essayNote: 'This is an essay question; the student answers with open text, graded manually by the teacher.',
+
+          actEdit: 'Edit', actSaveEdit: 'Save Edit', actSaveBank: 'Save to Item Bank', actAddQuiz: 'Add to Quiz', actRegenerate: 'Regenerate',
+
+          exportWord: 'Export Word', exportPdf: 'Export PDF', saveAll: 'Save All',
+
+          toastEditSaved: 'Edit saved to the item (preview only)',
+          toastSavedBank: 'Item saved to the item bank successfully (preview only)',
+          toastAddedQuiz: 'Item added to the quiz successfully (preview only)',
+          toastRegenerated: 'Item regenerated successfully (preview only)',
+          toastExportWord: 'Results will be exported as a Word file (preview only)',
+          toastExportPdf: 'Results will be exported as a PDF file (preview only)',
+          toastSaveAll: 'All generated items saved successfully (preview only)',
+          toastAttach: 'Reference file attached successfully (preview only)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'aiGenerator',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html' },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات ---------- */
+      notifications: [
+        { id: 1, key: 'quota', time: '20د', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 2, key: 'ready', time: '1س', read: false, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-accent-700 dark:text-accent-500' },
+        { id: 3, key: 'log', time: '3س', read: true, icon: 'fa-solid fa-clock-rotate-left', tone: 'bg-primary-500/10 text-brand' },
+      ],
+      get unread() { return this.notifications.some(n => !n.read); },
+
+      /* ---------- حالة استوديو التوليد ---------- */
+      generationMode: 'questions',
+      aiForm: {
+        course: '', grade: '', unit: '', lesson: '',
+        bloom: 'understanding', qtype: 'mcq', difficulty: 'medium', count: 6,
+        conceptCount: 4, summaryLength: 'medium',
+        prompt: '',
+      },
+      attachedFile: null,
+      busy: false, generated: false,
+
+      switchMode() { this.generated = false; },
+
+      attachFile() { this.attachedFile = 'مرجع-الوحدة-الأولى.pdf'; this.toastSuccess(this.t('aig.toastAttach')); },
+      removeFile() { this.attachedFile = null; },
+
+      async generate() {
+        if (!this.aiForm.course || this.busy) return;
+        this.busy = true;
+        this.generated = false;
+        await new Promise(r => setTimeout(r, 1400));
+        this.busy = false;
+        this.generated = true;
+      },
+
+      /* ---------- اللوحة الجانبية: سجل التوليد الأخير ---------- */
+      logsOpen: false,
+      openLogs() { this.logsOpen = true; },
+      closeLogs() { this.logsOpen = false; },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        if (!this.busy) { this.logsOpen = false; }
+      },
+    };
+  }
+</script>
+</body>
+</html>

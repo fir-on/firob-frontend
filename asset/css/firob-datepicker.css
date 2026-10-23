@@ -1,0 +1,208 @@
+/* ==========================================================================
+   FirOb — Unified Date Input & Datepicker Theme
+   --------------------------------------------------------------------------
+   طبقة تصميم واحدة لكل حقول التاريخ (input[type="date"]) ونوافذ Flatpickr
+   المنبثقة عبر لوحة التحكم. يُحمَّل هذا الملف مرة واحدة في كل صفحة تحتوي
+   حقل تاريخ، فتبقى الهوية البصرية (الألوان، الزوايا، التركيز) متطابقة في
+   كل الشاشات دون تكرار الأكواد.
+
+   ملاحظة تقنية: Tailwind هنا مُحمَّل عبر Play CDN (بلا خطوة Build)، وهو
+   يُجمِّع فقط عناصر <style type="text/tailwindcss"> الداخلية الموجودة في
+   كل صفحة — لا يعالج ملفات CSS خارجية مرتبطة بـ <link>. لذلك كُتبت هذه
+   الطبقة بـ CSS خام يستهلك متغيرات نظام التصميم نفسها (--brand, --card,
+   --line, --muted...) المُعرَّفة في كل صفحة، بدل @apply/@layer التي تحتاج
+   خط بناء Tailwind حقيقيًا (ستتحوّل مباشرة إلى @layer components عند
+   الانتقال إلى Vite/Laravel Mix).
+
+   يعمل جنبًا إلى جنب مع asset/js/firob-datepicker.js الذي:
+   - يستبدل الفتح الأصلي (native popup) بتقويم Flatpickr مخصَّص على
+     الأجهزة ذات مؤشر دقيق (فأرة)، مع الحفاظ على حقل <input type="date">
+     الأصلي كما هو على الأجهزة اللمسية (تجربة نظام التشغيل أفضل هناك).
+   - يضيف صنف "firob-datepicker" على حاوية التقويم ليتسنى تنسيقها هنا.
+   ========================================================================== */
+
+:root {
+  /* لوحة Cyan/Teal الخاصة بحقول التاريخ — مستقلة عن --brand العام لتمييز
+     التقويم بصريًا كعنصر تفاعلي مميز، بتنسيق مع طلب التصميم الحديث. */
+  --date-accent: 0 168 204;        /* #00A8CC */
+  --date-accent-deep: 14 131 136;  /* #0E8388 */
+  --date-accent-ink: 255 255 255;
+}
+.dark {
+  --date-accent: 45 212 230;       /* أفتح قليلًا لتباين كافٍ على خلفية داكنة */
+  --date-accent-deep: 56 189 193;
+  --date-accent-ink: 7 23 28;
+}
+
+/* ==========================================================================
+   1) حقل الإدخال — يشمل input[type="date"] الأصلي (أجهزة اللمس) وكذلك
+      الحقل النصي البديل الذي يصنعه Flatpickr على أجهزة الفأرة
+      (كلاهما يحمل صنف firob-datepicker-input عبر JS).
+   ========================================================================== */
+input[type="date"],
+input.firob-datepicker-input {
+  color-scheme: light;
+  accent-color: rgb(var(--date-accent));
+  border-radius: 0.75rem; /* rounded-xl */
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .2s ease, color .2s ease;
+}
+.dark input[type="date"],
+.dark input.firob-datepicker-input {
+  color-scheme: dark;
+}
+
+input[type="date"]:hover,
+input.firob-datepicker-input:hover {
+  border-color: rgb(var(--date-accent));
+}
+
+input[type="date"]:focus,
+input[type="date"]:focus-visible,
+input.firob-datepicker-input:focus,
+input.firob-datepicker-input:focus-visible {
+  outline: none;
+  border-color: rgb(var(--date-accent)) !important;
+  box-shadow: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgba(var(--date-accent), .2);
+}
+
+input[type="date"]:disabled,
+input.firob-datepicker-input:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+/* الحقل الأصلي المخفي الذي يتركه Flatpickr بعد تحويله إلى altInput —
+   لا يُعرَض أبدًا، فقط يحمل القيمة الحقيقية لربط Alpine (x-model). */
+input.firob-datepicker-input[type="hidden"] { display: none !important; }
+
+/* ==========================================================================
+   2) أيقونة التقويم الأصلية — WebKit/Blink فقط (Chrome, Edge, Safari).
+      لا يوجد Pseudo-element معادل في Firefox للتحكم بأيقونة التقويم؛
+      يبقى شكلها الافتراضي هناك دون قابلية لإعادة التصميم.
+   ========================================================================== */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-inline-start: .5rem;
+  padding: .3rem;
+  border-radius: .5rem;
+  cursor: pointer;
+  opacity: .6;
+  background-color: rgb(var(--muted));
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 70%;
+  mask-size: 70%;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3Cline x1='8' y1='3' x2='8' y2='7'/%3E%3Cline x1='16' y1='3' x2='16' y2='7'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3Cline x1='8' y1='3' x2='8' y2='7'/%3E%3Cline x1='16' y1='3' x2='16' y2='7'/%3E%3C/svg%3E");
+  transition: opacity .2s ease, background-color .2s ease;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  background-color: rgb(var(--date-accent));
+}
+
+/* ==========================================================================
+   3) قائمة Flatpickr المنبثقة — تُطبَّق فقط عبر صنف firob-datepicker
+      الذي تضيفه asset/js/firob-datepicker.js على حاوية التقويم.
+   ========================================================================== */
+.flatpickr-calendar.firob-datepicker {
+  width: 17.5rem;
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--line));
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px -12px rgba(7, 60, 76, .25);
+  font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  padding: .625rem;
+}
+.flatpickr-calendar.firob-datepicker.arrowTop:before,
+.flatpickr-calendar.firob-datepicker.arrowTop:after {
+  border-bottom-color: rgb(var(--line));
+}
+.flatpickr-calendar.firob-datepicker.arrowTop:after { border-bottom-color: rgb(var(--card)); }
+.flatpickr-calendar.firob-datepicker.arrowBottom:before,
+.flatpickr-calendar.firob-datepicker.arrowBottom:after {
+  border-top-color: rgb(var(--line));
+}
+.flatpickr-calendar.firob-datepicker.arrowBottom:after { border-top-color: rgb(var(--card)); }
+
+/* ---------- الرأس: الشهر/السنة وأسهم التنقل ---------- */
+.flatpickr-calendar.firob-datepicker .flatpickr-months { align-items: center; margin-bottom: .25rem; }
+.flatpickr-calendar.firob-datepicker .flatpickr-month { color: rgb(var(--ink)); fill: rgb(var(--ink)); height: 2.25rem; }
+.flatpickr-calendar.firob-datepicker .flatpickr-current-month {
+  font-size: .9rem; font-weight: 800; padding: 0; display: flex; align-items: center; gap: .25rem;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-current-month input.cur-year,
+.flatpickr-calendar.firob-datepicker .flatpickr-monthDropdown-months {
+  font-weight: 800; color: rgb(var(--ink)); background: transparent; border-radius: .375rem;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-monthDropdown-months:hover,
+.flatpickr-calendar.firob-datepicker .flatpickr-current-month input.cur-year:hover {
+  background: rgb(var(--soft));
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-prev-month,
+.flatpickr-calendar.firob-datepicker .flatpickr-next-month {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .625rem;
+  color: rgb(var(--muted)); transition: background-color .15s ease, color .15s ease;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-prev-month:hover,
+.flatpickr-calendar.firob-datepicker .flatpickr-next-month:hover {
+  background: rgb(var(--soft)); color: rgb(var(--date-accent-deep));
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-prev-month svg,
+.flatpickr-calendar.firob-datepicker .flatpickr-next-month svg { fill: currentColor; width: .85rem; height: .85rem; }
+
+/* ---------- أسماء الأيام ---------- */
+.flatpickr-calendar.firob-datepicker .flatpickr-weekdays { margin-top: .25rem; }
+.flatpickr-calendar.firob-datepicker span.flatpickr-weekday {
+  font-size: .6875rem; font-weight: 800; color: rgb(var(--muted)); text-transform: uppercase; letter-spacing: .03em;
+}
+
+/* ---------- خلايا الأيام ---------- */
+.flatpickr-calendar.firob-datepicker .flatpickr-days { border: 0; }
+.flatpickr-calendar.firob-datepicker .dayContainer { padding: 0; }
+.flatpickr-calendar.firob-datepicker .flatpickr-day {
+  color: rgb(var(--ink)); border-radius: .5rem; font-size: .8125rem; font-weight: 600;
+  max-width: 2.25rem; height: 2.25rem; line-height: 2.25rem; margin: 1px 0;
+  transition: background-color .12s ease, color .12s ease;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-day.prevMonthDay,
+.flatpickr-calendar.firob-datepicker .flatpickr-day.nextMonthDay {
+  color: rgb(var(--muted)); opacity: .45;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-day:hover,
+.flatpickr-calendar.firob-datepicker .flatpickr-day:focus {
+  background: rgb(var(--soft)); border-color: transparent;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-day.today {
+  border: 1.5px solid rgb(var(--date-accent)); font-weight: 800;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-day.today:hover {
+  background: rgba(var(--date-accent), .12);
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-day.selected,
+.flatpickr-calendar.firob-datepicker .flatpickr-day.selected:hover,
+.flatpickr-calendar.firob-datepicker .flatpickr-day.startRange,
+.flatpickr-calendar.firob-datepicker .flatpickr-day.endRange {
+  background: rgb(var(--date-accent-deep));
+  border-color: rgb(var(--date-accent-deep));
+  color: rgb(var(--date-accent-ink));
+  font-weight: 800;
+  box-shadow: none;
+}
+.flatpickr-calendar.firob-datepicker .flatpickr-day.disabled,
+.flatpickr-calendar.firob-datepicker .flatpickr-day.flatpickr-disabled,
+.flatpickr-calendar.firob-datepicker .flatpickr-day.notAllowed {
+  color: rgb(var(--line-strong)); opacity: .5; text-decoration: line-through;
+}
+
+/* ---------- اتجاه RTL للعربية ---------- */
+.flatpickr-calendar.firob-datepicker.rtl { direction: rtl; }
+.flatpickr-calendar.firob-datepicker.rtl .flatpickr-prev-month { order: 2; }
+.flatpickr-calendar.firob-datepicker.rtl .flatpickr-next-month { order: 0; }
+.flatpickr-calendar.firob-datepicker.rtl .flatpickr-current-month { order: 1; }

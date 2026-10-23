@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>عارض المفهوم: حل المعادلة الخطية بمتغيّر واحد — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }  /* كان 3.93:1 في الداكن */
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+    /* نافذة منبثقة تحت زرّها مباشرة في كل المقاسات (على الجوال بعرض صف الإجراءات) — بدل .menu المثبّتة أعلى الشاشة */
+    .popover { @apply absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-line bg-card shadow-pop sm:inset-x-auto sm:end-0 sm:w-80; max-width: calc(100vw - 1.5rem); }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+
+    /* ---------- أشرطة التقدّم (ProgressMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-500; }
+
+    /* ---------- التبويبات (Media Tabs) ---------- */
+    .tab-btn { @apply inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .tab-btn[aria-selected="true"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-500 hover:text-white; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- بطاقة المفهوم / العنصر التعليمي ---------- */
+    .concept-card { @apply flex min-w-0 flex-col gap-3 rounded-xl border border-line bg-field/40 p-4; }
+
+    /* ---------- خيار التمرين التفاعلي (Quiz Option) ---------- */
+    .quiz-option { @apply flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-line bg-field/40 px-4 py-3 text-start text-sm font-bold text-ink transition hover:bg-soft; }
+    .quiz-option:has(input:disabled) { @apply cursor-default hover:bg-transparent; }
+    .quiz-option.is-selected { @apply border-primary-500 bg-primary-500/10 text-brand; }
+    .quiz-option.is-correct { @apply border-success-500 bg-success-500/10 text-success-700 dark:text-success-500; }
+    .quiz-option.is-incorrect { @apply border-error-500 bg-error-500/10 text-error-700 dark:text-red-300; }  /* كان 4.16:1 في الداكن */
+    .quiz-radio { @apply grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-line-strong; }
+    .quiz-option.is-selected .quiz-radio { @apply border-primary-500; }
+    .quiz-option.is-correct .quiz-radio { @apply border-success-500; }
+    .quiz-option.is-incorrect .quiz-radio { @apply border-error-500; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز + Collapse لحركة النص المصاحب) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="student-dashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:ring-2" :class="!expanded && 'lg:flex-none lg:justify-center'" :aria-label="t('appTitle')">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold text-muted ltr:tracking-wide" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); } else if (mobile) { mobileNav = false; }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- جرس الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-controls="notif-menu" :aria-expanded="notifOpen.toString()"
+                    :aria-label="t('notifications') + (unread ? ' (' + fmt(unread) + ')' : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="relMin(n.min)"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- قائمة الملف الشخصي -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="studentName + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="studentName"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleStudent')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-brand" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="../common/notifications.html" role="menuitem" class="menu-item"><i class="fa-regular fa-bell w-4 text-muted" aria-hidden="true"></i> <span x-text="t('notifications')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) — تنقّل هرمي حتى مستوى المفهوم -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex flex-wrap items-center gap-2" role="list">
+            <li><a href="student-dashboard.html" class="hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li><a href="student-courses.html" class="hover:text-brand hover:underline" x-text="t('cv.breadcrumbCourses')"></a></li>
+            <template x-if="concept"><li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li></template>
+            <template x-if="concept"><li><a :href="'student-courses.html?course=' + concept.course.id" class="hover:text-brand hover:underline" x-text="concept.course[locale]"></a></li></template>
+            <template x-if="concept"><li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li></template>
+            <template x-if="concept"><li class="max-w-[14rem] truncate" x-text="concept.unit[locale]"></li></template>
+            <template x-if="concept"><li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li></template>
+            <template x-if="concept"><li class="max-w-[12rem] truncate" x-text="concept.lesson[locale]"></li></template>
+            <template x-if="concept"><li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li></template>
+            <template x-if="concept"><li class="text-ink" aria-current="page" x-text="concept[locale]"></li></template>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — STU-03: عارض المفهوم (يُحمَّل من ?id= عبر بيانات مشتركة مع صفحة المقررات) ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- إعلانات عامة لقارئ الشاشة (نسخ الرابط، المفضلة، تبديل الشرائح…) -->
+      <p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+
+      <!-- ================= مفهوم غير موجود ================= -->
+      <template x-if="!concept">
+        <section class="panel flex flex-col items-center gap-3 p-8 text-center" role="alert">
+          <span class="grid h-12 w-12 place-items-center rounded-full bg-error-500/15 text-error-700 dark:text-red-300" aria-hidden="true"><i class="fa-solid fa-circle-exclamation"></i></span>
+          <h1 class="text-lg font-extrabold text-ink" x-text="t('cv.notFound')"></h1>
+          <p class="text-sm text-muted" x-text="t('cv.notFoundHint')"></p>
+          <a href="student-courses.html" class="btn btn-outline btn-sm"><i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('cv.backToCourses')"></span></a>
+        </section>
+      </template>
+
+      <template x-if="concept">
+        <div class="space-y-4 sm:space-y-6">
+
+          <!-- ================= رأس المفهوم + الإجراءات العلوية ================= -->
+          <section class="panel flex flex-col gap-5 p-5 sm:p-7" aria-labelledby="concept-title">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div class="min-w-0">
+                <p class="mb-1 text-xs font-bold text-muted">
+                  <a :href="'student-courses.html?course=' + concept.course.id" class="hover:text-brand hover:underline" x-text="concept.course[locale]"></a>
+                  <span aria-hidden="true">·</span> <span x-text="concept.lesson[locale]"></span>
+                </p>
+                <h1 id="concept-title" class="text-2xl font-extrabold leading-snug text-ink sm:text-3xl" x-text="concept[locale]"></h1>
+                <p class="mt-1 text-base font-bold text-muted" :lang="altLocale" :dir="altLocale === 'ar' ? 'rtl' : 'ltr'" x-text="concept[altLocale]"></p>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <span class="badge badge-muted font-mono" dir="ltr" :title="t('cv.codeLabel')" x-text="concept.id"></span>
+                  <span x-show="viewedBefore" class="badge badge-primary"><i class="fa-solid fa-eye" aria-hidden="true"></i> <span x-text="t('cv.viewedBefore')"></span></span>
+                </div>
+              </div>
+
+              <!-- الإجراءات العلوية -->
+              <div class="relative flex shrink-0 flex-wrap items-center gap-2">
+                <!-- حفظ في المفضلة (يُحفظ بين الزيارات) -->
+                <button type="button" class="btn btn-outline btn-sm" :class="bookmarked && '!border-accent-500 !bg-accent-500/15 !text-yellow-900 dark:!text-accent-500'"
+                        @click="toggleBookmark()" :aria-pressed="bookmarked.toString()">
+                  <i class="text-sm" :class="bookmarked ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'" aria-hidden="true"></i>
+                  <span x-text="t('cv.bookmark')"></span>
+                </button>
+
+                <!-- مشاركة — تُفتح تحت زرّها مباشرة في كل المقاسات -->
+                <div class="sm:relative" @click.outside="shareOpen = false" @keydown.escape.stop="closePopover('share')">
+                  <button type="button" x-ref="shareBtn" class="btn btn-outline btn-sm" @click="togglePopover('share')"
+                          :aria-expanded="shareOpen.toString()" aria-controls="share-pop">
+                    <i class="fa-solid fa-share-nodes" aria-hidden="true"></i> <span x-text="t('cv.share')"></span>
+                  </button>
+                  <div id="share-pop" x-cloak x-show="shareOpen" x-transition.opacity.scale.95 class="popover p-4" role="dialog" :aria-label="t('cv.share')">
+                    <label for="share-link" class="label" x-text="t('cv.shareLinkLabel')"></label>
+                    <div class="flex items-center gap-2">
+                      <input id="share-link" x-ref="shareLink" type="text" readonly dir="ltr" :value="shareUrl" class="field min-w-0 flex-1 font-mono text-xs" @focus="$event.target.select()">
+                      <button type="button" class="act group relative shrink-0" @click="copyShareLink()" :aria-label="t('cv.copyLink')">
+                        <i class="fa-regular" :class="copyState === 'ok' ? 'fa-circle-check text-success-700 dark:text-success-500' : 'fa-copy'" aria-hidden="true"></i>
+                        <span class="tooltip-bubble" aria-hidden="true" x-text="t('cv.copyLink')"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                    <p class="mt-2 text-xs font-bold" x-show="copyState" :class="copyState === 'ok' ? 'text-success-700 dark:text-success-500' : 'text-warning-800 dark:text-warning-500'"
+                       x-text="copyState === 'ok' ? t('cv.copied') : t('cv.copyManually')"></p>
+                    <button type="button" x-show="canNativeShare" class="btn btn-outline btn-sm mt-3 w-full" @click="nativeShare()">
+                      <i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i> <span x-text="t('cv.shareVia')"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- تنزيل المرفقات — روابط تنزيل حقيقية -->
+                <div class="sm:relative" x-show="attachments.length" @click.outside="downloadOpen = false" @keydown.escape.stop="closePopover('download')">
+                  <button type="button" x-ref="downloadBtn" class="btn btn-outline btn-sm" @click="togglePopover('download')"
+                          :aria-expanded="downloadOpen.toString()" aria-controls="download-pop">
+                    <i class="fa-solid fa-download" aria-hidden="true"></i> <span x-text="t('cv.download')"></span>
+                    <span class="rounded-full bg-soft px-1.5 text-[11px] tabular-nums" x-text="fmt(attachments.length)"></span>
+                  </button>
+                  <div id="download-pop" x-cloak x-show="downloadOpen" x-transition.opacity.scale.95 class="popover" role="dialog" :aria-label="t('cv.attachments')">
+                    <p class="border-b border-line px-4 py-3 font-extrabold" x-text="t('cv.attachments')"></p>
+                    <ul role="list" class="py-1">
+                      <template x-for="f in attachments" :key="f.href">
+                        <li>
+                          <a :href="f.href" :download="f[locale]" class="menu-item" @click="downloadOpen = false"
+                             :aria-label="t('cv.downloadFile') + ': ' + f[locale] + '، ' + fmtSize(f.size)">
+                            <i class="fa-solid w-4" :class="[f.icon, f.tone]" aria-hidden="true"></i>
+                            <bdi class="min-w-0 flex-1 truncate" x-text="f[locale]"></bdi>
+                            <span class="shrink-0 text-xs text-muted tabular-nums" x-text="fmtSize(f.size)"></span>
+                          </a>
+                        </li>
+                      </template>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= نظرة عامة ووصف المفهوم ================= -->
+          <section class="panel space-y-4 p-5 sm:p-7" aria-labelledby="overview-title">
+            <h2 id="overview-title" class="sr-only" x-text="t('cv.overviewTitle')"></h2>
+            <p class="text-sm leading-7 text-ink sm:text-base" :lang="locale" x-text="description(locale)"></p>
+            <p class="text-sm leading-7 text-muted sm:text-base" :lang="altLocale" :dir="altLocale === 'ar' ? 'rtl' : 'ltr'" x-text="description(altLocale)"></p>
+
+            <ul class="flex flex-wrap items-center gap-2 border-t border-line pt-4" role="list" :aria-label="t('cv.metaLabel')">
+              <li class="badge badge-primary"><i class="fa-solid" :class="concept.course.icon" aria-hidden="true"></i> <span x-text="concept.course[locale]"></span></li>
+              <li x-show="extra.difficulty" class="badge badge-accent"><i class="fa-solid fa-gauge" aria-hidden="true"></i> <span x-text="t('cv.difficultyLabel') + ': ' + t('cv.difficulty.' + extra.difficulty)"></span></li>
+              <li x-show="extra.bloom" class="badge badge-info"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> <span x-text="t('cv.bloomLabel') + ': ' + t('cv.bloom.' + extra.bloom)"></span></li>
+              <template x-for="tg in (extra.tags || [])" :key="tg.en">
+                <li class="badge badge-muted" x-text="'#' + tg[locale]"></li>
+              </template>
+            </ul>
+          </section>
+
+          <!-- ================= الوسائط التعليمية والمشغّل ================= -->
+          <section class="panel overflow-hidden" aria-labelledby="media-title">
+            <div class="border-b border-line p-4 sm:p-5">
+              <h2 id="media-title" class="text-lg font-extrabold text-ink" x-text="t('cv.mediaTitle')"></h2>
+              <p class="mt-0.5 text-xs text-muted" x-text="tabs.length ? t('cv.mediaSubtitle') : t('cv.noMedia')"></p>
+            </div>
+
+            <template x-if="tabs.length">
+              <div>
+                <div role="tablist" class="flex items-center gap-1 overflow-x-auto scroll-thin border-b border-line px-3 py-2 sm:px-5" :aria-label="t('cv.mediaTitle')" @keydown="tabKey($event)">
+                  <template x-for="tb in tabs" :key="tb">
+                    <button type="button" role="tab" :id="'media-tab-' + tb" :aria-controls="'media-panel-' + tb"
+                            :aria-selected="(mediaTab === tb).toString()" :tabindex="mediaTab === tb ? 0 : -1"
+                            class="tab-btn" @click="mediaTab = tb">
+                      <i class="fa-solid" :class="TAB_ICON[tb]" aria-hidden="true"></i> <span x-text="t('cv.tab.' + tb)"></span>
+                    </button>
+                  </template>
+                </div>
+
+                <div class="p-4 sm:p-5">
+                  <!-- فيديو: مشغّل أصلي + ترجمة مصاحبة WebVTT + نص مصاحب قابل للنقر (يقفز للمقطع) — يُرسم فقط عند فتح التبويب -->
+                  <div x-show="mediaTab === 'video'" role="tabpanel" id="media-panel-video" aria-labelledby="media-tab-video" tabindex="0" class="space-y-3">
+                    <template x-if="mediaTab === 'video' && extra.video">
+                      <div class="relative aspect-video w-full overflow-hidden rounded-xl bg-primary-900">
+                        <video x-ref="video" class="h-full w-full" controls playsinline preload="metadata" :poster="extra.video.poster"
+                               @timeupdate="videoTime = $event.target.currentTime" @loadedmetadata="videoReady = true">
+                          <source :src="extra.video.src" type="video/mp4" @error="videoError = true">
+                          <track kind="captions" :src="extra.video.captions[locale]" :srclang="locale" :label="t('cv.captions')" default>
+                        </video>
+                        <div x-show="videoError" class="absolute inset-0 grid place-items-center bg-primary-900/95 p-6 text-center text-white" role="status">
+                          <div class="space-y-2">
+                            <i class="fa-solid fa-film text-3xl opacity-80" aria-hidden="true"></i>
+                            <p class="font-bold" x-text="t('cv.videoUnavailable')"></p>
+                            <p class="text-sm text-white/85" x-text="t('cv.videoUnavailableHint')"></p>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <p class="text-xs font-bold text-muted"><i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span x-text="t('cv.duration') + ': '"></span><bdi class="tabular-nums" x-text="fmtTime(extra.video?.duration || 0)"></bdi></p>
+                      <button type="button" class="btn btn-outline btn-sm" @click="transcriptOpen = !transcriptOpen" :aria-expanded="transcriptOpen.toString()" aria-controls="transcript-box">
+                        <i class="fa-solid fa-closed-captioning" aria-hidden="true"></i>
+                        <span x-text="transcriptOpen ? t('cv.transcriptHide') : t('cv.transcriptShow')"></span>
+                      </button>
+                    </div>
+                    <div id="transcript-box" x-show="transcriptOpen" x-collapse>
+                      <div class="rounded-xl border border-line bg-field/40 p-4">
+                        <h3 class="label" x-text="t('cv.transcriptTitle')"></h3>
+                        <ol class="space-y-1" role="list">
+                          <template x-for="(c, i) in (extra.video?.cues || [])" :key="c.t">
+                            <li>
+                              <button type="button" class="flex w-full items-start gap-3 rounded-lg px-2 py-1.5 text-start text-sm leading-7 transition hover:bg-soft"
+                                      :class="activeCue === i ? 'bg-soft text-ink' : 'text-muted'" :aria-current="activeCue === i ? 'true' : null"
+                                      @click="seek(c.t)" :disabled="videoError" :aria-label="t('cv.jumpTo') + ' ' + fmtTime(c.t)">
+                                <bdi class="shrink-0 font-mono text-xs font-bold text-brand tabular-nums" x-text="fmtTime(c.t)"></bdi>
+                                <span x-text="c[locale]"></span>
+                              </button>
+                            </li>
+                          </template>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- صور ومخططات — عرض شرائح يعمل بالأسهم ويعلن الشريحة الحالية -->
+                  <div x-show="mediaTab === 'gallery'" role="tabpanel" id="media-panel-gallery" aria-labelledby="media-tab-gallery" class="space-y-3">
+                    <div class="relative" tabindex="0" aria-roledescription="carousel" :aria-label="t('cv.tab.gallery')"
+                         @keydown.arrow-right.prevent="slideBy(locale === 'ar' ? -1 : 1)" @keydown.arrow-left.prevent="slideBy(locale === 'ar' ? 1 : -1)">
+                      <figure class="flex aspect-video w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-xl border border-line bg-field/60 p-6"
+                              aria-roledescription="slide" :aria-label="tf('cv.slideNofM', { n: fmt(gallerySlide + 1), m: fmt(slides.length) })">
+                        <i class="fa-solid text-5xl text-brand" :class="slides[gallerySlide]?.icon" aria-hidden="true"></i>
+                        <bdi dir="ltr" class="rounded-lg bg-card px-3 py-1.5 font-mono text-lg font-bold text-ink shadow-card" x-text="slides[gallerySlide]?.math"></bdi>
+                        <figcaption class="text-center text-sm font-bold text-ink" x-text="slides[gallerySlide]?.[locale]"></figcaption>
+                      </figure>
+                      <button type="button" class="icon-btn absolute start-2 top-1/2 -translate-y-1/2 border border-line bg-card" @click="slideBy(-1)" :aria-label="t('cv.prevSlide')">
+                        <i class="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" class="icon-btn absolute end-2 top-1/2 -translate-y-1/2 border border-line bg-card" @click="slideBy(1)" :aria-label="t('cv.nextSlide')">
+                        <i class="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
+                      </button>
+                      <span class="absolute bottom-2 end-2 rounded-md bg-black/60 px-2 py-1 text-xs font-bold text-white tabular-nums" aria-hidden="true" dir="ltr" x-text="(gallerySlide + 1) + ' / ' + slides.length"></span>
+                    </div>
+                    <div class="flex items-center justify-center gap-1">
+                      <template x-for="(s, idx) in slides" :key="idx">
+                        <button type="button" class="grid h-6 w-6 place-items-center rounded-full" @click="goSlide(idx)"
+                                :aria-label="tf('cv.slideNofM', { n: fmt(idx + 1), m: fmt(slides.length) })" :aria-current="idx === gallerySlide ? 'true' : null">
+                          <span class="block h-2 rounded-full transition-[width,background-color]" :class="idx === gallerySlide ? 'w-5 bg-primary-500' : 'w-2 bg-line-strong'"></span>
+                        </button>
+                      </template>
+                    </div>
+                  </div>
+
+                  <!-- مستند PDF — فتح في تبويب جديد أو تنزيل (بدل صفحات وهمية) -->
+                  <div x-show="mediaTab === 'doc'" role="tabpanel" id="media-panel-doc" aria-labelledby="media-tab-doc" tabindex="0" class="space-y-3">
+                    <template x-if="pdf">
+                      <div class="flex flex-col items-center justify-center gap-3 rounded-xl border border-line bg-field/40 p-8 text-center">
+                        <i class="fa-solid fa-file-pdf text-5xl text-error-700 dark:text-red-300" aria-hidden="true"></i>
+                        <bdi class="font-bold text-ink" x-text="pdf[locale]"></bdi>
+                        <p class="text-xs text-muted" x-text="[pluralize('pages', pdf.pages), fmtSize(pdf.size)].join(' · ')"></p>
+                        <div class="flex flex-wrap justify-center gap-2">
+                          <a :href="pdf.href" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> <span x-text="t('cv.openDoc')"></span><span class="sr-only" x-text="' ' + t('cv.newTab')"></span>
+                          </a>
+                          <a :href="pdf.href" :download="pdf[locale]" class="btn btn-outline btn-sm">
+                            <i class="fa-solid fa-download" aria-hidden="true"></i> <span x-text="t('cv.downloadFile')"></span>
+                          </a>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <!-- ================= العناصر التعليمية المرتبطة (روابط حقيقية بمعرّف العنصر) ================= -->
+          <section aria-labelledby="lo-title" class="space-y-3" x-show="objects.length">
+            <div>
+              <h2 id="lo-title" class="text-lg font-extrabold text-ink sm:text-xl" x-text="t('cv.loTitle')"></h2>
+              <p class="mt-0.5 text-xs font-bold text-muted" x-text="t('cv.loSubtitle')"></p>
+            </div>
+            <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="list">
+              <template x-for="o in objects" :key="o.id">
+                <li class="panel flex min-w-0 flex-col gap-3 p-4 sm:p-5">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl" :class="LO_META[o.type].tone" aria-hidden="true"><i class="fa-solid" :class="LO_META[o.type].icon"></i></span>
+                    <span class="badge badge-muted" x-text="t('cv.loType.' + o.type)"></span>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="font-extrabold leading-snug text-ink" x-text="o[locale]"></h3>
+                    <p class="mt-1 text-xs leading-6 text-muted" x-text="locale === 'ar' ? o.descAr : o.descEn"></p>
+                  </div>
+                  <p class="mt-auto text-xs font-bold text-muted"><i class="fa-regular fa-clock me-1" aria-hidden="true"></i><span x-text="pluralize('minutes', o.minutes)"></span></p>
+                  <a :href="'learning-object-sandbox.html?id=' + o.id + '&concept=' + concept.id" class="btn btn-sm w-full" :class="o.type === 'quiz' ? 'btn-accent' : (o.type === 'simulation' ? 'btn-primary' : 'btn-outline')"
+                     :aria-label="t('cv.loCta.' + o.type) + ': ' + o[locale]">
+                    <i class="fa-solid" :class="LO_META[o.type].cta" aria-hidden="true"></i> <span x-text="t('cv.loCta.' + o.type)"></span>
+                  </a>
+                </li>
+              </template>
+            </ul>
+          </section>
+
+          <!-- ================= تحقّق من فهمك — أزرار راديو أصلية (أسهم لوحة المفاتيح مجانًا) + تلميح قبل كشف الإجابة ================= -->
+          <template x-if="extra.quiz">
+            <section class="panel space-y-4 p-5 sm:p-7" aria-labelledby="quiz-title">
+              <div>
+                <h2 id="quiz-title" class="text-lg font-extrabold text-ink" x-text="t('cv.quizTitle')"></h2>
+                <p class="mt-0.5 text-xs font-bold text-muted" x-text="t('cv.quizSubtitle')"></p>
+              </div>
+
+              <fieldset>
+                <legend class="text-sm font-bold leading-7 text-ink sm:text-base" x-text="extra.quiz[locale]"></legend>
+                <div class="mt-3 grid gap-2.5 sm:grid-cols-2">
+                  <template x-for="(opt, i) in extra.quiz.options" :key="i">
+                    <label class="quiz-option" :class="optionState(i)">
+                      <input type="radio" name="cyu" class="peer sr-only" :value="i" :checked="quizSelected === i" @change="quizSelected = i" :disabled="quizChecked">
+                      <span class="quiz-radio peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand" aria-hidden="true">
+                        <i class="fa-solid fa-circle text-[8px]" x-show="quizSelected === i"></i>
+                      </span>
+                      <bdi dir="ltr" class="font-mono" x-text="opt"></bdi>
+                      <span class="ms-auto inline-flex items-center gap-1 text-xs" x-show="quizDone && i === extra.quiz.answer">
+                        <i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('cv.correctMark')"></span>
+                      </span>
+                      <span class="ms-auto inline-flex items-center gap-1 text-xs" x-show="quizChecked && quizSelected === i && i !== extra.quiz.answer">
+                        <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><span x-text="t('cv.yourAnswer')"></span>
+                      </span>
+                    </label>
+                  </template>
+                </div>
+              </fieldset>
+
+              <div id="quiz-feedback" tabindex="-1" x-show="quizChecked" class="rounded-xl p-3 text-sm font-bold leading-6 focus:outline-none"
+                   :class="quizIsCorrect ? 'bg-success-500/10 text-success-700 dark:text-success-500' : (quizDone ? 'bg-soft text-ink' : 'bg-warning-500/10 text-warning-800 dark:text-warning-500')">
+                <p class="flex items-start gap-2">
+                  <i class="fa-solid mt-1" :class="quizIsCorrect ? 'fa-circle-check' : (quizDone ? 'fa-book-open' : 'fa-lightbulb')" aria-hidden="true"></i>
+                  <span x-text="quizFeedback"></span>
+                </p>
+              </div>
+              <p class="sr-only" aria-live="assertive" x-text="quizChecked ? quizFeedback : ''"></p>
+
+              <div class="flex flex-wrap items-center justify-end gap-2 border-t border-line pt-4">
+                <button type="button" class="btn btn-outline" x-show="quizChecked && !quizIsCorrect && !quizDone" @click="retryQuiz()">
+                  <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> <span x-text="t('cv.quizRetry')"></span>
+                </button>
+                <button type="button" class="btn btn-outline" x-show="quizDone" @click="resetQuiz()">
+                  <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> <span x-text="t('cv.quizAgain')"></span>
+                </button>
+                <button type="button" class="btn btn-primary" x-show="!quizChecked" :disabled="quizSelected === null" @click="checkQuiz()">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('cv.quizCheck')"></span>
+                </button>
+              </div>
+            </section>
+          </template>
+
+          <!-- ================= التنقّل بين المفاهيم (تسلسل المقرر) ================= -->
+          <nav class="grid gap-3 sm:grid-cols-2" :aria-label="t('cv.sequenceLabel')">
+            <div>
+              <template x-if="prevConcept">
+                <a :href="'concept-viewer.html?id=' + prevConcept.id" class="panel flex h-full items-center gap-3 p-4 transition hover:border-primary-500">
+                  <i class="fa-solid fa-arrow-left rtl:-scale-x-100 shrink-0 text-brand" aria-hidden="true"></i>
+                  <span class="min-w-0">
+                    <span class="block text-xs font-bold text-muted" x-text="t('cv.prevConcept')"></span>
+                    <span class="block truncate font-extrabold text-ink" x-text="prevConcept[locale]"></span>
+                  </span>
+                </a>
+              </template>
+            </div>
+            <div>
+              <template x-if="nextConcept">
+                <a :href="'concept-viewer.html?id=' + nextConcept.id" class="panel flex h-full items-center justify-end gap-3 p-4 text-end transition hover:border-primary-500">
+                  <span class="min-w-0">
+                    <span class="block text-xs font-bold text-muted" x-text="t('cv.nextConcept')"></span>
+                    <span class="block truncate font-extrabold text-ink" x-text="nextConcept[locale]"></span>
+                  </span>
+                  <i class="fa-solid fa-arrow-right rtl:-scale-x-100 shrink-0 text-brand" aria-hidden="true"></i>
+                </a>
+              </template>
+              <template x-if="!nextConcept">
+                <a :href="'student-courses.html?course=' + concept.course.id" class="panel flex h-full items-center justify-end gap-3 p-4 text-end transition hover:border-primary-500">
+                  <span class="min-w-0">
+                    <span class="block text-xs font-bold text-muted" x-text="t('cv.courseEnd')"></span>
+                    <span class="block truncate font-extrabold text-ink" x-text="t('cv.backToCourse')"></span>
+                  </span>
+                  <i class="fa-solid fa-flag-checkered shrink-0 text-brand" aria-hidden="true"></i>
+                </a>
+              </template>
+            </div>
+          </nav>
+        </div>
+      </template>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-muted" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * حالة واجهة شاشة «عارض المفهوم» (STU-03).
+   * يُحمَّل المفهوم من ?id= عبر نفس بيانات صفحة المقررات (COURSES) + محتوى غني اختياري (EXTRAS).
+   * لا أزرار وهمية: كل زر إما يعمل فعلًا (تشغيل، تنزيل، نسخ، تنقّل) أو غير موجود.
+   * في Laravel: مكوّن Livewire بـ #[Url] id + #[Computed] concept مع eager loading، والإجابة الصحيحة تبقى في الخادم.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    /* ================= بيانات المقررات (مصدر واحد: مقرر › وحدة › درس › مفهوم) =================
+       المحتوى المنشور والفعّال فقط. التقدّم مطابق للوحة الطالب (student-dashboard.html).
+       الأعداد (الوحدات/الدروس/المفاهيم) تُحسب من الشجرة نفسها — لا أرقام مكتوبة يدويًا. */
+    const C = (id, ar, en, descAr, descEn, los) => ({ id, ar, en, descAr, descEn, los });
+    const COURSES_RAW = [
+      { id: 'math-g11', grade: 'g11', ar: 'الرياضيات', en: 'Mathematics', icon: 'fa-square-root-variable', tone: 'bg-primary-500/10 text-brand', progress: 72,
+        units: [
+          { id: 'm-u1', ar: 'الوحدة الأولى: الجبر والدوال', en: 'Unit 1: Algebra & Functions',
+            objAr: 'إتقان حل المعادلات والمتباينات الخطية، وفهم مفهوم الدالة والعلاقة الدالية.', objEn: 'Master solving linear equations and inequalities, and understand functions & relations.',
+            lessons: [
+              { id: 'm-l11', ar: 'المعادلات الخطية', en: 'Linear Equations', minutes: 25, concepts: [
+                C('CPT-M11-014', 'حل المعادلة الخطية بمتغيّر واحد', 'Solving Single-Variable Linear Equations',
+                  'طريقة إيجاد قيمة المتغيّر في معادلة من الدرجة الأولى عبر عمليات الجمع والطرح والضرب والقسمة على طرفي المعادلة.',
+                  'Finding the value of the variable in a first-degree equation by adding, subtracting, multiplying or dividing both sides.', 4),
+                C('CPT-M11-015', 'معادلات بمتغيّرين وتمثيلها بيانيًا', 'Two-Variable Equations & Graphing',
+                  'تمثيل معادلة خطية بمتغيّرين على المستوى البياني، وتحديد نقاط التقاطع مع المحورين.',
+                  'Graphing a two-variable linear equation on the coordinate plane and finding its intercepts.', 4) ] },
+              { id: 'm-l12', ar: 'المتباينات والدوال', en: 'Inequalities & Functions', minutes: 20, concepts: [
+                C('CPT-M11-016', 'حل المتباينات الخطية', 'Solving Linear Inequalities',
+                  'إيجاد مجموعة حل متباينة خطية بمتغيّر واحد وتمثيلها على خط الأعداد.',
+                  'Finding the solution set of a one-variable linear inequality and showing it on a number line.', 2),
+                C('CPT-M11-017', 'مفهوم الدالة والعلاقة الدالية', 'Functions & Relations',
+                  'التمييز بين العلاقة الدالية وغير الدالية، وتحديد المجال والمدى لدالة معطاة.',
+                  'Telling functional from non-functional relations, and finding the domain and range of a function.', 3) ] },
+            ] },
+          { id: 'm-u2', ar: 'الوحدة الثانية: الهندسة التحليلية', en: 'Unit 2: Analytic Geometry',
+            objAr: 'تطبيق أدوات الهندسة التحليلية في حساب المسافات والميول وكتابة معادلات الخطوط المستقيمة.', objEn: 'Apply analytic-geometry tools to compute distances and slopes, and write line equations.',
+            lessons: [
+              { id: 'm-l21', ar: 'المسافة والميل', en: 'Distance & Slope', minutes: 15, concepts: [
+                C('CPT-M11-021', 'حساب المسافة بين نقطتين', 'Distance Between Two Points',
+                  'تطبيق قانون المسافة بين نقطتين في المستوى الإحداثي باستخدام نظرية فيثاغورس.',
+                  'Applying the distance formula in the coordinate plane using the Pythagorean theorem.', 2),
+                C('CPT-M11-022', 'ميل الخط المستقيم', 'Slope of a Line',
+                  'حساب ميل الخط المستقيم الواصل بين نقطتين، وتفسير دلالته الهندسية.',
+                  'Computing the slope of the line through two points and interpreting it geometrically.', 3) ] },
+              { id: 'm-l22', ar: 'معادلة الخط المستقيم', en: 'Equation of a Line', minutes: 30, concepts: [
+                C('CPT-M11-023', 'الصورة الميلية لمعادلة الخط المستقيم', 'Slope-Intercept Form',
+                  'كتابة معادلة الخط المستقيم بالصورة الميلية y = mx + b، وتحديد الميل ونقطة التقاطع مع المحور y.',
+                  'Writing a line in slope-intercept form y = mx + b and identifying the slope and y-intercept.', 4),
+                C('CPT-M11-024', 'التوازي والتعامد بين الخطوط', 'Parallel & Perpendicular Lines',
+                  'التمييز بين الخطوط المتوازية والمتعامدة من خلال مقارنة ميولها.',
+                  'Distinguishing parallel and perpendicular lines by comparing their slopes.', 2) ] },
+            ] },
+          { id: 'm-u3', ar: 'الوحدة الثالثة: حساب المثلثات', en: 'Unit 3: Trigonometry',
+            objAr: 'استخدام النسب المثلثية لحل المثلثات القائمة في مواقف حياتية.', objEn: 'Use trigonometric ratios to solve right triangles in real-life situations.',
+            lessons: [
+              { id: 'm-l31', ar: 'النسب المثلثية', en: 'Trigonometric Ratios', minutes: 25, concepts: [
+                C('CPT-M11-031', 'الجيب وجيب التمام والظل', 'Sine, Cosine & Tangent',
+                  'تعريف النسب المثلثية الأساسية في المثلث القائم واستخدامها لإيجاد الأضلاع المجهولة.',
+                  'Defining the basic trigonometric ratios in a right triangle and using them to find unknown sides.', 3) ] },
+            ] },
+          { id: 'm-u4', ar: 'الوحدة الرابعة: المتتاليات', en: 'Unit 4: Sequences',
+            objAr: 'التعرّف على المتتاليات الحسابية وإيجاد حدّها العام ومجموع حدودها.', objEn: 'Recognize arithmetic sequences and find their general term and sum.',
+            lessons: [
+              { id: 'm-l41', ar: 'المتتالية الحسابية', en: 'Arithmetic Sequences', minutes: 20, concepts: [
+                C('CPT-M11-041', 'الحد العام للمتتالية الحسابية', 'General Term of an Arithmetic Sequence',
+                  'إيجاد الحد النوني لمتتالية حسابية بمعلومية حدها الأول وأساسها.',
+                  'Finding the nth term of an arithmetic sequence from its first term and common difference.', 2) ] },
+            ] },
+        ] },
+
+      { id: 'phys-g11', grade: 'g11', ar: 'الفيزياء', en: 'Physics', icon: 'fa-atom', tone: 'bg-info-500/15 text-info-700 dark:text-blue-300', progress: 45,
+        units: [
+          { id: 'p-u1', ar: 'الوحدة الأولى: الميكانيكا', en: 'Unit 1: Mechanics',
+            objAr: 'وصف حركة الأجسام وتفسيرها باستخدام قوانين نيوتن.', objEn: 'Describe and explain the motion of bodies using Newton’s laws.',
+            lessons: [
+              { id: 'p-l11', ar: 'الحركة في بُعد واحد', en: 'Motion in One Dimension', minutes: 30, concepts: [
+                C('CPT-P11-011', 'الإزاحة والسرعة', 'Displacement & Velocity',
+                  'التمييز بين المسافة والإزاحة، وحساب السرعة المتوسطة لجسم متحرك.',
+                  'Distinguishing distance from displacement and computing the average velocity of a moving body.', 3),
+                C('CPT-P11-012', 'التسارع', 'Acceleration',
+                  'حساب التسارع من تغيّر السرعة مع الزمن، وتفسير منحنى السرعة–الزمن.',
+                  'Computing acceleration from the change in velocity over time and reading velocity–time graphs.', 2) ] },
+              { id: 'p-l12', ar: 'قوانين نيوتن', en: 'Newton’s Laws', minutes: 25, concepts: [
+                C('CPT-P11-013', 'القانون الثاني لنيوتن', 'Newton’s Second Law',
+                  'العلاقة بين القوة المحصّلة والكتلة والتسارع (ق = ك × ت) وتطبيقاتها.',
+                  'The relation between net force, mass and acceleration (F = ma) and its applications.', 4) ] },
+            ] },
+          { id: 'p-u2', ar: 'الوحدة الثانية: الشغل والطاقة', en: 'Unit 2: Work & Energy',
+            objAr: 'حساب الشغل والطاقة وتطبيق مبدأ حفظ الطاقة الميكانيكية.', objEn: 'Compute work and energy and apply conservation of mechanical energy.',
+            lessons: [
+              { id: 'p-l21', ar: 'الشغل والطاقة', en: 'Work & Energy', minutes: 25, concepts: [
+                C('CPT-P11-021', 'الشغل المبذول بقوة ثابتة', 'Work Done by a Constant Force',
+                  'حساب الشغل عندما تؤثر قوة ثابتة في جسم ويتحرك مسافة في اتجاهها.',
+                  'Computing the work done when a constant force moves a body along its direction.', 2),
+                C('CPT-P11-022', 'حفظ الطاقة الميكانيكية', 'Conservation of Mechanical Energy',
+                  'تحوّل الطاقة بين الحركية والوضع مع بقاء مجموعهما ثابتًا في غياب الاحتكاك.',
+                  'Energy converting between kinetic and potential while their sum stays constant without friction.', 3) ] },
+            ] },
+          { id: 'p-u3', ar: 'الوحدة الثالثة: الموجات', en: 'Unit 3: Waves',
+            objAr: 'التعرّف على خصائص الموجات والعلاقة بين سرعتها وترددها وطولها.', objEn: 'Identify wave properties and relate speed, frequency and wavelength.',
+            lessons: [
+              { id: 'p-l31', ar: 'خصائص الموجات', en: 'Wave Properties', minutes: 20, concepts: [
+                C('CPT-P11-031', 'الطول الموجي والتردد', 'Wavelength & Frequency',
+                  'العلاقة بين سرعة الموجة وطولها الموجي وترددها (ع = ل × د).',
+                  'The relation between wave speed, wavelength and frequency (v = λf).', 2) ] },
+            ] },
+        ] },
+
+      { id: 'arab-g11', grade: 'g11', ar: 'اللغة العربية', en: 'Arabic Language', icon: 'fa-language', tone: 'bg-success-500/15 text-success-700 dark:text-success-500', progress: 90,
+        units: [
+          { id: 'a-u1', ar: 'الوحدة الأولى: النحو', en: 'Unit 1: Syntax',
+            objAr: 'إعراب الجملة الاسمية وتحديد أثر النواسخ فيها.', objEn: 'Parse nominal sentences and identify the effect of copulas on them.',
+            lessons: [
+              { id: 'a-l11', ar: 'الجملة الاسمية', en: 'The Nominal Sentence', minutes: 20, concepts: [
+                C('CPT-A11-011', 'المبتدأ والخبر', 'Subject & Predicate',
+                  'ركنا الجملة الاسمية، وأنواع الخبر: مفرد وجملة وشبه جملة.',
+                  'The two pillars of the nominal sentence and the types of predicate: single word, clause and phrase.', 3),
+                C('CPT-A11-012', 'كان وأخواتها', 'Kāna and Its Sisters',
+                  'عمل الأفعال الناسخة في رفع الاسم ونصب الخبر، مع أمثلة تطبيقية.',
+                  'How these copular verbs make the subject nominative and the predicate accusative, with examples.', 2) ] },
+            ] },
+          { id: 'a-u2', ar: 'الوحدة الثانية: البلاغة', en: 'Unit 2: Rhetoric',
+            objAr: 'تحليل الصور البيانية وبيان أثرها في المعنى.', objEn: 'Analyze figures of speech and their effect on meaning.',
+            lessons: [
+              { id: 'a-l21', ar: 'التشبيه', en: 'Simile', minutes: 15, concepts: [
+                C('CPT-A11-021', 'أركان التشبيه وأنواعه', 'Elements & Types of Simile',
+                  'المشبّه والمشبّه به والأداة ووجه الشبه، والتشبيه البليغ والتمثيلي.',
+                  'The tenor, vehicle, particle and ground of a simile, and its eloquent and extended forms.', 3) ] },
+            ] },
+          { id: 'a-u3', ar: 'الوحدة الثالثة: الأدب', en: 'Unit 3: Literature',
+            objAr: 'التعرّف على خصائص الشعر في العصر العباسي من خلال نماذج مختارة.', objEn: 'Identify the features of Abbasid poetry through selected texts.',
+            lessons: [
+              { id: 'a-l31', ar: 'الشعر العباسي', en: 'Abbasid Poetry', minutes: 25, concepts: [
+                C('CPT-A11-031', 'خصائص الشعر العباسي', 'Features of Abbasid Poetry',
+                  'التجديد في الموضوعات والأسلوب، وأثر الحضارة في لغة الشعر وصوره.',
+                  'Innovation in themes and style, and the influence of urban culture on poetic language and imagery.', 2) ] },
+            ] },
+        ] },
+
+      { id: 'hist-g11', grade: 'g11', ar: 'التاريخ', en: 'History', icon: 'fa-landmark', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500', progress: 30,
+        units: [
+          { id: 'h-u1', ar: 'الوحدة الأولى: الثورة الصناعية', en: 'Unit 1: The Industrial Revolution',
+            objAr: 'تفسير أسباب الثورة الصناعية ونتائجها الاقتصادية والاجتماعية.', objEn: 'Explain the causes of the Industrial Revolution and its economic and social results.',
+            lessons: [
+              { id: 'h-l11', ar: 'أسباب الثورة الصناعية', en: 'Causes of the Industrial Revolution', minutes: 20, concepts: [
+                C('CPT-H11-011', 'الآلة البخارية وأثرها', 'The Steam Engine and Its Impact',
+                  'كيف غيّرت الآلة البخارية أساليب الإنتاج والنقل في القرن الثامن عشر.',
+                  'How the steam engine transformed production and transport in the 18th century.', 2),
+                C('CPT-H11-012', 'التحوّل من الزراعة إلى الصناعة', 'From Agriculture to Industry',
+                  'هجرة السكان إلى المدن ونشوء الطبقة العاملة نتيجة التصنيع.',
+                  'Migration to cities and the rise of the working class as a result of industrialization.', 2) ] },
+            ] },
+          { id: 'h-u2', ar: 'الوحدة الثانية: الحرب العالمية الأولى', en: 'Unit 2: World War I',
+            objAr: 'تحليل أسباب الحرب العالمية الأولى ونتائجها على المنطقة العربية.', objEn: 'Analyze the causes of World War I and its consequences for the Arab region.',
+            lessons: [
+              { id: 'h-l21', ar: 'أسباب الحرب', en: 'Causes of the War', minutes: 25, concepts: [
+                C('CPT-H11-021', 'نظام التحالفات', 'The Alliance System',
+                  'التكتلات الدولية قبل عام 1914 وكيف حوّلت أزمة محلية إلى حرب عالمية.',
+                  'Pre-1914 international blocs and how they turned a local crisis into a world war.', 3) ] },
+            ] },
+        ] },
+
+      { id: 'chem-g11', grade: 'g11', ar: 'الكيمياء', en: 'Chemistry', icon: 'fa-flask', tone: 'bg-primary-500/10 text-brand', progress: 60,
+        units: [
+          { id: 'c-u1', ar: 'الوحدة الأولى: الجدول الدوري', en: 'Unit 1: The Periodic Table',
+            objAr: 'تفسير تدرّج خواص العناصر في الدورات والمجموعات.', objEn: 'Explain trends in element properties across periods and groups.',
+            lessons: [
+              { id: 'c-l11', ar: 'تدرّج الخواص الدورية', en: 'Periodic Trends', minutes: 25, concepts: [
+                C('CPT-C11-011', 'نصف القطر الذري', 'Atomic Radius',
+                  'تغيّر حجم الذرة عبر الدورة وخلال المجموعة وأسباب ذلك.',
+                  'How atomic size changes across a period and down a group, and why.', 2),
+                C('CPT-C11-012', 'طاقة التأيّن', 'Ionization Energy',
+                  'الطاقة اللازمة لنزع إلكترون من الذرة وتدرّجها في الجدول الدوري.',
+                  'The energy needed to remove an electron from an atom and its trend in the periodic table.', 2) ] },
+            ] },
+          { id: 'c-u2', ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions',
+            objAr: 'موازنة المعادلات الكيميائية وتصنيف التفاعلات.', objEn: 'Balance chemical equations and classify reactions.',
+            lessons: [
+              { id: 'c-l21', ar: 'موازنة المعادلات', en: 'Balancing Equations', minutes: 20, concepts: [
+                C('CPT-C11-021', 'قانون حفظ الكتلة', 'Law of Conservation of Mass',
+                  'تساوي كتلة المتفاعلات والنواتج، واستخدام المعاملات لموازنة المعادلة.',
+                  'Reactant and product masses are equal; using coefficients to balance an equation.', 3) ] },
+              { id: 'c-l22', ar: 'أنواع التفاعلات', en: 'Types of Reactions', minutes: 25, concepts: [
+                C('CPT-C11-022', 'تفاعلات الأكسدة والاختزال', 'Oxidation–Reduction Reactions',
+                  'انتقال الإلكترونات بين المواد وتحديد العامل المؤكسد والعامل المختزل.',
+                  'Electron transfer between substances and identifying the oxidizing and reducing agents.', 3) ] },
+            ] },
+        ] },
+
+      { id: 'engl-g11', grade: 'g11', ar: 'اللغة الإنجليزية', en: 'English Language', icon: 'fa-spell-check', tone: 'bg-info-500/15 text-info-700 dark:text-blue-300', progress: 55,
+        units: [
+          { id: 'e-u1', ar: 'الوحدة الأولى: القواعد', en: 'Unit 1: Grammar',
+            objAr: 'استخدام الأزمنة الماضية والتامة بدقة في الكتابة والمحادثة.', objEn: 'Use past and perfect tenses accurately in writing and speaking.',
+            lessons: [
+              { id: 'e-l11', ar: 'أزمنة الفعل', en: 'Verb Tenses', minutes: 20, concepts: [
+                C('CPT-E11-011', 'المضارع التام مقابل الماضي البسيط', 'Present Perfect vs. Past Simple',
+                  'متى نستخدم كل زمن، مع الكلمات الدالة على كل منهما.',
+                  'When to use each tense, with the time expressions that signal them.', 3) ] },
+            ] },
+          { id: 'e-u2', ar: 'الوحدة الثانية: القراءة', en: 'Unit 2: Reading',
+            objAr: 'تطبيق استراتيجيات القراءة السريعة لاستخراج الفكرة والمعلومة.', objEn: 'Apply fast-reading strategies to find main ideas and specific information.',
+            lessons: [
+              { id: 'e-l21', ar: 'استراتيجيات القراءة', en: 'Reading Strategies', minutes: 15, concepts: [
+                C('CPT-E11-021', 'القراءة التصفّحية والبحثية', 'Skimming & Scanning',
+                  'قراءة سريعة لمعرفة الفكرة العامة، وأخرى للبحث عن معلومة محددة.',
+                  'Reading quickly for the gist, and searching a text for a specific detail.', 2) ] },
+            ] },
+        ] },
+
+      /* مقرر مراجعة من الصف العاشر (مسجَّل علاجيًا) — يجعل فلتر الصف ذا معنى */
+      { id: 'math-g10-rev', grade: 'g10', ar: 'مراجعة: أساسيات الجبر', en: 'Review: Algebra Foundations', icon: 'fa-rotate', tone: 'bg-soft-2 text-brand', progress: 100,
+        units: [
+          { id: 'r-u1', ar: 'الوحدة الأولى: المقادير الجبرية', en: 'Unit 1: Algebraic Expressions',
+            objAr: 'تبسيط المقادير الجبرية تمهيدًا لدراسة المعادلات.', objEn: 'Simplify algebraic expressions in preparation for equations.',
+            lessons: [
+              { id: 'r-l11', ar: 'المقادير الجبرية', en: 'Algebraic Expressions', minutes: 15, concepts: [
+                C('CPT-M10-011', 'تبسيط المقادير الجبرية', 'Simplifying Algebraic Expressions',
+                  'جمع الحدود المتشابهة وتوزيع الضرب على الجمع.',
+                  'Combining like terms and distributing multiplication over addition.', 2) ] },
+            ] },
+        ] },
+    ];
+    /* أعداد مشتقة + مسار كل مفهوم (للعرض المباشر) */
+    const COURSES = COURSES_RAW.map(c => {
+      const concepts = c.units.flatMap(u => u.lessons.flatMap(l => l.concepts.map(k => ({ ...k, unit: u, lesson: l }))));
+      return { ...c, concepts, lessonCount: c.units.reduce((s, u) => s + u.lessons.length, 0), conceptCount: concepts.length };
+    });
+
+    /* ================= محتوى غني إضافي لبعض المفاهيم (وسائط، مرفقات، عناصر تعليمية، سؤال تحقّق) =================
+       المفاهيم التي لا تملك إدخالًا هنا تُعرض بوصفها الأساسي مع حالات فارغة صادقة للوسائط،
+       وعناصر تعليمية مولَّدة بعدد k.los نفسه المعروض في صفحة المقررات. */
+    const MEDIA_BASE = '../asset/media/';
+    const EXTRAS = {
+      'CPT-M11-014': {
+        difficulty: 'medium', bloom: 'apply',
+        tags: [{ ar: 'معادلات خطية', en: 'Linear equations' }, { ar: 'جبر', en: 'Algebra' }, { ar: 'متغيّرات', en: 'Variables' }, { ar: 'توازن المعادلة', en: 'Balancing equations' }],
+        longAr: 'طريقة إيجاد قيمة المتغيّر في معادلة من الدرجة الأولى عبر عمليات الجمع والطرح والضرب والقسمة على طرفي المعادلة، مع الحفاظ على تكافؤ الطرفين في كل خطوة حتى عزل المتغيّر وإيجاد قيمته النهائية.',
+        longEn: 'The method for finding the value of a variable in a first-degree equation by applying addition, subtraction, multiplication and division to both sides, while preserving equality at every step until the variable is isolated and its final value is found.',
+        video: {
+          src: MEDIA_BASE + 'CPT-M11-014/explainer.mp4', poster: MEDIA_BASE + 'CPT-M11-014/poster.jpg',
+          captions: { ar: MEDIA_BASE + 'CPT-M11-014/captions.ar.vtt', en: MEDIA_BASE + 'CPT-M11-014/captions.en.vtt' },
+          duration: 525,
+          cues: [
+            { t: 0,   ar: 'لنبدأ بمعادلة بسيطة: 2x + 5 = 13. هدفنا عزل المتغيّر x في طرف واحد من المعادلة.', en: 'Let’s start with a simple equation: 2x + 5 = 13. Our goal is to isolate x on one side.' },
+            { t: 95,  ar: 'أولًا، نطرح 5 من الطرفين فنحصل على 2x = 8.', en: 'First, subtract 5 from both sides to get 2x = 8.' },
+            { t: 185, ar: 'ثم نقسم الطرفين على 2 فنحصل على x = 4.', en: 'Then divide both sides by 2 to get x = 4.' },
+            { t: 290, ar: 'للتأكد من صحة الحل، نعوّض x = 4 في المعادلة الأصلية: 2(4) + 5 = 13 ✓.', en: 'To check, substitute x = 4 into the original equation: 2(4) + 5 = 13 ✓.' },
+          ],
+        },
+        slides: [
+          { icon: 'fa-equals',          ar: 'الخطوة 1: تبسيط طرفَي المعادلة',              en: 'Step 1: Simplify both sides',                         math: '2x + 5 = 13' },
+          { icon: 'fa-scale-balanced',  ar: 'الخطوة 2: عزل المتغيّر بعمليات عكسية متكافئة', en: 'Step 2: Isolate the variable with inverse operations', math: '2x = 8  →  x = 4' },
+          { icon: 'fa-check-double',    ar: 'الخطوة 3: التحقق من صحة الحل بالتعويض',       en: 'Step 3: Verify the solution by substitution',         math: '2(4) + 5 = 13 ✓' },
+        ],
+        attachments: [
+          { type: 'pdf', icon: 'fa-file-pdf',    tone: 'text-error-700 dark:text-red-300',            ar: 'ورقة_عمل_المعادلات_الخطية.pdf', en: 'linear-equations-worksheet.pdf', size: 655360,  pages: 4, href: MEDIA_BASE + 'CPT-M11-014/worksheet.pdf' },
+          { type: 'mp4', icon: 'fa-file-video',  tone: 'text-info-700 dark:text-blue-300',            ar: 'شرح_المعادلة_الخطية.mp4',       en: 'linear-equation-explainer.mp4',  size: 23068672, href: MEDIA_BASE + 'CPT-M11-014/explainer.mp4' },
+          { type: 'zip', icon: 'fa-file-zipper', tone: 'text-yellow-900 dark:text-accent-500',        ar: 'مخططات_الخطوات.zip',            en: 'step-diagrams.zip',              size: 3250585,  href: MEDIA_BASE + 'CPT-M11-014/diagrams.zip' },
+        ],
+        objects: [
+          { id: 'LO-SIM-0141', type: 'simulation', minutes: 10, ar: 'موازن المعادلة التفاعلي', en: 'Interactive Equation Balancer',
+            descAr: 'جرّب تحريك الأوزان على طرفَي الميزان لفهم مبدأ التكافؤ في المعادلات.', descEn: 'Move weights on both sides of the scale to understand equality in equations.' },
+          { id: 'LO-QUZ-0142', type: 'quiz', minutes: 7, ar: 'اختبار سريع: حل المعادلات', en: 'Quick Quiz: Solving Equations',
+            descAr: 'خمسة أسئلة قصيرة لقياس فهمك لحل المعادلات الخطية.', descEn: 'Five short questions to check your understanding of solving linear equations.' },
+          { id: 'LO-FLC-0143', type: 'flashcards', minutes: 5, ar: 'بطاقات مراجعة: مصطلحات المعادلات', en: 'Review Flashcards: Equation Terms',
+            descAr: 'بطاقات تعليمية لمراجعة أهم المصطلحات والقوانين المرتبطة بالمعادلات.', descEn: 'Flashcards to review the key terms and rules related to equations.' },
+          { id: 'LO-WKS-0144', type: 'worksheet', minutes: 20, ar: 'تمارين تطبيقية: المعادلات الخطية', en: 'Practice Worksheet: Linear Equations',
+            descAr: 'ورقة عمل تحتوي على تمارين متنوّعة لتثبيت المفهوم.', descEn: 'A worksheet with varied exercises to reinforce the concept.' },
+        ],
+        quiz: {
+          ar: 'ما قيمة x في المعادلة: 2x + 5 = 13؟', en: 'What is the value of x in the equation 2x + 5 = 13?',
+          options: ['x = 3', 'x = 4', 'x = 9', 'x = 6'], answer: 1,
+          hintAr: 'ابدأ بطرح 5 من الطرفين، ثم اقسم على معامل x.', hintEn: 'Start by subtracting 5 from both sides, then divide by the coefficient of x.',
+          explainAr: 'نطرح 5 من الطرفين فنحصل على 2x = 8، ثم نقسم على 2 فنحصل على x = 4. والتحقق: 2(4) + 5 = 13.', explainEn: '2x + 5 = 13 ⇒ 2x = 8 ⇒ x = 4. Check: 2(4) + 5 = 13.',
+        },
+      },
+      'CPT-M11-022': {
+        difficulty: 'medium', bloom: 'apply',
+        tags: [{ ar: 'هندسة تحليلية', en: 'Analytic geometry' }, { ar: 'ميل', en: 'Slope' }],
+        quiz: {
+          ar: 'ما ميل الخط المار بالنقطتين (1, 2) و(3, 6)؟', en: 'What is the slope of the line through (1, 2) and (3, 6)?',
+          options: ['m = 1', 'm = 2', 'm = 4', 'm = 1/2'], answer: 1,
+          hintAr: 'الميل = فرق الصادات ÷ فرق السينات.', hintEn: 'Slope = change in y ÷ change in x.',
+          explainAr: 'm = (6 − 2) ÷ (3 − 1) = 4 ÷ 2 = 2.', explainEn: 'm = (6 − 2) ÷ (3 − 1) = 4 ÷ 2 = 2.',
+        },
+      },
+    };
+    const LO_TYPES = ['simulation', 'quiz', 'flashcards', 'worksheet'];
+
+    const STUDENT = { id: 'STU-2210', ar: 'عمر خالد الفرا', en: 'Omar Khaled Al-Farra' };
+    const store = {
+      get(k) { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch (e) { return []; } },
+      set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    };
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'بوابة الطالب',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في موادي واختباراتي…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', logout: 'تسجيل الخروج',
+        roleStudent: 'طالب',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', learning: 'التعلّم', account: 'الحساب' },
+        navItems: {
+          dashboard: 'لوحة التحكم', courses: 'المقررات الدراسية', catalog: 'الكتالوج العام',
+          availableQuizzes: 'الاختبارات المتاحة', quizResults: 'نتائج المحاولات', quizHistory: 'سجل محاولاتي',
+          profile: 'الملف الشخصي', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: {
+          resultPublished: 'تم نشر نتيجة «اختبار الحركة والقوة» — الفيزياء',
+          upcomingReminder: 'موعد «اختبار الجدول الدوري» غدًا — الكيمياء',
+          gradePosted: 'صحّح المعلّم «اختبار قواعد اللغة» يدويًا',
+        },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          minutes: { zero: '0 دقيقة', one: 'دقيقة واحدة', two: 'دقيقتان', few: '{n} دقائق', many: '{n} دقيقة', other: '{n} دقيقة' },
+          pages:   { zero: 'لا صفحات', one: 'صفحة واحدة', two: 'صفحتان', few: '{n} صفحات', many: '{n} صفحة', other: '{n} صفحة' },
+        },
+
+        cv: {
+          docTitle: '{c} — FirOb', breadcrumbCourses: 'المقررات',
+          notFound: 'لم نجد هذا المفهوم', notFoundHint: 'ربما تغيّر الرابط أو لم يعد المفهوم منشورًا ضمن خطتك الدراسية.', backToCourses: 'الرجوع إلى المقررات',
+          codeLabel: 'رمز المفهوم', viewedBefore: 'استعرضته من قبل', overviewTitle: 'نظرة عامة على المفهوم', metaLabel: 'معلومات المفهوم',
+
+          bookmark: 'المفضلة', bookmarkOn: 'تمت إضافة المفهوم إلى المفضلة', bookmarkOff: 'تمت إزالة المفهوم من المفضلة',
+          share: 'مشاركة', shareLinkLabel: 'رابط المفهوم القابل للمشاركة', copyLink: 'نسخ الرابط',
+          copied: 'تم نسخ الرابط.', copyManually: 'تعذّر النسخ تلقائيًا — الرابط محدَّد، اضغط Ctrl+C لنسخه.', shareVia: 'مشاركة عبر تطبيق…',
+          download: 'المرفقات', attachments: 'المرفقات المتاحة', downloadFile: 'تنزيل',
+
+          difficultyLabel: 'الصعوبة', difficulty: { easy: 'سهل', medium: 'متوسط', hard: 'متقدّم' },
+          bloomLabel: 'مستوى بلوم', bloom: { remember: 'تذكّر', understand: 'فهم', apply: 'تطبيق', analyze: 'تحليل' },
+
+          mediaTitle: 'الوسائط التعليمية', mediaSubtitle: 'اختر نوع الوسيط لعرضه ومتابعته.', noMedia: 'لا توجد وسائط لهذا المفهوم بعد — ابدأ بالعناصر التعليمية أدناه.',
+          tab: { video: 'فيديو', gallery: 'صور ومخططات', doc: 'مستند PDF' },
+          captions: 'العربية', duration: 'المدة',
+          videoUnavailable: 'تعذّر تحميل الفيديو', videoUnavailableHint: 'يمكنك متابعة الشرح من النص المصاحب أدناه، أو المحاولة لاحقًا.',
+          transcriptShow: 'عرض النص المصاحب', transcriptHide: 'إخفاء النص المصاحب', transcriptTitle: 'النص المصاحب للفيديو', jumpTo: 'الانتقال إلى',
+          prevSlide: 'الشريحة السابقة', nextSlide: 'الشريحة التالية', slideNofM: 'الشريحة {n} من {m}',
+          openDoc: 'فتح المستند', newTab: '(يفتح في تبويب جديد)',
+
+          loTitle: 'العناصر التعليمية المرتبطة', loSubtitle: 'تدرّب أكثر على هذا المفهوم عبر هذه الأنشطة التفاعلية.',
+          loType: { simulation: 'محاكاة', quiz: 'اختبار قصير', flashcards: 'بطاقات مراجعة', worksheet: 'ورقة عمل' },
+          loCta: { simulation: 'تجربة المحاكاة', quiz: 'بدء التمرين', flashcards: 'بدء المراجعة', worksheet: 'فتح الورقة' },
+          loGen: { simulation: 'محاكاة تفاعلية: {c}', quiz: 'اختبار سريع: {c}', flashcards: 'بطاقات مراجعة: {c}', worksheet: 'تمارين تطبيقية: {c}' },
+          loGenDesc: { simulation: 'استكشف المفهوم بالتجربة والتفاعل المباشر.', quiz: 'أسئلة قصيرة لقياس فهمك للمفهوم.', flashcards: 'راجع المصطلحات والقواعد الأساسية بسرعة.', worksheet: 'تمارين متنوّعة لتثبيت المفهوم.' },
+
+          quizTitle: 'تحقّق من فهمك', quizSubtitle: 'جرّب حل هذا السؤال قبل الانتقال إلى المفهوم التالي.',
+          quizCheck: 'تحقّق من الإجابة', quizRetry: 'حاول مرة أخرى', quizAgain: 'إعادة السؤال',
+          quizCorrect: 'إجابة صحيحة، أحسنت!', quizHint: 'ليست صحيحة بعد. تلميح:', quizReveal: 'الإجابة الصحيحة موضّحة أعلاه.',
+          correctMark: 'الإجابة الصحيحة', yourAnswer: 'إجابتك',
+
+          sequenceLabel: 'التنقّل بين المفاهيم', prevConcept: 'المفهوم السابق', nextConcept: 'المفهوم التالي',
+          courseEnd: 'أنهيت آخر مفهوم في المقرر', backToCourse: 'العودة إلى المقرر',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Student Portal',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search my subjects & quizzes…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', logout: 'Log out',
+        roleStudent: 'Student',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', learning: 'Learning', account: 'Account' },
+        navItems: {
+          dashboard: 'Dashboard', courses: 'Courses', catalog: 'Public Catalog',
+          availableQuizzes: 'Available Quizzes', quizResults: 'Quiz Results', quizHistory: 'Attempt History',
+          profile: 'Profile', notificationCenter: 'Notification Center',
+        },
+        notif: {
+          resultPublished: 'Result published for "Motion & Force Quiz" — Physics',
+          upcomingReminder: '"Periodic Table Quiz" is due tomorrow — Chemistry',
+          gradePosted: 'Your teacher manually graded "Grammar Rules Quiz"',
+        },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          minutes: { zero: '0 min', one: '{n} min', other: '{n} min' },
+          pages:   { zero: 'No pages', one: '{n} page', other: '{n} pages' },
+        },
+
+        cv: {
+          docTitle: '{c} — FirOb', breadcrumbCourses: 'Courses',
+          notFound: 'We couldn’t find this concept', notFoundHint: 'The link may have changed, or the concept is no longer published in your study plan.', backToCourses: 'Back to Courses',
+          codeLabel: 'Concept code', viewedBefore: 'Viewed before', overviewTitle: 'Concept Overview', metaLabel: 'Concept details',
+
+          bookmark: 'Bookmark', bookmarkOn: 'Concept added to your bookmarks', bookmarkOff: 'Concept removed from your bookmarks',
+          share: 'Share', shareLinkLabel: 'Shareable Concept Link', copyLink: 'Copy link',
+          copied: 'Link copied.', copyManually: 'Couldn’t copy automatically — the link is selected, press Ctrl+C to copy it.', shareVia: 'Share via app…',
+          download: 'Attachments', attachments: 'Available Attachments', downloadFile: 'Download',
+
+          difficultyLabel: 'Difficulty', difficulty: { easy: 'Easy', medium: 'Intermediate', hard: 'Advanced' },
+          bloomLabel: 'Bloom’s level', bloom: { remember: 'Remember', understand: 'Understand', apply: 'Apply', analyze: 'Analyze' },
+
+          mediaTitle: 'Learning Media', mediaSubtitle: 'Choose a media type to view and follow along.', noMedia: 'No media for this concept yet — start with the learning objects below.',
+          tab: { video: 'Video', gallery: 'Diagrams & Images', doc: 'PDF Document' },
+          captions: 'English', duration: 'Duration',
+          videoUnavailable: 'The video couldn’t be loaded', videoUnavailableHint: 'You can follow the explanation from the transcript below, or try again later.',
+          transcriptShow: 'Show transcript', transcriptHide: 'Hide transcript', transcriptTitle: 'Video Transcript', jumpTo: 'Jump to',
+          prevSlide: 'Previous slide', nextSlide: 'Next slide', slideNofM: 'Slide {n} of {m}',
+          openDoc: 'Open document', newTab: '(opens in a new tab)',
+
+          loTitle: 'Linked Learning Objects', loSubtitle: 'Practice this concept further with these interactive activities.',
+          loType: { simulation: 'Simulation', quiz: 'Short quiz', flashcards: 'Flashcards', worksheet: 'Worksheet' },
+          loCta: { simulation: 'Try the Simulation', quiz: 'Start Exercise', flashcards: 'Start Review', worksheet: 'Open Worksheet' },
+          loGen: { simulation: 'Interactive Simulation: {c}', quiz: 'Quick Quiz: {c}', flashcards: 'Review Flashcards: {c}', worksheet: 'Practice Worksheet: {c}' },
+          loGenDesc: { simulation: 'Explore the concept through hands-on interaction.', quiz: 'Short questions to check your understanding.', flashcards: 'Quickly review the key terms and rules.', worksheet: 'Varied exercises to reinforce the concept.' },
+
+          quizTitle: 'Check Your Understanding', quizSubtitle: 'Try answering this question before moving to the next concept.',
+          quizCheck: 'Check Answer', quizRetry: 'Try Again', quizAgain: 'Restart Question',
+          quizCorrect: 'Correct — well done!', quizHint: 'Not quite yet. Hint:', quizReveal: 'The correct answer is marked above.',
+          correctMark: 'Correct answer', yourAnswer: 'Your answer',
+
+          sequenceLabel: 'Concept navigation', prevConcept: 'Previous Concept', nextConcept: 'Next Concept',
+          courseEnd: 'You reached the last concept in this course', backToCourse: 'Back to the course',
+        },
+      },
+    };
+
+    const LO_META = {
+      simulation: { icon: 'fa-flask-vial',      tone: 'bg-info-500/15 text-info-700 dark:text-blue-300',          cta: 'fa-play' },
+      quiz:       { icon: 'fa-circle-question', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500',    cta: 'fa-pen' },
+      flashcards: { icon: 'fa-layer-group',     tone: 'bg-success-500/15 text-success-700 dark:text-success-500', cta: 'fa-shuffle' },
+      worksheet:  { icon: 'fa-file-pen',        tone: 'bg-primary-500/10 text-brand',                             cta: 'fa-arrow-up-right-from-square' },
+    };
+
+    /* المفهوم الحالي من ?id= + تسلسل المقرر للسابق/التالي */
+    const params = new URLSearchParams(location.search);
+    const conceptId = params.get('id') || 'CPT-M11-014';
+    let CURRENT = null, PREV = null, NEXT = null;
+    for (const c of COURSES) {
+      const i = c.concepts.findIndex(k => k.id === conceptId);
+      if (i > -1) { CURRENT = { ...c.concepts[i], course: c }; PREV = c.concepts[i - 1] || null; NEXT = c.concepts[i + 1] || null; break; }
+    }
+    const EXTRA = (CURRENT && EXTRAS[CURRENT.id]) || {};
+    const fill = (s, c) => s.replace('{c}', c);
+    const OBJECTS = !CURRENT ? [] : (EXTRA.objects || Array.from({ length: CURRENT.los }, (_, i) => {
+      const type = LO_TYPES[i % LO_TYPES.length];
+      return { id: 'LO-' + CURRENT.id.replace('CPT-', '') + '-' + (i + 1), type, minutes: [10, 7, 5, 20][i % 4],
+               ar: fill(I18N.ar.cv.loGen[type], CURRENT.ar), en: fill(I18N.en.cv.loGen[type], CURRENT.en),
+               descAr: I18N.ar.cv.loGenDesc[type], descEn: I18N.en.cv.loGenDesc[type] };
+    }));
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'courses',
+      liveMsg: '',
+      get expanded() { return this.mobile || !this.collapsed; },
+      get altLocale() { return this.locale === 'ar' ? 'en' : 'ar'; },
+      get studentName() { return STUDENT[this.locale]; },
+      get initials() { return STUDENT[this.locale].trim().split(/\s+/).slice(0, 2).map(w => w[0]).join(this.locale === 'ar' ? '‌' : '').toUpperCase(); },
+      announce(msg) { this.liveMsg = ''; this.$nextTick(() => { this.liveMsg = msg; }); },
+
+      /* ---------- المفهوم ---------- */
+      concept: CURRENT,
+      extra: EXTRA,
+      objects: OBJECTS,
+      prevConcept: PREV,
+      nextConcept: NEXT,
+      LO_META,
+      TAB_ICON: { video: 'fa-circle-play', gallery: 'fa-images', doc: 'fa-file-pdf' },
+      get attachments() { return EXTRA.attachments || []; },
+      get pdf() { return this.attachments.find(a => a.type === 'pdf') || null; },
+      get slides() { return EXTRA.slides || []; },
+      get tabs() { return [EXTRA.video && 'video', this.slides.length && 'gallery', this.pdf && 'doc'].filter(Boolean); },
+      description(loc) { const c = this.concept; return c ? (loc === 'ar' ? (EXTRA.longAr || c.descAr) : (EXTRA.longEn || c.descEn)) : ''; },
+      get shareUrl() { return location.href.split(/[?#]/)[0] + '?id=' + (this.concept?.id || ''); },
+      get canNativeShare() { return !!navigator.share && this.mobile; },
+
+      /* ---------- الإجراءات العلوية ---------- */
+      bookmarked: false,
+      viewedBefore: false,
+      shareOpen: false,
+      downloadOpen: false,
+      copyState: '',               // '' | 'ok' | 'manual'
+      toggleBookmark() {
+        const ids = store.get('firob-bookmarks').filter(x => x !== this.concept.id);
+        this.bookmarked = !this.bookmarked;
+        if (this.bookmarked) ids.push(this.concept.id);
+        store.set('firob-bookmarks', ids);
+        this.announce(this.t(this.bookmarked ? 'cv.bookmarkOn' : 'cv.bookmarkOff'));
+      },
+      togglePopover(name) {
+        const key = name + 'Open', other = name === 'share' ? 'downloadOpen' : 'shareOpen';
+        this[other] = false; this[key] = !this[key]; this.copyState = '';
+        if (this[key]) this.$nextTick(() => document.querySelector('#' + name + '-pop input, #' + name + '-pop a, #' + name + '-pop button')?.focus());
+      },
+      closePopover(name) {
+        if (!this[name + 'Open']) return;
+        this[name + 'Open'] = false;
+        this.$refs[name + 'Btn']?.focus();
+      },
+      async copyShareLink() {
+        try {
+          if (!navigator.clipboard || !window.isSecureContext) throw new Error('no-clipboard');
+          await navigator.clipboard.writeText(this.shareUrl);
+          this.copyState = 'ok';
+        } catch (e) {
+          this.copyState = 'manual';          // لا ندّعي نجاحًا لم يحدث
+          this.$refs.shareLink?.focus(); this.$refs.shareLink?.select();
+        }
+        this.announce(this.t(this.copyState === 'ok' ? 'cv.copied' : 'cv.copyManually'));
+      },
+      async nativeShare() {
+        try { await navigator.share({ title: this.concept[this.locale], url: this.shareUrl }); this.shareOpen = false; }
+        catch (e) { /* أُلغيت المشاركة — لا شيء */ }
+      },
+
+      /* ---------- الوسائط ---------- */
+      mediaTab: null,
+      videoTime: 0, videoReady: false, videoError: false,
+      transcriptOpen: false,
+      gallerySlide: 0,
+      get activeCue() {
+        const cues = EXTRA.video?.cues || [];
+        let a = -1; cues.forEach((c, i) => { if (this.videoTime >= c.t) a = i; });
+        return this.videoReady ? a : -1;
+      },
+      seek(t) {
+        const v = this.$refs.video; if (!v || this.videoError) return;
+        v.currentTime = t; v.play?.().catch(() => {}); v.focus();
+      },
+      tabKey(e) {
+        const tabs = this.tabs, n = tabs.length, i = tabs.indexOf(this.mediaTab), rtl = this.locale === 'ar';
+        const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[e.key];
+        let j = null;
+        if (step) j = (i + step + n) % n; else if (e.key === 'Home') j = 0; else if (e.key === 'End') j = n - 1;
+        if (j === null) return;
+        e.preventDefault();
+        this.mediaTab = tabs[j];
+        this.$nextTick(() => document.getElementById('media-tab-' + this.mediaTab)?.focus());
+      },
+      goSlide(i) {
+        const n = this.slides.length; if (!n) return;
+        this.gallerySlide = (i + n) % n;
+        const s = this.slides[this.gallerySlide];
+        this.announce(this.tf('cv.slideNofM', { n: this.fmt(this.gallerySlide + 1), m: this.fmt(n) }) + ': ' + s[this.locale]);
+      },
+      slideBy(d) { this.goSlide(this.gallerySlide + d); },
+
+      /* ---------- تحقّق من فهمك ---------- */
+      quizSelected: null,
+      quizChecked: false,
+      quizAttempts: 0,
+      get quizIsCorrect() { return this.quizChecked && this.quizSelected === EXTRA.quiz?.answer; },
+      get quizDone() { return this.quizChecked && (this.quizIsCorrect || this.quizAttempts >= 2); },   // كشف الإجابة بعد محاولتين فقط
+      get quizFeedback() {
+        const q = EXTRA.quiz; if (!q || !this.quizChecked) return '';
+        const ar = this.locale === 'ar';
+        if (this.quizIsCorrect) return this.t('cv.quizCorrect') + ' ' + (ar ? q.explainAr : q.explainEn);
+        if (!this.quizDone) return this.t('cv.quizHint') + ' ' + (ar ? q.hintAr : q.hintEn);
+        return this.t('cv.quizReveal') + ' ' + (ar ? q.explainAr : q.explainEn);
+      },
+      optionState(i) {
+        const q = EXTRA.quiz;
+        if (!this.quizChecked) return this.quizSelected === i ? 'is-selected' : '';
+        if (this.quizSelected === i) return i === q.answer ? 'is-correct' : 'is-incorrect';
+        return this.quizDone && i === q.answer ? 'is-correct' : 'opacity-70';
+      },
+      checkQuiz() {
+        if (this.quizSelected === null) return;
+        this.quizAttempts++; this.quizChecked = true;
+        this.$nextTick(() => document.getElementById('quiz-feedback')?.focus());   // التركيز لا يسقط إلى أعلى الصفحة
+      },
+      retryQuiz() {
+        this.quizChecked = false; this.quizSelected = null;
+        this.$nextTick(() => document.querySelector('input[name="cyu"]')?.focus());
+      },
+      resetQuiz() { this.quizAttempts = 0; this.retryQuiz(); },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) { return String(this.t(path)).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : '')); },
+      get intlLocale() { return this.locale === 'ar' ? 'ar-u-nu-latn' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intlLocale).format(n); },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      fmtSize(bytes) {
+        const mb = bytes >= 1048576;
+        return new Intl.NumberFormat(this.intlLocale, { style: 'unit', unit: mb ? 'megabyte' : 'kilobyte', unitDisplay: 'short', maximumFractionDigits: 1 })
+          .format(mb ? bytes / 1048576 : Math.round(bytes / 1024));
+      },
+      fmtTime(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); },
+      relMin(min) {
+        const rtf = new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto', style: 'short' });
+        return min < 60 ? rtf.format(-min, 'minute') : (min < 1440 ? rtf.format(-Math.round(min / 60), 'hour') : rtf.format(-Math.round(min / 1440), 'day'));
+      },
+      updateTitle() { document.title = this.concept ? this.tf('cv.docTitle', { c: this.concept[this.locale] }) : this.t('cv.notFound') + ' — FirOb'; },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        this.updateTitle();
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.altLocale); },
+
+      /* ---------- التنقّل (بوابة الطالب) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'student-dashboard.html' },
+        ]},
+        { group: 'learning', items: [
+          { key: 'courses', icon: 'fa-solid fa-book-open', href: 'student-courses.html' },
+          { key: 'catalog', icon: 'fa-solid fa-layer-group', href: 'learning-objects-catalog.html' },
+          { key: 'availableQuizzes', icon: 'fa-solid fa-pen-to-square', href: 'quiz-player.html' },
+          { key: 'quizResults', icon: 'fa-solid fa-chart-simple', href: 'student-quiz-result.html' },
+          { key: 'quizHistory', icon: 'fa-solid fa-clock-rotate-left', href: 'student-quiz-history.html' },
+        ]},
+        { group: 'account', items: [
+          { key: 'profile', icon: 'fa-regular fa-user', href: '../common/profile.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'resultPublished', min: 15,   read: false, icon: 'fa-solid fa-square-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'upcomingReminder', min: 120, read: false, icon: 'fa-regular fa-clock', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+        { id: 3, key: 'gradePosted', min: 1440,     read: true,  icon: 'fa-solid fa-pen', tone: 'bg-primary-500/15 text-brand' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- عامة ---------- */
+      init() {
+        this.updateTitle();
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        this.mediaTab = this.tabs[0] || null;
+        if (this.concept) {
+          this.bookmarked = store.get('firob-bookmarks').includes(this.concept.id);
+          const viewed = store.get('firob-viewed');
+          this.viewedBefore = viewed.includes(this.concept.id);
+          if (!this.viewedBefore) store.set('firob-viewed', viewed.concat(this.concept.id).slice(-200));
+        }
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          if (g && g.offsetParent !== null) g.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; this.shareOpen = false; this.downloadOpen = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

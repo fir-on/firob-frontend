@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- لوحة تحكم محمية خلف تسجيل الدخول: لا فهرسة ولا وصف تسويقي ولا OG -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>سجل النشاطات والتدقيق — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج اللغة والاتجاه قبل الرسم (يمنع قفزة RTL ↔ LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || null;
+    if (!l) { try { l = localStorage.getItem('firob-locale'); } catch (e) {} }
+    l = l === 'en' ? 'en' : 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ الأيقونات: تحميل غير حاجب للرسم (المساحة محجوزة مسبقًا في CSS لمنع القفز) -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin referrerpolicy="no-referrer" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer"></noscript>
+
+<!-- ⑤ Tailwind (إصدار مثبّت) + التوكنز المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        danger: v('danger'), ok: v('ok'), warn: v('warn'), info: v('info'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑥ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* ألوان الحالة النصية — كلها ≥ 4.5:1 على البطاقة والشارات الشفافة */
+      --danger: 185 28 28;  --ok: 4 120 87;       --warn: 180 83 9;    --info: 29 78 216;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --warn: 252 211 77;  --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي — clip لا يكسر position: sticky */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    i[class*='fa-'] { display: inline-block; min-width: 1em; text-align: center; font-style: normal; }
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .dark .panel { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .icon-btn { @apply relative inline-grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-soft hover:text-brand disabled:opacity-50 sm:h-10 sm:w-10; }
+    .nav-link { @apply flex min-h-[2.75rem] items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line-strong/60 text-sm text-muted transition-colors hover:bg-soft hover:text-brand disabled:pointer-events-none disabled:opacity-40 sm:h-9 sm:w-9; }
+    .act[aria-current="page"] { @apply border-transparent bg-primary-500 text-white hover:bg-primary-600 hover:text-white; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info/15 text-info; }
+    .badge-danger  { @apply bg-error-500/15 text-danger; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block min-h-[2.75rem] w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover:not(:disabled) { @apply border-primary-500; }
+    .field:focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled, .field[aria-disabled="true"] { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار (حلقة التركيز من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition-colors disabled:pointer-events-none disabled:opacity-50; touch-action: manipulation; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line-strong/60 bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex min-h-[2.75rem] w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition-colors hover:bg-soft focus:bg-soft focus:outline-none disabled:cursor-not-allowed disabled:opacity-40; }
+    .menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--brand)); }
+
+    /* ---------- قائمة الاختيار المخصصة (Select-only Combobox) ---------- */
+    .combo-list { @apply absolute z-50 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex min-h-[2.75rem] w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2 text-start text-sm font-medium text-ink transition-colors hover:bg-soft sm:min-h-[2.5rem]; }
+    .combo-option.is-active   { @apply bg-soft; box-shadow: inset 0 0 0 2px rgb(var(--brand) / .5); }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- SweetAlert2 ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; border: 1px solid rgb(var(--line)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; font-size: .9375rem !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-timer-progress-bar { background: rgb(var(--brand) / .5) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- شارة التنبيه الأمني ---------- */
+    .badge-warning { @apply bg-warning-500/15 text-warn; }
+
+    /* ---------- نوع الحدث (radiogroup) وفئة الإجراء (toggle) ---------- */
+    .pill { @apply inline-flex min-h-[2.75rem] shrink-0 select-none items-center gap-1.5 rounded-full border px-3.5 text-xs font-bold transition-colors sm:min-h-[2.25rem]; }
+    .pill[aria-checked="false"] { @apply border-line-strong/60 bg-card text-muted hover:border-primary-500 hover:text-ink; }
+    .pill[aria-checked="true"]  { @apply border-primary-500 bg-primary-500 text-white; }
+    .pill .count, .seg-btn .count { @apply min-w-[1.25rem] rounded-full bg-line px-1.5 text-center text-[11px] text-ink; }
+    .pill[aria-checked="true"] .count, .seg-btn[aria-selected="true"] .count { @apply bg-white/25 text-white; }
+    .chip { @apply inline-flex min-h-[2.75rem] shrink-0 select-none items-center gap-1.5 rounded-full border px-3 text-xs font-bold transition-colors sm:min-h-[2.25rem]; }
+    .chip[aria-pressed="false"] { @apply border-line-strong/60 bg-card text-muted hover:border-primary-500 hover:text-ink; }
+    .chip[aria-pressed="true"]  { @apply border-brand bg-soft text-brand; }
+
+    /* ---------- أزرار مقطّعة (تبويبات الدرج) ---------- */
+    .seg { @apply inline-flex flex-wrap items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex min-h-[2.5rem] items-center gap-1.5 rounded-lg px-3 text-sm font-bold text-muted transition-colors hover:text-ink; }
+    .seg-btn[aria-selected="true"] { @apply bg-primary-500 text-white shadow hover:text-white; }
+
+    /* ---------- الخط الزمني ---------- */
+    .tl-dot { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm ring-4 ring-card; }
+    .tl-card { @apply min-w-0 flex-1 rounded-xl border border-line bg-card p-4 text-start transition hover:border-primary-500 hover:shadow-card; }
+    .tl-card:focus-within { border-color: rgb(var(--brand)); }
+
+    /* ---------- الدرج الجانبي + المقارنة ---------- */
+    .drawer-panel { @apply absolute inset-y-0 flex w-full max-w-xl flex-col border-line bg-card shadow-pop; inset-inline-end: 0; border-inline-start-width: 1px; }
+    .diff-cell { @apply min-w-0 break-words rounded-lg border p-3 text-xs leading-6; }
+    .diff-old { @apply border-error-500/30 bg-error-500/5 text-danger; }
+    .diff-new { @apply border-success-500/30 bg-success-500/5 text-ok; }
+    .diff-empty { @apply border-dashed border-line-strong/60 text-muted; }
+
+    /* ---------- مقياس الحصة ---------- */
+    .quota-track { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-700; }
+  }
+</style>
+
+<!-- ⑦ Alpine.js 3.14.8 + Focus -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑧ SweetAlert2 (إصدار مثبّت، مؤجَّل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+</head>
+
+<body x-data="shell()"
+      @keydown.escape.window="closeAll()"
+      @keydown.window.ctrl.k.prevent="focusSearch()" @keydown.window.meta.k.prevent="focusSearch()"
+      @scroll.window.passive="openMenuId !== null && closeMenu()" @resize.window="openMenuId !== null && closeMenu()"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلانات قارئ الشاشة -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav) ? 'true' : null" :inert="mobile && !mobileNav">
+
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <img x-show="expanded" src="../asset/images/firob-logo.png" alt="FirOb" width="124" height="32" decoding="async"
+             class="block h-8 w-auto max-w-[8.5rem] shrink-0 object-contain dark:brightness-125">
+        <img x-show="!expanded" x-cloak src="../asset/images/firob-favicon.png" alt="FirOb" width="36" height="36" decoding="async"
+             class="block h-9 w-9 shrink-0 object-contain">
+        <span class="min-w-0 flex-1 border-s border-line ps-3" x-show="expanded">
+          <span class="block truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></span>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="closeMobileNav()" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)" :id="'ng-' + group.group"></p>
+          <div class="mx-auto mb-2 h-px w-8 bg-line" x-show="!expanded" aria-hidden="true"></div>
+          <ul class="space-y-1" role="list" :aria-labelledby="expanded ? 'ng-' + group.group : null">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href" class="nav-link relative"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? ' (' + navCount(item) + ')' : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold"
+                        :class="active === item.key ? 'bg-white/20 text-white' : (item.tone === 'primary' ? 'bg-primary-500/15 text-brand' : 'bg-accent-500 text-onaccent')"
+                        x-text="navCount(item)"></span>
+                  <span x-show="navCount(item) && !expanded" x-cloak class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+                        :class="item.tone === 'primary' ? 'bg-primary-500' : 'bg-accent-500'" aria-hidden="true"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()"
+              aria-controls="sidebar" :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+        <i class="fa-solid fa-angles-left transition-transform" :class="collapsed ? 'ltr:-scale-x-100' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 ps-[max(.5rem,env(safe-area-inset-left))] pe-[max(.5rem,env(safe-area-inset-right))] sm:gap-2 sm:ps-6 sm:pe-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" x-ref="navToggle" class="icon-btn lg:hidden" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="mobileNav.toString()" :aria-label="mobileNav ? t('closeMenu') : t('openMenu')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn hidden lg:inline-grid" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')" aria-keyshortcuts="Control+K Meta+K"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong/60 bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted lg:inline-flex" x-text="isMac ? '⌘ K' : 'Ctrl K'">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button type="button" class="icon-btn md:hidden" @click="toggleMobileSearch()" aria-controls="mobile-search"
+                  :aria-expanded="searchOpen.toString()" :aria-label="t('openSearch')">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          </button>
+
+          <button type="button"
+                  class="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10"
+                  @click="toggleLocale()" :aria-label="t('switchLang')" :title="t('switchLang')">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" aria-hidden="true" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="t('darkMode')" :title="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" x-ref="notifBtn" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="dialog" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications') + (unread ? ' — ' + tf('notifUnread', { n: unread }) : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="dialog" aria-labelledby="notif-title">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <h2 id="notif-title" class="font-extrabold" x-text="t('notifications')"></h2>
+                <button type="button" class="min-h-[2.25rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                        :disabled="!unread" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('unreadSr') + ': '"></span>
+                        <span x-text="tf('notif.' + n.key, { pct: seatPct })"></span>
+                      </p>
+                      <p class="text-xs text-muted"><time :datetime="isoAgo(n.mins)" x-text="ago(n.mins)"></time></p>
+                    </div>
+                    <span x-show="!n.read" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true"></span>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center rounded-xl text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i><span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- الحساب -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" x-ref="profileBtn" class="flex min-h-[2.75rem] max-w-[14rem] items-center gap-2 rounded-xl p-1 transition-colors hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials(me.name)"></span>
+              <span class="sr-only md:hidden" x-text="t('accountMenu')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="me.name"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted transition-transform md:block" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <nav id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-60" :aria-label="t('accountMenu')">
+              <ul role="list" class="py-1">
+                <li><a href="../common/profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="TenantSettingsForm.html" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('navItems.orgSettings')"></span></a></li>
+                <li><a href="../common/errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('statusErrors')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4 rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <form id="mobile-search" role="search" x-cloak x-show="searchOpen" x-transition.opacity class="border-t border-line px-3 py-2 md:hidden" @submit.prevent>
+        <label for="q-m" class="sr-only" x-text="t('searchPlaceholder')"></label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q-m" x-ref="mobileSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')"
+                 class="h-11 w-full rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+        </div>
+      </form>
+
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li><span class="text-ink" aria-current="page" x-text="t('navItems.activityLog')"></span></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-06: سجل النشاطات والتدقيق (activity_log) ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('al.title')">سجل النشاطات والتدقيق</h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('al.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex min-h-[2.75rem] items-center gap-2 rounded-xl border border-line bg-card px-3.5 text-xs font-bold text-muted">
+            <i class="fa-solid fa-lock text-brand" aria-hidden="true"></i><span x-text="t('al.readOnlyPill')"></span>
+          </span>
+          <button type="button" class="btn btn-outline" :disabled="!filtered.length" @click="exportCsv()">
+            <i class="fa-solid fa-file-csv" aria-hidden="true"></i><span x-text="tf('al.exportN', { n: fmt(filtered.length) })"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ملاحظة الاحتفاظ -->
+      <div role="note" class="flex items-start gap-3 rounded-2xl border border-line border-s-4 border-s-primary-500 bg-soft/60 p-4 text-sm">
+        <i class="fa-solid fa-shield-halved mt-0.5 shrink-0 text-brand" aria-hidden="true"></i>
+        <p class="text-ink"><span class="font-extrabold" x-text="t('al.notice.title')"></span> — <span class="text-muted" x-text="tf('al.notice.body', { d: fmt(RETENTION_DAYS) })"></span></p>
+      </div>
+
+      <!-- المؤشرات (محسوبة من السجل) -->
+      <section aria-labelledby="kpi-title">
+        <h2 id="kpi-title" class="sr-only" x-text="t('al.kpi.title')"></h2>
+        <ul class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" role="list">
+          <template x-for="k in kpis" :key="k.key">
+            <li>
+              <button type="button" class="panel flex h-full w-full items-start justify-between gap-3 p-4 text-start transition-colors hover:border-primary-500 sm:p-5"
+                      @click="applyKpi(k)" :aria-describedby="'kpi-hint-' + k.key">
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-bold text-muted" x-text="t('al.kpi.' + k.key)"></span>
+                  <span class="mt-2 block text-2xl font-extrabold tabular-nums sm:text-3xl" x-text="fmt(k.value)"></span>
+                  <span :id="'kpi-hint-' + k.key" class="mt-0.5 block text-xs text-muted" x-text="t('al.kpi.hint')"></span>
+                </span>
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl" :class="k.tone" aria-hidden="true"><i :class="'fa-solid ' + k.icon"></i></span>
+              </button>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ================= البحث والفلاتر (تعمل فعلًا) ================= -->
+      <section class="panel space-y-3.5 p-3.5 sm:p-4" aria-labelledby="filters-title">
+        <h2 id="filters-title" class="sr-only" x-text="t('al.toolbar.title')"></h2>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <form role="search" class="relative min-w-0 flex-1" @submit.prevent>
+            <label for="al-q" class="sr-only" x-text="t('al.toolbar.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+            <input id="al-q" x-ref="alSearch" type="search" x-model="search" autocomplete="off" enterkeyhint="search" :placeholder="t('al.toolbar.searchPlaceholder')"
+                   aria-controls="al-feed"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          </form>
+
+          <!-- الفترة الزمنية -->
+          <div class="relative shrink-0 lg:w-60"
+               x-data="selectDropdown({ id: 'al-range', options: () => RANGES.map(r => ({ value: r, label: t('al.toolbar.dateRange.' + r) })), get: () => dateRange, set: (v) => dateRange = v })"
+               @click.outside="closeList()">
+            <span id="al-range-label" class="sr-only" x-text="t('al.toolbar.dateRangeLabel')"></span>
+            <button type="button" id="al-range" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="al-range-label al-range"
+                    :aria-expanded="open.toString()" aria-controls="al-range-list" :aria-activedescendant="activeId"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold" :class="dateRange !== 'last30' && '!border-brand'"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="flex min-w-0 items-center gap-2"><i class="fa-regular fa-calendar text-muted" aria-hidden="true"></i><span class="truncate" x-text="triggerLabel"></span></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="al-range-list" role="listbox" aria-labelledby="al-range-label" tabindex="-1"
+                x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="resetFilters(true)" :disabled="!filtersActive">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('al.toolbar.resetFilters')"></span>
+          </button>
+        </div>
+
+        <!-- نطاق مخصّص — ضمن مدة الاحتفاظ ومع تحقق من الترتيب -->
+        <div x-show="dateRange === 'custom'" x-cloak class="grid grid-cols-1 gap-2.5 border-t border-line pt-3.5 sm:grid-cols-2 lg:w-1/2">
+          <div>
+            <label for="al-from" class="label" x-text="t('al.toolbar.from')"></label>
+            <input id="al-from" type="date" class="field" dir="ltr" x-model="customFrom" :min="minDate" :max="customTo || maxDate"
+                   :aria-invalid="(!!rangeError).toString()" :aria-describedby="rangeError ? 'al-range-err' : 'al-range-hint'">
+          </div>
+          <div>
+            <label for="al-to" class="label" x-text="t('al.toolbar.to')"></label>
+            <input id="al-to" type="date" class="field" dir="ltr" x-model="customTo" :min="customFrom || minDate" :max="maxDate"
+                   :aria-invalid="(!!rangeError).toString()" :aria-describedby="rangeError ? 'al-range-err' : 'al-range-hint'">
+          </div>
+          <p id="al-range-hint" x-show="!rangeError" class="hint sm:col-span-2" x-text="tf('al.toolbar.rangeHint', { d: fmt(RETENTION_DAYS) })"></p>
+          <p id="al-range-err" x-show="rangeError" class="err sm:col-span-2" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="rangeError ? t('al.toolbar.' + rangeError) : ''"></span></p>
+        </div>
+
+        <!-- نوع الحدث (اختيار واحد) -->
+        <div class="flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+          <span id="al-type-label" class="shrink-0 text-xs font-extrabold text-muted" x-text="t('al.toolbar.eventTypeLabel')"></span>
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="al-type-label" @keydown="radioKey($event, TYPES, 'eventType', 'ty-')">
+            <template x-for="ty in TYPES" :key="ty">
+              <button type="button" role="radio" class="pill" :id="'ty-' + ty" :aria-checked="(eventType === ty).toString()" :tabindex="eventType === ty ? 0 : -1"
+                      @click="eventType = ty">
+                <span x-text="t('al.toolbar.eventTypes.' + ty)"></span>
+                <span class="count tabular-nums" x-text="fmt(countType(ty))"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- فئة الإجراء (اختياري، يمكن إلغاؤه) -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="al-act-label" class="shrink-0 text-xs font-extrabold text-muted" x-text="t('al.toolbar.actionLabel')"></span>
+          <div class="flex flex-wrap gap-2" role="group" aria-labelledby="al-act-label">
+            <template x-for="a in ACTIONS" :key="a">
+              <button type="button" class="chip" :class="meta(a).chip" :aria-pressed="(actionFilter === a).toString()" @click="actionFilter = actionFilter === a ? null : a">
+                <i class="fa-solid text-[10px]" :class="actionFilter === a ? 'fa-check' : meta(a).icon" aria-hidden="true"></i>
+                <span x-text="t('al.action.' + a)"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= الخط الزمني ================= -->
+      <section id="al-feed" class="panel p-4 sm:p-6" aria-labelledby="al-feed-title">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="al-feed-title" tabindex="-1" class="rounded text-base font-extrabold text-ink focus:outline-none" x-text="t('al.feedTitle')"></h2>
+          <p class="text-xs font-bold text-muted" x-text="tf('al.resultsHint', { n: fmt(Math.min(limit, filtered.length)), total: fmt(filtered.length) })"></p>
+        </div>
+
+        <!-- حالة لا نتائج -->
+        <div x-show="!filtered.length" x-cloak class="py-14 text-center">
+          <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-clock-rotate-left text-xl"></i></span>
+          <p class="font-extrabold text-ink" x-text="t('al.emptyTitle')"></p>
+          <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('al.emptySubtitle')"></p>
+          <button type="button" x-show="filtersActive" @click="resetFilters(true)" class="btn btn-outline mt-4"><i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('al.toolbar.resetFilters')"></span></button>
+        </div>
+
+        <template x-for="grp in grouped" :key="grp.k">
+          <section class="mb-2" :aria-labelledby="'gh-' + grp.k">
+            <div class="mb-3 flex items-center gap-3">
+              <h3 :id="'gh-' + grp.k" class="shrink-0 text-xs font-extrabold text-muted">
+                <span x-text="t('al.groups.' + grp.k)"></span>
+                <span class="ms-1 font-bold tabular-nums" x-text="'(' + fmt(grp.items.length) + ')'"></span>
+              </h3>
+              <span class="h-px flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <ol class="mb-4" role="list">
+              <template x-for="(e, i) in grp.items" :key="e.id">
+                <li class="relative flex gap-3 sm:gap-4" :class="i < grp.items.length - 1 && 'pb-5'">
+                  <div class="relative flex flex-col items-center" aria-hidden="true">
+                    <span class="tl-dot" :class="meta(e.action).dot"><i :class="'fa-solid ' + meta(e.action).icon"></i></span>
+                    <span x-show="i < grp.items.length - 1" class="mt-1 w-0.5 flex-1 bg-line"></span>
+                  </div>
+                  <article class="tl-card group cursor-pointer" :class="selectedEvent && selectedEvent.id === e.id && drawerOpen && '!border-brand'"
+                           :aria-labelledby="'ev-' + e.id" @click="if (!$event.target.closest('button,a')) openDrawer(e, $el.querySelector('[data-open]'))">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <div class="min-w-0 flex-1">
+                        <h4 :id="'ev-' + e.id" class="font-bold leading-6 text-ink" x-text="describe(e)"></h4>
+                        <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                          <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-extrabold"
+                                :class="e.causer ? 'bg-soft text-brand' : 'bg-warning-500/20 text-warn'" aria-hidden="true" x-text="e.causer ? initials(e.causer.name) : '؟'"></span>
+                          <span class="font-bold" x-text="e.causer ? e.causer.name : t('al.unknownUser')"></span>
+                          <span x-show="e.causer" class="text-xs text-muted" x-text="e.causer ? '· ' + roleLabel(e.causer.role) : ''"></span>
+                        </p>
+                      </div>
+                      <div class="flex shrink-0 flex-col items-end gap-1.5">
+                        <span class="badge" :class="meta(e.action).badge"><span x-text="t('al.action.' + e.action)"></span></span>
+                        <time class="text-xs font-bold text-muted" :datetime="iso(e.at)" :title="fmtFull(e.at)" x-text="rel(e.at)"></time>
+                      </div>
+                    </div>
+                    <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                      <span x-show="e.subject" class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr" x-text="e.subject ? e.subject.type + (e.subject.id ? ' #' + e.subject.id : '') : ''"></bdi></span>
+                      <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-location-dot" aria-hidden="true"></i><bdi dir="ltr" x-text="e.ip"></bdi></span>
+                      <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid" :class="e.mobile ? 'fa-mobile-screen' : 'fa-desktop'" aria-hidden="true"></i><bdi dir="ltr" x-text="e.browser + ' · ' + e.os"></bdi></span>
+                      <span x-show="diffRows(e).length" class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-code-compare" aria-hidden="true"></i><span x-text="tf('al.fieldsChanged', { n: fmt(diffRows(e).length) })"></span></span>
+                      <button type="button" data-open class="ms-auto inline-flex min-h-[2.25rem] items-center gap-1 rounded-lg px-2 text-xs font-bold text-brand hover:bg-soft"
+                              @click="openDrawer(e, $el)" :aria-describedby="'ev-' + e.id">
+                        <span x-text="t('al.viewDetails')"></span><i class="fa-solid fa-chevron-left text-[10px] ltr:-scale-x-100" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </article>
+                </li>
+              </template>
+            </ol>
+          </section>
+        </template>
+
+        <!-- تحميل الأقدم (ترقيم مؤشّري) -->
+        <div x-show="filtered.length" class="mt-2 flex flex-col items-center gap-2 border-t border-line pt-5">
+          <button type="button" x-show="hasMore" class="btn btn-outline" :disabled="loadingMore" :aria-busy="loadingMore.toString()" @click="loadOlder()">
+            <i class="fa-solid fa-circle-notch animate-spin" x-show="loadingMore" x-cloak aria-hidden="true"></i>
+            <i class="fa-solid fa-angles-down" x-show="!loadingMore" aria-hidden="true"></i>
+            <span x-text="loadingMore ? t('al.pagination.loading') : tf('al.pagination.loadOlderN', { n: fmt(Math.min(PAGE, filtered.length - limit)) })"></span>
+          </button>
+          <p x-show="!hasMore" class="text-xs font-bold text-muted" x-text="tf('al.pagination.end', { d: fmt(RETENTION_DAYS) })"></p>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" loading="lazy" decoding="async" class="block h-7 w-auto shrink-0 object-contain dark:brightness-125">
+          <p class="min-w-0 text-sm text-muted">
+            <span x-text="t('footer.tagline')"></span>
+            <span class="block text-xs sm:inline sm:text-sm">
+              <span class="hidden sm:inline" aria-hidden="true">·</span>
+              © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+            </span>
+          </p>
+        </div>
+        <nav :aria-label="t('footer.nav')" class="min-w-0">
+          <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+            <li><a href="../index.html" class="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-muted underline-offset-4 transition-colors hover:text-brand hover:underline"><i class="fa-solid fa-sitemap text-xs" aria-hidden="true"></i><span x-text="t('footer.screens')"></span></a></li>
+            <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+              <li><span class="inline-flex cursor-not-allowed items-center text-muted/70" aria-disabled="true"><span x-text="t('footer.' + k)"></span><span class="sr-only" x-text="' (' + t('footer.soon') + ')'"></span></span></li>
+            </template>
+          </ul>
+        </nav>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="badge badge-muted" dir="ltr" x-text="version"></span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     الدرج الجانبي — فاحص الحدث (قراءة فقط): نظرة عامة + التغييرات + JSON الخام
+     ========================================================================== -->
+<div x-show="drawerOpen" x-cloak class="fixed inset-0 z-[60]">
+  <div x-show="drawerOpen" x-transition.opacity class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDrawer()" aria-hidden="true"></div>
+
+  <div x-show="drawerOpen" x-trap.noscroll.inert="drawerOpen" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-describedby="drawer-desc"
+       x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition-transform duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="drawer-panel" @keydown.alt.arrow-down.prevent="step(1)" @keydown.alt.arrow-up.prevent="step(-1)">
+
+    <template x-if="selectedEvent">
+      <div class="flex h-full min-h-0 flex-col">
+        <!-- الرأس -->
+        <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4 sm:p-5" style="padding-top: max(1rem, env(safe-area-inset-top, 0px));">
+          <div class="min-w-0">
+            <p class="text-xs font-extrabold text-muted" x-text="t('al.drawer.title')"></p>
+            <h2 id="drawer-title" class="mt-0.5 text-lg font-extrabold leading-7 text-ink" x-text="describe(selectedEvent)"></h2>
+            <p id="drawer-desc" class="mt-1 text-xs text-muted">
+              <time :datetime="iso(selectedEvent.at)" x-text="fmtFull(selectedEvent.at)"></time> · <span x-text="rel(selectedEvent.at)"></span>
+            </p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <span class="badge" :class="meta(selectedEvent.action).badge"><i class="fa-solid text-[10px]" :class="meta(selectedEvent.action).icon" aria-hidden="true"></i><span x-text="t('al.action.' + selectedEvent.action)"></span></span>
+              <span class="badge badge-muted"><i class="fa-solid fa-lock text-[10px]" aria-hidden="true"></i><span x-text="t('al.drawer.readOnly')"></span></span>
+            </div>
+          </div>
+          <button type="button" class="icon-btn shrink-0" @click="closeDrawer()" :aria-label="t('al.drawer.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </header>
+
+        <!-- التبويبات -->
+        <div class="shrink-0 border-b border-line px-4 pt-3 sm:px-5">
+          <div class="seg mb-3" role="tablist" :aria-label="t('al.drawer.tabsLabel')" @keydown="tabKey($event)">
+            <template x-for="tb in TABS" :key="tb">
+              <button type="button" role="tab" class="seg-btn" :id="'dt-' + tb" :aria-controls="'dp-' + tb"
+                      :aria-selected="(drawerTab === tb).toString()" :tabindex="drawerTab === tb ? 0 : -1" @click="drawerTab = tb">
+                <i class="fa-solid" :class="{ overview: 'fa-id-card', diff: 'fa-code-compare', raw: 'fa-code' }[tb]" aria-hidden="true"></i>
+                <span x-text="t('al.drawer.tabs.' + tb)"></span>
+                <span x-show="tb === 'diff' && diffRows(selectedEvent).length" class="count tabular-nums" x-text="fmt(diffRows(selectedEvent).length)"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+
+          <!-- نظرة عامة -->
+          <div id="dp-overview" role="tabpanel" aria-labelledby="dt-overview" tabindex="0" x-show="drawerTab === 'overview'" class="space-y-4 focus:outline-none">
+            <!-- تنبيه الحدث الأمني -->
+            <div x-show="selectedEvent.action === 'security'" class="flex items-start gap-2.5 rounded-xl border border-warning-500/40 bg-warning-500/10 p-3.5 text-sm font-bold text-warn">
+              <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
+              <p>
+                <span x-text="t('al.drawer.securityNote')"></span>
+                <template x-if="selectedEvent.attempted_email">
+                  <span class="mt-1 block font-medium text-ink"><span x-text="t('al.drawer.attemptedEmail')"></span>: <bdi dir="ltr" class="font-bold" x-text="selectedEvent.attempted_email"></bdi></span>
+                </template>
+              </p>
+            </div>
+
+            <section class="rounded-xl border border-line p-4" aria-labelledby="dr-causer">
+              <h3 id="dr-causer" class="mb-3 text-xs font-extrabold text-muted" x-text="t('al.drawer.meta.causer')"></h3>
+              <div class="flex items-center gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-extrabold"
+                      :class="selectedEvent.causer ? 'bg-primary-500 text-white' : 'bg-warning-500/20 text-warn'" aria-hidden="true"
+                      x-text="selectedEvent.causer ? initials(selectedEvent.causer.name) : '؟'"></span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-extrabold" x-text="selectedEvent.causer ? selectedEvent.causer.name : t('al.unknownUser')"></p>
+                  <p x-show="selectedEvent.causer" class="truncate text-xs text-muted"><bdi dir="ltr" x-text="selectedEvent.causer && selectedEvent.causer.email"></bdi></p>
+                </div>
+                <span x-show="selectedEvent.causer" class="badge badge-primary shrink-0" x-text="selectedEvent.causer ? roleLabel(selectedEvent.causer.role) : ''"></span>
+              </div>
+              <a x-show="selectedEvent.causer" :href="selectedEvent.causer ? 'users.html?q=' + encodeURIComponent(selectedEvent.causer.email) : '#'"
+                 class="mt-3 inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-lg text-xs font-bold text-brand hover:underline">
+                <i class="fa-solid fa-user" aria-hidden="true"></i><span x-text="t('al.drawer.viewUser')"></span>
+              </a>
+              <button type="button" x-show="selectedEvent.causer" class="ms-3 inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-lg text-xs font-bold text-brand hover:underline"
+                      @click="filterByCauser(selectedEvent.causer)">
+                <i class="fa-solid fa-filter" aria-hidden="true"></i><span x-text="t('al.drawer.filterCauser')"></span>
+              </button>
+            </section>
+
+            <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.subject')"></dt>
+                <dd class="mt-1 font-bold">
+                  <span x-text="selectedEvent.subject ? subjectLabel(selectedEvent.subject) : '—'"></span>
+                  <bdi x-show="selectedEvent.subject" dir="ltr" class="mt-0.5 block text-xs font-medium text-muted" x-text="selectedEvent.subject ? selectedEvent.subject.type + (selectedEvent.subject.id ? ' #' + selectedEvent.subject.id : '') : ''"></bdi>
+                </dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.timestamp')"></dt>
+                <dd class="mt-1 font-bold tabular-nums"><time :datetime="iso(selectedEvent.at)" x-text="fmtFull(selectedEvent.at)"></time></dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.ip')"></dt>
+                <dd class="mt-1 font-bold tabular-nums"><bdi dir="ltr" x-text="selectedEvent.ip"></bdi></dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.browser')"></dt>
+                <dd class="mt-1 font-bold"><bdi dir="ltr" x-text="selectedEvent.browser + ' — ' + selectedEvent.os"></bdi></dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5 sm:col-span-2">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.userAgent')"></dt>
+                <dd class="mt-1.5 break-all rounded-lg bg-page/60 p-2.5 font-mono text-[11px] leading-5 text-muted" dir="ltr" x-text="selectedEvent.ua"></dd>
+              </div>
+            </dl>
+
+            <!-- تفاصيل إضافية (properties غير المرتبطة بتغيير بيانات) -->
+            <section x-show="selectedEvent.props" class="rounded-xl border border-line p-3.5" aria-labelledby="dr-props">
+              <h3 id="dr-props" class="mb-2 text-xs font-extrabold text-muted" x-text="t('al.drawer.meta.props')"></h3>
+              <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                <template x-for="[k, v] in Object.entries(selectedEvent.props || {})" :key="k">
+                  <div class="contents">
+                    <dt class="text-xs text-muted"><bdi dir="ltr" x-text="k"></bdi></dt>
+                    <dd class="font-bold"><bdi dir="ltr" x-text="String(v)"></bdi></dd>
+                  </div>
+                </template>
+              </dl>
+            </section>
+          </div>
+
+          <!-- التغييرات (مشتقّة من old/attributes) -->
+          <div id="dp-diff" role="tabpanel" aria-labelledby="dt-diff" tabindex="0" x-show="drawerTab === 'diff'" class="focus:outline-none">
+            <template x-if="diffRows(selectedEvent).length">
+              <div class="space-y-3">
+                <p class="text-xs text-muted" x-text="t('al.drawer.diff.' + (selectedEvent.action === 'created' ? 'introCreated' : selectedEvent.action === 'deleted' ? 'introDeleted' : 'introUpdated'))"></p>
+                <div class="hidden grid-cols-2 gap-2.5 text-xs font-extrabold text-muted sm:grid" aria-hidden="true">
+                  <p x-text="t('al.drawer.diff.old')"></p><p x-text="t('al.drawer.diff.new')"></p>
+                </div>
+                <template x-for="row in diffRows(selectedEvent)" :key="row.field">
+                  <div>
+                    <p class="mb-1 text-[11px] font-bold text-muted"><bdi dir="ltr" x-text="row.field"></bdi></p>
+                    <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2.5">
+                      <p class="diff-cell" :class="row.oldVal === null ? 'diff-empty' : 'diff-old'">
+                        <span class="me-1 font-extrabold" aria-hidden="true" x-text="row.oldVal === null ? '' : '−'"></span>
+                        <span class="sr-only" x-text="t('al.drawer.diff.old') + ': '"></span>
+                        <span dir="auto" x-text="row.oldVal === null ? t('al.drawer.diff.none') : row.oldVal"></span>
+                      </p>
+                      <p class="diff-cell" :class="row.newVal === null ? 'diff-empty' : 'diff-new'">
+                        <span class="me-1 font-extrabold" aria-hidden="true" x-text="row.newVal === null ? '' : '+'"></span>
+                        <span class="sr-only" x-text="t('al.drawer.diff.new') + ': '"></span>
+                        <span dir="auto" x-text="row.newVal === null ? t('al.drawer.diff.none') : row.newVal"></span>
+                      </p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <div x-show="!diffRows(selectedEvent).length" class="py-10 text-center text-sm text-muted">
+              <i class="fa-regular fa-file-lines mb-2 block text-2xl" aria-hidden="true"></i>
+              <span x-text="t('al.drawer.diff.noChanges')"></span>
+            </div>
+          </div>
+
+          <!-- JSON الخام (ثابت بغض النظر عن لغة الواجهة) -->
+          <div id="dp-raw" role="tabpanel" aria-labelledby="dt-raw" tabindex="0" x-show="drawerTab === 'raw'" class="space-y-3 focus:outline-none">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs text-muted" x-text="t('al.drawer.raw.hint')"></p>
+              <button type="button" class="btn btn-outline btn-sm shrink-0" @click="copyRawJson()">
+                <i class="fa-regular" :class="copied ? 'fa-circle-check text-ok' : 'fa-copy'" aria-hidden="true"></i>
+                <span x-text="copied ? t('al.drawer.raw.copied') : t('al.drawer.raw.copy')"></span>
+              </button>
+            </div>
+            <pre class="max-h-[60dvh] overflow-auto rounded-xl border border-line bg-page/60 p-3.5 font-mono text-[11px] leading-5 text-ink" dir="ltr" tabindex="0" :aria-label="t('al.drawer.tabs.raw')" x-text="rawJson"></pre>
+          </div>
+        </div>
+
+        <!-- تذييل: التنقل بين الأحداث -->
+        <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-line p-3 sm:p-4" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom, 0px));">
+          <button type="button" class="btn btn-outline btn-sm" :disabled="!hasPrev" @click="step(-1)" :aria-keyshortcuts="'Alt+ArrowUp'">
+            <i class="fa-solid fa-chevron-right text-xs ltr:-scale-x-100" aria-hidden="true"></i><span x-text="t('al.drawer.newer')"></span>
+          </button>
+          <p class="text-center text-xs font-bold text-muted tabular-nums" x-text="tf('al.drawer.position', { i: fmt(selectedIndex + 1), n: fmt(filtered.length) })"></p>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="!hasNext" @click="step(1)" :aria-keyshortcuts="'Alt+ArrowDown'">
+            <span x-text="t('al.drawer.older')"></span><i class="fa-solid fa-chevron-left text-xs ltr:-scale-x-100" aria-hidden="true"></i>
+          </button>
+        </footer>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن الاختيار المخصص (Select-only Combobox — نمط WAI-ARIA APG).
+   * ↓/↑ Home/End · Enter/Space اختيار · Tab اختيار وانتقال · Esc إغلاق (دون إغلاق اللوحة الأم)
+   * · البحث بأول الأحرف · ينقلب للأعلى عند ضيق المساحة.
+   */
+  function selectDropdown({ id, options, get, set, disabled = () => false }) {
+    return {
+      open: false, active: -1, dropUp: false, _q: '', _qt: null,
+      get items() { return options(); },
+      get isDisabled() { return !!disabled(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { return this.selectedItem ? this.selectedItem.label : ''; },
+      get activeId() { return this.open && this.active > -1 && this.items[this.active] ? this.optId(this.items[this.active]) : null; },
+      optId(item) { return id + '-opt-' + item.value; },
+      isSelected(item) { return get() === item.value; },
+      openList() {
+        if (this.isDisabled || !this.items.length) return;
+        const r = this.$refs.btn.getBoundingClientRect();
+        const need = Math.min(224, this.items.length * 46 + 16);
+        this.dropUp = r.bottom + need > window.innerHeight - 8 && r.top > need;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item, refocus = true) { set(item.value); this.closeList(); if (refocus) this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() {
+        this.$nextTick(() => {
+          const list = this.$refs.list, el = list?.children[this.active];
+          if (!list || !el) return;
+          /* تمرير يدوي داخل القائمة فقط (scrollIntoView قد يحرّك الصفحة أو اللوحة) */
+          if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+          else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+        });
+      },
+      onKey(e) {
+        if (this.isDisabled) return;
+        const k = e.key;
+        if (k === 'ArrowDown') { e.preventDefault(); this.move(1); }
+        else if (k === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scrollActiveIntoView(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = this.items.length - 1; this.scrollActiveIntoView(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape' && this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); }
+        else if (k === 'Tab' && this.open) { if (this.active > -1) this.choose(this.items[this.active], false); else this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          this._q += k.toLowerCase(); clearTimeout(this._qt); this._qt = setTimeout(() => this._q = '', 600);
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this._q));
+          if (i > -1) { if (!this.open) this.openList(); this.active = i; this.scrollActiveIntoView(); }
+        }
+      },
+    };
+  }
+
+  /* ---------- النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json ---------- */
+  const I18N = {
+    ar: {
+      skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+      mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+      openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة', expandSidebar: 'توسيع القائمة',
+      searchPlaceholder: 'ابحث في النظام…', openSearch: 'فتح البحث',
+      switchLang: 'تغيير اللغة إلى English', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+      notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', notifUnread: '{n} غير مقروءة', unreadSr: 'غير مقروء',
+      allMarked: 'تم تعليم جميع الإشعارات كمقروءة.', viewAllNotif: 'عرض جميع الإشعارات',
+      accountMenu: 'قائمة الحساب', roleTenantAdmin: 'مسؤول المؤسسة (Tenant Admin)',
+      profile: 'الملف الشخصي', statusErrors: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+      breadcrumbLabel: 'مسار التنقل', breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+      navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+      navItems: {
+        orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+        academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+        concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+        aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+        subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+      },
+      notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى ({pct}%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+      footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', nav: 'روابط التذييل', screens: 'خريطة الشاشات',
+                help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', soon: 'قريبًا' },
+
+      al: {
+        title: 'سجل النشاطات والتدقيق', subtitle: 'تتبّع كل حدث مؤثر داخل منظمتك — من قام به، ومتى، وماذا تغيّر بالضبط.',
+        readOnlyPill: 'للقراءة فقط', exportN: 'تصدير CSV ({n})', csvDone: 'تم تصدير {n} حدثًا إلى ملف CSV.',
+        notice: { title: 'سجل غير قابل للتعديل', body: 'لا يمكن تعديل السجلات أو حذفها، ويحتفظ بها النظام {d} يومًا لأغراض الأمان والتدقيق والامتثال.' },
+        kpi: { title: 'ملخص النشاط', hint: 'انقر للتصفية', eventsToday: 'أحداث اليوم', activeToday: 'مستخدمون نشطون اليوم', security7d: 'أحداث أمنية (7 أيام)', modsToday: 'تعديلات اليوم' },
+        toolbar: {
+          title: 'البحث والتصفية', searchPlaceholder: 'ابحث بالوصف أو اسم المُنفِّذ أو بريده أو IP أو رقم العنصر…',
+          dateRangeLabel: 'الفترة الزمنية',
+          dateRange: { today: 'اليوم', yesterday: 'أمس', last7: 'آخر 7 أيام', last30: 'آخر 30 يومًا', last90: 'آخر 90 يومًا (كامل السجل)', custom: 'فترة مخصّصة' },
+          from: 'من تاريخ', to: 'إلى تاريخ', rangeHint: 'يمكن اختيار أي فترة ضمن آخر {d} يومًا.',
+          rangeOrder: 'تاريخ البداية بعد تاريخ النهاية.', rangeOutside: 'الفترة خارج مدة الاحتفاظ بالسجل.',
+          resetFilters: 'مسح الفلاتر', filtersCleared: 'تم مسح الفلاتر.',
+          eventTypeLabel: 'نوع الحدث:', eventTypes: { all: 'الكل', auth: 'المصادقة', content: 'المحتوى', users: 'المستخدمون والأدوار', settings: 'الإعدادات' },
+          actionLabel: 'الإجراء:',
+        },
+        action: { created: 'إنشاء', updated: 'تحديث', deleted: 'حذف', logged_in: 'تسجيل دخول', exported: 'تصدير', security: 'تنبيه أمني' },
+        roles: { tenant_admin: 'مسؤول المؤسسة', reviewer: 'مراجع محتوى', editor: 'معلّم / محرّر' },
+        feedTitle: 'الخط الزمني', resultsHint: 'معروض {n} من {total} — الأحدث أولًا',
+        emptyTitle: 'لا توجد أحداث مطابقة', emptySubtitle: 'جرّب توسيع الفترة الزمنية أو تعديل الفلاتر.',
+        groups: { today: 'اليوم', yesterday: 'أمس', week: 'هذا الأسبوع', earlier: 'أقدم' },
+        fieldsChanged: '{n} حقول', viewDetails: 'التفاصيل', unknownUser: 'مستخدم غير معروف', resultsLive: '{n} حدثًا مطابقًا.',
+        events: {
+          loggedIn: 'تسجيل دخول ناجح إلى لوحة التحكم', createdConcept: 'إنشاء مفهوم جديد: «{name}»',
+          updatedSetting: 'تحديث إعداد المنظمة: الحد الأقصى لحجم الملف', failedLogin: 'محاولة تسجيل دخول فاشلة (كلمة مرور غير صحيحة)',
+          exportedUsers: 'تصدير قائمة المستخدمين بصيغة CSV', changedRole: 'تغيير دور «{name}» إلى مراجع محتوى',
+          deletedConcept: 'حذف المفهوم المكرر «{name}»', addedUser: 'إضافة مستخدم جديد: «{name}»',
+          updatedBranding: 'تحديث اللون الأساسي لهوية المنظمة', deactivatedUser: 'تعطيل حساب «{name}»',
+          lockedOut: 'قفل مؤقت للحساب بعد 5 محاولات دخول فاشلة', createdLO: 'إنشاء عنصر تعليمي: «{name}»',
+          exportedConcepts: 'تصدير قائمة المفاهيم بصيغة PDF', publishedConcept: 'نشر المفهوم «{name}»', revokedInvite: 'إلغاء دعوة {name}',
+        },
+        pagination: { loading: 'جارٍ التحميل…', loadOlderN: 'تحميل أحداث أقدم ({n})', loadedN: 'تم تحميل {n} أحداث أقدم.', end: 'وصلت إلى نهاية النتائج (السجل يحتفظ بآخر {d} يومًا).' },
+        drawer: {
+          title: 'تفاصيل الحدث', close: 'إغلاق', readOnly: 'قراءة فقط', tabsLabel: 'أقسام تفاصيل الحدث',
+          tabs: { overview: 'نظرة عامة', diff: 'التغييرات', raw: 'JSON الخام' },
+          securityNote: 'حدث أمني — راجع عنوان IP والجهاز، وتواصل مع صاحب الحساب إن لم تكن المحاولة منه.', attemptedEmail: 'البريد المُستخدم في المحاولة',
+          meta: { causer: 'المُنفِّذ', subject: 'العنصر المستهدف', timestamp: 'التوقيت الدقيق', ip: 'عنوان IP', browser: 'المتصفح ونظام التشغيل', userAgent: 'بصمة المتصفح (User Agent)', props: 'تفاصيل إضافية' },
+          viewUser: 'عرض المستخدم', filterCauser: 'كل نشاطات هذا المستخدم', causerFiltered: 'تمت التصفية حسب {name}.',
+          diff: { introCreated: 'القيم التي أُنشئ بها العنصر.', introDeleted: 'آخر قيم للعنصر قبل حذفه.', introUpdated: 'الحقول التي تغيّرت فقط.',
+                  old: 'قبل', new: 'بعد', none: '(لا شيء)', noChanges: 'هذا النوع من الأحداث لا يغيّر بيانات عنصر.' },
+          raw: { hint: 'السجل كما خُزّن، دون ترجمة.', copy: 'نسخ JSON', copied: 'تم النسخ', copiedSr: 'تم نسخ JSON.', copyFailed: 'تعذّر النسخ؛ حدّد النص وانسخه يدويًا.' },
+          newer: 'الأحدث', older: 'الأقدم', position: '{i} من {n}',
+        },
+      },
+    },
+    en: {
+      skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+      mainMenu: 'Main menu', mainNav: 'Main navigation',
+      openMenu: 'Open menu', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar', expandSidebar: 'Expand sidebar',
+      searchPlaceholder: 'Search the system…', openSearch: 'Open search',
+      switchLang: 'Change language to العربية', lightMode: 'Light mode', darkMode: 'Dark mode',
+      notifications: 'Notifications', markAllRead: 'Mark all as read', notifUnread: '{n} unread', unreadSr: 'Unread',
+      allMarked: 'All notifications marked as read.', viewAllNotif: 'View all notifications',
+      accountMenu: 'Account menu', roleTenantAdmin: 'Tenant Admin',
+      profile: 'Profile', statusErrors: 'System Status & Errors', logout: 'Log out',
+      breadcrumbLabel: 'Breadcrumb', breadcrumb: { home: 'Home', org: 'Organization Management' },
+      navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+      navItems: {
+        orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+        academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+        concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+        aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+        subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+      },
+      notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'User seat quota is nearing its limit ({pct}%)', reset: 'A password reset link was sent successfully' },
+      footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', nav: 'Footer links', screens: 'Screen map',
+                help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', soon: 'coming soon' },
+
+      al: {
+        title: 'Activity & Audit Log', subtitle: 'Track every consequential event in your organization — who did it, when, and exactly what changed.',
+        readOnlyPill: 'Read-only', exportN: 'Export CSV ({n})', csvDone: '{n} events exported to CSV.',
+        notice: { title: 'Immutable record', body: 'Logs cannot be edited or deleted, and are retained for {d} days for security, audit and compliance.' },
+        kpi: { title: 'Activity summary', hint: 'Click to filter', eventsToday: 'Events today', activeToday: 'Active users today', security7d: 'Security events (7 days)', modsToday: 'Changes today' },
+        toolbar: {
+          title: 'Search and filters', searchPlaceholder: 'Search by description, causer name or email, IP, or subject ID…',
+          dateRangeLabel: 'Date range',
+          dateRange: { today: 'Today', yesterday: 'Yesterday', last7: 'Last 7 days', last30: 'Last 30 days', last90: 'Last 90 days (full log)', custom: 'Custom range' },
+          from: 'From', to: 'To', rangeHint: 'Any range within the last {d} days.',
+          rangeOrder: 'Start date is after end date.', rangeOutside: 'Range is outside the retention period.',
+          resetFilters: 'Reset filters', filtersCleared: 'Filters cleared.',
+          eventTypeLabel: 'Event type:', eventTypes: { all: 'All', auth: 'Authentication', content: 'Content', users: 'Users & roles', settings: 'Settings' },
+          actionLabel: 'Action:',
+        },
+        action: { created: 'Created', updated: 'Updated', deleted: 'Deleted', logged_in: 'Logged in', exported: 'Exported', security: 'Security alert' },
+        roles: { tenant_admin: 'Tenant Admin', reviewer: 'Content Reviewer', editor: 'Teacher / Editor' },
+        feedTitle: 'Timeline', resultsHint: 'Showing {n} of {total} — newest first',
+        emptyTitle: 'No matching events', emptySubtitle: 'Try widening the date range or adjusting the filters.',
+        groups: { today: 'Today', yesterday: 'Yesterday', week: 'This week', earlier: 'Earlier' },
+        fieldsChanged: '{n} fields', viewDetails: 'Details', unknownUser: 'Unknown user', resultsLive: '{n} matching events.',
+        events: {
+          loggedIn: 'Successful login to the dashboard', createdConcept: 'Created a new concept: "{name}"',
+          updatedSetting: 'Updated tenant setting: max file size', failedLogin: 'Failed login attempt (invalid password)',
+          exportedUsers: 'Exported the users list as CSV', changedRole: 'Changed role of "{name}" to Content Reviewer',
+          deletedConcept: 'Deleted duplicate concept "{name}"', addedUser: 'Added a new user: "{name}"',
+          updatedBranding: "Updated the organization's primary brand color", deactivatedUser: 'Deactivated account "{name}"',
+          lockedOut: 'Account temporarily locked after 5 failed logins', createdLO: 'Created learning object: "{name}"',
+          exportedConcepts: 'Exported the concepts list as PDF', publishedConcept: 'Published concept "{name}"', revokedInvite: 'Revoked invitation for {name}',
+        },
+        pagination: { loading: 'Loading…', loadOlderN: 'Load older events ({n})', loadedN: '{n} older events loaded.', end: 'End of results (the log keeps the last {d} days).' },
+        drawer: {
+          title: 'Event details', close: 'Close', readOnly: 'Read-only', tabsLabel: 'Event detail sections',
+          tabs: { overview: 'Overview', diff: 'Changes', raw: 'Raw JSON' },
+          securityNote: 'Security event — review the IP and device, and contact the account owner if this was not them.', attemptedEmail: 'Email used in the attempt',
+          meta: { causer: 'Causer', subject: 'Subject', timestamp: 'Exact time', ip: 'IP address', browser: 'Browser & OS', userAgent: 'User agent', props: 'Additional details' },
+          viewUser: 'View user', filterCauser: "All of this user's activity", causerFiltered: 'Filtered by {name}.',
+          diff: { introCreated: 'Values the record was created with.', introDeleted: 'Last values before deletion.', introUpdated: 'Only the fields that changed.',
+                  old: 'Before', new: 'After', none: '(none)', noChanges: "This event type doesn't change a record's data." },
+          raw: { hint: 'The record as stored, untranslated.', copy: 'Copy JSON', copied: 'Copied', copiedSr: 'JSON copied.', copyFailed: "Couldn't copy; select the text and copy it manually." },
+          newer: 'Newer', older: 'Older', position: '{i} of {n}',
+        },
+      },
+    },
+  };
+
+  const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR;
+  const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const isoDate = (ts) => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const mdMQ = window.matchMedia('(min-width: 768px)');
+    const now = Date.now(), today0 = startOfDay(now);
+    const ago = (mins) => now - mins * MIN;
+    const on = (daysAgo, h, m) => today0 - daysAgo * DAY + h * HOUR + m * MIN;
+    /* أشخاص وهميون — لا بيانات حقيقية في النموذج */
+    const S = { id: 1, name: 'سارة أحمد المصري', email: 'sara.ahmed@alaqsa.edu.ps', role: 'tenant_admin' };
+    const M = { id: 2, name: 'محمد خالد يوسف', email: 'm.khaled@alaqsa.edu.ps', role: 'reviewer' };
+    const Y = { id: 3, name: 'ليان عمر الشريف', email: 'layan.omar@alaqsa.edu.ps', role: 'editor' };
+    const A = { id: 6, name: 'أحمد الريماوي', email: 'ahmad.rimawi@alaqsa.edu.ps', role: 'editor' };
+    const WIN = { browser: 'Chrome 128', os: 'Windows 10', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36' };
+    const MAC = { browser: 'Safari 17', os: 'macOS 14', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15' };
+    const AND = { browser: 'Chrome 128', os: 'Android 14', mobile: true, ua: 'Mozilla/5.0 (Linux; Android 14; SM-A536) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36' };
+    const subj = (type, id, ar, en) => ({ type, id, label: { ar, en: en || ar } });
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      isMac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+      mobileNav: false, collapsed: false, searchOpen: false,
+      notifOpen: false, profileOpen: false,
+      active: 'activityLog', live: '',
+      year: new Date().getFullYear(), version: 'v1.0.0',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const get = (d) => path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), d);
+        const s = get(I18N[this.locale]);
+        return s !== undefined ? s : (get(I18N.ar) ?? path);
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      intl() { return this.locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intl(), { maximumFractionDigits: 1 }).format(n); },
+      fmtFull(ts) { return new Intl.DateTimeFormat(this.intl(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(new Date(ts)); },
+      rel(ts) {
+        const diff = ts - Date.now(), a = Math.abs(diff);
+        const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' });
+        if (a < HOUR) return rtf.format(Math.round(diff / MIN), 'minute');
+        if (a < DAY) return rtf.format(Math.round(diff / HOUR), 'hour');
+        const t0 = startOfDay(Date.now()), hm = new Intl.DateTimeFormat(this.intl(), { hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
+        if (ts < t0 && ts >= t0 - DAY) return rtf.format(-1, 'day') + (this.locale === 'ar' ? '، ' : ', ') + hm;
+        if (a < 7 * DAY) {   /* «أمس 16:20» / «الاثنين 14:10» أوضح من «قبل 3 أيام» في التدقيق */
+          return new Intl.DateTimeFormat(this.intl(), { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
+        }
+        return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
+      },
+      iso(ts) { return new Date(ts).toISOString(); },
+      ago(mins) { const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' }); return mins < 60 ? rtf.format(-mins, 'minute') : mins < 1440 ? rtf.format(-Math.round(mins / 60), 'hour') : rtf.format(-Math.round(mins / 1440), 'day'); },
+      isoAgo(mins) { return new Date(Date.now() - mins * MIN).toISOString(); },
+      initials(name) {
+        const p = String(name).trim().split(/\s+/);
+        return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        const h = document.documentElement;
+        h.lang = loc; h.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(loc);
+        else { try { localStorage.setItem('firob-locale', loc); } catch (e) {} }
+        document.title = this.t('al.title') + ' — FirOb';
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* ---------- التنقل ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) { return item.key === 'notificationCenter' ? this.unread : (item.count || 0); },
+
+      notifications: [
+        { id: 1, key: 'invite', mins: 10,   read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota',  mins: 120,  read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warn' },
+        { id: 3, key: 'reset',  mins: 1440, read: true,  icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-ok' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      markAllRead() { this.notifications.forEach(n => n.read = true); this.announce(this.t('allMarked')); },
+      me: S, seatPct: 80,
+
+      /* =====================================================================
+         السجل (Mock) — بنية Spatie Activitylog: causer / subject / properties.old / attributes
+         التوقيتات نسبية إلى الآن فلا تتقادم
+         ===================================================================== */
+      RETENTION_DAYS: 90,
+      events: [
+        { id: 1017, action: 'logged_in', type: 'auth',     key: 'loggedIn',        causer: S, subject: subj('AuthSession', null, 'جلسة دخول', 'Login session'), at: ago(6),   ip: '197.23.104.12', ...WIN, props: { method: '2fa', device_trusted: true } },
+        { id: 1016, action: 'created',   type: 'content',  key: 'createdConcept',  causer: M, subject: subj('Concept', 211, 'التفاضل والتكامل', 'Differentiation & Integration'), at: ago(32), ip: '41.216.10.44', ...MAC, old: null, attrs: { title: 'التفاضل والتكامل', subject: 'الرياضيات', grade: 12, status: 'draft' } },
+        { id: 1015, action: 'updated',   type: 'settings', key: 'updatedSetting',  causer: S, subject: subj('TenantSetting', null, 'الحد الأقصى لحجم الملف', 'Max file size'), at: ago(51), ip: '197.23.104.12', ...WIN, old: { max_file_size_mb: 10 }, attrs: { max_file_size_mb: 25 } },
+        { id: 1014, action: 'security',  type: 'auth',     key: 'failedLogin',     causer: null, subject: subj('AuthSession', null, 'جلسة دخول', 'Login session'), at: ago(95), ip: '154.239.12.3', ...AND, attempted_email: 'sara.ahmed@alaqsa.edu.ps', props: { reason: 'invalid_password', attempts: 4, locked: false } },
+        { id: 1013, action: 'exported',  type: 'users',    key: 'exportedUsers',   causer: S, subject: subj('User', null, 'قائمة المستخدمين', 'Users list'), at: ago(180), ip: '197.23.104.12', ...WIN, props: { format: 'csv', rows: 12, scope: 'all_users' } },
+        { id: 1012, action: 'updated',   type: 'users',    key: 'changedRole',     causer: S, subject: subj('User', 3, 'ليان عمر الشريف', 'Layan Omar Al-Sharif'), at: on(1, 16, 20), ip: '197.23.104.12', ...WIN, old: { role: 'editor' }, attrs: { role: 'reviewer' } },
+        { id: 1011, action: 'deleted',   type: 'content',  key: 'deletedConcept',  causer: M, subject: subj('Concept', 187, 'الأعداد المركبة', 'Complex Numbers'), at: on(1, 11, 5), ip: '41.216.10.44', ...MAC, old: { title: 'الأعداد المركبة', subject: 'الرياضيات', status: 'draft', duplicate_of: 142 }, attrs: null },
+        { id: 1010, action: 'created',   type: 'users',    key: 'addedUser',       causer: S, subject: subj('User', 4, 'يوسف إبراهيم النجار', 'Yousef Ibrahim Al-Najjar'), at: on(1, 9, 48), ip: '197.23.104.12', ...WIN, old: null, attrs: { role: 'student', status: 'active', email: 'yousef.ibrahim@alaqsa.edu.ps' } },
+        { id: 1009, action: 'updated',   type: 'settings', key: 'updatedBranding', causer: S, subject: subj('TenantSetting', null, 'هوية المنظمة', 'Branding'), at: on(3, 14, 10), ip: '82.212.77.9', ...WIN, old: { color_primary: '#0B6680' }, attrs: { color_primary: '#0E80A1' } },
+        { id: 1008, action: 'updated',   type: 'users',    key: 'deactivatedUser', causer: S, subject: subj('User', 5, 'نور حسن عودة', 'Nour Hassan Odeh'), at: on(4, 10, 30), ip: '82.212.77.9', ...WIN, old: { status: 'active' }, attrs: { status: 'disabled' } },
+        { id: 1007, action: 'logged_in', type: 'auth',     key: 'loggedIn',        causer: M, subject: subj('AuthSession', null, 'جلسة دخول', 'Login session'), at: on(5, 8, 2), ip: '41.216.10.44', ...MAC, props: { method: 'password', device_trusted: false } },
+        { id: 1006, action: 'security',  type: 'auth',     key: 'lockedOut',       causer: null, subject: subj('AuthSession', null, 'جلسة دخول', 'Login session'), at: on(6, 23, 41), ip: '185.220.101.7', ...AND, attempted_email: 'm.khaled@alaqsa.edu.ps', props: { attempts: 5, locked: true, lock_minutes: 15 } },
+        { id: 1005, action: 'created',   type: 'content',  key: 'createdLO',       causer: A, subject: subj('LearningObject', 532, 'تجربة المعايرة', 'Titration experiment'), at: on(12, 13, 25), ip: '91.186.250.3', ...WIN, old: null, attrs: { title: 'تجربة المعايرة', type: 'simulation', concept_id: 98 } },
+        { id: 1004, action: 'exported',  type: 'content',  key: 'exportedConcepts', causer: Y, subject: subj('Concept', null, 'قائمة المفاهيم', 'Concepts list'), at: on(18, 9, 15), ip: '91.186.250.3', ...MAC, props: { format: 'pdf', rows: 240 } },
+        { id: 1003, action: 'updated',   type: 'content',  key: 'publishedConcept', causer: Y, subject: subj('Concept', 211, 'التفاضل والتكامل', 'Differentiation & Integration'), at: on(25, 12, 0), ip: '91.186.250.3', ...MAC, old: { status: 'review' }, attrs: { status: 'published', published_at: 'auto' } },
+        { id: 1002, action: 'deleted',   type: 'users',    key: 'revokedInvite',   causer: S, subject: subj('Invitation', 5, 'yousef.teacher@alaqsa.edu.ps'), at: on(45, 15, 33), ip: '197.23.104.12', ...WIN, old: { email: 'yousef.teacher@alaqsa.edu.ps', role: 'editor', status: 'pending' }, attrs: null },
+        { id: 1001, action: 'logged_in', type: 'auth',     key: 'loggedIn',        causer: Y, subject: subj('AuthSession', null, 'جلسة دخول', 'Login session'), at: on(70, 7, 50), ip: '91.186.250.3', ...MAC, props: { method: 'password', device_trusted: true } },
+      ],
+
+      ACTIONS: ['created', 'updated', 'deleted', 'logged_in', 'exported', 'security'],
+      TYPES: ['all', 'auth', 'content', 'users', 'settings'],
+      RANGES: ['today', 'yesterday', 'last7', 'last30', 'last90', 'custom'],
+      TABS: ['overview', 'diff', 'raw'],
+      /* لون + أيقونة لكل فئة (الأيقونة تضمن عدم الاعتماد على اللون وحده) */
+      meta(a) {
+        return {
+          created:   { dot: 'bg-success-700 text-white', icon: 'fa-circle-plus',          badge: 'badge-success' },
+          updated:   { dot: 'bg-primary-500 text-white', icon: 'fa-pen',                  badge: 'badge-info' },
+          deleted:   { dot: 'bg-error-600 text-white',   icon: 'fa-trash',                badge: 'badge-danger' },
+          logged_in: { dot: 'bg-soft-2 text-brand',      icon: 'fa-right-to-bracket',     badge: 'badge-primary' },
+          exported:  { dot: 'bg-accent-500 text-onaccent', icon: 'fa-file-export',        badge: 'badge-accent' },
+          security:  { dot: 'bg-warning-500 text-onaccent', icon: 'fa-triangle-exclamation', badge: 'badge-warning' },
+        }[a] || { dot: 'bg-line text-muted', icon: 'fa-circle', badge: 'badge-muted' };
+      },
+      describe(e) { return this.tf('al.events.' + e.key, { name: e.subject ? this.subjectLabel(e.subject) : '' }); },
+      subjectLabel(s) { return s.label[this.locale] || s.label.ar; },
+      roleLabel(r) { return this.t('al.roles.' + r); },
+
+      /* ---------- الفلترة (تعمل فعلًا) ---------- */
+      search: '', dateRange: 'last30', customFrom: '', customTo: '', eventType: 'all', actionFilter: null,
+      get minDate() { return isoDate(Date.now() - this.RETENTION_DAYS * DAY); },
+      get maxDate() { return isoDate(Date.now()); },
+      get rangeError() {
+        if (this.dateRange !== 'custom') return '';
+        if (this.customFrom && this.customTo && this.customFrom > this.customTo) return 'rangeOrder';
+        if (this.customTo && this.customTo < this.minDate) return 'rangeOutside';
+        return '';
+      },
+      get range() {
+        const t0 = startOfDay(Date.now()), end = Date.now() + MIN;
+        switch (this.dateRange) {
+          case 'today': return [t0, end];
+          case 'yesterday': return [t0 - DAY, t0 - 1];
+          case 'last7': return [t0 - 6 * DAY, end];
+          case 'last30': return [t0 - 29 * DAY, end];
+          case 'last90': return [t0 - (this.RETENTION_DAYS - 1) * DAY, end];
+          case 'custom': {
+            if (this.rangeError) return [0, end];
+            const f = this.customFrom ? new Date(this.customFrom + 'T00:00:00').getTime() : t0 - (this.RETENTION_DAYS - 1) * DAY;
+            const to = this.customTo ? new Date(this.customTo + 'T23:59:59').getTime() : end;
+            return [f, to];
+          }
+        }
+        return [0, end];
+      },
+      get filtersActive() { return !!this.search.trim() || this.dateRange !== 'last30' || this.eventType !== 'all' || !!this.actionFilter; },
+      matchesText(e, q) {
+        if (!q) return true;
+        const hay = [this.describe(e), e.causer?.name, e.causer?.email, e.attempted_email, e.ip, e.subject?.type, e.subject?.id, e.subject && this.subjectLabel(e.subject), e.browser, e.os].join(' ').toLowerCase();
+        return hay.includes(q);
+      },
+      /* قاعدة مشتركة: الفترة + البحث (تُستخدم أيضًا لعدّاد كل نوع) */
+      get base() {
+        const q = this.search.trim().toLowerCase(), [from, to] = this.range;
+        return this.events.filter(e => e.at >= from && e.at <= to && this.matchesText(e, q));
+      },
+      get filtered() {
+        return this.base
+          .filter(e => (this.eventType === 'all' || e.type === this.eventType) && (!this.actionFilter || e.action === this.actionFilter))
+          .sort((a, b) => b.at - a.at);
+      },
+      countType(ty) { return ty === 'all' ? this.base.length : this.base.filter(e => e.type === ty).length; },
+      resetFilters(focus = false) {
+        this.search = ''; this.dateRange = 'last30'; this.customFrom = ''; this.customTo = ''; this.eventType = 'all'; this.actionFilter = null;
+        this.announce(this.t('al.toolbar.filtersCleared'));
+        if (focus) this.$nextTick(() => this.$refs.alSearch?.focus());
+      },
+      radioKey(e, list, prop, prefix) {
+        const rtl = document.documentElement.dir === 'rtl';
+        const d = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1, Home: -99, End: 99 }[e.key];
+        if (d === undefined) return;
+        e.preventDefault();
+        const i = Math.min(Math.max(list.indexOf(this[prop]) + d, 0), list.length - 1);
+        this[prop] = list[i];
+        this.$nextTick(() => document.getElementById(prefix + list[i])?.focus());
+      },
+
+      /* ---------- المؤشرات (محسوبة) ---------- */
+      get kpis() {
+        const t0 = startOfDay(Date.now()), w0 = t0 - 6 * DAY;
+        const todayEv = this.events.filter(e => e.at >= t0);
+        return [
+          { key: 'eventsToday', icon: 'fa-bolt',            value: todayEv.length, tone: 'bg-primary-500/15 text-brand', apply: { dateRange: 'today' } },
+          { key: 'activeToday', icon: 'fa-user-check',      value: new Set(todayEv.filter(e => e.causer).map(e => e.causer.id)).size, tone: 'bg-success-500/15 text-ok', apply: { dateRange: 'today', eventType: 'auth' } },
+          { key: 'security7d',  icon: 'fa-shield-halved',   value: this.events.filter(e => e.at >= w0 && e.action === 'security').length, tone: 'bg-warning-500/15 text-warn', apply: { dateRange: 'last7', actionFilter: 'security' } },
+          { key: 'modsToday',   icon: 'fa-pen-to-square',   value: todayEv.filter(e => ['created', 'updated', 'deleted'].includes(e.action)).length, tone: 'bg-info/15 text-info', apply: { dateRange: 'today', eventType: 'all' } },
+        ];
+      },
+      applyKpi(k) {
+        this.search = ''; this.eventType = 'all'; this.actionFilter = null;
+        Object.assign(this, k.apply);
+        this.$nextTick(() => { const h = document.getElementById('al-feed-title'); h?.scrollIntoView({ block: 'start', behavior: 'smooth' }); h?.focus({ preventScroll: true }); });
+      },
+
+      /* ---------- الخط الزمني: تجميع + ترقيم مؤشّري ---------- */
+      PAGE: 6, limit: 6, loadingMore: false,
+      get visible() { return this.filtered.slice(0, this.limit); },
+      get hasMore() { return this.limit < this.filtered.length; },
+      get grouped() {
+        const t0 = startOfDay(Date.now());
+        const by = { today: [], yesterday: [], week: [], earlier: [] };
+        this.visible.forEach(e => by[e.at >= t0 ? 'today' : e.at >= t0 - DAY ? 'yesterday' : e.at >= t0 - 6 * DAY ? 'week' : 'earlier'].push(e));
+        return Object.entries(by).filter(([, l]) => l.length).map(([k, items]) => ({ k, items }));
+      },
+      loadOlder() {
+        if (this.loadingMore || !this.hasMore) return;
+        this.loadingMore = true;
+        /* Livewire: $wire.loadMore(cursor) — cursorPaginate() في الخادم */
+        setTimeout(() => {
+          const n = Math.min(this.PAGE, this.filtered.length - this.limit);
+          this.limit += this.PAGE;
+          this.loadingMore = false;
+          this.announce(this.tf('al.pagination.loadedN', { n: this.fmt(n) }));
+        }, 600);
+      },
+
+      /* ---------- التغييرات: مشتقّة من old / attributes ---------- */
+      diffRows(e) {
+        if (!e || !['created', 'updated', 'deleted'].includes(e.action)) return [];
+        const o = e.old || {}, n = e.attrs || {};
+        return [...new Set([...Object.keys(o), ...Object.keys(n)])]
+          .map(f => ({ field: f, oldVal: f in o ? String(o[f]) : null, newVal: f in n ? String(n[f]) : null }))
+          .filter(r => r.oldVal !== r.newVal);
+      },
+
+      /* ---------- الدرج الجانبي ---------- */
+      drawerOpen: false, drawerTab: 'overview', selectedEvent: null, copied: false, _drawerTrigger: null,
+      get selectedIndex() { return this.selectedEvent ? this.filtered.findIndex(e => e.id === this.selectedEvent.id) : -1; },
+      get hasPrev() { return this.selectedIndex > 0; },
+      get hasNext() { return this.selectedIndex > -1 && this.selectedIndex < this.filtered.length - 1; },
+      openDrawer(e, trigger) {
+        this._drawerTrigger = trigger || null;
+        this.selectedEvent = e; this.drawerTab = 'overview'; this.copied = false; this.drawerOpen = true;
+      },
+      closeDrawer() {
+        this.drawerOpen = false;
+        const id = this.selectedEvent?.id;
+        setTimeout(() => {
+          const b = document.querySelector('[data-open][aria-describedby="ev-' + id + '"]');
+          (b && b.offsetParent !== null ? b : document.getElementById('al-feed-title'))?.focus();
+        }, 260);
+      },
+      step(d) {
+        const i = this.selectedIndex + d;
+        if (i < 0 || i >= this.filtered.length) return;
+        if (i >= this.limit) this.limit = i + 1;      /* التنقل يحمّل الأقدم عند الحاجة */
+        this.selectedEvent = this.filtered[i]; this.copied = false;
+        this.announce(this.describe(this.selectedEvent) + ' — ' + this.rel(this.selectedEvent.at));
+      },
+      tabKey(e) {
+        const rtl = document.documentElement.dir === 'rtl';
+        const d = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, Home: -99, End: 99 }[e.key];
+        if (d === undefined) return;
+        e.preventDefault();
+        const i = Math.min(Math.max(this.TABS.indexOf(this.drawerTab) + d, 0), this.TABS.length - 1);
+        this.drawerTab = this.TABS[i];
+        this.$nextTick(() => document.getElementById('dt-' + this.TABS[i])?.focus());
+      },
+      filterByCauser(c) {
+        this.search = c.email; this.eventType = 'all'; this.actionFilter = null;
+        if (this.dateRange === 'today' || this.dateRange === 'yesterday') this.dateRange = 'last30';
+        this.drawerOpen = false;
+        this.announce(this.tf('al.drawer.causerFiltered', { name: c.name }));
+        setTimeout(() => document.getElementById('al-feed-title')?.focus(), 260);
+      },
+      /* السجل الخام كما خُزّن — لا يتغير بلغة الواجهة */
+      get rawJson() {
+        const e = this.selectedEvent; if (!e) return '';
+        const props = { ...(e.props || {}) };
+        if (e.old) props.old = e.old;
+        if (e.attrs) props.attributes = e.attrs;
+        if (e.attempted_email) props.attempted_email = e.attempted_email;
+        return JSON.stringify({
+          id: e.id, log_name: e.type, event: e.action, description: e.key,
+          subject_type: e.subject && e.subject.id !== null ? 'App\\Models\\' + e.subject.type : (e.subject ? e.subject.type : null),
+          subject_id: e.subject ? e.subject.id : null,
+          causer_type: e.causer ? 'App\\Models\\User' : null, causer_id: e.causer ? e.causer.id : null,
+          properties: { ...props, ip: e.ip, user_agent: e.ua },
+          created_at: new Date(e.at).toISOString(),
+        }, null, 2);
+      },
+      async copyText(text) {
+        try { await navigator.clipboard.writeText(text); return true; } catch (_) {}
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok;
+        } catch (_) { return false; }
+      },
+      async copyRawJson() {
+        const ok = await this.copyText(this.rawJson);
+        if (ok) { this.copied = true; this.announce(this.t('al.drawer.raw.copiedSr')); setTimeout(() => { this.copied = false; }, 2200); }
+        else this.announce(this.t('al.drawer.raw.copyFailed'));
+      },
+
+      /* ---------- تصدير CSV للنتائج المصفّاة (BOM لدعم العربية في Excel) ---------- */
+      exportCsv() {
+        const esc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+        const head = ['id', 'created_at', 'event', 'log_name', 'description', 'causer', 'causer_email', 'subject', 'ip', 'browser'];
+        const rows = this.filtered.map(e => [e.id, new Date(e.at).toISOString(), e.action, e.type, this.describe(e),
+          e.causer ? e.causer.name : '', e.causer ? e.causer.email : (e.attempted_email || ''),
+          e.subject ? e.subject.type + (e.subject.id ? '#' + e.subject.id : '') : '', e.ip, e.browser + ' / ' + e.os].map(esc).join(','));
+        const blob = new Blob(['﻿' + [head.join(','), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'activity-log-' + isoDate(Date.now()) + '.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        this.announce(this.tf('al.csvDone', { n: this.fmt(this.filtered.length) }));
+      },
+
+      /* ---------- البحث العام ---------- */
+      focusSearch() {
+        if (this.drawerOpen) return;
+        if (mdMQ.matches) { this.$refs.globalSearch?.focus(); this.$refs.globalSearch?.select(); return; }
+        this.searchOpen = true;
+        this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      toggleMobileSearch() {
+        this.searchOpen = !this.searchOpen;
+        if (this.searchOpen) this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      openMenuId: null, closeMenu() {},
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        mdMQ.addEventListener('change', (m) => { if (m.matches) this.searchOpen = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('al.title') + ' — FirOb';
+        /* أي تغيير في الفلاتر: إعادة الترقيم + إعلان عدد النتائج بعد التوقف عن الكتابة */
+        this.$watch('search + "|" + dateRange + "|" + customFrom + "|" + customTo + "|" + eventType + "|" + actionFilter', () => {
+          this.limit = this.PAGE;
+          clearTimeout(this._annT);
+          this._annT = setTimeout(() => this.announce(this.tf('al.resultsLive', { n: this.fmt(this.filtered.length) })), 500);
+        });
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.applyTheme(e.matches);
+          });
+        } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      closeMobileNav() { this.mobileNav = false; this.$nextTick(() => this.$refs.navToggle?.focus()); },
+      applyTheme(isDark) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('theme-color')?.setAttribute('content', isDark ? '#09141B' : '#F1EDE7');
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() {
+        this.applyTheme(!this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        if (this.drawerOpen)  { this.closeDrawer(); return; }
+        if (this.notifOpen)   { this.notifOpen = false;   this.$refs.notifBtn?.focus(); return; }
+        if (this.profileOpen) { this.profileOpen = false; this.$refs.profileBtn?.focus(); return; }
+        if (this.searchOpen)  { this.searchOpen = false; return; }
+        if (this.mobileNav)   { this.closeMobileNav(); }
+      },
+    };
+  }
+</script>
+</body>
+</html>

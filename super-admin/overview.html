@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>لوحة المسؤول العام — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 90 104 125;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    /*.badge-accent  { @apply bg-accent-500/25 text-yellow-900 dark:text-accent-500; }*/
+    .badge-accent { @apply bg-accent-500/25 text-amber-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-2 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+
+    /* ---------- شرائح الهيكل العظمي (Skeleton) ---------- */
+    .sk { @apply animate-pulse rounded-md bg-line; }
+  }
+
+    /* ---------- [SA shell fixes] ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .combo-option.is-active.is-selected { @apply ring-1 ring-inset ring-brand/40; }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    }
+</style>
+
+<!-- ⑥ Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+
+<body x-data="dashboardData()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <div class="inline-flex items-center p-0">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+      </div>
+      <div class="min-w-0 flex-1" x-show="expanded">
+        <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+        <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+      </div>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="locale === 'ar' ? 'التنقل الرئيسي' : 'Main navigation'">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="item.count && expanded"
+                        class="shrink-0 rounded-full bg-accent-500 px-2 text-xs font-extrabold text-onaccent" x-text="item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'fa-angles-right rtl:-scale-x-100' : 'fa-angles-left rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="notifText(n)"></p>
+                      <p class="text-xs text-muted" x-text="relMinutes(n.mins)"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">S</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="system-settings.html" role="menuitem" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></a>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="locale === 'ar' ? 'مسار التنقل' : 'Breadcrumb'">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('appTitle')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.' + active)"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — LND-01: لوحة المسؤول العام ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء التحديث -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('dash.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('dash.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <p class="text-xs font-bold text-muted" x-show="updatedAt" x-text="tf('dash.updatedAt', { time: updatedLabel })"></p>
+          <button type="button" class="btn btn-outline" :disabled="loading" :aria-busy="loading.toString()" @click="refresh()">
+            <i class="fa-solid fa-arrows-rotate" :class="loading && 'animate-spin'" aria-hidden="true"></i>
+            <span x-text="loading ? t('dash.refreshing') : t('dash.refresh')"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= KPIs (محسوبة من بيانات SA) ================= -->
+      <section :aria-label="t('dash.kpiRegion')" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3" :aria-busy="loading.toString()">
+        <template x-for="k in kpis" :key="k.key">
+          <div class="panel flex flex-col p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h2 class="truncate text-sm font-bold text-muted" x-text="t('dash.kpi.' + k.key)"></h2>
+                <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" x-text="k.value"></p>
+                <p class="mt-1 text-xs text-muted" x-text="k.sub"></p>
+              </div>
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl" :class="k.tone" aria-hidden="true"><i :class="k.icon"></i></span>
+            </div>
+            <div class="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3 text-xs">
+              <p class="flex flex-wrap items-center gap-1.5">
+                <template x-if="k.trend">
+                  <span class="inline-flex items-center gap-1 font-bold" :class="k.trend.tone">
+                    <i class="fa-solid" :class="k.trend.icon" aria-hidden="true"></i>
+                    <span x-text="k.trend.text" :aria-label="k.trend.sr"></span>
+                  </span>
+                </template>
+                <span class="text-muted" x-text="k.note"></span>
+              </p>
+              <a :href="k.href" class="rounded font-bold text-brand underline-offset-4 hover:underline focus-visible:ring-2"
+                 :aria-label="tf('dash.kpi.detailsOf', { name: t('dash.kpi.' + k.key) })">
+                <span x-text="t('dash.kpi.details')"></span>
+                <i class="fa-solid fa-arrow-right rtl:-scale-x-100 text-[10px]" aria-hidden="true"></i>
+              </a>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- ================= الصف الأول: نمو المؤسسات + توزيع حالات الاشتراك ================= -->
+      <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+
+        <!-- نمو المؤسسات (من created_at) -->
+        <div class="panel p-4 sm:p-5 xl:col-span-2">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="growth-h" class="font-extrabold" x-text="t('dash.chart.tenantsGrowth')"></h2>
+              <p class="text-xs text-muted" x-text="t('dash.chart.last6Months')"></p>
+            </div>
+            <span class="badge" :class="growthBadge.cls">
+              <i class="fa-solid" :class="growthBadge.icon" aria-hidden="true"></i>
+              <span x-text="growthBadge.text"></span>
+              <span class="sr-only" x-text="growthBadge.sr"></span>
+            </span>
+          </div>
+
+          <div class="relative mt-4 h-56 sm:h-64" dir="ltr">
+            <!-- ملاحظة: <template x-for> لا يعمل كابن مباشر لِـ <svg>، لذا يُبنى المحتوى (مع <title>/<desc>) كنص SVG
+                 ويُحقن عبر x-html؛ القيم كلها أرقام محسوبة أو نصوص مُهرَّبة. التلميح بالمؤشر فقط، والجدول يقدّم البيانات للوحة المفاتيح. -->
+            <svg viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet" class="h-full w-full" role="img"
+                 aria-labelledby="growth-svg-title growth-svg-desc"
+                 x-html="growthChart.svg"
+                 @mouseover="if ($event.target.dataset.idx !== undefined) growthTip = growthChart.pts[+$event.target.dataset.idx]"
+                 @mouseout="growthTip = null"></svg>
+
+            <div x-show="growthTip" x-cloak aria-hidden="true"
+                 class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+10px)] whitespace-nowrap rounded-lg border border-line bg-card px-3 py-1.5 text-xs font-bold shadow-pop"
+                 :style="growthTip ? ('left:' + growthTip.leftPct + '%; top:' + growthTip.topPct + '%') : ''">
+              <span x-text="growthTip && growthTip.longLabel"></span>: <span class="text-brand" x-text="growthTip && growthTip.valueText"></span>
+            </div>
+          </div>
+
+          <button type="button" class="mt-3 rounded text-xs font-bold text-brand hover:underline focus-visible:ring-2" @click="growthTableOpen = !growthTableOpen"
+                  :aria-expanded="growthTableOpen.toString()" aria-controls="growth-table">
+            <span x-text="growthTableOpen ? t('dash.chart.hideTable') : t('dash.chart.viewTable')"></span>
+          </button>
+          <div id="growth-table" x-show="growthTableOpen" x-cloak class="mt-2 overflow-x-auto rounded-lg border border-line">
+            <table class="w-full text-xs">
+              <caption class="sr-only" x-text="t('dash.chart.tenantsGrowth')"></caption>
+              <thead class="bg-soft/60 text-muted"><tr>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colMonth')"></th>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colNewTenants')"></th>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colTotalTenants')"></th>
+              </tr></thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="r in growthTable" :key="'grow-' + r.key">
+                  <tr>
+                    <th scope="row" class="px-3 py-2 text-start font-bold" x-text="r.month"></th>
+                    <td class="px-3 py-2 tabular-nums" x-text="r.added"></td>
+                    <td class="px-3 py-2 tabular-nums" x-text="r.total"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- توزيع حالات الاشتراك (الاشتراك الحالي لكل مؤسسة) -->
+        <div class="panel p-4 sm:p-5">
+          <h2 class="font-extrabold" x-text="t('dash.chart.subStatus')"></h2>
+          <p class="text-xs text-muted" x-text="tf('dash.chart.totalSubs', { n: fmtNum(subsRows.length) })"></p>
+
+          <ul class="mt-4 space-y-2.5" role="list">
+            <template x-for="s in subStatusView" :key="s.key">
+              <li>
+                <button type="button" class="group flex w-full items-center gap-3 rounded-lg p-1.5 text-start transition hover:bg-soft focus-visible:ring-2"
+                        @click="setSubFilter(subFilter === s.key ? 'all' : s.key)" :aria-pressed="(subFilter === s.key).toString()">
+                  <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="s.bar" aria-hidden="true"></span>
+                  <span class="min-w-0 flex-1">
+                    <span class="flex items-center justify-between gap-2 text-xs font-bold" :class="subFilter === s.key ? 'text-brand' : 'text-ink'">
+                      <span x-text="t('dash.subStatus.' + s.key)"></span>
+                      <span class="tabular-nums text-muted" x-text="s.valueText"></span>
+                    </span>
+                    <span class="mt-1.5 block h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-line" aria-hidden="true">
+                      <span class="block h-full rounded-full transition-all duration-500" :class="s.bar" :style="'width:' + s.pct + '%'"></span>
+                    </span>
+                  </span>
+                </button>
+              </li>
+            </template>
+          </ul>
+          <p class="mt-3 text-[11px] text-muted" x-text="t('dash.chart.clickToFilter')"></p>
+        </div>
+      </section>
+
+      <!-- ================= الصف الثاني: الإيراد الشهري الصافي + توزيع الباقات ================= -->
+      <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+
+        <!-- الإيراد الشهري (مدفوعات مكتملة − مبالغ مستردة) -->
+        <div class="panel p-4 sm:p-5 xl:col-span-2">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="font-extrabold" x-text="t('dash.chart.revenue')"></h2>
+              <p class="text-xs text-muted" x-text="t('dash.chart.revenueSub')"></p>
+            </div>
+            <span class="badge badge-primary"><i class="fa-solid fa-sack-dollar" aria-hidden="true"></i> <span x-text="tf('dash.chart.revenueTotal', { amount: money(revenueTotals.net) })"></span></span>
+          </div>
+
+          <div class="relative mt-4 h-48 sm:h-56" dir="ltr">
+            <svg viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet" class="h-full w-full" role="img"
+                 aria-labelledby="revenue-svg-title revenue-svg-desc"
+                 x-html="revenueChart.svg"
+                 @mouseover="if ($event.target.dataset.idx !== undefined) revTip = revenueChart.pts[+$event.target.dataset.idx]"
+                 @mouseout="revTip = null"></svg>
+            <div x-show="revTip" x-cloak aria-hidden="true"
+                 class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+10px)] whitespace-nowrap rounded-lg border border-line bg-card px-3 py-1.5 text-xs font-bold shadow-pop"
+                 :style="revTip ? ('left:' + revTip.leftPct + '%; top:' + revTip.topPct + '%') : ''">
+              <span x-text="revTip && revTip.longLabel"></span>: <span class="text-brand" x-text="revTip && revTip.valueText"></span>
+            </div>
+          </div>
+
+          <button type="button" class="mt-3 rounded text-xs font-bold text-brand hover:underline focus-visible:ring-2" @click="revTableOpen = !revTableOpen"
+                  :aria-expanded="revTableOpen.toString()" aria-controls="revenue-table">
+            <span x-text="revTableOpen ? t('dash.chart.hideTable') : t('dash.chart.viewTable')"></span>
+          </button>
+          <div id="revenue-table" x-show="revTableOpen" x-cloak class="mt-2 overflow-x-auto rounded-lg border border-line">
+            <table class="w-full text-xs">
+              <caption class="sr-only" x-text="t('dash.chart.revenue')"></caption>
+              <thead class="bg-soft/60 text-muted"><tr>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colMonth')"></th>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colCollected')"></th>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colRefunds')"></th>
+                <th scope="col" class="px-3 py-2 text-start font-extrabold" x-text="t('dash.chart.colNet')"></th>
+              </tr></thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="r in revenueTable" :key="'rev-' + r.key">
+                  <tr>
+                    <th scope="row" class="px-3 py-2 text-start font-bold" x-text="r.month"></th>
+                    <td class="px-3 py-2 tabular-nums" x-text="r.collected"></td>
+                    <td class="px-3 py-2 tabular-nums" x-text="r.refunds"></td>
+                    <td class="px-3 py-2 font-bold tabular-nums" x-text="r.net"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- توزيع الباقات (الاشتراكات القائمة) -->
+        <div class="panel p-4 sm:p-5">
+          <h2 class="font-extrabold" x-text="t('dash.chart.plans')"></h2>
+          <p class="text-xs text-muted" x-text="tf('dash.chart.plansSub', { n: fmtNum(planTotal) })"></p>
+          <ul class="mt-4 space-y-2.5" role="list">
+            <template x-for="p in planView" :key="'plan-' + p.id">
+              <li>
+                <div class="flex items-center justify-between gap-2 text-xs font-bold text-ink">
+                  <span x-text="p.name"></span>
+                  <span class="tabular-nums text-muted" x-text="p.valueText"></span>
+                </div>
+                <div class="mt-1.5 h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-line" aria-hidden="true">
+                  <div class="h-full rounded-full bg-brand" :style="'width:' + p.pct + '%'"></div>
+                </div>
+              </li>
+            </template>
+          </ul>
+          <a href="plans.html" class="mt-3 inline-flex items-center gap-1 rounded text-xs font-bold text-brand hover:underline focus-visible:ring-2">
+            <span x-text="t('dash.chart.managePlans')"></span>
+            <i class="fa-solid fa-arrow-right rtl:-scale-x-100 text-[10px]" aria-hidden="true"></i>
+          </a>
+        </div>
+      </section>
+
+      <!-- ================= المؤسسات الجديدة + آخر النشاطات ================= -->
+      <section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+
+        <!-- جدول: المؤسسات الجديدة -->
+        <div class="panel min-w-0 xl:col-span-2" role="region" aria-labelledby="recent-tenants-title">
+          <div class="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <h2 id="recent-tenants-title" class="font-extrabold" x-text="t('dash.table.recentTenants')"></h2>
+              <p class="text-xs text-muted" x-text="t('dash.table.recentTenantsSub')"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <form role="search" class="relative min-w-0 flex-1 sm:max-w-xs" @submit.prevent>
+                <label for="tq" class="sr-only" x-text="t('dash.table.searchTenants')"></label>
+                <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+                <input id="tq" type="search" x-model="tenantQuery" :placeholder="t('dash.table.searchTenants')"
+                       class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-3 ps-10 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+              </form>
+              <a href="tenants.html" class="btn btn-outline btn-sm shrink-0"><span x-text="t('dash.table.viewAllTenants')"></span> <i class="fa-solid fa-arrow-right rtl:-scale-x-100" aria-hidden="true"></i></a>
+            </div>
+          </div>
+
+          <!-- بطاقات — جوال/تابلت (عرض واحد فقط عبر wide) -->
+          <template x-if="!wide">
+            <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4" role="list">
+              <template x-for="tn in filteredRecentTenants" :key="'card-' + tn.id">
+                <li class="min-w-0 rounded-xl border border-line p-4">
+                  <div class="flex items-start gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="tn.initials"></span>
+                    <div class="min-w-0 flex-1">
+                      <a href="tenants.html" class="block truncate rounded font-extrabold leading-6 hover:text-brand hover:underline focus-visible:ring-2" x-text="tn.name"></a>
+                      <p class="truncate text-xs text-muted" x-text="tn.planName"></p>
+                    </div>
+                    <span class="badge shrink-0" :class="tenantTone[tn.status]" x-text="t('dash.tenantStatus.' + tn.status)"></span>
+                  </div>
+                  <dl class="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3 text-xs">
+                    <div><dt class="text-muted" x-text="t('dash.table.colUsers')"></dt><dd class="mt-0.5 font-bold tabular-nums" x-text="tn.usersText"></dd></div>
+                    <div><dt class="text-muted" x-text="t('dash.table.colJoined')"></dt>
+                      <dd class="mt-0.5 font-bold"><time :datetime="tn.created_at" :title="tn.relative" x-text="tn.joined"></time></dd></div>
+                  </dl>
+                </li>
+              </template>
+              <li x-show="!filteredRecentTenants.length" class="col-span-full py-10 text-center">
+                <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <p class="font-bold" x-text="t('dash.table.emptyTitle')"></p>
+                <p class="mt-1 text-xs text-muted" x-text="t('dash.table.emptyDesc')"></p>
+                <button type="button" class="btn btn-outline btn-sm mt-3" @click="tenantQuery = ''" x-text="t('dash.table.clearSearch')"></button>
+              </li>
+            </ul>
+          </template>
+
+          <!-- جدول — سطح المكتب -->
+          <template x-if="wide">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <caption class="sr-only" x-text="t('dash.table.recentTenants')"></caption>
+                <thead class="bg-soft/60 text-xs text-muted">
+                  <tr>
+                    <th scope="col" class="px-5 py-3 text-start font-extrabold" x-text="t('dash.table.colTenant')"></th>
+                    <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colPlan')"></th>
+                    <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colUsers')"></th>
+                    <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colStatus')"></th>
+                    <th scope="col" class="px-5 py-3 text-end font-extrabold" x-text="t('dash.table.colJoined')"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="tn in filteredRecentTenants" :key="'row-' + tn.id">
+                    <tr class="transition hover:bg-soft/40">
+                      <td class="px-5 py-4">
+                        <div class="flex items-center gap-3">
+                          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="tn.initials"></span>
+                          <a href="tenants.html" class="truncate rounded font-extrabold leading-6 hover:text-brand hover:underline focus-visible:ring-2" x-text="tn.name"></a>
+                        </div>
+                      </td>
+                      <td class="px-4 py-4 text-muted" x-text="tn.planName"></td>
+                      <td class="px-4 py-4 tabular-nums" x-text="tn.usersText"></td>
+                      <td class="px-4 py-4"><span class="badge" :class="tenantTone[tn.status]" x-text="t('dash.tenantStatus.' + tn.status)"></span></td>
+                      <td class="px-5 py-4 text-end text-muted">
+                        <time class="block" :datetime="tn.created_at" x-text="tn.joined"></time>
+                        <span class="text-[11px]" x-text="tn.relative"></span>
+                      </td>
+                    </tr>
+                  </template>
+                  <tr x-show="!filteredRecentTenants.length">
+                    <td colspan="5" class="px-5 py-10 text-center">
+                      <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+                      <p class="font-bold" x-text="t('dash.table.emptyTitle')"></p>
+                      <p class="mt-1 text-xs text-muted" x-text="t('dash.table.emptyDesc')"></p>
+                      <button type="button" class="btn btn-outline btn-sm mt-3" @click="tenantQuery = ''" x-text="t('dash.table.clearSearch')"></button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted sm:px-5">
+            <p x-text="tf('dash.table.showingCount', { n: fmtNum(filteredRecentTenants.length), total: fmtNum(recentTenants.length) })"></p>
+          </div>
+        </div>
+
+        <!-- آخر النشاطات (مشتقة من المؤسسات والاشتراكات والمدفوعات والفواتير) -->
+        <div class="panel min-w-0" role="region" aria-labelledby="activity-title">
+          <div class="border-b border-line p-4 sm:p-5">
+            <h2 id="activity-title" class="font-extrabold" x-text="t('dash.activity.title')"></h2>
+            <p class="text-xs text-muted" x-text="t('dash.activity.sub')"></p>
+          </div>
+          <ol class="divide-y divide-line" role="list">
+            <template x-for="ev in recentActivity" :key="ev.id">
+              <li>
+                <a :href="ev.href" class="flex gap-3 px-4 py-3 transition hover:bg-soft/40 focus-visible:ring-2 sm:px-5">
+                  <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="ev.tone" aria-hidden="true"><i :class="ev.icon"></i></span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block break-words text-sm font-bold leading-6" x-text="ev.text"></span>
+                    <time class="block text-xs text-muted" :datetime="ev.at" :title="ev.date" x-text="ev.relative"></time>
+                  </span>
+                </a>
+              </li>
+            </template>
+            <li x-show="!recentActivity.length" class="px-5 py-10 text-center text-sm text-muted" x-text="t('dash.activity.empty')"></li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ================= جدول: الاشتراكات (الحالي لكل مؤسسة) ================= -->
+      <section class="panel" aria-labelledby="active-subs-title">
+        <div class="flex flex-col gap-3 border-b border-line p-4 sm:p-5">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="active-subs-title" class="font-extrabold" x-text="t('dash.table.activeSubs')"></h2>
+              <p class="text-xs text-muted" x-text="t('dash.table.activeSubsSub')"></p>
+            </div>
+            <a href="subscriptions.html" class="btn btn-outline btn-sm shrink-0"><span x-text="t('dash.table.viewAllSubs')"></span> <i class="fa-solid fa-arrow-right rtl:-scale-x-100" aria-hidden="true"></i></a>
+          </div>
+          <div class="flex flex-wrap gap-2" role="group" :aria-label="t('dash.table.statusFilter')">
+            <template x-for="f in subFilters" :key="f">
+              <button type="button" class="rounded-full border px-3 py-1.5 text-xs font-bold transition focus-visible:ring-2"
+                      :class="subFilter === f ? 'border-primary-500 bg-primary-500 text-white' : 'border-line text-muted hover:bg-soft'"
+                      :aria-pressed="(subFilter === f).toString()" @click="setSubFilter(f)"
+                      x-text="t('dash.subStatus.' + f)"></button>
+            </template>
+          </div>
+        </div>
+
+        <!-- بطاقات — جوال/تابلت -->
+        <template x-if="!wide">
+          <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4" role="list">
+            <template x-for="sb in filteredSubscriptions" :key="'scard-' + sb.id">
+              <li class="min-w-0 rounded-xl border border-line p-4">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <a href="subscriptions.html" class="block truncate rounded font-extrabold leading-6 hover:text-brand hover:underline focus-visible:ring-2" x-text="sb.tenantName"></a>
+                    <p class="truncate text-xs text-muted" x-text="sb.planName"></p>
+                  </div>
+                  <span class="badge shrink-0" :class="subStatusTone[sb.status]" x-text="t('dash.subStatus.' + sb.status)"></span>
+                </div>
+                <div class="mt-3 flex items-center justify-between border-t border-line pt-3 text-xs">
+                  <span class="text-muted" x-text="t('dash.table.colMrr')"></span>
+                  <span class="font-bold tabular-nums" x-text="sb.mrrText"></span>
+                </div>
+                <div class="mt-2 flex items-center justify-between text-xs">
+                  <span class="text-muted" x-text="sb.renews ? t('dash.table.renewsOn') : t('dash.table.endsOn')"></span>
+                  <time class="font-bold" :datetime="sb.ends_at" x-text="sb.endsText"></time>
+                </div>
+                <div class="mt-2">
+                  <div class="flex items-center justify-between text-[11px] text-muted"><span x-text="t('dash.table.colUsage')"></span><span class="tabular-nums" x-text="sb.usageText"></span></div>
+                  <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-line" aria-hidden="true">
+                    <div class="h-full rounded-full" :class="usageBar(sb.usagePct)" :style="'width:' + sb.usagePct + '%'"></div>
+                  </div>
+                </div>
+              </li>
+            </template>
+            <li x-show="!filteredSubscriptions.length" class="col-span-full py-10 text-center">
+              <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-filter"></i></span>
+              <p class="font-bold" x-text="t('dash.table.emptyFilterTitle')"></p>
+              <p class="mt-1 text-xs text-muted" x-text="t('dash.table.emptyFilterDesc')"></p>
+              <button type="button" class="btn btn-outline btn-sm mt-3" @click="setSubFilter('all')" x-text="t('dash.table.clearFilter')"></button>
+            </li>
+          </ul>
+        </template>
+
+        <!-- جدول — سطح المكتب -->
+        <template x-if="wide">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <caption class="sr-only" x-text="t('dash.table.activeSubs')"></caption>
+              <thead class="bg-soft/60 text-xs text-muted">
+                <tr>
+                  <th scope="col" class="px-5 py-3 text-start font-extrabold" x-text="t('dash.table.colTenant')"></th>
+                  <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colPlan')"></th>
+                  <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colStatus')"></th>
+                  <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colMrr')"></th>
+                  <th scope="col" class="px-4 py-3 text-start font-extrabold" x-text="t('dash.table.colUsage')"></th>
+                  <th scope="col" class="px-5 py-3 text-end font-extrabold" x-text="t('dash.table.colPeriodEnd')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="sb in filteredSubscriptions" :key="'srow-' + sb.id">
+                  <tr class="transition hover:bg-soft/40">
+                    <td class="px-5 py-4"><a href="subscriptions.html" class="rounded font-extrabold hover:text-brand hover:underline focus-visible:ring-2" x-text="sb.tenantName"></a></td>
+                    <td class="px-4 py-4 text-muted" x-text="sb.planName"></td>
+                    <td class="px-4 py-4"><span class="badge" :class="subStatusTone[sb.status]" x-text="t('dash.subStatus.' + sb.status)"></span></td>
+                    <td class="px-4 py-4 tabular-nums" x-text="sb.mrrText"></td>
+                    <td class="px-4 py-4">
+                      <div class="flex items-center gap-2">
+                        <div class="h-1.5 w-20 overflow-hidden rounded-full bg-neutral-200 dark:bg-line" aria-hidden="true">
+                          <div class="h-full rounded-full" :class="usageBar(sb.usagePct)" :style="'width:' + sb.usagePct + '%'"></div>
+                        </div>
+                        <span class="shrink-0 text-xs tabular-nums text-muted" x-text="sb.usageText"></span>
+                      </div>
+                    </td>
+                    <td class="px-5 py-4 text-end text-muted">
+                      <time class="block" :datetime="sb.ends_at" x-text="sb.endsText"></time>
+                      <span class="text-[11px]" x-text="sb.renews ? t('dash.table.renewsOn') : t('dash.table.endsOn')"></span>
+                    </td>
+                  </tr>
+                </template>
+                <tr x-show="!filteredSubscriptions.length">
+                  <td colspan="6" class="px-5 py-10 text-center">
+                    <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-filter"></i></span>
+                    <p class="font-bold" x-text="t('dash.table.emptyFilterTitle')"></p>
+                    <p class="mt-1 text-xs text-muted" x-text="t('dash.table.emptyFilterDesc')"></p>
+                    <button type="button" class="btn btn-outline btn-sm mt-3" @click="setSubFilter('all')" x-text="t('dash.table.clearFilter')"></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted sm:px-5">
+          <p x-text="tf('dash.table.showingCount', { n: fmtNum(filteredSubscriptions.length), total: fmtNum(subsRows.length) })"></p>
+        </div>
+      </section>
+
+      <p class="sr-only" role="status" aria-live="polite" x-text="liveMsg"></p>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.repo')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="locale === 'ar' ? 'روابط التذييل' : 'Footer links'" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.map')"></span></a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.help')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.docs')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.privacy')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.terms')"></span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.status')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * LND-01 — لوحة المسؤول العام: كل الأرقام والرسوم محسوبة من بيانات SA المشتركة
+   * (tenants, subscriptions, invoices, payments + refunds) — لا أرقام ثابتة.
+   * في Laravel: نفس الحسابات في DashboardService (استعلامات تجميعية) مع كاش قصير.
+   */
+  /* =====================================================================================
+     FirOb — بيانات المسؤول العام المشتركة (Single Source of Truth) — SA
+     تُضمَّن حرفيًا في كل صفحات super-admin عند البناء، فلا تتعارض الصفحات أبدًا.
+     - العملة واحدة: USD (لا تتغير مع اللغة)، وضريبة القيمة المضافة 15% محسوبة على البنود.
+     - كل الحساب المالي بالهللة (أعداد صحيحة) عبر SA.m — لا جمع لأعداد عشرية.
+     - التواريخ محلية YYYY-MM-DD (لا toISOString) — لا انزياح يوم في UTC+3.
+     - حالة الفاتورة مشتقة من المدفوعات وتاريخ الاستحقاق (إلا void/draft المخزّنتين).
+     في Laravel: نفس الجداول (plans, tenants, subscriptions, invoices, invoice_items, payments, refunds)
+     والمبالغ bigint بالهللة، والحالات تُحسب في Model accessors/Jobs.
+     ===================================================================================== */
+  const SA = (() => {
+    /* ---------- التواريخ (محلية) ---------- */
+    const pad = (n) => String(n).padStart(2, '0');
+    const isoLocal = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    const parseLocal = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d, 12, 0, 0, 0); };
+    const today = () => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; };
+    const addDays = (n, from) => { const d = from ? parseLocal(from) : today(); d.setDate(d.getDate() + n); return isoLocal(d); };
+    const daysBetween = (a, b) => Math.round((parseLocal(b) - parseLocal(a)) / 864e5);   // b − a بالأيام
+    const startOfDay = (s) => { const d = parseLocal(s); d.setHours(0, 0, 0, 0); return d; };
+    const endOfDay = (s) => { const d = parseLocal(s); d.setHours(23, 59, 59, 999); return d; };
+    const todayIso = () => isoLocal(today());
+
+    /* ---------- المال (هللة) ---------- */
+    const CURRENCY = 'USD';
+    const VAT_RATE = 0.15;
+    const m = {
+      toMinor: (usd) => Math.round(Number(usd || 0) * 100),
+      toMajor: (minor) => minor / 100,
+      sum: (arr) => arr.reduce((s, x) => s + Math.round(x), 0),
+    };
+    const fmtLocale = (loc) => (loc === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US');
+    const money = (minor, loc) => new Intl.NumberFormat(fmtLocale(loc), { style: 'currency', currency: CURRENCY, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((minor || 0) / 100);
+    const moneyShort = (minor, loc) => new Intl.NumberFormat(fmtLocale(loc), { style: 'currency', currency: CURRENCY, notation: 'compact', maximumFractionDigits: 1 }).format((minor || 0) / 100);
+    const fmtDate = (s, loc, opts) => s ? new Intl.DateTimeFormat(fmtLocale(loc), opts || { day: 'numeric', month: 'short', year: 'numeric' }).format(parseLocal(s)) : '—';
+    const fmtNum = (n, loc) => new Intl.NumberFormat(fmtLocale(loc)).format(n || 0);
+
+    /* ---------- الباقات (الأسعار شهرية بالهللة، قبل الضريبة) ---------- */
+    const PLANS = [
+      { id: 1, code: 'trial',      name: { ar: 'الباقة التجريبية', en: 'Trial Plan' },       price_monthly: 0,     max_users: 5,   max_storage_mb: 1024,    ai_token_quota_monthly: 10000,   trial_days: 14, is_active: true,  sort_order: 1 },
+      { id: 2, code: 'basic',      name: { ar: 'الباقة الأساسية', en: 'Basic Plan' },        price_monthly: 4900,  max_users: 10,  max_storage_mb: 5120,    ai_token_quota_monthly: 50000,   trial_days: 0,  is_active: true,  sort_order: 2 },
+      { id: 3, code: 'pro',        name: { ar: 'الباقة الاحترافية', en: 'Pro Plan' },        price_monthly: 14900, max_users: 50,  max_storage_mb: 10240,   ai_token_quota_monthly: 100000,  trial_days: 0,  is_active: true,  sort_order: 3 },
+      { id: 4, code: 'enterprise', name: { ar: 'باقة المؤسسات', en: 'Enterprise Plan' },     price_monthly: 49900, max_users: 500, max_storage_mb: 1048576, ai_token_quota_monthly: 2000000, trial_days: 0,  is_active: true,  sort_order: 4 },
+      { id: 5, code: 'legacy',     name: { ar: 'الباقة القديمة', en: 'Legacy Plan' },        price_monthly: 2900,  max_users: 20,  max_storage_mb: 2048,    ai_token_quota_monthly: 20000,   trial_days: 0,  is_active: false, sort_order: 5 },
+    ];
+
+    /* ---------- المؤسسات (status: active | trial | suspended | inactive — متّسقة مع اشتراكاتها) ---------- */
+    const TENANTS = [
+      { id: 't1',  name: { ar: 'جامعة الأقصى', en: 'Al-Aqsa University' },               domain: 'aqsa-univ.firob.sa',   color: '#0E80A1', created_at: addDays(-900), status: 'active', country: 'PS', contact: { name: { ar: 'د. سامي الحلو', en: 'Sami Al-Helou' }, email: 'admin@aqsa-univ.edu.ps', phone: '+970 8 284 1234' } },
+      { id: 't2',  name: { ar: 'مدارس الرواد الأهلية', en: 'Al-Ruwad Schools' },          domain: 'alruwad.firob.sa',     color: '#0B6680', created_at: addDays(-200), status: 'active', country: 'SA', contact: { name: { ar: 'أ. نورة القحطاني', en: 'Noura Al-Qahtani' }, email: 'it@alruwad.edu.sa', phone: '+966 11 456 7788' } },
+      { id: 't3',  name: { ar: 'أكاديمية المستقبل', en: 'Future Academy' },               domain: 'future-acad.firob.sa', color: '#094F63', created_at: addDays(-10), status: 'trial', country: 'SA', contact: { name: { ar: 'م. خالد العتيبي', en: 'Khaled Al-Otaibi' }, email: 'khaled@future-acad.sa', phone: '+966 12 610 2200' } },
+      { id: 't4',  name: { ar: 'معهد النور التقني', en: 'Al-Noor Tech Institute' },       domain: 'alnoor-tech.firob.sa', color: '#0C6F8B', created_at: addDays(-95), status: 'active', country: 'SA', contact: { name: { ar: 'أ. ريم السبيعي', en: 'Reem Al-Subaie' }, email: 'admin@alnoor-tech.sa', phone: '+966 13 812 4410' } },
+      { id: 't5',  name: { ar: 'مدرسة ألفا الدولية', en: 'Alpha International School' }, domain: 'alpha-intl.firob.sa',  color: '#586670', created_at: addDays(-60), status: 'active', country: 'AE', contact: { name: { ar: 'Ms. Laura Chen', en: 'Laura Chen' }, email: 'ops@alpha-intl.ae', phone: '+971 4 330 1200' } },
+      { id: 't6',  name: { ar: 'جامعة الرياض الأهلية', en: 'Riyadh National University' }, domain: 'riyadh-nu.firob.sa', color: '#5A687D', created_at: addDays(-500), status: 'active', country: 'SA', contact: { name: { ar: 'د. فهد الشمري', en: 'Fahad Al-Shammari' }, email: 'it@riyadh-nu.edu.sa', phone: '+966 11 210 9000' } },
+      { id: 't7',  name: { ar: 'مركز إبداع للتدريب', en: 'Ibdaa Training Center' },       domain: 'ibdaa-center.firob.sa', color: '#0E80A1', created_at: addDays(-450), status: 'inactive', country: 'SA', contact: { name: { ar: 'أ. منى الزهراني', en: 'Mona Al-Zahrani' }, email: 'info@ibdaa-center.sa', phone: '+966 12 655 0303' } },
+      { id: 't8',  name: { ar: 'مدارس الفيصل النموذجية', en: 'Al-Faisal Model Schools' }, domain: 'alfaisal.firob.sa',    color: '#0B6680', created_at: addDays(-3), status: 'trial', country: 'SA', contact: { name: { ar: 'أ. عبدالله الفيصل', en: 'Abdullah Al-Faisal' }, email: 'admin@alfaisal.edu.sa', phone: '+966 11 470 1515' } },
+      { id: 't9',  name: { ar: 'كلية الطب الأهلية', en: 'National Medical College' },     domain: 'med-college.firob.sa', color: '#094F63', created_at: addDays(-370), status: 'active', country: 'SA', contact: { name: { ar: 'د. هالة الدوسري', en: 'Hala Al-Dosari' }, email: 'it@med-college.edu.sa', phone: '+966 11 880 4400' } },
+      { id: 't10', name: { ar: 'معهد اللغات الحديث', en: 'Modern Languages Institute' },  domain: 'mli.firob.sa',         color: '#0C6F8B', created_at: addDays(-500), status: 'active', country: 'JO', contact: { name: { ar: 'أ. ليث حداد', en: 'Laith Haddad' }, email: 'admin@mli.edu.jo', phone: '+962 6 555 1200' } },
+      { id: 't11', name: { ar: 'أكاديمية البرمجة الذكية', en: 'Smart Coding Academy' },  domain: 'smartcode.firob.sa',   color: '#586670', created_at: addDays(-30), status: 'active', country: 'PS', contact: { name: { ar: 'م. يوسف النجار', en: 'Yousef Al-Najjar' }, email: 'hello@smartcode.ps', phone: '+970 59 912 3456' } },
+      { id: 't12', name: { ar: 'مدرسة نجوم الغد', en: 'Stars of Tomorrow School' },      domain: 'starsedu.firob.sa',    color: '#5A687D', created_at: addDays(-800), status: 'suspended', country: 'SA', contact: { name: { ar: 'أ. سارة المطيري', en: 'Sara Al-Mutairi' }, email: 'admin@starsedu.sa', phone: '+966 11 230 7070' } },
+    ];
+
+    /* ---------- الاشتراكات (استخدام ≤ حدود الباقة دائمًا) ---------- */
+    const SUB = (id, tenant_id, plan_id, status, auto_renew, s, e, extra) => Object.assign(
+      { id, tenant_id, plan_id, status, auto_renew, starts_at: addDays(s), ends_at: addDays(e), cancelled_at: null, cancel_reason: null, scheduledPlanId: null,
+        usage: { usersUsed: 0, storageUsedMb: 0, aiTokensUsed: 0 } }, extra || {});
+    const SUBSCRIPTIONS = [
+      SUB(1001, 't1', 4, 'active',   true,  -400,  65,  { usage: { usersUsed: 340, storageUsedMb: 612000, aiTokensUsed: 1450000 } }),
+      SUB(1014, 't1', 3, 'cancelled', false, -900, -410, { cancelled_at: addDays(-420), cancel_reason: 'upgraded', usage: { usersUsed: 46, storageUsedMb: 9100, aiTokensUsed: 88000 } }),
+      SUB(1002, 't2', 3, 'active',   true,  -200,   5,  { usage: { usersUsed: 48, storageUsedMb: 9850, aiTokensUsed: 96500 } }),
+      SUB(1003, 't3', 1, 'trialing', false,  -10,   4,  { usage: { usersUsed: 3, storageUsedMb: 210, aiTokensUsed: 2200 } }),
+      SUB(1004, 't4', 2, 'past_due', true,   -95,  -3,  { usage: { usersUsed: 9, storageUsedMb: 4700, aiTokensUsed: 47000 } }),
+      SUB(1005, 't5', 3, 'active',   true,   -60, 300,  { scheduledPlanId: 4, usage: { usersUsed: 31, storageUsedMb: 6100, aiTokensUsed: 41000 } }),
+      SUB(1006, 't6', 4, 'active',   true,  -500, 180,  { usage: { usersUsed: 410, storageUsedMb: 780000, aiTokensUsed: 1800000 } }),
+      SUB(1007, 't7', 2, 'expired',  false, -400, -30,  { usage: { usersUsed: 6, storageUsedMb: 3100, aiTokensUsed: 18500 } }),
+      SUB(1013, 't7', 1, 'cancelled', false, -450, -400, { cancelled_at: addDays(-410), cancel_reason: 'not_needed', usage: { usersUsed: 2, storageUsedMb: 90, aiTokensUsed: 900 } }),
+      SUB(1008, 't8', 1, 'trialing', true,    -3,  11,  { usage: { usersUsed: 4, storageUsedMb: 340, aiTokensUsed: 3100 } }),
+      SUB(1009, 't9', 4, 'past_due', true,  -370,  -1,  { usage: { usersUsed: 388, storageUsedMb: 690000, aiTokensUsed: 1950000 } }),
+      SUB(1010, 't10', 3, 'cancelled', false, -250, 40, { cancelled_at: addDays(-15), cancel_reason: 'too_expensive', usage: { usersUsed: 22, storageUsedMb: 5200, aiTokensUsed: 51000 } }),
+      SUB(1015, 't10', 2, 'expired',  false, -500, -260, { usage: { usersUsed: 8, storageUsedMb: 3900, aiTokensUsed: 22000 } }),
+      SUB(1011, 't11', 2, 'active',  true,   -30, 335,  { usage: { usersUsed: 7, storageUsedMb: 2600, aiTokensUsed: 31000 } }),
+      SUB(1012, 't12', 5, 'paused',  false, -800,  20,  { usage: { usersUsed: 18, storageUsedMb: 1950, aiTokensUsed: 19500 } }),
+    ];
+
+    /* ---------- الفواتير (البنود بالهللة قبل الضريبة؛ الإجمالي = المجموع + 15%) ---------- */
+    const SUBLINE = (plan_id) => ({ description_key: 'sub', plan_id, qty: 1, unit_price: PLANS.find(p => p.id === plan_id).price_monthly });
+    const INV = (id, number, tenant_id, subscription_id, issue, due, items, extra) => Object.assign(
+      { id, invoice_number: number, tenant_id, subscription_id, issue_date: addDays(issue), due_date: addDays(due), items, voided_at: null, void_reason: null, status_override: null }, extra || {});
+    const INVOICES = [
+      INV(5001, 'INV-2026-0097', 't1', 1001, -35, -20, [SUBLINE(4)]),
+      INV(5002, 'INV-2026-0071', 't1', 1001, -65, -50, [SUBLINE(4)]),
+      INV(5015, 'INV-2025-0140', 't1', null, -400, -385, [{ description: { ar: 'حزمة تراخيص مستخدمين إضافية', en: 'Additional user license pack' }, qty: 2, unit_price: 25000 }]),
+      INV(5003, 'INV-2026-0088', 't2', 1002, -15, 0, [SUBLINE(3)]),
+      INV(5004, 'INV-2026-0055', 't2', 1002, -45, -30, [SUBLINE(3)]),
+      INV(5016, 'INV-2025-0119', 't2', null, -195, -180, [{ description: { ar: 'رسوم إعداد أولي', en: 'Initial setup fee' }, qty: 1, unit_price: 4900 }],
+          { status_override: 'void', voided_at: addDays(-190), void_reason: { ar: 'أُعفي من رسوم الإعداد ضمن العرض الترحيبي', en: 'Setup fee waived as part of the welcome offer' } }),
+      INV(5005, 'INV-2026-0090', 't3', null, -4, 11, [
+        { description: { ar: 'رسوم تفعيل نطاق مخصص', en: 'Custom domain setup fee' }, qty: 1, unit_price: 15000 },
+        { description: { ar: 'إضافة تخزين سحابي 50GB', en: 'Extra 50GB storage add-on' }, qty: 1, unit_price: 10000 }]),
+      INV(5007, 'INV-2026-0095', 't4', 1004, -33, -3, [SUBLINE(2)]),
+      INV(5008, 'INV-2026-0064', 't4', 1004, -63, -33, [SUBLINE(2)]),
+      INV(5009, 'INV-2026-0079', 't5', 1005, -30, -15, [SUBLINE(3)]),
+      INV(5010, 'INV-2026-0020', 't5', null, -90, -75, [{ description: { ar: 'رسوم دعم فني إضافي', en: 'Extra technical support' }, qty: 1, unit_price: 9900 }],
+          { status_override: 'void', voided_at: addDays(-80), void_reason: { ar: 'خدمة لم تُقدَّم', en: 'Service not delivered' } }),
+      INV(5011, 'INV-2026-0083', 't6', 1006, -30, -15, [SUBLINE(4)]),
+      INV(5012, 'INV-2026-0052', 't6', 1006, -60, -45, [SUBLINE(4)]),
+      INV(5013, 'INV-2025-0151', 't7', 1007, -60, -45, [SUBLINE(2)]),
+      INV(5017, 'INV-2026-0099', 't9', 1009, -8, -1, [SUBLINE(4)]),
+      INV(5018, 'INV-2026-0068', 't9', 1009, -31, -16, [SUBLINE(4)]),
+      INV(5019, 'INV-2026-0044', 't10', 1010, -45, -30, [SUBLINE(3)]),
+      INV(5020, 'INV-2026-0080', 't11', 1011, -30, -15, [SUBLINE(2)]),
+      INV(5021, 'INV-2026-0077', 't12', 1012, -30, -15, [SUBLINE(5)]),
+    ];
+
+    /* ---------- المدفوعات (refunds[] سجل استرداد جزئي/كلي مع السبب) ---------- */
+    const PAY = (id, invoice_id, tenant_id, amount, method, ref, status, at, extra) => Object.assign(
+      { id, invoice_id, tenant_id, amount, payment_method: method, transaction_reference: ref, status, paid_at: addDays(at), refunds: [] }, extra || {});
+    const PAYMENTS = [
+      PAY(9001, 5001, 't1', 34500, 'stripe', 'TXN-518820', 'completed', -32),
+      PAY(9002, 5001, 't1', 22885, 'stripe', 'TXN-518955', 'completed', -30),
+      PAY(9003, 5002, 't1', 57385, 'bank_transfer', 'WIRE-88213', 'completed', -60),
+      PAY(9016, 5015, 't1', 57500, 'paypal', 'PAY-10023', 'completed', -390),
+      PAY(9004, 5003, 't2', 17135, 'credit_card', 'TXN-519850', 'failed', -16),
+      PAY(9005, 5003, 't2', 8600, 'credit_card', 'TXN-520011', 'completed', -14),
+      PAY(9006, 5004, 't2', 17135, 'stripe', 'TXN-517700', 'completed', -40),
+      PAY(9007, 5005, 't3', 28750, 'bank_transfer', 'WIRE-91004', 'pending', -1),
+      PAY(9009, 5007, 't4', 5635, 'paypal', 'PAY-33210', 'failed', -2),
+      PAY(9010, 5008, 't4', 5635, 'cash', 'CASH-0031', 'completed', -58),
+      PAY(9011, 5009, 't5', 17135, 'stripe', 'TXN-521500', 'completed', -25),
+      PAY(9013, 5011, 't6', 57385, 'bank_transfer', 'WIRE-92100', 'completed', -28),
+      PAY(9014, 5012, 't6', 57385, 'stripe', 'TXN-516200', 'completed', -55,
+          { refunds: [{ id: 'R-301', amount: 5000, reason: { ar: 'تعويض عن انقطاع الخدمة يومين', en: 'Credit for a two-day service outage' }, by: 'Eman Kullab', at: addDays(-50) }] }),
+      PAY(9015, 5013, 't7', 5635, 'credit_card', 'TXN-509900', 'completed', -50),
+      PAY(9017, 5017, 't9', 57385, 'credit_card', 'TXN-523300', 'failed', -1),
+      PAY(9018, 5018, 't9', 57385, 'bank_transfer', 'WIRE-90770', 'completed', -20),
+      PAY(9019, 5019, 't10', 17135, 'stripe', 'TXN-519000', 'completed', -40),
+      PAY(9020, 5020, 't11', 5635, 'credit_card', 'TXN-520700', 'completed', -28),
+      PAY(9021, 5021, 't12', 3335, 'check', 'CHK-1182', 'completed', -25),
+    ];
+
+    /* ---------- حسابات مشتقة ---------- */
+    const plan = (id) => PLANS.find(p => p.id === id) || null;
+    const tenant = (id) => TENANTS.find(t => t.id === id) || null;
+    /* الاشتراك الحالي للمؤسسة = الأحدث بدءًا من غير الملغاة/المنتهية، وإلا الأحدث مطلقًا */
+    const currentSubscription = (tenantId) => {
+      const list = SUBSCRIPTIONS.filter(s => s.tenant_id === tenantId).sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1));
+      return list.find(s => !['cancelled', 'expired'].includes(s.status)) || list[0] || null;
+    };
+    /* الإيراد الشهري المتكرر (MRR) بالهللة: الاشتراكات التي تُفوتر فعلًا (active / past_due) */
+    const mrr = () => m.sum(SUBSCRIPTIONS.filter(s => ['active', 'past_due'].includes(s.status)).map(s => plan(s.plan_id).price_monthly));
+    const invoiceTotals = (inv) => {
+      const subtotal = m.sum(inv.items.map(i => i.qty * i.unit_price));
+      const vat = Math.round(subtotal * VAT_RATE);
+      return { subtotal, vat, total: subtotal + vat };
+    };
+    const refundedOf = (p) => m.sum((p.refunds || []).map(r => r.amount));
+    const refundableOf = (p) => (p.status === 'completed' ? p.amount - refundedOf(p) : 0);
+    /* المدفوع (إجمالي المدفوعات المكتملة) يغلق الفاتورة؛ الاسترداد لا يعيد فتحها بل يُسجَّل كإشعار دائن منفصل */
+    const paidOf = (inv, payments) => m.sum((payments || PAYMENTS).filter(p => p.invoice_id === inv.id && p.status === 'completed').map(p => p.amount));
+    const refundedOfInvoice = (inv, payments) => m.sum((payments || PAYMENTS).filter(p => p.invoice_id === inv.id).map(refundedOf));
+    /* الحالة المشتقة: void | refunded | paid | partially_paid | overdue | unpaid  (+ overdue منفصلة لتلوين «جزئي متأخر») */
+    const invoiceState = (inv, payments) => {
+      const { total } = invoiceTotals(inv);
+      const paid = paidOf(inv, payments), refunded = refundedOfInvoice(inv, payments);
+      const balance = inv.status_override === 'void' ? 0 : Math.max(0, total - paid);
+      const overdue = inv.status_override !== 'void' && balance > 0 && daysBetween(inv.due_date, todayIso()) > 0;
+      let status;
+      if (inv.status_override === 'void') status = 'void';
+      else if (paid > 0 && refunded >= paid) status = 'refunded';
+      else if (balance === 0 && total > 0) status = 'paid';
+      else if (paid > 0) status = 'partially_paid';
+      else status = overdue ? 'overdue' : 'unpaid';
+      return { total, paid, refunded, net: paid - refunded, balance, overdue, status };
+    };
+
+    return { CURRENCY, VAT_RATE, PLANS, TENANTS, SUBSCRIPTIONS, INVOICES, PAYMENTS,
+             pad, isoLocal, parseLocal, today, todayIso, addDays, daysBetween, startOfDay, endOfDay,
+             m, money, moneyShort, fmtDate, fmtNum, fmtLocale, plan, tenant, currentSubscription, mrr, invoiceTotals, refundedOf, refundableOf, paidOf, refundedOfInvoice, invoiceState };
+  })();
+
+  /* ---------- أدوات الرسم (SVG نصّي يُحقن عبر x-html — كل النصوص مُهرَّبة) ---------- */
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /* خطوة «لطيفة» للمحور (1، 2، 2.5، 5 × 10ⁿ) */
+  function niceStep(x, integer) {
+    if (!(x > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(x)));
+    for (const k of [1, 2, 2.5, 5, 10]) { const s = k * p; if (s >= x) return integer ? Math.max(1, Math.ceil(s)) : s; }
+    return 10 * p;
+  }
+  function scaleY(values, integer) {
+    const hi = Math.max(0, ...values), lo = Math.min(0, ...values);
+    const step = niceStep((hi - lo) / 4 || 1, integer);
+    const max = Math.max(step, Math.ceil(hi / step) * step), min = Math.floor(lo / step) * step;
+    const ticks = [];
+    for (let v = min; v <= max + 1e-9; v += step) ticks.push(+v.toFixed(6));
+    return { min, max, ticks };
+  }
+
+  /* هندسة مشتركة: المحور الزمني يجري من «البداية» إلى «النهاية» — في RTL الأقدم يمينًا */
+  function frame(n, rtl) {
+    const W = 600, H = 240, padT = 16, padB = 30, padS = 64, padE = 14;
+    const plotW = W - padS - padE, plotH = H - padT - padB, y1 = H - padB;
+    const X = (x) => (rtl ? W - x : x);
+    return { W, H, padT, padB, padS, padE, plotW, plotH, y1, X, n };
+  }
+  function axes(f, sc, fmtTick, yOf) {
+    const anchor = f.X(0) === 0 ? 'end' : 'start';      // تسميات المحور الرأسي على جهة البداية
+    return sc.ticks.map((v) => {
+      const y = +yOf(v).toFixed(1);
+      return `<line x1="${f.X(f.padS)}" x2="${f.X(f.W - f.padE)}" y1="${y}" y2="${y}" class="stroke-line" stroke-width="1"></line>` +
+             `<text x="${f.X(f.padS - 8)}" y="${y + 3.5}" text-anchor="${anchor}" class="fill-muted" font-size="11" font-weight="700">${esc(fmtTick(v))}</text>`;
+    }).join('');
+  }
+  function xLabels(f, pts) {
+    return pts.map((p) => `<text x="${p.cx}" y="${f.H - 9}" text-anchor="middle" class="fill-muted" font-size="11" font-weight="700">${esc(p.label)}</text>`).join('');
+  }
+  function heading(o) {
+    return `<title id="${o.id}-svg-title">${esc(o.title)}</title><desc id="${o.id}-svg-desc">${esc(o.desc)}</desc>`;
+  }
+
+  /* خط زمني (نمو المؤسسات التراكمي) */
+  function lineChart(series, o) {
+    const f = frame(series.length, o.rtl), sc = scaleY(series.map((p) => p.value), true);
+    const yOf = (v) => f.y1 - ((v - sc.min) / (sc.max - sc.min)) * f.plotH;
+    const pts = series.map((p, i) => {
+      const xl = f.n > 1 ? f.padS + i * (f.plotW / (f.n - 1)) : f.padS + f.plotW / 2;
+      const x = +f.X(xl).toFixed(1), y = +yOf(p.value).toFixed(1);
+      return { ...p, x, y, cx: x, leftPct: +((x / f.W) * 100).toFixed(2), topPct: +((y / f.H) * 100).toFixed(2) };
+    });
+    const path = pts.map((p, i) => (i ? 'L' : 'M') + p.x + ',' + p.y).join(' ');
+    const base = +yOf(Math.max(sc.min, 0)).toFixed(1);
+    const area = pts.length ? `${path} L${pts[pts.length - 1].x},${base} L${pts[0].x},${base} Z` : '';
+    const svg = heading(o) +
+      `<defs><linearGradient id="${o.id}Fill" x1="0" y1="0" x2="0" y2="1">` +
+      `<stop offset="0%" stop-color="rgb(var(--brand))" stop-opacity="0.28"></stop>` +
+      `<stop offset="100%" stop-color="rgb(var(--brand))" stop-opacity="0"></stop></linearGradient></defs>` +
+      axes(f, sc, o.fmtTick, yOf) +
+      `<path d="${area}" fill="url(#${o.id}Fill)" stroke="none"></path>` +
+      `<path d="${path}" fill="none" stroke="rgb(var(--brand))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>` +
+      xLabels(f, pts) +
+      pts.map((p, i) => `<circle data-idx="${i}" data-value="${p.value}" cx="${p.x}" cy="${p.y}" r="5" class="cursor-pointer fill-card stroke-brand" stroke-width="2.5"></circle>`).join('');
+    return { pts, svg, scale: sc };
+  }
+
+  /* أعمدة زمنية (الإيراد الصافي؛ يدعم القيم السالبة إن زادت المستردات عن المحصَّل) */
+  function barChart(series, o) {
+    const f = frame(series.length, o.rtl), sc = scaleY(series.map((p) => p.value), false);
+    const yOf = (v) => f.y1 - ((v - sc.min) / (sc.max - sc.min)) * f.plotH;
+    const slot = f.plotW / Math.max(f.n, 1), bw = Math.min(56, slot * 0.6), y0 = yOf(0);
+    const pts = series.map((p, i) => {
+      const xl = f.padS + i * slot + (slot - bw) / 2;
+      const x = o.rtl ? f.W - xl - bw : xl, yv = yOf(p.value);
+      const y = Math.min(yv, y0), h = Math.abs(y0 - yv);
+      const cx = +(x + bw / 2).toFixed(1);
+      return { ...p, x: +x.toFixed(1), y: +y.toFixed(1), w: +bw.toFixed(1), h: +h.toFixed(1), cx,
+               leftPct: +((cx / f.W) * 100).toFixed(2), topPct: +((y / f.H) * 100).toFixed(2) };
+    });
+    const svg = heading(o) + axes(f, sc, o.fmtTick, yOf) +
+      `<line x1="${f.X(f.padS)}" x2="${f.X(f.W - f.padE)}" y1="${+y0.toFixed(1)}" y2="${+y0.toFixed(1)}" class="stroke-line-strong" stroke-width="1"></line>` +
+      pts.map((b, i) => `<rect data-idx="${i}" data-value="${b.value}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="3" class="cursor-pointer" fill="${b.value < 0 ? 'rgb(var(--danger))' : 'rgb(var(--brand))'}"></rect>`).join('') +
+      xLabels(f, pts);
+    return { pts, svg, scale: sc };
+  }
+
+  /* نسبة التغيّر عن الفترة السابقة: null عند غياب أساس للمقارنة (القسمة على صفر) */
+  function pctChange(cur, prev) {
+    if (!prev) return cur ? null : 0;
+    return Math.round(((cur - prev) / Math.abs(prev)) * 1000) / 10;
+  }
+
+  /* ---------- الحسابات الخام (تُعاد عند كل «تحديث») ---------- */
+  function computeOverview() {
+    const today = SA.todayIso(), now = SA.today();
+    const ago = (iso) => SA.daysBetween(iso, today);                       // كم يومًا مضى
+    const T = SA.TENANTS, S = SA.SUBSCRIPTIONS, P = SA.PAYMENTS;
+
+    /* المؤسسات حسب الحالة + المقارنة مع قبل 30 يومًا (حسب created_at) */
+    const tenantsByStatus = { active: 0, trial: 0, suspended: 0, inactive: 0 };
+    T.forEach((t) => { tenantsByStatus[t.status] = (tenantsByStatus[t.status] || 0) + 1; });
+    const tenantsTotal = T.length;
+    const tenantsPrev = T.filter((t) => ago(t.created_at) >= 30).length;
+
+    /* الاشتراكات */
+    const subsByStatus = {};
+    S.forEach((s) => { subsByStatus[s.status] = (subsByStatus[s.status] || 0) + 1; });
+    const mrr = SA.mrr();
+    const billable = S.filter((s) => ['active', 'past_due'].includes(s.status)).length;
+
+    /* المدفوعات: المحصَّل (مكتملة) − المستردات، على نوافذ 30 يومًا */
+    const refundsAll = [];
+    P.forEach((p) => (p.refunds || []).forEach((r) => refundsAll.push({ ...r, payment: p })));
+    const completed = P.filter((p) => p.status === 'completed');
+    const win = (from, to) => {                                               // from ≤ أيام مضت < to
+      const gross = SA.m.sum(completed.filter((p) => ago(p.paid_at) >= from && ago(p.paid_at) < to).map((p) => p.amount));
+      const refunds = SA.m.sum(refundsAll.filter((r) => ago(r.at) >= from && ago(r.at) < to).map((r) => r.amount));
+      return { gross, refunds, net: gross - refunds };
+    };
+    const rev30 = win(0, 30), revPrev30 = win(30, 60);
+
+    /* الأشهر الستة الأخيرة (تقويمية، تشمل الشهر الحالي) */
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1, 12);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12);
+      const endIso = SA.isoLocal(end) < today ? SA.isoLocal(end) : today;
+      months.push({ key: SA.isoLocal(d).slice(0, 7), start: SA.isoLocal(d), end: endIso });
+    }
+    const growthBaseline = T.filter((t) => t.created_at < months[0].start).length;
+    const growth = months.map((mo) => ({
+      key: mo.key, start: mo.start,
+      added: T.filter((t) => t.created_at.slice(0, 7) === mo.key).length,
+      total: T.filter((t) => t.created_at <= mo.end).length,
+    }));
+    const revenue = months.map((mo) => {
+      const collected = SA.m.sum(completed.filter((p) => p.paid_at.slice(0, 7) === mo.key).map((p) => p.amount));
+      const refunds = SA.m.sum(refundsAll.filter((r) => r.at.slice(0, 7) === mo.key).map((r) => r.amount));
+      return { key: mo.key, start: mo.start, collected, refunds, net: collected - refunds };
+    });
+
+    /* الفواتير: المستحق والمتأخر من الحالة المشتقة */
+    let outstanding = 0, overdue = 0, overdueCount = 0, openCount = 0;
+    SA.INVOICES.forEach((inv) => {
+      const st = SA.invoiceState(inv);
+      if (st.status === 'void') return;
+      if (st.balance > 0) { outstanding += st.balance; openCount++; }
+      if (st.overdue) { overdue += st.balance; overdueCount++; }
+    });
+
+    /* توزيع الباقات: الاشتراكات القائمة (غير الملغاة/المنتهية) */
+    const LIVE = ['active', 'trialing', 'past_due', 'paused'];
+    const plans = SA.PLANS.map((p) => {
+      const subs = S.filter((s) => s.plan_id === p.id && LIVE.includes(s.status));
+      return { id: p.id, count: subs.length,
+               mrr: SA.m.sum(subs.filter((s) => ['active', 'past_due'].includes(s.status)).map(() => p.price_monthly)) };
+    }).filter((p) => p.count > 0 || SA.plan(p.id).is_active);
+
+    /* النشاطات الأخيرة (أحداث مشتقة) */
+    const events = [];
+    T.forEach((t) => events.push({ id: 'tn-' + t.id, type: 'tenantCreated', at: t.created_at, tenant: t.id, href: 'tenants.html' }));
+    S.forEach((s) => { if (s.cancelled_at) events.push({ id: 'sc-' + s.id, type: 'subCancelled', at: s.cancelled_at, tenant: s.tenant_id, plan: s.plan_id, href: 'subscriptions.html' }); });
+    P.forEach((p) => {
+      events.push({ id: 'py-' + p.id, type: 'payment_' + p.status, at: p.paid_at, tenant: p.tenant_id, amount: p.amount, href: 'payments.html' });
+      (p.refunds || []).forEach((r) => events.push({ id: 'rf-' + r.id, type: 'refund', at: r.at, tenant: p.tenant_id, amount: r.amount, href: 'payments.html' }));
+    });
+    SA.INVOICES.forEach((inv) => { if (inv.voided_at) events.push({ id: 'iv-' + inv.id, type: 'invoiceVoided', at: inv.voided_at, tenant: inv.tenant_id, number: inv.invoice_number, href: 'payments.html' }); });
+    const activity = events.filter((e) => e.at <= today)
+      .sort((a, b) => (a.at === b.at ? a.id.localeCompare(b.id) : a.at < b.at ? 1 : -1)).slice(0, 8);
+
+    return {
+      today, tenantsByStatus, tenantsTotal, tenantsPrev,
+      subsByStatus, mrr, arr: mrr * 12, billable,
+      rev30, revPrev30, growthBaseline, growth, revenue,
+      outstanding, overdue, overdueCount, openCount, plans, activity,
+    };
+  }
+
+  function dashboardData() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'مستودعك الذكي', appSubtitle: 'المسؤول العام', roleName: 'مسؤول عام',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'إدارة المحتوى', system: 'النظام' },
+        navItems: {
+          dashboard: 'لوحة القيادة', aiAnalytics: 'تحليلات AI', tenants: 'المؤسسات',
+          plans: 'الباقات', subscriptions: 'الاشتراكات', payments: 'المدفوعات والفواتير',
+          repository: 'المستودع', reviewQueue: 'طابور المراجعة', activityLog: 'سجل النشاط', systemSettings: 'إعدادات النظام',
+        },
+        notif: { upload: 'رفعت "جامعة الأقصى" {n} عنصرًا جديدًا للمراجعة', quota: 'اقتربت مؤسسة من حد الباقة ({pct})', backup: 'اكتمل النسخ الاحتياطي الليلي بنجاح' },
+        footer: { repo: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', map: 'خريطة الشاشات', help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', status: 'الأنظمة تعمل' },
+
+        dash: {
+          pageTitle: 'لوحة المسؤول العام — FirOb',
+          title: 'لوحة المسؤول العام', subtitle: 'نظرة شاملة على أداء المنصّة: المؤسسات، الاشتراكات، والإيرادات.',
+          refresh: 'تحديث', refreshing: 'جارٍ التحديث…', updatedAt: 'آخر تحديث: {time}', updatedLive: 'تم تحديث اللوحة الساعة {time}', refreshFailed: 'تعذّر تحديث اللوحة. حاول مرة أخرى.',
+          kpiRegion: 'مؤشرات الأداء الرئيسية',
+          kpi: {
+            tenants: 'إجمالي المؤسسات', activeSubs: 'الاشتراكات الفعّالة', mrr: 'الإيراد الشهري المتكرر (MRR)', arr: 'الإيراد السنوي المتكرر (ARR)',
+            revenue30: 'صافي الإيراد (30 يومًا)', outstanding: 'المستحقات غير المسددة',
+            tenantsSub: 'نشطة {active} · تجريبية {trial} · معلّقة {suspended} · غير نشطة {inactive}',
+            activeSubsSub: 'تجريبية {trialing} · متأخرة السداد {past_due} · موقوفة {paused}',
+            mrrSub: 'من {n} اشتراكًا قيد الفوترة (فعّال + متأخر السداد)', arrSub: 'MRR × 12 بالأسعار الحالية',
+            revenueSub: 'محصَّل {gross} − مسترد {refunds}', outstandingSub: 'متأخرة: {amount} في {n} فاتورة',
+            details: 'التفاصيل', detailsOf: 'تفاصيل: {name}',
+          },
+          trend: { vs30: 'مقارنة بقبل 30 يومًا', vsPrev30: 'مقارنة بالـ30 يومًا السابقة', noHistory: 'لا يتوفر سجل تاريخي للمقارنة',
+                   noBaseline: 'لا يوجد أساس للمقارنة (الفترة السابقة صفر)', up: 'ارتفاع {pct}', down: 'انخفاض {pct}', flat: 'بلا تغيير' },
+          chart: {
+            tenantsGrowth: 'نمو المؤسسات', last6Months: 'إجمالي المؤسسات في نهاية كل شهر — آخر 6 أشهر', colMonth: 'الشهر',
+            colNewTenants: 'مؤسسات جديدة', colTotalTenants: 'الإجمالي', viewTable: 'عرض كجدول', hideTable: 'إخفاء الجدول',
+            growthDesc: 'ارتفع إجمالي المؤسسات من {from} في {first} إلى {to} في {last}، بإضافة {added} مؤسسة خلال الفترة.',
+            growthBadge: 'خلال 6 أشهر',
+            subStatus: 'توزيع حالات الاشتراك', totalSubs: 'الاشتراك الحالي لـ {n} مؤسسة', clickToFilter: 'انقر على حالة لتصفية جدول الاشتراكات بالأسفل.',
+            revenue: 'الإيراد الشهري الصافي', revenueSub: 'المدفوعات المكتملة ناقص المبالغ المستردة — آخر 6 أشهر',
+            revenueTotal: 'الإجمالي {amount}', colCollected: 'المحصَّل', colRefunds: 'المسترد', colNet: 'الصافي',
+            revenueDesc: 'صافي الإيراد من {first} إلى {last}: الإجمالي {total}، وأعلى شهر {peak} بقيمة {peakValue}.',
+            plans: 'توزيع الباقات', plansSub: '{n} اشتراكًا قائمًا (غير ملغى أو منتهٍ)', planValue: '{n} · {mrr} شهريًا', managePlans: 'إدارة الباقات',
+          },
+          subStatus: { all: 'الكل', trialing: 'تجريبي', active: 'فعّال', past_due: 'متأخر السداد', paused: 'موقوف مؤقتًا', cancelled: 'ملغى', expired: 'منتهي' },
+          tenantStatus: { active: 'نشطة', trial: 'تجريبية', suspended: 'معلّقة', inactive: 'غير نشطة' },
+          activity: {
+            title: 'آخر النشاطات', sub: 'أحدث الأحداث من المؤسسات والاشتراكات والمدفوعات.', empty: 'لا توجد نشاطات بعد.',
+            tenantCreated: 'انضمت «{tenant}» إلى المنصّة', subCancelled: 'أُلغي اشتراك «{tenant}» في {plan}',
+            payment_completed: 'دفعة مكتملة بقيمة {amount} من «{tenant}»', payment_failed: 'فشلت دفعة بقيمة {amount} من «{tenant}»',
+            payment_pending: 'دفعة قيد المعالجة بقيمة {amount} من «{tenant}»', refund: 'استرداد {amount} إلى «{tenant}»',
+            invoiceVoided: 'أُلغيت الفاتورة {number} لـ «{tenant}»',
+          },
+          table: {
+            recentTenants: 'المؤسسات الجديدة', recentTenantsSub: 'أحدث 6 مؤسسات مسجّلة على المنصّة.',
+            activeSubs: 'الاشتراكات', activeSubsSub: 'الاشتراك الحالي لكل مؤسسة: الحالة والاستخدام والتجديد.',
+            searchTenants: 'ابحث باسم المؤسسة…', viewAllTenants: 'كل المؤسسات', viewAllSubs: 'كل الاشتراكات', statusFilter: 'تصفية حسب الحالة',
+            colTenant: 'المؤسسة', colPlan: 'الباقة', colUsers: 'المستخدمون', colStatus: 'الحالة', colJoined: 'تاريخ الانضمام',
+            colMrr: 'الإيراد الشهري', colUsage: 'استخدام المقاعد', colPeriodEnd: 'نهاية الفترة', renewsOn: 'يتجدد تلقائيًا', endsOn: 'ينتهي دون تجديد',
+            usersOf: '{used} / {max}',
+            showingCount: 'عرض {n} من {total}', liveTenants: '{n} مؤسسة مطابقة', liveSubs: '{n} اشتراك في «{status}»',
+            emptyTitle: 'لا توجد نتائج مطابقة', emptyDesc: 'جرّب كلمات بحث مختلفة.', clearSearch: 'مسح البحث',
+            emptyFilterTitle: 'لا توجد اشتراكات مطابقة', emptyFilterDesc: 'جرّب تصفية أخرى أو اعرض الكل.', clearFilter: 'مسح الفلتر',
+          },
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Super Admin Dashboard', roleName: 'Super Admin',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content Management', system: 'System' },
+        navItems: {
+          dashboard: 'Dashboard', aiAnalytics: 'AI Analytics', tenants: 'Tenants',
+          plans: 'Plans', subscriptions: 'Subscriptions', payments: 'Invoices & Payments',
+          repository: 'Repository', reviewQueue: 'Review Queue', activityLog: 'Activity Log', systemSettings: 'System Settings',
+        },
+        notif: { upload: '"Al-Aqsa University" uploaded {n} new items for review', quota: 'A tenant is near its plan quota ({pct})', backup: 'Nightly backup completed successfully' },
+        footer: { repo: 'Central Educational Repository', rights: 'All rights reserved', map: 'Screen map', help: 'Help center', docs: 'Documentation', privacy: 'Privacy policy', terms: 'Terms of use', status: 'All systems operational' },
+
+        dash: {
+          pageTitle: 'Super Admin Dashboard — FirOb',
+          title: 'Super Admin Dashboard', subtitle: 'A full overview of platform performance: tenants, subscriptions, and revenue.',
+          refresh: 'Refresh', refreshing: 'Refreshing…', updatedAt: 'Last updated: {time}', updatedLive: 'Dashboard updated at {time}', refreshFailed: 'Could not refresh the dashboard. Please try again.',
+          kpiRegion: 'Key performance indicators',
+          kpi: {
+            tenants: 'Total tenants', activeSubs: 'Active subscriptions', mrr: 'Monthly recurring revenue (MRR)', arr: 'Annual recurring revenue (ARR)',
+            revenue30: 'Net revenue (30 days)', outstanding: 'Outstanding receivables',
+            tenantsSub: 'Active {active} · Trial {trial} · Suspended {suspended} · Inactive {inactive}',
+            activeSubsSub: 'Trialing {trialing} · Past due {past_due} · Paused {paused}',
+            mrrSub: 'From {n} billable subscriptions (active + past due)', arrSub: 'MRR × 12 at current prices',
+            revenueSub: 'Collected {gross} − refunded {refunds}', outstandingSub: 'Overdue: {amount} across {n} invoices',
+            details: 'Details', detailsOf: 'Details: {name}',
+          },
+          trend: { vs30: 'vs. 30 days ago', vsPrev30: 'vs. previous 30 days', noHistory: 'No historical data to compare',
+                   noBaseline: 'No baseline to compare (previous period was zero)', up: 'Up {pct}', down: 'Down {pct}', flat: 'No change' },
+          chart: {
+            tenantsGrowth: 'Tenants growth', last6Months: 'Total tenants at each month end — last 6 months', colMonth: 'Month',
+            colNewTenants: 'New tenants', colTotalTenants: 'Total', viewTable: 'View as table', hideTable: 'Hide table',
+            growthDesc: 'Total tenants went from {from} in {first} to {to} in {last}, with {added} added during the period.',
+            growthBadge: 'over 6 months',
+            subStatus: 'Subscription status', totalSubs: 'Current subscription of {n} tenants', clickToFilter: 'Click a status to filter the subscriptions table below.',
+            revenue: 'Net monthly revenue', revenueSub: 'Completed payments minus refunds — last 6 months',
+            revenueTotal: 'Total {amount}', colCollected: 'Collected', colRefunds: 'Refunded', colNet: 'Net',
+            revenueDesc: 'Net revenue from {first} to {last}: total {total}; highest month {peak} at {peakValue}.',
+            plans: 'Plan distribution', plansSub: '{n} live subscriptions (not cancelled or expired)', planValue: '{n} · {mrr}/mo', managePlans: 'Manage plans',
+          },
+          subStatus: { all: 'All', trialing: 'Trialing', active: 'Active', past_due: 'Past due', paused: 'Paused', cancelled: 'Cancelled', expired: 'Expired' },
+          tenantStatus: { active: 'Active', trial: 'Trial', suspended: 'Suspended', inactive: 'Inactive' },
+          activity: {
+            title: 'Recent activity', sub: 'Latest events across tenants, subscriptions and payments.', empty: 'No activity yet.',
+            tenantCreated: '“{tenant}” joined the platform', subCancelled: '“{tenant}” cancelled the {plan}',
+            payment_completed: 'Payment of {amount} completed by “{tenant}”', payment_failed: 'Payment of {amount} from “{tenant}” failed',
+            payment_pending: 'Payment of {amount} from “{tenant}” is pending', refund: 'Refunded {amount} to “{tenant}”',
+            invoiceVoided: 'Invoice {number} for “{tenant}” was voided',
+          },
+          table: {
+            recentTenants: 'Recent tenants', recentTenantsSub: 'The 6 newest tenants registered on the platform.',
+            activeSubs: 'Subscriptions', activeSubsSub: 'Current subscription per tenant: status, usage and renewal.',
+            searchTenants: 'Search by tenant name…', viewAllTenants: 'All tenants', viewAllSubs: 'All subscriptions', statusFilter: 'Filter by status',
+            colTenant: 'Tenant', colPlan: 'Plan', colUsers: 'Users', colStatus: 'Status', colJoined: 'Joined',
+            colMrr: 'MRR', colUsage: 'Seat usage', colPeriodEnd: 'Period end', renewsOn: 'Auto-renews', endsOn: 'Ends without renewal',
+            usersOf: '{used} / {max}',
+            showingCount: 'Showing {n} of {total}', liveTenants: '{n} matching tenants', liveSubs: '{n} subscriptions in “{status}”',
+            emptyTitle: 'No matching results', emptyDesc: 'Try a different search term.', clearSearch: 'Clear search',
+            emptyFilterTitle: 'No matching subscriptions', emptyFilterDesc: 'Try another filter or view all.', clearFilter: 'Clear filter',
+          },
+        },
+      },
+    };
+
+    /* بحث مطبَّع (عربي/إنجليزي) */
+    const norm = (s) => String(s || '').toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'dashboard',
+      liveMsg: '',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        return String(this.t(path)).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined ? vars[k] : m));
+      },
+      get loc() { return SA.fmtLocale(this.locale); },
+      fmtNum(n) { return SA.fmtNum(n, this.locale); },
+      money(minor) { return SA.money(minor, this.locale); },
+      fmtPct(p) {
+        if (p === null || p === undefined || !isFinite(p)) return '—';
+        return new Intl.NumberFormat(this.loc, { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' }).format(p / 100);
+      },
+      relTime(iso) {
+        const days = SA.daysBetween(iso, this.stats ? this.stats.today : SA.todayIso());
+        const rtf = new Intl.RelativeTimeFormat(this.loc, { numeric: 'auto' });
+        if (Math.abs(days) < 30) return rtf.format(-days, 'day');
+        if (Math.abs(days) < 365) return rtf.format(-Math.round(days / 30), 'month');
+        return rtf.format(-Math.round(days / 365), 'year');
+      },
+      relMinutes(mins) {
+        const rtf = new Intl.RelativeTimeFormat(this.loc, { numeric: 'auto' });
+        return mins < 60 ? rtf.format(-mins, 'minute') : rtf.format(-Math.round(mins / 60), 'hour');
+      },
+      monthLabel(startIso, long) {
+        return SA.fmtDate(startIso, this.locale, long ? { month: 'long', year: 'numeric' } : { month: 'short' });
+      },
+      tenantName(id) { const tn = SA.tenant(id); return tn ? tn.name[this.locale] : id; },
+      planName(id) { const p = SA.plan(id); return p ? p.name[this.locale] : '—'; },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('dash.pageTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'overview.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-robot', href: 'ai-analytics.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'tenants', icon: 'fa-solid fa-building-columns', href: 'tenants.html' },
+          { key: 'plans', icon: 'fa-solid fa-cubes', href: 'plans.html' },
+          { key: 'subscriptions', icon: 'fa-solid fa-layer-group', href: 'subscriptions.html' },
+          { key: 'payments', icon: 'fa-solid fa-file-invoice-dollar', href: 'payments.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'activity-log.html' },
+          { key: 'systemSettings', icon: 'fa-solid fa-sliders', href: 'system-settings.html' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      notifications: [
+        { id: 1, key: 'upload', vars: { n: 12 }, mins: 5, read: false, icon: 'fa-solid fa-upload', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', vars: { pct: 87 }, mins: 60, read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'backup', vars: {}, mins: 360, read: true, icon: 'fa-solid fa-database', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      notifText(n) {
+        const v = {};
+        if (n.vars.n !== undefined) v.n = this.fmtNum(n.vars.n);
+        if (n.vars.pct !== undefined) v.pct = this.fmtPct(n.vars.pct).replace(/^[+‎]+/, '');
+        return this.tf('notif.' + n.key, v);
+      },
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; this.wide = m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('dash.pageTitle');
+        this.compute();
+        this.$watch('tenantQuery', () => {
+          this.liveMsg = this.tf('dash.table.liveTenants', { n: this.fmtNum(this.filteredRecentTenants.length) });
+        });
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+
+      /* ================= LND-01: بيانات اللوحة ================= */
+      stats: null,
+      updatedAt: null,
+      loading: false,
+      pctChange,
+      compute() {
+        this.stats = computeOverview();
+        this.updatedAt = new Date();
+      },
+      get updatedLabel() {
+        return this.updatedAt ? new Intl.DateTimeFormat(this.loc, { hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(this.updatedAt) : '';
+      },
+      /* تحديث فعلي: يعيد الحساب من البيانات، ويعلن الوقت فقط بعد النجاح */
+      async refresh() {
+        if (this.loading) return;
+        this.loading = true;
+        this.liveMsg = this.t('dash.refreshing');
+        try {
+          await new Promise((r) => setTimeout(r, 250));      // يُفسح المجال لإظهار حالة الانشغال
+          this.compute();
+          this.liveMsg = this.tf('dash.updatedLive', { time: this.updatedLabel });
+        } catch (e) {
+          this.liveMsg = this.t('dash.refreshFailed');
+        } finally {
+          this.loading = false;
+        }
+      },
+
+      trendView(pct, note) {
+        const s = { pct: this.fmtPct(Math.abs(pct || 0)) };
+        if (pct === null) return { pct, text: '—', tone: 'text-muted', icon: 'fa-minus', sr: this.t('dash.trend.noBaseline'), note: this.t('dash.trend.noBaseline') };
+        if (pct === 0) return { pct, text: this.fmtPct(0), tone: 'text-muted', icon: 'fa-minus', sr: this.t('dash.trend.flat'), note: this.t(note) };
+        const up = pct > 0;
+        return { pct, text: this.fmtPct(pct), tone: up ? 'text-success-700 dark:text-success-500' : 'text-error-700 dark:text-red-300',
+                 icon: up ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down', sr: this.tf(up ? 'dash.trend.up' : 'dash.trend.down', s), note: this.t(note) };
+      },
+
+      /* ---------- KPIs ---------- */
+      get kpis() {
+        const s = this.stats; if (!s) return [];
+        const n = (x) => this.fmtNum(x || 0);
+        const tenTrend = this.trendView(pctChange(s.tenantsTotal, s.tenantsPrev), 'dash.trend.vs30');
+        const revTrend = this.trendView(pctChange(s.rev30.net, s.revPrev30.net), 'dash.trend.vsPrev30');
+        const noHist = this.t('dash.trend.noHistory');
+        return [
+          { key: 'tenants', raw: s.tenantsTotal, value: n(s.tenantsTotal), href: 'tenants.html',
+            sub: this.tf('dash.kpi.tenantsSub', { active: n(s.tenantsByStatus.active), trial: n(s.tenantsByStatus.trial), suspended: n(s.tenantsByStatus.suspended), inactive: n(s.tenantsByStatus.inactive) }),
+            trend: tenTrend, note: tenTrend.note, icon: 'fa-solid fa-building-columns', tone: 'bg-primary-500/15 text-brand' },
+          { key: 'activeSubs', raw: s.subsByStatus.active || 0, value: n(s.subsByStatus.active), href: 'subscriptions.html',
+            sub: this.tf('dash.kpi.activeSubsSub', { trialing: n(s.subsByStatus.trialing), past_due: n(s.subsByStatus.past_due), paused: n(s.subsByStatus.paused) }),
+            trend: null, note: noHist, icon: 'fa-solid fa-layer-group', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+          { key: 'mrr', raw: s.mrr, value: this.money(s.mrr), href: 'subscriptions.html',
+            sub: this.tf('dash.kpi.mrrSub', { n: n(s.billable) }),
+            trend: null, note: noHist, icon: 'fa-solid fa-arrows-spin', tone: 'bg-info-500/15 text-info-700 dark:text-blue-300' },
+          { key: 'arr', raw: s.arr, value: SA.moneyShort(s.arr, this.locale), href: 'plans.html',
+            sub: this.t('dash.kpi.arrSub'),
+            trend: null, note: noHist, icon: 'fa-solid fa-chart-line', tone: 'bg-primary-500/15 text-brand' },
+          { key: 'revenue30', raw: s.rev30.net, value: this.money(s.rev30.net), href: 'payments.html',
+            sub: this.tf('dash.kpi.revenueSub', { gross: this.money(s.rev30.gross), refunds: this.money(s.rev30.refunds) }),
+            trend: revTrend, note: revTrend.note, icon: 'fa-solid fa-sack-dollar', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+          { key: 'outstanding', raw: s.outstanding, value: this.money(s.outstanding), href: 'payments.html',
+            sub: this.tf('dash.kpi.outstandingSub', { amount: this.money(s.overdue), n: n(s.overdueCount) }),
+            trend: null, note: noHist, icon: 'fa-solid fa-file-invoice-dollar', tone: 'bg-warning-500/15 text-warning-800 dark:text-warning-500' },
+        ];
+      },
+
+      /* ---------- نمو المؤسسات ---------- */
+      growthTip: null, growthTableOpen: false,
+      get growthSeries() {
+        return this.stats ? this.stats.growth.map((g) => ({ ...g, value: g.total, label: this.monthLabel(g.start), longLabel: this.monthLabel(g.start, true), valueText: this.fmtNum(g.total) })) : [];
+      },
+      get growthChart() {
+        const series = this.growthSeries;
+        if (!series.length) return { pts: [], svg: '' };
+        const first = series[0], last = series[series.length - 1];
+        return lineChart(series, {
+          id: 'growth', rtl: this.locale === 'ar', fmtTick: (v) => this.fmtNum(v),
+          title: this.t('dash.chart.tenantsGrowth'),
+          desc: this.tf('dash.chart.growthDesc', { from: this.fmtNum(this.stats.growthBaseline), first: first.longLabel, to: this.fmtNum(last.total), last: last.longLabel,
+                                                   added: this.fmtNum(series.reduce((a, g) => a + g.added, 0)) }),
+        });
+      },
+      get growthTable() {
+        return this.growthSeries.map((g) => ({ key: g.key, month: g.longLabel, added: this.fmtNum(g.added), total: g.valueText }));
+      },
+      get growthBadge() {
+        const s = this.stats; if (!s || !s.growth.length) return { text: '—', cls: 'badge-muted', icon: 'fa-minus', sr: '' };
+        const v = this.trendView(pctChange(s.growth[s.growth.length - 1].total, s.growthBaseline), 'dash.chart.growthBadge');
+        return { text: v.text, icon: v.icon, sr: (v.pct === null ? v.sr : this.t('dash.chart.growthBadge')),
+                 cls: v.pct === null || v.pct === 0 ? 'badge-muted' : v.pct > 0 ? 'badge-success' : 'badge-danger' };
+      },
+
+      /* ---------- الإيراد الشهري الصافي ---------- */
+      revTip: null, revTableOpen: false,
+      get revenueSeries() {
+        return this.stats ? this.stats.revenue.map((r) => ({ ...r, value: r.net, label: this.monthLabel(r.start), longLabel: this.monthLabel(r.start, true), valueText: this.money(r.net) })) : [];
+      },
+      get revenueTotals() {
+        const s = this.revenueSeries;
+        return { collected: SA.m.sum(s.map((r) => r.collected)), refunds: SA.m.sum(s.map((r) => r.refunds)), net: SA.m.sum(s.map((r) => r.net)) };
+      },
+      get revenueChart() {
+        const series = this.revenueSeries;
+        if (!series.length) return { pts: [], svg: '' };
+        const peak = series.reduce((a, r) => (r.net > a.net ? r : a), series[0]);
+        return barChart(series, {
+          id: 'revenue', rtl: this.locale === 'ar', fmtTick: (v) => new Intl.NumberFormat(this.loc, { style: 'currency', currency: SA.CURRENCY, notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(v / 100),
+          title: this.t('dash.chart.revenue'),
+          desc: this.tf('dash.chart.revenueDesc', { first: series[0].longLabel, last: series[series.length - 1].longLabel,
+                                                    total: this.money(this.revenueTotals.net), peak: peak.longLabel, peakValue: this.money(peak.net) }),
+        });
+      },
+      get revenueTable() {
+        return this.revenueSeries.map((r) => ({ key: r.key, month: r.longLabel, collected: this.money(r.collected), refunds: this.money(r.refunds), net: r.valueText }));
+      },
+
+      /* ---------- توزيع الباقات ---------- */
+      get planTotal() { return this.stats ? this.stats.plans.reduce((a, p) => a + p.count, 0) : 0; },
+      get planView() {
+        if (!this.stats) return [];
+        const total = this.planTotal || 1;
+        return this.stats.plans.map((p) => ({ ...p, name: this.planName(p.id), pct: +((p.count / total) * 100).toFixed(1),
+          valueText: this.tf('dash.chart.planValue', { n: this.fmtNum(p.count), mrr: this.money(p.mrr) }) }));
+      },
+
+      /* ---------- الاشتراكات (الحالي لكل مؤسسة) ---------- */
+      subFilter: 'all',
+      subFilters: ['all', 'active', 'trialing', 'past_due', 'paused', 'cancelled', 'expired'],
+      subStatusTone: { trialing: 'badge-primary', active: 'badge-success', past_due: 'badge-accent', paused: 'badge-info', cancelled: 'badge-muted', expired: 'badge-danger' },
+      subStatusBar: { trialing: 'bg-brand', active: 'bg-success-700 dark:bg-success-500', past_due: 'bg-warning-700 dark:bg-warning-500', paused: 'bg-info-700 dark:bg-info-500', cancelled: 'bg-line-strong', expired: 'bg-error-700 dark:bg-error-500' },
+      get subsRows() {
+        if (!this.stats) return [];
+        return SA.TENANTS.map((tn) => SA.currentSubscription(tn.id)).filter(Boolean).map((sb) => {
+          const p = SA.plan(sb.plan_id);
+          const billing = ['active', 'past_due'].includes(sb.status);
+          const usagePct = p.max_users ? Math.min(100, Math.round((sb.usage.usersUsed / p.max_users) * 100)) : 0;
+          return {
+            id: sb.id, tenant_id: sb.tenant_id, tenantName: this.tenantName(sb.tenant_id), planName: p.name[this.locale], status: sb.status,
+            mrr: billing ? p.price_monthly : null, mrrText: billing ? this.money(p.price_monthly) : '—',
+            usagePct, usageText: this.fmtPct(usagePct).replace(/^[+‎]+/, '') + ' (' + this.tf('dash.table.usersOf', { used: this.fmtNum(sb.usage.usersUsed), max: this.fmtNum(p.max_users) }) + ')',
+            ends_at: sb.ends_at, endsText: SA.fmtDate(sb.ends_at, this.locale),
+            renews: sb.auto_renew && !['cancelled', 'expired'].includes(sb.status),
+          };
+        });
+      },
+      get subStatusView() {
+        const rows = this.subsRows, total = rows.length || 1;
+        return this.subFilters.filter((f) => f !== 'all').map((key) => {
+          const value = rows.filter((r) => r.status === key).length;
+          return { key, value, valueText: this.fmtNum(value), pct: +((value / total) * 100).toFixed(1), bar: this.subStatusBar[key] };
+        });
+      },
+      get filteredSubscriptions() {
+        return this.subFilter === 'all' ? this.subsRows : this.subsRows.filter((s) => s.status === this.subFilter);
+      },
+      setSubFilter(f) {
+        this.subFilter = f;
+        this.liveMsg = this.tf('dash.table.liveSubs', { n: this.fmtNum(this.filteredSubscriptions.length), status: this.t('dash.subStatus.' + f) });
+      },
+      usageBar(pct) { return pct >= 90 ? 'bg-error-700 dark:bg-error-500' : pct >= 75 ? 'bg-warning-700 dark:bg-warning-500' : 'bg-brand'; },
+
+      /* ---------- المؤسسات الجديدة ---------- */
+      tenantQuery: '',
+      tenantTone: { active: 'badge-success', trial: 'badge-primary', suspended: 'badge-accent', inactive: 'badge-muted' },
+      get recentTenants() {
+        if (!this.stats) return [];
+        return SA.TENANTS.slice().sort((a, b) => (a.created_at === b.created_at ? 0 : a.created_at < b.created_at ? 1 : -1)).slice(0, 6).map((tn) => {
+          const sb = SA.currentSubscription(tn.id), p = sb ? SA.plan(sb.plan_id) : null;
+          const name = tn.name[this.locale];
+          return {
+            id: tn.id, name, names: [tn.name.ar, tn.name.en], status: tn.status, created_at: tn.created_at,
+            initials: name.replace(/^(د\.|أ\.|م\.)\s*/, '').split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase(),
+            planName: p ? p.name[this.locale] : '—',
+            usersText: sb ? this.fmtNum(sb.usage.usersUsed) : '—',
+            joined: SA.fmtDate(tn.created_at, this.locale), relative: this.relTime(tn.created_at),
+          };
+        });
+      },
+      get filteredRecentTenants() {
+        const q = norm(this.tenantQuery);
+        return this.recentTenants.filter((tn) => !q || tn.names.some((n) => norm(n).includes(q)));
+      },
+
+      /* ---------- آخر النشاطات ---------- */
+      activityIcon: {
+        tenantCreated: ['fa-solid fa-building-columns', 'bg-primary-500/15 text-brand'],
+        subCancelled: ['fa-solid fa-ban', 'bg-line text-muted'],
+        payment_completed: ['fa-solid fa-circle-check', 'bg-success-500/15 text-success-700 dark:text-success-500'],
+        payment_failed: ['fa-solid fa-circle-xmark', 'bg-error-500/15 text-error-700 dark:text-red-300'],
+        payment_pending: ['fa-solid fa-hourglass-half', 'bg-warning-500/15 text-warning-800 dark:text-warning-500'],
+        refund: ['fa-solid fa-rotate-left', 'bg-info-500/15 text-info-700 dark:text-blue-300'],
+        invoiceVoided: ['fa-solid fa-file-circle-xmark', 'bg-line text-muted'],
+      },
+      get recentActivity() {
+        if (!this.stats) return [];
+        return this.stats.activity.map((e) => {
+          const [icon, tone] = this.activityIcon[e.type] || ['fa-solid fa-circle', 'bg-line text-muted'];
+          return { id: e.id, type: e.type, at: e.at, href: e.href, icon, tone,
+                   text: this.tf('dash.activity.' + e.type, { tenant: this.tenantName(e.tenant), amount: e.amount !== undefined ? this.money(e.amount) : '', plan: e.plan ? this.planName(e.plan) : '', number: e.number || '' }),
+                   date: SA.fmtDate(e.at, this.locale), relative: this.relTime(e.at) };
+        });
+      },
+    };
+  }
+</script>
+</body>
+</html>

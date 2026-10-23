@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- لوحة تحكم محمية خلف تسجيل الدخول: لا فهرسة ولا وصف تسويقي ولا OG -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>إدارة المستخدمين — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج اللغة والاتجاه قبل الرسم (يمنع قفزة RTL ↔ LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || null;
+    if (!l) { try { l = localStorage.getItem('firob-locale'); } catch (e) {} }
+    l = l === 'en' ? 'en' : 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ الأيقونات: تحميل غير حاجب للرسم (المساحة محجوزة مسبقًا في CSS لمنع القفز) -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin referrerpolicy="no-referrer" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer"></noscript>
+
+<!-- ⑤ Tailwind (إصدار مثبّت) + التوكنز المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        danger: v('danger'), ok: v('ok'), warn: v('warn'), info: v('info'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑥ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* ألوان الحالة النصية — كلها ≥ 4.5:1 على البطاقة والشارات الشفافة */
+      --danger: 185 28 28;  --ok: 4 120 87;       --warn: 180 83 9;    --info: 29 78 216;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --warn: 252 211 77;  --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي — clip لا يكسر position: sticky */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    i[class*='fa-'] { display: inline-block; min-width: 1em; text-align: center; font-style: normal; }
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .dark .panel { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .icon-btn { @apply relative inline-grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-soft hover:text-brand disabled:opacity-50 sm:h-10 sm:w-10; }
+    .nav-link { @apply flex min-h-[2.75rem] items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line-strong/60 text-sm text-muted transition-colors hover:bg-soft hover:text-brand disabled:pointer-events-none disabled:opacity-40 sm:h-9 sm:w-9; }
+    .act[aria-current="page"] { @apply border-transparent bg-primary-500 text-white hover:bg-primary-600 hover:text-white; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info/15 text-info; }
+    .badge-danger  { @apply bg-error-500/15 text-danger; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block min-h-[2.75rem] w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover:not(:disabled) { @apply border-primary-500; }
+    .field:focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled, .field[aria-disabled="true"] { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار (حلقة التركيز من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition-colors disabled:pointer-events-none disabled:opacity-50; touch-action: manipulation; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line-strong/60 bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex min-h-[2.75rem] w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition-colors hover:bg-soft focus:bg-soft focus:outline-none disabled:cursor-not-allowed disabled:opacity-40; }
+    .menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--brand)); }
+
+    /* ---------- قائمة الاختيار المخصصة (Select-only Combobox) ---------- */
+    .combo-list { @apply absolute z-50 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex min-h-[2.75rem] w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2 text-start text-sm font-medium text-ink transition-colors hover:bg-soft sm:min-h-[2.5rem]; }
+    .combo-option.is-active   { @apply bg-soft; box-shadow: inset 0 0 0 2px rgb(var(--brand) / .5); }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- SweetAlert2 ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; border: 1px solid rgb(var(--line)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; font-size: .9375rem !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-timer-progress-bar { background: rgb(var(--brand) / .5) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة ---------- */
+    .quota-track { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-700; }
+  }
+</style>
+
+<!-- ⑦ Alpine.js 3.14.8 + Focus -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑧ SweetAlert2 (إصدار مثبّت، مؤجَّل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+</head>
+
+<body x-data="shell()"
+      @keydown.escape.window="closeAll()"
+      @keydown.window.ctrl.k.prevent="focusSearch()" @keydown.window.meta.k.prevent="focusSearch()"
+      @scroll.window.passive="openMenuId !== null && closeMenu()" @resize.window="openMenuId !== null && closeMenu()"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلانات قارئ الشاشة -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav) ? 'true' : null" :inert="mobile && !mobileNav">
+
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <img x-show="expanded" src="../asset/images/firob-logo.png" alt="FirOb" width="124" height="32" decoding="async"
+             class="block h-8 w-auto max-w-[8.5rem] shrink-0 object-contain dark:brightness-125">
+        <img x-show="!expanded" x-cloak src="../asset/images/firob-favicon.png" alt="FirOb" width="36" height="36" decoding="async"
+             class="block h-9 w-9 shrink-0 object-contain">
+        <span class="min-w-0 flex-1 border-s border-line ps-3" x-show="expanded">
+          <span class="block truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></span>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="closeMobileNav()" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)" :id="'ng-' + group.group"></p>
+          <div class="mx-auto mb-2 h-px w-8 bg-line" x-show="!expanded" aria-hidden="true"></div>
+          <ul class="space-y-1" role="list" :aria-labelledby="expanded ? 'ng-' + group.group : null">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href" class="nav-link relative"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? ' (' + navCount(item) + ')' : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold"
+                        :class="active === item.key ? 'bg-white/20 text-white' : (item.tone === 'primary' ? 'bg-primary-500/15 text-brand' : 'bg-accent-500 text-onaccent')"
+                        x-text="navCount(item)"></span>
+                  <span x-show="navCount(item) && !expanded" x-cloak class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+                        :class="item.tone === 'primary' ? 'bg-primary-500' : 'bg-accent-500'" aria-hidden="true"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()"
+              aria-controls="sidebar" :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+        <i class="fa-solid fa-angles-left transition-transform" :class="collapsed ? 'ltr:-scale-x-100' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 ps-[max(.5rem,env(safe-area-inset-left))] pe-[max(.5rem,env(safe-area-inset-right))] sm:gap-2 sm:ps-6 sm:pe-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" x-ref="navToggle" class="icon-btn lg:hidden" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="mobileNav.toString()" :aria-label="mobileNav ? t('closeMenu') : t('openMenu')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn hidden lg:inline-grid" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')" aria-keyshortcuts="Control+K Meta+K"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong/60 bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted lg:inline-flex" x-text="isMac ? '⌘ K' : 'Ctrl K'">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button type="button" class="icon-btn md:hidden" @click="toggleMobileSearch()" aria-controls="mobile-search"
+                  :aria-expanded="searchOpen.toString()" :aria-label="t('openSearch')">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          </button>
+
+          <button type="button"
+                  class="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10"
+                  @click="toggleLocale()" :aria-label="t('switchLang')" :title="t('switchLang')">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" aria-hidden="true" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="t('darkMode')" :title="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" x-ref="notifBtn" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="dialog" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications') + (unread ? ' — ' + tf('notifUnread', { n: unread }) : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="dialog" aria-labelledby="notif-title">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <h2 id="notif-title" class="font-extrabold" x-text="t('notifications')"></h2>
+                <button type="button" class="min-h-[2.25rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                        :disabled="!unread" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('unreadSr') + ': '"></span>
+                        <span x-text="tf('notif.' + n.key, { pct: seatPct })"></span>
+                      </p>
+                      <p class="text-xs text-muted"><time :datetime="isoAgo(n.mins)" x-text="ago(n.mins)"></time></p>
+                    </div>
+                    <span x-show="!n.read" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true"></span>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center rounded-xl text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i><span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- الحساب -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" x-ref="profileBtn" class="flex min-h-[2.75rem] max-w-[14rem] items-center gap-2 rounded-xl p-1 transition-colors hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials(me.name)"></span>
+              <span class="sr-only md:hidden" x-text="t('accountMenu')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="me.name"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted transition-transform md:block" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <nav id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-60" :aria-label="t('accountMenu')">
+              <ul role="list" class="py-1">
+                <li><a href="../common/profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="TenantSettingsForm.html" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('navItems.orgSettings')"></span></a></li>
+                <li><a href="../common/errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('statusErrors')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4 rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <form id="mobile-search" role="search" x-cloak x-show="searchOpen" x-transition.opacity class="border-t border-line px-3 py-2 md:hidden" @submit.prevent>
+        <label for="q-m" class="sr-only" x-text="t('searchPlaceholder')"></label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q-m" x-ref="mobileSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')"
+                 class="h-11 w-full rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+        </div>
+      </form>
+
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li><span class="text-ink" aria-current="page" x-text="t('navItems.users')"></span></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-02: إدارة المستخدمين ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء الإضافة -->
+      <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('um.title')">إدارة المستخدمين</h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('um.subtitle')"></p>
+        </div>
+        <div class="flex flex-col items-stretch gap-1 sm:items-end">
+          <button type="button" x-ref="addBtn" class="btn btn-accent" @click="openCreate($el)" :aria-describedby="seatsFull ? 'seats-full' : null">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            <span x-text="t('um.addUser')"></span>
+          </button>
+          <p id="seats-full" x-show="seatsFull" x-cloak class="text-xs font-bold text-warn" x-text="t('um.seatsFullShort')"></p>
+        </div>
+      </div>
+
+      <!-- ================= مؤشرات الأداء والحصة (محسوبة من البيانات) ================= -->
+      <section aria-labelledby="kpi-title">
+        <h2 id="kpi-title" class="sr-only" x-text="t('um.kpiTitle')"></h2>
+        <ul class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" role="list">
+          <template x-for="k in kpis" :key="k.key">
+            <li class="panel p-4 sm:p-5">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('um.' + k.key)"></h3>
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.tone" aria-hidden="true"><i :class="'fa-solid ' + k.icon"></i></span>
+              </div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="fmt(k.value)"></p>
+            </li>
+          </template>
+          <!-- حصة المقاعد -->
+          <li class="panel p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 id="seat-title" class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('um.kpiSeatQuota')"></h3>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-onaccent dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-chair"></i></span>
+            </div>
+            <div class="mt-2.5 flex items-center justify-between text-xs font-bold">
+              <span class="inline-flex items-center gap-1 tabular-nums" :class="seatTone.text">
+                <i x-show="seatPct >= 80" class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="fmt(seatPct) + '%'"></span>
+              </span>
+              <span class="text-muted tabular-nums" dir="ltr" x-text="fmt(users.length) + ' / ' + fmt(seatLimit)"></span>
+            </div>
+            <div class="quota-track mt-1.5" role="progressbar" aria-valuemin="0" :aria-valuemax="seatLimit" :aria-valuenow="users.length"
+                 aria-labelledby="seat-title" :aria-valuetext="tf('um.seatsText', { used: fmt(users.length), total: fmt(seatLimit), left: fmt(seatLimit - users.length) })">
+              <div class="quota-fill" :class="seatTone.fill" :style="'width:' + seatPct + '%'"></div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر ================= -->
+      <section class="panel p-4 sm:p-5" aria-labelledby="filters-title">
+        <h2 id="filters-title" class="sr-only" x-text="t('um.filtersTitle')"></h2>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div class="relative min-w-0 flex-1">
+            <label for="user-search" class="sr-only" x-text="t('um.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+            <input id="user-search" x-ref="userSearch" type="search" x-model="search" autocomplete="off" enterkeyhint="search" :placeholder="t('um.searchPlaceholder')"
+                   aria-controls="users-results"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:flex lg:shrink-0">
+            <!-- فلتر الدور -->
+            <div class="relative w-full lg:w-56"
+                 x-data="selectDropdown({ id: 'role-filter', options: () => roleOptions(true), get: () => roleFilter, set: (v) => roleFilter = v })"
+                 @click.outside="closeList()">
+              <span id="role-filter-label" class="sr-only" x-text="t('um.colRole')"></span>
+              <button type="button" id="role-filter" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="role-filter-label role-filter"
+                      :aria-expanded="open.toString()" aria-controls="role-filter-list" :aria-activedescendant="activeId"
+                      class="field flex w-full items-center justify-between gap-2 text-start font-bold" :class="roleFilter !== 'all' && '!border-brand'"
+                      @click="toggleList()" @keydown="onKey($event)">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="role-filter-list" role="listbox" aria-labelledby="role-filter-label" tabindex="-1"
+                  x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <!-- فلتر الحالة -->
+            <div class="relative w-full lg:w-48"
+                 x-data="selectDropdown({ id: 'status-filter', options: () => statusOptions(true), get: () => statusFilter, set: (v) => statusFilter = v })"
+                 @click.outside="closeList()">
+              <span id="status-filter-label" class="sr-only" x-text="t('um.colStatus')"></span>
+              <button type="button" id="status-filter" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="status-filter-label status-filter"
+                      :aria-expanded="open.toString()" aria-controls="status-filter-list" :aria-activedescendant="activeId"
+                      class="field flex w-full items-center justify-between gap-2 text-start font-bold" :class="statusFilter !== 'all' && '!border-brand'"
+                      @click="toggleList()" @keydown="onKey($event)">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="status-filter-list" role="listbox" aria-labelledby="status-filter-label" tabindex="-1"
+                  x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="resetFilters(true)" :disabled="!filtersActive">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>
+            <span x-text="t('um.resetFilters')"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= نتائج المستخدمين ================= -->
+      <section id="users-results" class="panel" aria-labelledby="users-table-title">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+          <h2 id="users-table-title" tabindex="-1" class="rounded text-base font-extrabold text-ink focus:outline-none" x-text="t('um.listTitle')"></h2>
+          <p class="text-xs font-bold text-muted" x-text="tf('um.resultsCount', { n: fmt(filtered.length) })"></p>
+        </div>
+
+        <!-- حالة لا نتائج -->
+        <div x-show="!filtered.length" x-cloak class="px-5 py-14 text-center">
+          <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true">
+            <i class="fa-solid fa-user-xmark text-xl"></i>
+          </span>
+          <p class="font-extrabold text-ink" x-text="t('um.emptyTitle')"></p>
+          <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('um.emptySubtitle')"></p>
+          <button type="button" @click="resetFilters(true)" class="btn btn-outline mt-4">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('um.resetFilters')"></span>
+          </button>
+        </div>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul x-show="filtered.length" class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+          <template x-for="u in paged" :key="u.id">
+            <li class="min-w-0 rounded-xl border border-line p-4" :class="u.status === 'disabled' && 'bg-page/40'">
+              <div class="flex items-start gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="initials(u.name)"></span>
+                <div class="min-w-0 flex-1">
+                  <h3 class="flex min-w-0 items-center gap-1.5 font-extrabold leading-6">
+                    <span class="truncate" x-text="u.name"></span>
+                    <span x-show="u.id === me.id" class="badge badge-muted shrink-0 !px-2" x-text="t('um.you')"></span>
+                  </h3>
+                  <p class="truncate text-xs text-muted"><bdi dir="ltr" x-text="u.email"></bdi></p>
+                </div>
+                <button type="button" class="act shrink-0" data-kebab @click="toggleMenu(u, $event)" @keydown.down.prevent="toggleMenu(u, $event, true)"
+                        aria-haspopup="menu" aria-controls="kebab-menu" :aria-expanded="(openMenuId === u.id).toString()" :aria-label="t('um.colActions') + ': ' + u.name">
+                  <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span class="badge" :class="roleBadge(u.role)" x-text="roleLabel(u.role)"></span>
+                <span class="badge" :class="u.status === 'active' ? 'badge-success' : 'badge-danger'"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="statusLabel(u.status)"></span></span>
+              </div>
+              <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('um.colJoined')"></span>: <time :datetime="u.joined" x-text="fmtDate(u.joined)"></time></p>
+            </li>
+          </template>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+)، بعرض ثابت للأعمدة: لا تمرير أفقي -->
+        <div x-show="filtered.length" class="hidden xl:block">
+          <table class="w-full table-fixed border-collapse text-sm">
+            <caption class="sr-only" x-text="t('um.listTitle') + ' — ' + tf('um.pageOf', { p: fmt(page), n: fmt(pages) })"></caption>
+            <colgroup><col class="w-[38%]"><col class="w-[18%]"><col class="w-[13%]"><col class="w-[18%]"><col class="w-[13%]"></colgroup>
+            <thead>
+              <tr class="bg-soft text-ink">
+                <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('um.colUser')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('um.colRole')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('um.colStatus')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('um.colJoined')"></th>
+                <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('um.colActions')"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              <template x-for="u in paged" :key="u.id">
+                <tr class="transition-colors hover:bg-soft/40" :class="u.status === 'disabled' && 'bg-page/40'">
+                  <th scope="row" class="px-5 py-3.5 text-start align-middle font-normal">
+                    <div class="flex min-w-0 items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="initials(u.name)"></span>
+                      <div class="min-w-0">
+                        <p class="flex min-w-0 items-center gap-1.5 font-extrabold leading-6">
+                          <span class="truncate" x-text="u.name" :title="u.name"></span>
+                          <span x-show="u.id === me.id" class="badge badge-muted shrink-0 !px-2" x-text="t('um.you')"></span>
+                        </p>
+                        <p class="truncate text-xs text-muted" :title="u.email"><bdi dir="ltr" x-text="u.email"></bdi></p>
+                      </div>
+                    </div>
+                  </th>
+                  <td class="px-4 py-3.5 align-middle"><span class="badge max-w-full truncate" :class="roleBadge(u.role)" x-text="roleLabel(u.role)"></span></td>
+                  <td class="px-4 py-3.5 align-middle">
+                    <span class="badge" :class="u.status === 'active' ? 'badge-success' : 'badge-danger'"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="statusLabel(u.status)"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5 align-middle text-muted"><time :datetime="u.joined" x-text="fmtDate(u.joined)"></time></td>
+                  <td class="px-5 py-3.5 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" data-kebab @click="toggleMenu(u, $event)" @keydown.down.prevent="toggleMenu(u, $event, true)"
+                              aria-haspopup="menu" aria-controls="kebab-menu" :aria-expanded="(openMenuId === u.id).toString()" :aria-label="t('um.colActions') + ': ' + u.name">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ================= الترقيم ================= -->
+        <div x-show="filtered.length" class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p class="text-xs font-bold text-muted" x-text="tf('um.showingRange', { from: fmt(rangeFrom), to: fmt(rangeTo), total: fmt(filtered.length) })"></p>
+          <nav x-show="pages > 1" :aria-label="t('um.pagination')">
+            <ul class="flex flex-wrap items-center gap-1.5" role="list">
+              <li>
+                <button type="button" class="act" :disabled="page === 1" @click="goPage(page - 1)" :aria-label="t('um.prev')">
+                  <i class="fa-solid fa-chevron-left text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+                </button>
+              </li>
+              <template x-for="p in pageList" :key="'p' + p">
+                <li>
+                  <span x-show="p === '…'" class="inline-grid h-11 w-8 place-items-center text-sm font-bold text-muted sm:h-9" aria-hidden="true">…</span>
+                  <button x-show="p !== '…'" type="button" class="act font-bold tabular-nums" @click="goPage(p)"
+                          :aria-current="p === page ? 'page' : null" :aria-label="tf('um.pageN', { n: fmt(p) })" x-text="fmt(p)"></button>
+                </li>
+              </template>
+              <li>
+                <button type="button" class="act" :disabled="page === pages" @click="goPage(page + 1)" :aria-label="t('um.next')">
+                  <i class="fa-solid fa-chevron-right text-xs rtl:-scale-x-100" aria-hidden="true"></i>
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" loading="lazy" decoding="async" class="block h-7 w-auto shrink-0 object-contain dark:brightness-125">
+          <p class="min-w-0 text-sm text-muted">
+            <span x-text="t('footer.tagline')"></span>
+            <span class="block text-xs sm:inline sm:text-sm">
+              <span class="hidden sm:inline" aria-hidden="true">·</span>
+              © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+            </span>
+          </p>
+        </div>
+        <nav :aria-label="t('footer.nav')" class="min-w-0">
+          <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+            <li><a href="../index.html" class="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-muted underline-offset-4 transition-colors hover:text-brand hover:underline"><i class="fa-solid fa-sitemap text-xs" aria-hidden="true"></i><span x-text="t('footer.screens')"></span></a></li>
+            <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+              <li><span class="inline-flex cursor-not-allowed items-center text-muted/70" aria-disabled="true"><span x-text="t('footer.' + k)"></span><span class="sr-only" x-text="' (' + t('footer.soon') + ')'"></span></span></li>
+            </template>
+          </ul>
+        </nav>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="badge badge-muted" dir="ltr" x-text="version"></span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     قائمة الإجراءات (Kebab) — عنصر واحد بموضع ثابت (fixed) يُقاس بعد العرض.
+     لوحة المفاتيح: ↓/↑/Home/End للتنقل · Esc يغلق ويعيد التركيز · Tab يغلق.
+     ========================================================================== -->
+<div id="kebab-menu" x-ref="kebab" x-show="openMenuId !== null" x-cloak x-transition.opacity.duration.120ms
+     class="fixed z-[70] w-60 overflow-hidden rounded-2xl border border-line bg-card py-1 shadow-pop"
+     :style="'top:' + menuPos.top + 'px; left:' + menuPos.left + 'px;'"
+     role="menu" :aria-label="kebabUser ? t('um.colActions') + ': ' + kebabUser.name : null"
+     @click.outside="if (!$event.target.closest('[data-kebab]')) closeMenu()"
+     @keydown.down.prevent="menuMove(1)" @keydown.up.prevent="menuMove(-1)"
+     @keydown.home.prevent="menuMove(0, true)" @keydown.end.prevent="menuMove(-1, true)"
+     @keydown.escape.stop.prevent="closeMenu(true)" @keydown.tab.prevent="closeMenu(true)">
+  <template x-if="kebabUser">
+    <div>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('edit')">
+        <i class="fa-solid fa-pen w-4 text-muted" aria-hidden="true"></i> <span x-text="t('um.menuEdit')"></span>
+      </button>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('role')" :disabled="kebabUser.id === me.id">
+        <i class="fa-solid fa-user-shield w-4 text-muted" aria-hidden="true"></i> <span x-text="t('um.menuChangeRole')"></span>
+      </button>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('status')" :disabled="kebabUser.id === me.id">
+        <i class="fa-solid w-4 text-muted" :class="kebabUser.status === 'disabled' ? 'fa-toggle-on' : 'fa-toggle-off'" aria-hidden="true"></i>
+        <span x-text="kebabUser.status === 'disabled' ? t('um.menuActivate') : t('um.menuDeactivate')"></span>
+      </button>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('reset')" :disabled="kebabUser.status === 'disabled'">
+        <i class="fa-solid fa-key w-4 text-muted" aria-hidden="true"></i> <span x-text="t('um.menuResetPassword')"></span>
+      </button>
+      <div class="my-1 border-t border-line" role="separator"></div>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item !text-danger hover:!bg-error-500/10" @click="menuAction('delete')" :disabled="kebabUser.id === me.id">
+        <i class="fa-solid fa-trash w-4" aria-hidden="true"></i> <span x-text="t('um.menuDelete')"></span>
+      </button>
+      <p x-show="kebabUser.id === me.id" class="border-t border-line px-4 py-2 text-xs text-muted" x-text="t('um.selfNote')"></p>
+    </div>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — إضافة / تعديل مستخدم
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePanel()" aria-hidden="true"></div>
+
+  <form @submit.prevent="submitUser()" novalidate x-show="panelOpen" x-trap.noscroll.inert="panelOpen"
+        role="dialog" aria-modal="true" aria-labelledby="panel-title"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+        class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5" style="padding-top: max(1.25rem, env(safe-area-inset-top, 0px));">
+      <div class="min-w-0">
+        <h2 id="panel-title" class="text-lg font-extrabold text-ink" x-text="editingUser ? t('um.panelEditTitle') : t('um.panelAddTitle')"></h2>
+        <p x-show="editingUser" class="truncate text-xs text-muted"><bdi dir="ltr" x-text="editingUser && editingUser.email"></bdi></p>
+      </div>
+      <button type="button" class="icon-btn" @click="closePanel()" :disabled="busy" :aria-label="t('um.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+      <!-- خطأ عام: المقاعد ممتلئة -->
+      <div x-show="!editingUser && seatsFull" x-cloak class="flex items-start gap-2 rounded-xl border border-warning-500/40 bg-warning-500/10 p-3 text-sm font-bold text-warn" role="alert">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
+        <p><span x-text="t('um.seatsFull')"></span> <a href="SubscriptionsAndInvoices.html" class="underline underline-offset-4" x-text="t('um.upgrade')"></a></p>
+      </div>
+
+      <div>
+        <label for="uf-name" class="label"><span x-text="t('um.fieldFullName')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="uf-name" type="text" x-model="form.name" required aria-required="true" maxlength="100" autocomplete="off" class="field"
+               @blur="touched.name = true" :aria-invalid="(!!errs.name && (touched.name || formSubmitted)).toString()"
+               :aria-describedby="errs.name && (touched.name || formSubmitted) ? 'uf-name-err' : null">
+        <p id="uf-name-err" class="err" x-show="errs.name && (touched.name || formSubmitted)"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errs.name ? t('um.' + errs.name) : ''"></span></p>
+      </div>
+
+      <div>
+        <label for="uf-email" class="label"><span x-text="t('um.fieldEmail')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="uf-email" type="email" x-model="form.email" required aria-required="true" dir="ltr" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false"
+               class="field rtl:text-right" placeholder="name@school.edu" :disabled="!!editingUser" :aria-describedby="emailDescribedBy"
+               @blur="form.email = form.email.trim(); touched.email = true" :aria-invalid="(!!errs.email && (touched.email || formSubmitted)).toString()">
+        <p id="uf-email-err" class="err" x-show="errs.email && (touched.email || formSubmitted)"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errs.email ? t('um.' + errs.email) : ''"></span></p>
+        <p id="uf-email-hint" class="hint" x-show="editingUser" x-text="t('um.emailLocked')"></p>
+      </div>
+
+      <!-- الدور الوظيفي -->
+      <div class="relative"
+           x-data="selectDropdown({ id: 'uf-role', options: () => roleOptions(false), get: () => form.role, set: (v) => form.role = v, disabled: () => isSelfEdit })"
+           @click.outside="closeList()">
+        <span id="uf-role-label" class="label" x-text="t('um.fieldRole')"></span>
+        <button type="button" id="uf-role" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="uf-role-label uf-role"
+                :aria-expanded="open.toString()" aria-controls="uf-role-list" :aria-activedescendant="activeId"
+                :aria-disabled="isDisabled.toString()" :aria-describedby="isSelfEdit ? 'uf-self-hint' : 'uf-role-hint'"
+                class="field flex w-full items-center justify-between gap-2 text-start"
+                @click="toggleList()" @keydown="onKey($event)">
+          <span class="truncate" x-text="triggerLabel"></span>
+          <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+        </button>
+        <ul x-show="open" x-cloak x-ref="list" id="uf-role-list" role="listbox" aria-labelledby="uf-role-label" tabindex="-1"
+            x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+          <template x-for="(item, idx) in items" :key="item.value">
+            <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                @click="choose(item)" @mousemove="active = idx">
+              <span class="min-w-0">
+                <span class="block truncate" x-text="item.label"></span>
+                <span class="block truncate text-xs font-normal text-muted" x-text="item.desc"></span>
+              </span>
+              <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+            </li>
+          </template>
+        </ul>
+        <p id="uf-role-hint" class="hint" x-show="!isSelfEdit"><span x-text="t('um.roleHint')"></span> <a href="RoleMatrixEditor.html" class="font-bold text-brand underline-offset-4 hover:underline" x-text="t('navItems.roleMatrix')"></a></p>
+      </div>
+
+      <!-- حالة الحساب (عند التعديل فقط؛ المستخدم الجديد يبدأ نشطًا) -->
+      <div x-show="editingUser" class="relative"
+           x-data="selectDropdown({ id: 'uf-status', options: () => statusOptions(false), get: () => form.status, set: (v) => form.status = v, disabled: () => isSelfEdit })"
+           @click.outside="closeList()">
+        <span id="uf-status-label" class="label" x-text="t('um.fieldStatus')"></span>
+        <button type="button" id="uf-status" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="uf-status-label uf-status"
+                :aria-expanded="open.toString()" aria-controls="uf-status-list" :aria-activedescendant="activeId"
+                :aria-disabled="isDisabled.toString()" :aria-describedby="isSelfEdit ? 'uf-self-hint' : null"
+                class="field flex w-full items-center justify-between gap-2 text-start"
+                @click="toggleList()" @keydown="onKey($event)">
+          <span class="truncate" x-text="triggerLabel"></span>
+          <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+        </button>
+        <ul x-show="open" x-cloak x-ref="list" id="uf-status-list" role="listbox" aria-labelledby="uf-status-label" tabindex="-1"
+            x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+          <template x-for="(item, idx) in items" :key="item.value">
+            <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                @click="choose(item)" @mousemove="active = idx">
+              <span class="truncate" x-text="item.label"></span>
+              <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+            </li>
+          </template>
+        </ul>
+        <p x-show="editingUser && editingUser.status === 'active' && form.status === 'disabled'" x-cloak class="mt-1.5 flex items-start gap-1.5 text-xs font-bold text-warn">
+          <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i><span x-text="t('um.disableWarn')"></span>
+        </p>
+      </div>
+
+      <p id="uf-self-hint" x-show="isSelfEdit" x-cloak class="flex items-start gap-2 rounded-xl bg-soft p-3 text-xs font-bold text-muted">
+        <i class="fa-solid fa-lock mt-0.5" aria-hidden="true"></i><span x-text="t('um.selfNote')"></span>
+      </p>
+
+      <!-- إرسال دعوة (عند الإنشاء فقط) -->
+      <div x-show="!editingUser" class="flex items-start gap-3 rounded-xl border border-line bg-page/50 p-4">
+        <input type="checkbox" x-model="form.sendInvite" id="uf-invite"
+               class="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded accent-[rgb(var(--brand))]" aria-describedby="uf-invite-hint">
+        <label for="uf-invite" class="min-w-0 cursor-pointer">
+          <span class="block text-sm font-bold text-ink" x-text="t('um.fieldSendInvite')"></span>
+          <span id="uf-invite-hint" class="hint block" x-text="form.sendInvite ? t('um.fieldSendInviteHint') : t('um.noInviteHint')"></span>
+        </label>
+      </div>
+
+      <p x-show="!editingUser && !seatsFull" class="flex items-center gap-2 text-xs text-muted">
+        <i class="fa-solid fa-chair" aria-hidden="true"></i>
+        <span x-text="tf('um.seatUse', { used: fmt(users.length + 1), total: fmt(seatLimit) })"></span>
+      </p>
+    </div>
+
+    <!-- تأكيد تجاهل التغييرات -->
+    <div x-show="discardAsk" x-cloak class="shrink-0 border-t border-warning-500/40 bg-warning-500/10 p-4" role="alertdialog" aria-labelledby="discard-text">
+      <p id="discard-text" class="text-sm font-bold text-ink" x-text="t('um.discardAsk')"></p>
+      <div class="mt-3 flex flex-wrap justify-end gap-2">
+        <button type="button" x-ref="keepEditing" class="btn btn-outline btn-sm" @click="discardAsk = false; $nextTick(() => document.getElementById('uf-name')?.focus())" x-text="t('um.keepEditing')"></button>
+        <button type="button" class="btn btn-danger btn-sm" @click="forceClosePanel()" x-text="t('um.discard')"></button>
+      </div>
+    </div>
+
+    <footer x-show="!discardAsk" class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4" style="padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('um.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy || (!editingUser && seatsFull)" :aria-busy="busy.toString()">
+        <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('um.saving') : (editingUser ? t('um.save') : (form.sendInvite ? t('um.createInvite') : t('um.create')))"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة تأكيد موحّدة: تعطيل / حارس الحذف / حذف نهائي
+     ========================================================================== -->
+<div x-cloak x-show="modal" x-transition.opacity class="fixed inset-0 z-[65] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+  <div x-show="modal" x-trap.noscroll.inert="modal" role="alertdialog" aria-modal="true" aria-labelledby="md-title" aria-describedby="md-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <template x-if="modalUser">
+      <form @submit.prevent="modalConfirm()" novalidate>
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full"
+              :class="modal === 'delete' ? 'bg-error-500/15 text-danger' : 'bg-accent-500/20 text-onaccent dark:text-accent-500'" aria-hidden="true">
+          <i class="fa-solid text-xl" :class="{ disable: 'fa-user-slash', guard: 'fa-shield-halved', delete: 'fa-trash' }[modal]"></i>
+        </span>
+        <h2 id="md-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('um.' + modal + 'Title')"></h2>
+        <p id="md-desc" class="mt-2 text-sm text-muted" x-text="tf('um.' + modal + 'Text', { name: modalUser.name })"></p>
+
+        <!-- الحذف النهائي: كتابة الاسم للتأكيد -->
+        <div x-show="modal === 'delete'" class="mt-4 text-start">
+          <label for="dm-confirm" class="label text-xs" x-text="tf('um.typeToConfirm', { name: modalUser.name })"></label>
+          <input id="dm-confirm" type="text" x-model="deleteConfirmText" autocomplete="off" spellcheck="false" class="field" :aria-describedby="'md-desc'">
+        </div>
+
+        <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center sm:gap-3">
+          <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('um.cancel')"></button>
+          <button type="submit" class="btn" :class="modal === 'delete' ? 'btn-danger' : 'btn-accent'" :aria-busy="busy.toString()"
+                  :disabled="busy || (modal === 'delete' && deleteConfirmText.trim() !== modalUser.name)">
+            <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i>
+            <span x-text="t('um.' + modal + 'Confirm')"></span>
+          </button>
+        </div>
+      </form>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن الاختيار المخصص (Select-only Combobox — نمط WAI-ARIA APG).
+   * ↓/↑ Home/End · Enter/Space اختيار · Tab اختيار وانتقال · Esc إغلاق (دون إغلاق اللوحة الأم)
+   * · البحث بأول الأحرف · ينقلب للأعلى عند ضيق المساحة.
+   */
+  function selectDropdown({ id, options, get, set, disabled = () => false }) {
+    return {
+      open: false, active: -1, dropUp: false, _q: '', _qt: null,
+      get items() { return options(); },
+      get isDisabled() { return !!disabled(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { return this.selectedItem ? this.selectedItem.label : ''; },
+      get activeId() { return this.open && this.active > -1 && this.items[this.active] ? this.optId(this.items[this.active]) : null; },
+      optId(item) { return id + '-opt-' + item.value; },
+      isSelected(item) { return get() === item.value; },
+      openList() {
+        if (this.isDisabled || !this.items.length) return;
+        const r = this.$refs.btn.getBoundingClientRect();
+        const need = Math.min(224, this.items.length * 46 + 16);
+        this.dropUp = r.bottom + need > window.innerHeight - 8 && r.top > need;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item, refocus = true) { set(item.value); this.closeList(); if (refocus) this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() {
+        this.$nextTick(() => {
+          const list = this.$refs.list, el = list?.children[this.active];
+          if (!list || !el) return;
+          /* تمرير يدوي داخل القائمة فقط (scrollIntoView قد يحرّك الصفحة أو اللوحة) */
+          if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+          else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+        });
+      },
+      onKey(e) {
+        if (this.isDisabled) return;
+        const k = e.key;
+        if (k === 'ArrowDown') { e.preventDefault(); this.move(1); }
+        else if (k === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scrollActiveIntoView(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = this.items.length - 1; this.scrollActiveIntoView(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape' && this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); }
+        else if (k === 'Tab' && this.open) { if (this.active > -1) this.choose(this.items[this.active], false); else this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          this._q += k.toLowerCase(); clearTimeout(this._qt); this._qt = setTimeout(() => this._q = '', 600);
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this._q));
+          if (i > -1) { if (!this.open) this.openList(); this.active = i; this.scrollActiveIntoView(); }
+        }
+      },
+    };
+  }
+
+  /* ---------- النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json ---------- */
+  const I18N = {
+    ar: {
+      skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+      mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+      openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة', expandSidebar: 'توسيع القائمة',
+      searchPlaceholder: 'ابحث في النظام…', openSearch: 'فتح البحث',
+      switchLang: 'تغيير اللغة إلى English', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+      notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', notifUnread: '{n} غير مقروءة', unreadSr: 'غير مقروء',
+      allMarked: 'تم تعليم جميع الإشعارات كمقروءة.', viewAllNotif: 'عرض جميع الإشعارات',
+      accountMenu: 'قائمة الحساب', roleTenantAdmin: 'مسؤول المؤسسة (Tenant Admin)',
+      profile: 'الملف الشخصي', statusErrors: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+      breadcrumbLabel: 'مسار التنقل', breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+      navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+      navItems: {
+        orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+        academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+        concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+        aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+        subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+      },
+      notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى ({pct}%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+      footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', nav: 'روابط التذييل', screens: 'خريطة الشاشات',
+                help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', soon: 'قريبًا' },
+
+      um: {
+        title: 'إدارة المستخدمين', subtitle: 'استعرض جميع مستخدمي منظمتك، أدِر أدوارهم وصلاحياتهم، وتابع حالة حساباتهم من مكان واحد.',
+        addUser: 'إضافة مستخدم جديد', you: 'أنت',
+        kpiTitle: 'ملخص المستخدمين', kpiTotal: 'إجمالي المستخدمين', kpiActive: 'المستخدمون النشطون', kpiSuspended: 'الحسابات المعطّلة', kpiSeatQuota: 'حصة المقاعد',
+        seatsText: '{used} من {total} مقعدًا مستخدمًا، متبقٍ {left}',
+        seatsFull: 'وصلت منظمتك إلى الحد الأقصى من المقاعد ولا يمكن إضافة مستخدمين جدد.', seatsFullShort: 'المقاعد ممتلئة — رقِّ خطتك لإضافة المزيد.', upgrade: 'ترقية الخطة',
+        seatUse: 'سيستخدم هذا المستخدم مقعدًا ({used} من {total}).',
+        filtersTitle: 'البحث والتصفية', searchPlaceholder: 'ابحث بالاسم أو البريد الإلكتروني…',
+        roleAll: 'كل الأدوار', roleAdmin: 'مدير منظمة', roleReviewer: 'مراجع محتوى', roleEditor: 'معلّم / محرّر', roleStudent: 'طالب',
+        roleAdminD: 'صلاحيات كاملة على المنظمة', roleReviewerD: 'يعتمد المحتوى أو يرفضه', roleEditorD: 'ينشئ المفاهيم والعناصر التعليمية', roleStudentD: 'يطّلع على المحتوى المنشور',
+        roleHint: 'تفاصيل صلاحيات كل دور في', statusAll: 'كل الحالات', statusActive: 'نشط', statusDisabled: 'معطّل',
+        resetFilters: 'مسح الفلاتر', filtersCleared: 'تم مسح الفلاتر.',
+        listTitle: 'قائمة المستخدمين', resultsCount: '{n} نتيجة', pageOf: 'الصفحة {p} من {n}',
+        colUser: 'المستخدم', colRole: 'الدور', colStatus: 'الحالة', colJoined: 'تاريخ الانضمام', colActions: 'إجراءات',
+        menuEdit: 'تعديل البيانات', menuChangeRole: 'تغيير الدور', menuDeactivate: 'تعطيل الحساب', menuActivate: 'تنشيط الحساب',
+        menuResetPassword: 'إعادة تعيين كلمة المرور', menuDelete: 'حذف نهائي',
+        selfNote: 'لا يمكنك تغيير دورك أو تعطيل حسابك أو حذفه بنفسك — اطلب ذلك من مسؤول آخر.',
+        emptyTitle: 'لا يوجد مستخدمون مطابقون', emptySubtitle: 'جرّب تعديل كلمات البحث أو الفلاتر، أو امسحها للعودة إلى القائمة الكاملة.',
+        showingRange: 'عرض {from}–{to} من {total}', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية', pageN: 'الصفحة {n}',
+        panelAddTitle: 'إضافة مستخدم جديد', panelEditTitle: 'تعديل بيانات المستخدم', close: 'إغلاق',
+        fieldFullName: 'الاسم الكامل', fieldEmail: 'البريد الإلكتروني', fieldRole: 'الدور الوظيفي', fieldStatus: 'حالة الحساب',
+        emailLocked: 'لا يمكن تغيير البريد بعد الإنشاء؛ يغيّره المستخدم من ملفه الشخصي.',
+        disableWarn: 'سيُسجَّل خروج المستخدم فورًا ولن يتمكن من الدخول حتى يُعاد تنشيطه.',
+        fieldSendInvite: 'إرسال دعوة عبر البريد الإلكتروني', fieldSendInviteHint: 'سيتلقى المستخدم رابطًا لتفعيل حسابه وتعيين كلمة المرور (صالح 7 أيام).',
+        noInviteHint: 'سيُنشأ الحساب دون إشعار؛ يمكنك إرسال الدعوة لاحقًا من صفحة الدعوات.',
+        cancel: 'إلغاء', save: 'حفظ التغييرات', create: 'إنشاء المستخدم', createInvite: 'إنشاء وإرسال الدعوة', saving: 'جارٍ الحفظ…',
+        nameRequired: 'الاسم مطلوب.', nameShort: 'الاسم لا يقل عن 3 أحرف.', emailRequired: 'البريد الإلكتروني مطلوب.',
+        emailInvalid: 'صيغة البريد الإلكتروني غير صحيحة.', emailTaken: 'هذا البريد مسجّل لمستخدم آخر في منظمتك.',
+        errFix: 'يرجى تصحيح الحقول المشار إليها.',
+        discardAsk: 'لديك تغييرات غير محفوظة. هل تريد تجاهلها؟', keepEditing: 'متابعة التعديل', discard: 'تجاهل التغييرات',
+        disableTitle: 'تعطيل الحساب؟', disableText: 'سيفقد «{name}» الوصول إلى المنظمة فورًا ويُسجَّل خروجه من جميع الأجهزة. يمكنك إعادة تنشيطه لاحقًا.', disableConfirm: 'تعطيل الحساب',
+        guardTitle: 'لا يمكن حذف حساب نشط', guardText: 'لحماية البيانات المرتبطة بـ«{name}» يجب تعطيل الحساب أولًا، ثم يمكنك متابعة الحذف النهائي.', guardConfirm: 'تعطيل ثم متابعة الحذف',
+        deleteTitle: 'حذف المستخدم نهائيًا؟', deleteText: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بيانات «{name}» نهائيًا.', deleteConfirm: 'حذف نهائي',
+        typeToConfirm: 'للتأكيد، اكتب اسم المستخدم: {name}',
+        toastCreate: 'تم إنشاء «{name}» (معاينة فقط)', toastCreateInvite: 'تم إنشاء «{name}» وإرسال الدعوة (معاينة فقط)', toastSave: 'تم حفظ بيانات «{name}» (معاينة فقط)',
+        toastDeactivate: 'تم تعطيل حساب «{name}» (معاينة فقط)', toastActivate: 'تم تنشيط حساب «{name}» (معاينة فقط)',
+        toastResetPassword: 'تم إرسال رابط إعادة تعيين كلمة المرور إلى «{name}» (معاينة فقط)', toastDelete: 'تم حذف «{name}» نهائيًا (معاينة فقط)',
+        toastSeats: 'لا توجد مقاعد متاحة. رقِّ خطتك لإضافة مستخدمين.',
+        lastAdmin: 'لا يمكن تعطيل أو حذف آخر مدير نشط للمنظمة — عيّن مديرًا آخر أولًا.',
+      },
+    },
+    en: {
+      skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+      mainMenu: 'Main menu', mainNav: 'Main navigation',
+      openMenu: 'Open menu', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar', expandSidebar: 'Expand sidebar',
+      searchPlaceholder: 'Search the system…', openSearch: 'Open search',
+      switchLang: 'Change language to العربية', lightMode: 'Light mode', darkMode: 'Dark mode',
+      notifications: 'Notifications', markAllRead: 'Mark all as read', notifUnread: '{n} unread', unreadSr: 'Unread',
+      allMarked: 'All notifications marked as read.', viewAllNotif: 'View all notifications',
+      accountMenu: 'Account menu', roleTenantAdmin: 'Tenant Admin',
+      profile: 'Profile', statusErrors: 'System Status & Errors', logout: 'Log out',
+      breadcrumbLabel: 'Breadcrumb', breadcrumb: { home: 'Home', org: 'Organization Management' },
+      navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+      navItems: {
+        orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+        academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+        concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+        aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+        subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+      },
+      notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'User seat quota is nearing its limit ({pct}%)', reset: 'A password reset link was sent successfully' },
+      footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', nav: 'Footer links', screens: 'Screen map',
+                help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', soon: 'coming soon' },
+
+      um: {
+        title: 'User Management', subtitle: "Browse your organization's users, manage their roles and permissions, and track account status in one place.",
+        addUser: 'Add New User', you: 'You',
+        kpiTitle: 'Users summary', kpiTotal: 'Total Users', kpiActive: 'Active Users', kpiSuspended: 'Disabled Accounts', kpiSeatQuota: 'Seat Quota',
+        seatsText: '{used} of {total} seats used, {left} remaining',
+        seatsFull: 'Your organization has reached its seat limit; no new users can be added.', seatsFullShort: 'Seats are full — upgrade to add more.', upgrade: 'Upgrade plan',
+        seatUse: 'This user will use one seat ({used} of {total}).',
+        filtersTitle: 'Search and filters', searchPlaceholder: 'Search by name or email…',
+        roleAll: 'All roles', roleAdmin: 'Tenant Admin', roleReviewer: 'Content Reviewer', roleEditor: 'Teacher / Editor', roleStudent: 'Student',
+        roleAdminD: 'Full organization permissions', roleReviewerD: 'Approves or rejects content', roleEditorD: 'Creates concepts and learning objects', roleStudentD: 'Views published content',
+        roleHint: 'See each role’s permissions in the', statusAll: 'All statuses', statusActive: 'Active', statusDisabled: 'Disabled',
+        resetFilters: 'Reset filters', filtersCleared: 'Filters cleared.',
+        listTitle: 'Users list', resultsCount: '{n} results', pageOf: 'Page {p} of {n}',
+        colUser: 'User', colRole: 'Role', colStatus: 'Status', colJoined: 'Joined', colActions: 'Actions',
+        menuEdit: 'Edit details', menuChangeRole: 'Change role', menuDeactivate: 'Deactivate account', menuActivate: 'Activate account',
+        menuResetPassword: 'Reset password', menuDelete: 'Delete permanently',
+        selfNote: "You can't change your own role, or deactivate or delete your own account — ask another admin.",
+        emptyTitle: 'No matching users', emptySubtitle: 'Try adjusting your search or filters, or reset them to see the full list.',
+        showingRange: 'Showing {from}–{to} of {total}', pagination: 'Pagination', prev: 'Previous page', next: 'Next page', pageN: 'Page {n}',
+        panelAddTitle: 'Add New User', panelEditTitle: 'Edit User', close: 'Close',
+        fieldFullName: 'Full name', fieldEmail: 'Email', fieldRole: 'Job role', fieldStatus: 'Account status',
+        emailLocked: "Email can't be changed after creation; the user can change it from their profile.",
+        disableWarn: 'The user will be signed out immediately and cannot sign in until reactivated.',
+        fieldSendInvite: 'Send invitation via email', fieldSendInviteHint: 'The user will receive a link to activate their account and set a password (valid for 7 days).',
+        noInviteHint: 'The account will be created silently; you can send the invitation later from Invitations.',
+        cancel: 'Cancel', save: 'Save changes', create: 'Create user', createInvite: 'Create & send invite', saving: 'Saving…',
+        nameRequired: 'Name is required.', nameShort: 'Name must be at least 3 characters.', emailRequired: 'Email is required.',
+        emailInvalid: 'Please enter a valid email address.', emailTaken: 'This email already belongs to another user in your organization.',
+        errFix: 'Please fix the highlighted fields.',
+        discardAsk: 'You have unsaved changes. Discard them?', keepEditing: 'Keep editing', discard: 'Discard changes',
+        disableTitle: 'Deactivate account?', disableText: '"{name}" will lose access to the organization immediately and be signed out on all devices. You can reactivate them later.', disableConfirm: 'Deactivate',
+        guardTitle: "Can't delete an active account", guardText: 'To protect data linked to "{name}", the account must be deactivated first. You can then continue to permanent deletion.', guardConfirm: 'Deactivate & continue',
+        deleteTitle: 'Permanently delete this user?', deleteText: 'This cannot be undone. All data belonging to "{name}" will be permanently deleted.', deleteConfirm: 'Delete permanently',
+        typeToConfirm: 'To confirm, type the user’s name: {name}',
+        toastCreate: '"{name}" was created (preview only)', toastCreateInvite: '"{name}" was created and invited (preview only)', toastSave: '"{name}" was saved (preview only)',
+        toastDeactivate: '"{name}" has been deactivated (preview only)', toastActivate: '"{name}" has been activated (preview only)',
+        toastResetPassword: 'A password reset link was sent to "{name}" (preview only)', toastDelete: '"{name}" was permanently deleted (preview only)',
+        toastSeats: 'No seats available. Upgrade your plan to add users.',
+        lastAdmin: "You can't deactivate or delete the organization's last active admin — assign another admin first.",
+      },
+    },
+  };
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const PER_PAGE = 6;
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const mdMQ = window.matchMedia('(min-width: 768px)');
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      isMac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+      mobileNav: false, collapsed: false, searchOpen: false,
+      notifOpen: false, profileOpen: false,
+      active: 'users', live: '',
+      year: new Date().getFullYear(), version: 'v1.0.0',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const get = (d) => path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), d);
+        const s = get(I18N[this.locale]);
+        return s !== undefined ? s : (get(I18N.ar) ?? path);
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      intl() { return this.locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intl(), { maximumFractionDigits: 1 }).format(n); },
+      fmtDate(iso) { return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T00:00:00')); },
+      ago(mins) {
+        const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' });
+        if (mins < 60) return rtf.format(-mins, 'minute');
+        if (mins < 1440) return rtf.format(-Math.round(mins / 60), 'hour');
+        return rtf.format(-Math.round(mins / 1440), 'day');
+      },
+      isoAgo(mins) { return new Date(Date.now() - mins * 60000).toISOString(); },
+      initials(name) {
+        const p = String(name).trim().split(/\s+/);
+        return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        const h = document.documentElement;
+        h.lang = loc; h.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(loc);
+        else { try { localStorage.setItem('firob-locale', loc); } catch (e) {} }
+        document.title = this.t('um.title') + ' — FirOb';
+        this.closeMenu();
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* ---------- التنقل ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) { return item.key === 'notificationCenter' ? this.unread : (item.count || 0); },
+
+      /* ---------- الإشعارات ---------- */
+      notifications: [
+        { id: 1, key: 'invite', mins: 10,   read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota',  mins: 120,  read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warn' },
+        { id: 3, key: 'reset',  mins: 1440, read: true,  icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-ok' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      markAllRead() { this.notifications.forEach(n => n.read = true); this.announce(this.t('allMarked')); },
+
+      /* ---------- البيانات (Mock — في Laravel: Livewire + Eloquent مع ترقيم الخادم) ---------- */
+      me: { id: 1, name: 'سارة أحمد المصري' },
+      seatLimit: 15,
+      users: [
+        { id: 1,  name: 'سارة أحمد المصري',    email: 'sara.ahmed@alaqsa.edu.ps',     role: 'tenant_admin', status: 'active',   joined: '2026-01-12' },
+        { id: 2,  name: 'محمد خالد يوسف',      email: 'm.khaled@alaqsa.edu.ps',       role: 'reviewer',     status: 'active',   joined: '2026-02-03' },
+        { id: 3,  name: 'ليان عمر الشريف',     email: 'layan.omar@alaqsa.edu.ps',     role: 'editor',       status: 'disabled', joined: '2025-11-20' },
+        { id: 4,  name: 'يوسف إبراهيم النجار', email: 'yousef.ibrahim@alaqsa.edu.ps', role: 'student',      status: 'active',   joined: '2025-09-15' },
+        { id: 5,  name: 'نور حسن عودة',        email: 'nour.hassan@alaqsa.edu.ps',    role: 'student',      status: 'disabled', joined: '2025-08-02' },
+        { id: 6,  name: 'أحمد الريماوي',        email: 'ahmad.rimawi@alaqsa.edu.ps',   role: 'editor',       status: 'active',   joined: '2025-10-05' },
+        { id: 7,  name: 'لينا أبو شرار',        email: 'lina.abusharar@alaqsa.edu.ps', role: 'editor',       status: 'active',   joined: '2026-03-18' },
+        { id: 8,  name: 'محمود صالح',           email: 'mahmoud.saleh@alaqsa.edu.ps',  role: 'reviewer',     status: 'active',   joined: '2026-04-22' },
+        { id: 9,  name: 'رنا الحلو',            email: 'rana.helou@alaqsa.edu.ps',     role: 'editor',       status: 'active',   joined: '2026-05-09' },
+        { id: 10, name: 'خالد مرعي',            email: 'khaled.marei@alaqsa.edu.ps',   role: 'editor',       status: 'active',   joined: '2026-06-14' },
+        { id: 11, name: 'هبة جمال القدرة',      email: 'heba.qudra@alaqsa.edu.ps',     role: 'student',      status: 'active',   joined: '2026-07-01' },
+        { id: 12, name: 'عمر سمير عيسى',        email: 'omar.issa@alaqsa.edu.ps',      role: 'student',      status: 'active',   joined: '2026-09-27' },
+      ],
+      _nextId: 13,
+
+      ROLES: ['tenant_admin', 'reviewer', 'editor', 'student'],
+      ROLE_KEY: { tenant_admin: 'Admin', reviewer: 'Reviewer', editor: 'Editor', student: 'Student' },
+      roleLabel(r) { return this.t('um.role' + this.ROLE_KEY[r]); },
+      statusLabel(s) { return s === 'active' ? this.t('um.statusActive') : this.t('um.statusDisabled'); },
+      roleBadge(r) { return { tenant_admin: 'badge-primary', reviewer: 'badge-info', editor: 'badge-accent', student: 'badge-neutral' }[r] || 'badge-muted'; },
+      roleOptions(withAll) {
+        const o = this.ROLES.map(r => ({ value: r, label: this.roleLabel(r), desc: this.t('um.role' + this.ROLE_KEY[r] + 'D') }));
+        return withAll ? [{ value: 'all', label: this.t('um.roleAll') }, ...o] : o;
+      },
+      statusOptions(withAll) {
+        const o = [{ value: 'active', label: this.t('um.statusActive') }, { value: 'disabled', label: this.t('um.statusDisabled') }];
+        return withAll ? [{ value: 'all', label: this.t('um.statusAll') }, ...o] : o;
+      },
+
+      /* ---------- المؤشرات والمقاعد (محسوبة) ---------- */
+      get kpis() {
+        const active = this.users.filter(u => u.status === 'active').length;
+        return [
+          { key: 'kpiTotal',     icon: 'fa-users',      value: this.users.length,          tone: 'bg-primary-500/10 text-brand' },
+          { key: 'kpiActive',    icon: 'fa-user-check', value: active,                     tone: 'bg-success-500/15 text-ok' },
+          { key: 'kpiSuspended', icon: 'fa-user-slash', value: this.users.length - active, tone: 'bg-error-500/15 text-danger' },
+        ];
+      },
+      get seatPct() { return Math.min(100, Math.round(this.users.length / this.seatLimit * 100)); },
+      get seatsFull() { return this.users.length >= this.seatLimit; },
+      get seatTone() {
+        const p = this.seatPct;
+        return p >= 95 ? { fill: 'bg-danger', text: 'text-danger' } : p >= 80 ? { fill: 'bg-warn', text: 'text-warn' } : { fill: 'bg-brand', text: 'text-brand' };
+      },
+
+      /* ---------- البحث والفلترة والترقيم ---------- */
+      search: '', roleFilter: 'all', statusFilter: 'all', page: 1,
+      get filtersActive() { return !!this.search.trim() || this.roleFilter !== 'all' || this.statusFilter !== 'all'; },
+      get filtered() {
+        const q = this.search.trim().toLowerCase();
+        return this.users.filter(u =>
+          (!q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+          (this.roleFilter === 'all' || u.role === this.roleFilter) &&
+          (this.statusFilter === 'all' || u.status === this.statusFilter));
+      },
+      get pages() { return Math.max(1, Math.ceil(this.filtered.length / PER_PAGE)); },
+      get paged() { const s = (this.page - 1) * PER_PAGE; return this.filtered.slice(s, s + PER_PAGE); },
+      get rangeFrom() { return this.filtered.length ? (this.page - 1) * PER_PAGE + 1 : 0; },
+      get rangeTo() { return Math.min(this.page * PER_PAGE, this.filtered.length); },
+      get pageList() {
+        const n = this.pages, p = this.page;
+        if (n <= 7) return Array.from({ length: n }, (_, i) => i + 1);
+        const set = [1, n, p - 1, p, p + 1].filter(x => x >= 1 && x <= n).sort((a, b) => a - b);
+        const out = []; set.forEach((x, i) => { if (i && x - set[i - 1] > 1) out.push('…'); if (!out.includes(x)) out.push(x); });
+        return out;
+      },
+      goPage(p) {
+        this.page = Math.min(Math.max(1, p), this.pages);
+        this.closeMenu();
+        this.announce(this.tf('um.pageOf', { p: this.fmt(this.page), n: this.fmt(this.pages) }));
+        this.$nextTick(() => {
+          const h = document.getElementById('users-table-title');
+          h?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        });
+      },
+      resetFilters(focus = false) {
+        this.search = ''; this.roleFilter = 'all'; this.statusFilter = 'all';
+        this.announce(this.t('um.filtersCleared'));
+        if (focus) this.$nextTick(() => this.$refs.userSearch?.focus());
+      },
+
+      /* ---------- قائمة الإجراءات (Kebab) ---------- */
+      openMenuId: null, kebabUser: null, menuPos: { top: -999, left: -999 }, _menuBtn: null,
+      toggleMenu(user, evt, viaKey = false) {
+        if (this.openMenuId === user.id && !viaKey) { this.closeMenu(true); return; }
+        this._menuBtn = evt.currentTarget;
+        this.kebabUser = user;
+        this.menuPos = { top: -999, left: -999 };       // يُرسم خارج الشاشة أولًا ليُقاس
+        this.openMenuId = user.id;
+        this.$nextTick(() => requestAnimationFrame(() => {
+          const r = this._menuBtn.getBoundingClientRect(), m = this.$refs.kebab, pad = 8, gap = 6;
+          const w = m.offsetWidth, h = m.offsetHeight, rtl = document.documentElement.dir === 'rtl';
+          let left = rtl ? r.left : r.right - w;           // تنفتح نحو داخل الصفحة في الاتجاهين
+          left = Math.min(Math.max(pad, left), window.innerWidth - w - pad);
+          let top = r.bottom + gap;
+          if (top + h > window.innerHeight - pad) top = Math.max(pad, r.top - h - gap);   // انقلاب للأعلى
+          this.menuPos = { top, left };
+          this.menuMove(0, true);                          // التركيز على أول عنصر متاح
+        }));
+      },
+      menuItems() { return [...(this.$refs.kebab?.querySelectorAll('[role=menuitem]:not([disabled])') || [])]; },
+      menuMove(step, abs = false) {
+        const items = this.menuItems(); if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        const n = abs ? (step < 0 ? items.length - 1 : 0) : (i + step + items.length) % items.length;
+        items[n].focus({ preventScroll: true });
+      },
+      closeMenu(returnFocus = false) {
+        if (this.openMenuId === null) return;
+        this.openMenuId = null;
+        if (returnFocus) this.$nextTick(() => this._menuBtn?.focus());
+      },
+      menuAction(a) {
+        const u = this.kebabUser;
+        this.closeMenu();
+        if (a === 'edit')   this.openEdit(u, 'uf-name');
+        if (a === 'role')   this.openEdit(u, 'uf-role');
+        if (a === 'status') this.requestToggleStatus(u);
+        if (a === 'reset')  { this.toast('success', this.tf('um.toastResetPassword', { name: u.name })); this.refocusTrigger(); }
+        if (a === 'delete') this.requestDelete(u);
+      },
+      /* بعد إغلاق أي طبقة: نعيد التركيز لزر الصف إن بقي ظاهرًا، وإلا لعنوان القائمة */
+      refocusTrigger() {
+        setTimeout(() => {
+          const b = this._menuBtn;
+          if (b && b.isConnected && b.offsetParent !== null) b.focus();
+          else document.getElementById('users-table-title')?.focus();
+        }, 60);
+      },
+
+      /* ---------- اللوحة الجانبية: إضافة / تعديل ---------- */
+      panelOpen: false, editingUser: null, formSubmitted: false, busy: false, discardAsk: false,
+      touched: {}, _snapshot: '', _panelTrigger: null,
+      form: { name: '', email: '', role: 'student', status: 'active', sendInvite: true },
+      get isSelfEdit() { return !!this.editingUser && this.editingUser.id === this.me.id; },
+      get errs() {
+        const e = {}, n = this.form.name.trim(), m = this.form.email.trim().toLowerCase();
+        if (!n) e.name = 'nameRequired'; else if (n.length < 3) e.name = 'nameShort';
+        if (!this.editingUser) {
+          if (!m) e.email = 'emailRequired';
+          else if (!EMAIL_RE.test(m)) e.email = 'emailInvalid';
+          else if (this.users.some(u => u.email.toLowerCase() === m)) e.email = 'emailTaken';
+        }
+        return e;
+      },
+      get emailDescribedBy() {
+        const ids = [];
+        if (this.errs.email && (this.touched.email || this.formSubmitted)) ids.push('uf-email-err');
+        if (this.editingUser) ids.push('uf-email-hint');
+        return ids.join(' ') || null;
+      },
+      get dirty() { return JSON.stringify(this.form) !== this._snapshot; },
+      openCreate(trigger) {
+        if (this.seatsFull) this.toast('warning', this.t('um.toastSeats'));
+        this._panelTrigger = trigger || this.$refs.addBtn; this._menuBtn = null;
+        this.editingUser = null;
+        this.form = { name: '', email: '', role: 'student', status: 'active', sendInvite: true };
+        this._openPanel('uf-name');
+      },
+      openEdit(user, focusId = 'uf-name') {
+        this._panelTrigger = this._menuBtn;
+        this.editingUser = user;
+        this.form = { name: user.name, email: user.email, role: user.role, status: user.status, sendInvite: false };
+        this._openPanel(focusId);
+      },
+      _openPanel(focusId) {
+        this.formSubmitted = false; this.touched = {}; this.discardAsk = false;
+        this._snapshot = JSON.stringify(this.form);
+        this.panelOpen = true;
+        /* x-trap يركّز أول عنصر (زر الإغلاق) — ننقل التركيز للحقل المقصود */
+        setTimeout(() => document.getElementById(focusId)?.focus(), 80);
+      },
+      closePanel() {
+        if (this.busy) return;
+        if (this.dirty && !this.discardAsk) { this.discardAsk = true; this.$nextTick(() => this.$refs.keepEditing?.focus()); return; }
+        this.forceClosePanel();
+      },
+      forceClosePanel() {
+        this.panelOpen = false; this.discardAsk = false;
+        const t = this._panelTrigger;
+        setTimeout(() => (t && t.isConnected && t.offsetParent !== null ? t : this.$refs.addBtn)?.focus(), 320);
+      },
+      async submitUser() {
+        if (this.busy) return;
+        this.formSubmitted = true;
+        if (Object.keys(this.errs).length) {
+          this.announce(this.t('um.errFix'));
+          const first = this.errs.name ? 'uf-name' : 'uf-email';
+          this.$nextTick(() => document.getElementById(first)?.focus());
+          return;
+        }
+        if (!this.editingUser && this.seatsFull) { this.toast('warning', this.t('um.toastSeats')); return; }
+        this.busy = true;
+        /* Livewire: $wire.saveUser(form) — الخادم يتحقق من التفرّد والمقاعد والصلاحيات */
+        await new Promise(r => setTimeout(r, 500));
+        const name = this.form.name.trim();
+        if (this.editingUser) {
+          const u = this.users.find(x => x.id === this.editingUser.id);
+          Object.assign(u, { name, role: this.isSelfEdit ? u.role : this.form.role, status: this.isSelfEdit ? u.status : this.form.status });
+          this.toast('success', this.tf('um.toastSave', { name }));
+        } else {
+          const today = new Date().toISOString().slice(0, 10);
+          this.users.unshift({ id: this._nextId++, name, email: this.form.email.trim().toLowerCase(), role: this.form.role, status: 'active', joined: today });
+          this.resetFilters(); this.page = 1;
+          this.toast('success', this.tf(this.form.sendInvite ? 'um.toastCreateInvite' : 'um.toastCreate', { name }));
+        }
+        this.busy = false;
+        this._snapshot = JSON.stringify(this.form);
+        this.forceClosePanel();
+      },
+
+      /* ---------- التعطيل / الحذف (مع حماية الذات وآخر مسؤول) ---------- */
+      modal: null, modalUser: null, deleteConfirmText: '',
+      isLastAdmin(u) { return u.role === 'tenant_admin' && this.users.filter(x => x.role === 'tenant_admin' && x.status === 'active').length <= 1; },
+      requestToggleStatus(user) {
+        const u = this.users.find(x => x.id === user.id);
+        if (u.id === this.me.id) { this.toast('warning', this.t('um.selfNote')); return; }
+        if (u.status === 'active' && this.isLastAdmin(u)) { this.toast('warning', this.t('um.lastAdmin')); return; }
+        if (u.status === 'disabled') {
+          u.status = 'active';
+          this.toast('success', this.tf('um.toastActivate', { name: u.name }));
+          this.refocusTrigger();
+          return;
+        }
+        this.openModal('disable', u);
+      },
+      requestDelete(user) {
+        const u = this.users.find(x => x.id === user.id);
+        if (u.id === this.me.id) { this.toast('warning', this.t('um.selfNote')); return; }
+        if (u.status === 'active' && this.isLastAdmin(u)) { this.toast('warning', this.t('um.lastAdmin')); return; }
+        this.openModal(u.status === 'active' ? 'guard' : 'delete', u);
+      },
+      openModal(type, u) {
+        this.modalUser = u; this.deleteConfirmText = ''; this.modal = type;
+        if (type === 'delete') setTimeout(() => document.getElementById('dm-confirm')?.focus(), 80);
+      },
+      closeModal() {
+        if (this.busy) return;
+        this.modal = null; this.modalUser = null;
+        this.refocusTrigger();
+      },
+      async modalConfirm() {
+        const u = this.modalUser; if (!u || this.busy) return;
+        if (this.modal === 'delete' && this.deleteConfirmText.trim() !== u.name) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 450));
+        this.busy = false;
+        if (this.modal === 'disable' || this.modal === 'guard') {
+          u.status = 'disabled';
+          this.toast('success', this.tf('um.toastDeactivate', { name: u.name }));
+          if (this.modal === 'guard') { this.openModal('delete', u); return; }   // متابعة مسار الحذف مباشرة
+        } else if (this.modal === 'delete') {
+          this.users = this.users.filter(x => x.id !== u.id);
+          if (this.page > this.pages) this.page = this.pages;
+          this.toast('success', this.tf('um.toastDelete', { name: u.name }));
+        }
+        this.modal = null; this.modalUser = null;
+        this.refocusTrigger();
+      },
+
+      /* ---------- Toast (SweetAlert2 مؤجّل + بديل منطقة الإعلان) ---------- */
+      toast(icon, msg) {
+        this.announce(msg);
+        if (!window.Swal) return;
+        Swal.fire({
+          toast: true, position: 'top-end', icon, title: msg,
+          showConfirmButton: false, timer: 3500, timerProgressBar: true,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); },
+        });
+      },
+
+      /* ---------- البحث العام ---------- */
+      focusSearch() {
+        if (this.panelOpen || this.modal) return;
+        if (mdMQ.matches) { this.$refs.globalSearch?.focus(); this.$refs.globalSearch?.select(); return; }
+        this.searchOpen = true;
+        this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      toggleMobileSearch() {
+        this.searchOpen = !this.searchOpen;
+        if (this.searchOpen) this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        mdMQ.addEventListener('change', (m) => { if (m.matches) this.searchOpen = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('um.title') + ' — FirOb';
+        /* أي تغيير في الفلاتر: العودة للصفحة الأولى + إعلان عدد النتائج (مؤجَّل كي لا يقاطع الكتابة) */
+        this.$watch('search + "|" + roleFilter + "|" + statusFilter', () => {
+          this.page = 1; this.closeMenu();
+          clearTimeout(this._annT);
+          this._annT = setTimeout(() => this.announce(this.tf('um.resultsCount', { n: this.fmt(this.filtered.length) })), 500);
+        });
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.applyTheme(e.matches);
+          });
+        } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      closeMobileNav() { this.mobileNav = false; this.$nextTick(() => this.$refs.navToggle?.focus()); },
+      applyTheme(isDark) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('theme-color')?.setAttribute('content', isDark ? '#09141B' : '#F1EDE7');
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() {
+        this.applyTheme(!this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      /* Esc يغلق الطبقة العليا فقط (قوائم الاختيار وقائمة ⋮ توقف الحدث قبل وصوله هنا) */
+      closeAll() {
+        if (this.modal)       { this.closeModal(); return; }
+        if (this.panelOpen)   { if (this.discardAsk) { this.discardAsk = false; return; } this.closePanel(); return; }
+        if (this.openMenuId !== null) { this.closeMenu(true); return; }
+        if (this.notifOpen)   { this.notifOpen = false;   this.$refs.notifBtn?.focus(); return; }
+        if (this.profileOpen) { this.profileOpen = false; this.$refs.profileBtn?.focus(); return; }
+        if (this.searchOpen)  { this.searchOpen = false; return; }
+        if (this.mobileNav)   { this.closeMobileNav(); }
+      },
+    };
+  }
+</script>
+</body>
+</html>

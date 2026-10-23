@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>مشغّل الاختبار: اختبار المعادلات التفاضلية — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }  /* كان 3.93:1 في الداكن */
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- النافذة المنبثقة ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- أشرطة التقدّم (ProgressMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-500; }
+
+    /* ---------- خيار السؤال (Quiz Option) ---------- */
+    .quiz-option { @apply flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-line bg-field/40 px-4 py-3 text-start text-sm font-bold text-ink transition hover:bg-soft; }
+
+    /* ---------- لوحة الأسئلة: «مُجاب» خلفية، «معلَّم» علم مستقل — لا يُخفي أحدهما الآخر ---------- */
+    .qnav-btn { @apply relative grid h-10 w-10 place-items-center rounded-lg border-2 border-line bg-field/40 text-sm font-extrabold text-muted transition hover:border-primary-500; }
+    .qnav-btn.is-answered { @apply border-success-700 bg-success-500/15 text-success-700 dark:border-success-500 dark:text-success-500; }
+    .qnav-btn.is-current { @apply ring-2 ring-primary-500 ring-offset-2 ring-offset-card; }
+    .qnav-flag { @apply absolute -end-1.5 -top-1.5 rounded-full bg-card p-0.5 text-[10px] text-yellow-900 dark:text-accent-500; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+    .quiz-option.is-selected { @apply border-primary-500 bg-primary-500/10 text-brand; }
+    .quiz-radio { @apply grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-line-strong; }
+    .quiz-option.is-selected .quiz-radio { @apply border-primary-500; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      :class="{ 'overflow-hidden': (mobileNav || gridOpen || exitModalOpen || submitModalOpen) && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" x-show="!examMode" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="student-dashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:ring-2" :class="!expanded && 'lg:flex-none lg:justify-center'" :aria-label="t('appTitle')">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold text-muted ltr:tracking-wide" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); } else if (mobile) { mobileNav = false; }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar + شريط أدوات الاختبار (Distraction-Free Toolbar) ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div x-show="!examMode" class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- جرس الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-controls="notif-menu" :aria-expanded="notifOpen.toString()"
+                    :aria-label="t('notifications') + (unread ? ' (' + fmt(unread) + ')' : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="relMin(n.min)"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- قائمة الملف الشخصي -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="studentName + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="studentName"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleStudent')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-brand" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="../common/notifications.html" role="menuitem" class="menu-item"><i class="fa-regular fa-bell w-4 text-muted" aria-hidden="true"></i> <span x-text="t('notifications')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- شريط أدوات الاختبار المركّز — يحلّ محل الشريط العلوي أثناء المحاولة (وضع بلا مشتّتات) -->
+      <div x-show="examMode" x-cloak class="flex flex-col gap-3 bg-primary-500/5 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+           style="padding-top: max(.75rem, env(safe-area-inset-top, 0px));">
+        <div class="min-w-0">
+          <p class="truncate text-xs font-bold text-muted">
+            <span x-text="quiz?.course[locale]"></span>
+            <i class="fa-solid fa-chevron-right rtl:-scale-x-100 mx-1.5 text-[10px]" aria-hidden="true"></i>
+            <span class="text-ink" x-text="quiz?.title[locale]"></span>
+            <span x-show="late" class="badge badge-warning ms-1.5" x-text="t('qp.lateBadge')"></span>
+          </p>
+          <div class="mt-1.5 flex items-center gap-2">
+            <div class="quota-track w-28 sm:w-40" role="progressbar" :aria-valuenow="progressPct" aria-valuemin="0" aria-valuemax="100"
+                 :aria-label="t('qp.progressLabel')" :aria-valuetext="tf('qp.answeredOf', { n: fmt(answeredCount), m: fmt(total) })">
+              <div class="quota-fill bg-primary-500" :style="'width:' + progressPct + '%'"></div>
+            </div>
+            <span class="shrink-0 text-xs font-bold text-muted tabular-nums" aria-hidden="true" x-text="tf('qp.answeredOf', { n: fmt(answeredCount), m: fmt(total) })"></span>
+            <span class="hidden text-[11px] text-muted sm:inline" aria-live="polite" x-text="saveStatus"></span>
+          </div>
+        </div>
+
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <button type="button" x-ref="gridBtn" class="btn btn-outline btn-sm relative lg:hidden" @click="openGrid()" aria-controls="qnav-panel" :aria-expanded="gridOpen.toString()">
+            <i class="fa-solid fa-table-cells" aria-hidden="true"></i> <span x-text="t('qp.navGridToggle')"></span>
+            <span x-show="total - answeredCount > 0" class="absolute -top-1.5 -end-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 text-[10px] font-extrabold text-card"
+                  :aria-label="tf('qp.unansweredN', { n: fmt(total - answeredCount) })" x-text="fmt(total - answeredCount)"></span>
+          </button>
+
+          <!-- المؤقّت: يُحسب من موعد انتهاء ثابت (لا يمكن كسب وقت بالتبديل أو إعادة التحميل) — بلا وميض مستمر -->
+          <span class="badge text-sm" :class="timeLeft <= 60 ? 'badge-danger' : (timeLeft <= 300 ? 'badge-warning' : 'badge-primary')"
+                role="timer" aria-live="off" :aria-label="tf('qp.timeLeftLabel', { t: spokenTime })">
+            <i class="fa-regular fa-clock" aria-hidden="true"></i>
+            <span class="tabular-nums" dir="ltr" x-text="formattedTime"></span>
+          </span>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()" :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'" :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i><span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="btn btn-outline btn-sm" @click="openExitModal()">
+            <i class="fa-regular fa-circle-pause" aria-hidden="true"></i> <span x-text="t('qp.saveExit')"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — STU-05: مشغّل الاختبار (قائمة ← تعليمات ← محاولة ← تم التسليم) ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 px-3 py-4 focus:outline-none sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- إعلانات قارئ الشاشة (تحذيرات الوقت، الانتقال بين الأسئلة، الحفظ) -->
+      <p class="sr-only" aria-live="assertive" x-text="liveMsg"></p>
+
+      <!-- ===== (1) لا يوجد رمز: الاختبارات المتاحة ===== -->
+      <template x-if="phase === 'list'">
+        <section class="space-y-4" aria-labelledby="avail-title">
+          <div>
+            <h1 id="avail-title" class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('qp.availableTitle')"></h1>
+            <p class="mt-1 text-sm text-muted" x-text="t('qp.availableSubtitle')"></p>
+          </div>
+          <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+            <template x-for="q in available" :key="q.code">
+              <li class="panel flex flex-col gap-3 p-4 sm:p-5">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-muted" x-text="q.course[locale]"></p>
+                    <h2 class="font-extrabold leading-snug text-ink" x-text="q.title[locale]"></h2>
+                  </div>
+                  <span class="badge shrink-0" :class="q.state === 'done' ? 'badge-success' : (q.state === 'resume' ? 'badge-info' : (q.overdue ? 'badge-danger' : 'badge-muted'))" x-text="t('qp.state.' + (q.state === 'new' && q.overdue ? 'overdue' : q.state))"></span>
+                </div>
+                <p class="text-xs text-muted" x-text="[pluralize('questions', q.questions.length), pluralize('minutes', q.duration)].join(' · ')"></p>
+                <a :href="'quiz-player.html?code=' + q.code + (q.overdue && q.lateAllowed ? '&late=1' : '')" class="btn btn-sm mt-auto w-full"
+                   :class="q.state === 'done' || (q.overdue && !q.lateAllowed) ? 'btn-outline' : 'btn-primary'"
+                   :aria-label="t('qp.cta.' + q.state) + ': ' + q.title[locale]" x-text="t('qp.cta.' + q.state)"></a>
+              </li>
+            </template>
+          </ul>
+        </section>
+      </template>
+
+      <!-- ===== (2) رمز غير موجود ===== -->
+      <template x-if="phase === 'notfound'">
+        <section class="panel mx-auto flex max-w-lg flex-col items-center gap-3 p-8 text-center" role="alert">
+          <span class="grid h-12 w-12 place-items-center rounded-full bg-error-500/15 text-error-700 dark:text-red-300" aria-hidden="true"><i class="fa-solid fa-circle-exclamation"></i></span>
+          <h1 class="text-lg font-extrabold text-ink" x-text="t('qp.notFound')"></h1>
+          <a href="quiz-player.html" class="btn btn-outline btn-sm" x-text="t('qp.backToAvailable')"></a>
+        </section>
+      </template>
+
+      <!-- ===== (3) التعليمات قبل البدء — المؤقّت لا يبدأ إلا بالضغط على «ابدأ» ===== -->
+      <template x-if="phase === 'intro'">
+        <section class="panel mx-auto max-w-2xl space-y-5 p-5 sm:p-8" aria-labelledby="intro-title">
+          <div>
+            <p class="text-xs font-bold text-muted" x-text="quiz.course[locale]"></p>
+            <h1 id="intro-title" class="text-2xl font-extrabold text-ink" x-text="quiz.title[locale]"></h1>
+          </div>
+          <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div class="rounded-xl bg-soft/60 p-3"><dt class="text-xs font-bold text-muted" x-text="t('qp.infoQuestions')"></dt><dd class="text-lg font-extrabold tabular-nums text-ink" x-text="fmt(total)"></dd></div>
+            <div class="rounded-xl bg-soft/60 p-3"><dt class="text-xs font-bold text-muted" x-text="t('qp.infoDuration')"></dt><dd class="text-lg font-extrabold text-ink" x-text="pluralize('minutes', quiz.duration)"></dd></div>
+            <div class="rounded-xl bg-soft/60 p-3"><dt class="text-xs font-bold text-muted" x-text="t('qp.infoMarks')"></dt><dd class="text-lg font-extrabold tabular-nums text-ink" x-text="fmt(totalMarks)"></dd></div>
+            <div class="rounded-xl bg-soft/60 p-3"><dt class="text-xs font-bold text-muted" x-text="t('qp.infoAttempts')"></dt><dd class="text-lg font-extrabold tabular-nums text-ink" x-text="fmt(quiz.attemptsAllowed)"></dd></div>
+          </dl>
+          <p x-show="late" class="flex items-start gap-2 rounded-xl bg-warning-500/10 p-3 text-sm font-bold text-warning-800 dark:text-warning-500">
+            <i class="fa-solid fa-clock-rotate-left mt-0.5" aria-hidden="true"></i><span x-text="t('qp.lateNotice')"></span>
+          </p>
+          <p x-show="closed" class="flex items-start gap-2 rounded-xl bg-error-500/10 p-3 text-sm font-bold text-error-700 dark:text-red-300" role="alert">
+            <i class="fa-solid fa-lock mt-0.5" aria-hidden="true"></i><span x-text="t('qp.closedNotice')"></span>
+          </p>
+          <ul class="list-disc space-y-1.5 ps-5 text-sm leading-6 text-muted" role="list">
+            <template x-for="(r, i) in t('qp.rules')" :key="i"><li x-text="r"></li></template>
+          </ul>
+          <div class="flex flex-wrap justify-end gap-2 border-t border-line pt-4">
+            <a href="student-dashboard.html" class="btn btn-outline" x-text="t('qp.notNow')"></a>
+            <button type="button" class="btn btn-primary" @click="startAttempt()" :disabled="closed">
+              <i class="fa-solid fa-play rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('qp.start')"></span>
+            </button>
+          </div>
+        </section>
+      </template>
+
+      <!-- ===== (4) المحاولة ===== -->
+      <template x-if="phase === 'running'">
+        <div class="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-start">
+
+          <div class="min-w-0 flex-1 space-y-4 sm:space-y-6">
+            <p x-show="resumed" class="flex items-center gap-2 rounded-xl bg-info-500/10 px-3 py-2 text-xs font-bold text-info-700 dark:text-blue-300">
+              <i class="fa-solid fa-rotate-right" aria-hidden="true"></i><span x-text="t('qp.resumed')"></span>
+            </p>
+
+            <section id="question-card" class="panel flex scroll-mt-40 flex-col gap-5 p-5 sm:p-7" aria-labelledby="question-heading">
+              <div class="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-bold text-muted">
+                    <span x-text="tf('qp.questionNofM', { n: fmt(currentIndex + 1), m: fmt(total) })"></span>
+                    <span aria-hidden="true">·</span> <span x-text="pluralize('marks', q.marks)"></span>
+                  </p>
+                  <h2 id="question-heading" tabindex="-1" class="mt-1 text-lg font-extrabold leading-snug text-ink focus:outline-none sm:text-xl" x-text="q.text[locale]"></h2>
+                  <bdi x-show="q.math" dir="ltr" class="mt-2 inline-block rounded-lg bg-soft px-3 py-1.5 font-mono text-lg font-bold text-ink" x-text="q.math"></bdi>
+                  <p class="mt-2"><span class="badge badge-muted">
+                    <i class="fa-solid" :class="TYPE_ICON[q.type]" aria-hidden="true"></i> <span x-text="t('qp.type.' + q.type)"></span>
+                  </span></p>
+                </div>
+                <button type="button" class="btn btn-sm shrink-0" :class="ans.flagged ? 'btn-accent' : 'btn-outline'" @click="toggleFlag()" :aria-pressed="ans.flagged.toString()">
+                  <i class="fa-solid fa-flag" aria-hidden="true"></i> <span x-text="t('qp.flag')"></span>
+                </button>
+              </div>
+
+              <!-- اختيار من متعدد / صواب-خطأ: أزرار راديو أصلية (الأسهم تعمل تلقائيًا) -->
+              <template x-if="q.type !== 'essay'">
+                <fieldset>
+                  <legend class="sr-only" x-text="q.text[locale] + (q.math ? ' ' + q.math : '')"></legend>
+                  <div class="grid gap-2.5 sm:grid-cols-2">
+                    <template x-for="(opt, i) in options(q)" :key="q.id + '-' + i">
+                      <label class="quiz-option" :class="ans.value === i && 'is-selected'">
+                        <input type="radio" class="peer sr-only" :name="'ans-' + q.id" :value="i" :checked="ans.value === i" @change="setAnswer(i)">
+                        <span class="quiz-radio peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand" aria-hidden="true">
+                          <i class="fa-solid fa-circle text-[8px]" x-show="ans.value === i"></i>
+                        </span>
+                        <span class="w-4 shrink-0 font-extrabold text-muted" aria-hidden="true" x-text="LETTERS[locale][i]"></span>
+                        <i x-show="opt.icon" class="fa-solid" :class="opt.icon" aria-hidden="true"></i>
+                        <bdi :dir="opt.math ? 'ltr' : 'auto'" :class="opt.math && 'font-mono'" x-text="opt.math || opt[locale]"></bdi>
+                      </label>
+                    </template>
+                  </div>
+                  <button type="button" x-show="ans.value !== null" class="mt-2 text-xs font-bold text-muted underline-offset-4 hover:text-brand hover:underline" @click="setAnswer(null)" x-text="t('qp.clearAnswer')"></button>
+                </fieldset>
+              </template>
+
+              <!-- مقالي -->
+              <template x-if="q.type === 'essay'">
+                <div class="space-y-2">
+                  <label :for="'essay-' + q.id" class="sr-only" x-text="q.text[locale]"></label>
+                  <textarea :id="'essay-' + q.id" x-model="ans.value" @input="touch()" rows="8" maxlength="3000" dir="auto"
+                            class="field min-h-[12rem] resize-y leading-7" :placeholder="t('qp.essayPlaceholder')" :aria-describedby="'essay-count-' + q.id"></textarea>
+                  <p :id="'essay-count-' + q.id" class="text-xs font-bold text-muted tabular-nums" x-text="pluralize('words', wordCount) + ' · ' + tf('qp.charsOf', { n: fmt(charCount), max: fmt(3000) })"></p>
+                </div>
+              </template>
+
+              <div class="flex items-center justify-between gap-3 border-t border-line pt-4">
+                <button type="button" class="btn btn-outline" :disabled="currentIndex === 0" @click="goTo(currentIndex - 1)">
+                  <i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('qp.prevQuestion')"></span>
+                </button>
+                <button type="button" class="btn btn-primary" x-show="currentIndex < total - 1" @click="goTo(currentIndex + 1)">
+                  <span x-text="t('qp.nextQuestion')"></span> <i class="fa-solid fa-arrow-right rtl:-scale-x-100" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-accent" x-show="currentIndex === total - 1" @click="openSubmitModal()">
+                  <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> <span x-text="t('qp.submitQuiz')"></span>
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <!-- لوحة الأسئلة: جانبية على سطح المكتب، درج على الجوال -->
+          <div x-show="gridOpen && mobile" x-transition.opacity @click="closeGrid()"
+               class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+          <aside id="qnav-panel" :aria-label="t('qp.navGridTitle')" @keydown.escape.stop="closeGrid()"
+                 class="fixed inset-y-0 end-0 z-50 w-80 max-w-[85vw] overflow-y-auto border-s border-line bg-card p-4 transition-transform duration-300 lg:static lg:inset-auto lg:z-auto lg:w-80 lg:max-w-none lg:translate-x-0 lg:overflow-visible lg:border-s-0 lg:bg-transparent lg:p-0 lg:sticky lg:top-32"
+                 :class="gridOpen ? 'translate-x-0' : 'max-lg:ltr:translate-x-full max-lg:rtl:-translate-x-full'"
+                 :aria-hidden="(mobile && !gridOpen).toString()" :inert="mobile && !gridOpen" x-trap="gridOpen && mobile">
+            <div class="panel space-y-4 p-4 sm:p-5">
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="text-base font-extrabold text-ink" x-text="t('qp.navGridTitle')"></h2>
+                <button type="button" class="icon-btn lg:hidden" @click="closeGrid()" :aria-label="t('closeMenu')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+              </div>
+
+              <ul class="flex flex-wrap items-center gap-3 text-xs font-bold text-muted" role="list" :aria-label="t('qp.legendLabel')">
+                <li class="inline-flex items-center gap-1.5"><span class="qnav-btn is-answered !h-4 !w-4 !rounded" aria-hidden="true"></span> <span x-text="t('qp.answered')"></span></li>
+                <li class="inline-flex items-center gap-1.5"><span class="qnav-btn !h-4 !w-4 !rounded" aria-hidden="true"></span> <span x-text="t('qp.unanswered')"></span></li>
+                <li class="inline-flex items-center gap-1.5"><i class="fa-solid fa-flag text-yellow-900 dark:text-accent-500" aria-hidden="true"></i> <span x-text="t('qp.flagged')"></span></li>
+              </ul>
+
+              <ul class="grid grid-cols-5 gap-2" role="list">
+                <template x-for="(qq, idx) in quiz.questions" :key="qq.id">
+                  <li>
+                    <button type="button" class="qnav-btn" :class="[isAnswered(idx) && 'is-answered', idx === currentIndex && 'is-current']"
+                            @click="goTo(idx); closeGrid(false)" :aria-current="idx === currentIndex ? 'step' : null"
+                            :aria-label="tf('qp.navItem', { n: fmt(idx + 1), s: t(isAnswered(idx) ? 'qp.answered' : 'qp.unanswered') }) + (answers[idx].flagged ? '، ' + t('qp.flagged') : '')">
+                      <span x-text="fmt(idx + 1)"></span>
+                      <i x-show="answers[idx].flagged" class="fa-solid fa-flag qnav-flag" aria-hidden="true"></i>
+                    </button>
+                  </li>
+                </template>
+              </ul>
+
+              <dl class="space-y-2 border-t border-line pt-4 text-xs font-bold text-muted">
+                <div class="flex items-center justify-between"><dt x-text="t('qp.answered')"></dt><dd class="tabular-nums text-ink" x-text="fmt(answeredCount)"></dd></div>
+                <div class="flex items-center justify-between"><dt x-text="t('qp.unanswered')"></dt><dd class="tabular-nums text-ink" x-text="fmt(total - answeredCount)"></dd></div>
+                <div class="flex items-center justify-between"><dt x-text="t('qp.flagged')"></dt><dd class="tabular-nums text-ink" x-text="fmt(flaggedCount)"></dd></div>
+              </dl>
+
+              <button type="button" class="btn btn-accent w-full" @click="closeGrid(false); openSubmitModal()">
+                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> <span x-text="t('qp.submitQuiz')"></span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      </template>
+
+      <!-- ===== (5) تم التسليم ===== -->
+      <template x-if="phase === 'done'">
+        <section class="panel mx-auto flex max-w-xl flex-col items-center gap-4 p-6 text-center sm:p-10" aria-labelledby="done-title">
+          <span class="grid h-16 w-16 place-items-center rounded-full bg-success-500/15 text-2xl text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span>
+          <h1 id="done-title" tabindex="-1" class="text-xl font-extrabold text-ink focus:outline-none" x-text="t(doneInfo.reason === 'timeout' ? 'qp.doneTimeout' : 'qp.doneTitle')"></h1>
+          <p class="text-sm text-muted" x-text="tf('qp.doneSummary', { n: fmt(doneInfo.answered), m: fmt(doneInfo.total), t: fmtDateTime(doneInfo.submittedAt) })"></p>
+          <p class="text-xs text-muted" x-text="t('qp.doneGrading')"></p>
+          <p class="text-xs font-bold text-muted"><span x-text="t('qp.attemptId') + ': '"></span><bdi class="font-mono" x-text="doneInfo.attemptId"></bdi></p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <a :href="'student-quiz-result.html?attempt=' + doneInfo.attemptId" class="btn btn-primary"><i class="fa-solid fa-file-lines" aria-hidden="true"></i> <span x-text="t('qp.viewResult')"></span></a>
+            <a href="student-dashboard.html" class="btn btn-outline" x-text="t('qp.backToDashboard')"></a>
+          </div>
+        </section>
+      </template>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer x-show="!examMode" class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-muted" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — حفظ والخروج (الإجابات محفوظة فعلًا، والوقت يستمر)
+     ========================================================================== -->
+<div x-cloak x-show="exitModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.stop="closeExitModal()">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeExitModal()" aria-hidden="true"></div>
+  <div x-show="exitModalOpen" x-trap.noscroll="exitModalOpen" role="alertdialog" aria-modal="true" aria-labelledby="exit-title" aria-describedby="exit-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-accent-500/20 text-yellow-900 dark:text-accent-500" aria-hidden="true"><i class="fa-regular fa-circle-pause text-xl"></i></span>
+    <h3 id="exit-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('qp.exitTitle')"></h3>
+    <p id="exit-desc" class="mt-2 text-sm leading-6 text-muted" x-text="tf('qp.exitDesc', { t: fmtClock(endsAt) })"></p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" @click="closeExitModal()" x-text="t('qp.exitCancel')"></button>
+      <button type="button" class="btn btn-accent" @click="confirmExit()" x-text="t('qp.exitConfirm')"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد التسليم (مع الانتقال لأول سؤال غير مُجاب)
+     ========================================================================== -->
+<div x-cloak x-show="submitModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.stop="!busy && closeSubmitModal()">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="!busy && closeSubmitModal()" aria-hidden="true"></div>
+  <div x-show="submitModalOpen" x-trap.noscroll="submitModalOpen" role="alertdialog" aria-modal="true" aria-labelledby="submit-title" aria-describedby="submit-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-md overflow-y-auto p-6">
+    <div class="text-center">
+      <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-paper-plane text-xl"></i></span>
+      <h3 id="submit-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('qp.submitTitle')"></h3>
+      <p id="submit-desc" class="mt-2 text-sm text-muted" x-text="t('qp.submitDesc')"></p>
+    </div>
+
+    <dl class="mt-5 grid grid-cols-3 gap-2 text-center">
+      <div class="rounded-xl border border-line bg-success-500/10 p-3">
+        <dd class="text-xl font-extrabold tabular-nums text-success-700 dark:text-success-500" x-text="fmt(answeredCount)"></dd>
+        <dt class="mt-0.5 text-xs font-bold text-muted" x-text="t('qp.answered')"></dt>
+      </div>
+      <div class="rounded-xl border border-line bg-field/60 p-3">
+        <dd class="text-xl font-extrabold tabular-nums text-ink" x-text="fmt(total - answeredCount)"></dd>
+        <dt class="mt-0.5 text-xs font-bold text-muted" x-text="t('qp.unanswered')"></dt>
+      </div>
+      <div class="rounded-xl border border-line bg-accent-500/10 p-3">
+        <dd class="text-xl font-extrabold tabular-nums text-yellow-900 dark:text-accent-500" x-text="fmt(flaggedCount)"></dd>
+        <dt class="mt-0.5 text-xs font-bold text-muted" x-text="t('qp.flagged')"></dt>
+      </div>
+    </dl>
+
+    <div x-show="firstUnanswered > -1" class="mt-4 space-y-2 rounded-xl bg-warning-500/10 p-3 text-xs font-bold text-warning-800 dark:text-warning-500">
+      <p class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i><span x-text="tf('qp.warnUnanswered', { list: unansweredList })"></span></p>
+      <button type="button" class="btn btn-outline btn-sm w-full" :disabled="busy" @click="closeSubmitModal(false); goTo(firstUnanswered)"
+              x-text="tf('qp.goToQuestion', { n: fmt(firstUnanswered + 1) })"></button>
+    </div>
+    <p x-show="flaggedCount" class="mt-2 text-xs font-bold text-muted" x-text="tf('qp.flaggedList', { list: flaggedList })"></p>
+
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeSubmitModal()" x-text="t('qp.submitCancel')"></button>
+      <button type="button" class="btn btn-accent" :disabled="busy" :aria-busy="busy.toString()" @click="confirmSubmit()">
+        <i class="fa-solid fa-circle-notch motion-safe:animate-spin" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('qp.submitConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * حالة واجهة شاشة «مشغّل الاختبار» (STU-05).
+   * المراحل: list (لا رمز) ← intro (تعليمات، المؤقّت لم يبدأ) ← running ← done.
+   * المؤقّت يُحسب من موعد انتهاء ثابت endsAt (في Laravel: attempts.ends_at من الخادم) — لا يمكن كسب وقت
+   * بالتبديل بين التبويبات أو إعادة التحميل. الإجابات تُحفظ مع كل تغيير وتُستأنف بعد إعادة التحميل.
+   * التسليم مرة واحدة فقط (حارس submitted) — ويُغلق تلقائيًا عند انتهاء الوقت.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    /* ================= الاختبارات المتاحة للطالب (نفس رموز لوحة الطالب: QZ-M11-204 / QZ-C11-106 / QZ-A11-303) =================
+       لا تُرسَل مفاتيح الإجابات إلى المتصفح — التصحيح في الخادم (GradeAttempt Job).
+       math: تُعرض في <bdi dir="ltr"> مستقلة حتى لا تنقلب داخل النص العربي. */
+    const T = (ar, en) => ({ ar, en });
+    const QUIZZES = {
+      'QZ-M11-204': {
+        subject: 'math-g11', course: T('الرياضيات', 'Mathematics'), title: T('اختبار المعادلات التفاضلية', 'Differential Equations Quiz'),
+        duration: 45, dueOffset: -2, lateAllowed: true, attemptsAllowed: 1,
+        questions: [
+          { id: 'q1', type: 'mcq', marks: 2, text: T('ما ناتج مشتقّة الدالة التالية بالنسبة إلى x؟', 'What is the derivative of the following function with respect to x?'), math: 'f(x) = x³',
+            options: [{ math: '3x²' }, { math: 'x²' }, { math: '3x' }, { math: 'x³ / 3' }] },
+          { id: 'q2', type: 'mcq', marks: 2, text: T('أي من المعادلات التالية معادلة تفاضلية من الرتبة الأولى؟', 'Which of the following is a first-order differential equation?'),
+            options: [{ math: 'y′ + 2y = x' }, { math: 'y″ + y′ = 0' }, { math: 'y‴ = x²' }, { math: 'y⁗ + y = 1' }] },
+          { id: 'q3', type: 'tf', marks: 1, text: T('تحتوي المعادلة التفاضلية الخطية على مشتقات للمتغيّر التابع مرفوعة لقوى أعلى من الواحد.', 'A linear differential equation contains derivatives of the dependent variable raised to powers greater than one.') },
+          { id: 'q4', type: 'mcq', marks: 2, text: T('ما رتبة المعادلة التفاضلية التالية؟', 'What is the order of the following differential equation?'), math: 'y″ + 3y′ − 2y = 0',
+            options: [T('الأولى', 'First'), T('الثانية', 'Second'), T('الثالثة', 'Third'), T('الرابعة', 'Fourth')] },
+          { id: 'q5', type: 'essay', marks: 5, text: T('اشرح بإيجاز خطوات حل معادلة تفاضلية باستخدام طريقة فصل المتغيّرات.', 'Briefly explain the steps for solving a differential equation using separation of variables.') },
+          { id: 'q6', type: 'mcq', marks: 2, text: T('ما الحل العام للمعادلة التفاضلية التالية؟', 'What is the general solution of the following differential equation?'), math: 'dy/dx = ky',
+            options: [{ math: 'y = Ceᵏˣ' }, { math: 'y = kx + C' }, { math: 'y = Cxᵏ' }, { math: 'y = C / (kx)' }] },
+          { id: 'q7', type: 'tf', marks: 1, text: T('يمكن استخدام طريقة العامل التكاملي لحل المعادلات التفاضلية الخطية من الرتبة الأولى.', 'The integrating factor method can be used to solve first-order linear differential equations.') },
+          { id: 'q8', type: 'mcq', marks: 2, text: T('أي مما يلي يُسمّى «الشرط الابتدائي» في المعادلات التفاضلية؟', 'Which of the following is called the “initial condition” in differential equations?'),
+            options: [T('قيمة الدالة عند نقطة محددة', 'The value of the function at a specific point'), T('رتبة المعادلة', 'The order of the equation'), T('درجة المعادلة', 'The degree of the equation'), T('عدد الحلول الممكنة', 'The number of possible solutions')] },
+          { id: 'q9', type: 'essay', marks: 5, text: T('وضّح الفرق بين المعادلة التفاضلية العادية (ODE) والجزئية (PDE) مع مثال على كلٍّ منهما.', 'Explain the difference between an ordinary (ODE) and a partial (PDE) differential equation, with an example of each.') },
+          { id: 'q10', type: 'mcq', marks: 2, text: T('ما ناتج تكامل الدالة التالية بالنسبة إلى x؟', 'What is the integral of the following function with respect to x?'), math: 'f(x) = 2x',
+            options: [{ math: 'x² + C' }, { math: '2x² + C' }, { math: 'x² / 2 + C' }, { math: '2 + C' }] },
+        ],
+      },
+      'QZ-C11-106': {
+        subject: 'chem-g11', course: T('الكيمياء', 'Chemistry'), title: T('اختبار الجدول الدوري', 'Periodic Table Quiz'),
+        duration: 20, dueOffset: 1, lateAllowed: false, attemptsAllowed: 1,
+        questions: [
+          { id: 'q1', type: 'mcq', marks: 2, text: T('كيف يتغيّر نصف القطر الذري عبر الدورة من اليسار إلى اليمين؟', 'How does atomic radius change across a period from left to right?'),
+            options: [T('يقل', 'It decreases'), T('يزداد', 'It increases'), T('يبقى ثابتًا', 'It stays the same'), T('يتغيّر عشوائيًا', 'It changes randomly')] },
+          { id: 'q2', type: 'tf', marks: 1, text: T('تزداد طاقة التأيّن الأولى عمومًا عند النزول في المجموعة.', 'First ionization energy generally increases down a group.') },
+          { id: 'q3', type: 'mcq', marks: 2, text: T('أي عنصر له أكبر كهرسلبية؟', 'Which element has the highest electronegativity?'),
+            options: [{ math: 'F' }, { math: 'O' }, { math: 'Cl' }, { math: 'Na' }] },
+          { id: 'q4', type: 'essay', marks: 5, text: T('فسّر سبب تشابه الخواص الكيميائية لعناصر المجموعة الواحدة.', 'Explain why elements in the same group have similar chemical properties.') },
+        ],
+      },
+      'QZ-A11-303': {
+        subject: 'arab-g11', course: T('اللغة العربية', 'Arabic Language'), title: T('اختبار قواعد النحو', 'Syntax Rules Quiz'),
+        duration: 25, dueOffset: 5, lateAllowed: true, attemptsAllowed: 2,
+        questions: [
+          { id: 'q1', type: 'mcq', marks: 2, text: T('ما إعراب كلمة «الطالبُ» في: الطالبُ مجتهدٌ؟', 'How is “الطالبُ” parsed in: الطالبُ مجتهدٌ?'),
+            options: [T('مبتدأ مرفوع', 'Subject (mubtadaʾ), nominative'), T('خبر مرفوع', 'Predicate, nominative'), T('فاعل مرفوع', 'Agent, nominative'), T('مفعول به منصوب', 'Object, accusative')] },
+          { id: 'q2', type: 'tf', marks: 1, text: T('«كان» ترفع المبتدأ وتنصب الخبر.', '“Kāna” makes the subject nominative and the predicate accusative.') },
+          { id: 'q3', type: 'mcq', marks: 2, text: T('اختر الجملة التي فيها خبر شبه جملة:', 'Choose the sentence whose predicate is a phrase:'),
+            options: [T('الكتابُ على الطاولةِ', 'الكتابُ على الطاولةِ'), T('الجوُّ جميلٌ', 'الجوُّ جميلٌ'), T('الطالبُ يقرأُ', 'الطالبُ يقرأُ'), T('العلمُ نورٌ', 'العلمُ نورٌ')] },
+          { id: 'q4', type: 'essay', marks: 4, text: T('أعرب الجملة التالية إعرابًا تامًّا: كان الجوُّ ماطرًا.', 'Fully parse the following sentence: كان الجوُّ ماطرًا.') },
+        ],
+      },
+    };
+
+    const STUDENT = { id: 'STU-2210', ar: 'عمر خالد الفرا', en: 'Omar Khaled Al-Farra' };
+    const store = {
+      get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+      set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+      remove(k) { try { localStorage.removeItem(k); } catch (e) {} },
+    };
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'بوابة الطالب',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في موادي واختباراتي…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', logout: 'تسجيل الخروج',
+        roleStudent: 'طالب',
+        navGroups: { overview: 'نظرة عامة', learning: 'التعلّم', account: 'الحساب' },
+        navItems: {
+          dashboard: 'لوحة التحكم', courses: 'المقررات الدراسية', catalog: 'الكتالوج العام',
+          availableQuizzes: 'الاختبارات المتاحة', quizResults: 'نتائج المحاولات', quizHistory: 'سجل محاولاتي',
+          profile: 'الملف الشخصي', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: {
+          resultPublished: 'تم نشر نتيجة «اختبار الحركة والقوة» — الفيزياء',
+          upcomingReminder: 'موعد «اختبار الجدول الدوري» غدًا — الكيمياء',
+          gradePosted: 'صحّح المعلّم «اختبار قواعد اللغة» يدويًا',
+        },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          questions: { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: '{n} أسئلة', many: '{n} سؤالًا', other: '{n} سؤال' },
+          minutes:   { zero: '0 دقيقة', one: 'دقيقة واحدة', two: 'دقيقتان', few: '{n} دقائق', many: '{n} دقيقة', other: '{n} دقيقة' },
+          seconds:   { zero: '0 ثانية', one: 'ثانية واحدة', two: 'ثانيتان', few: '{n} ثوانٍ', many: '{n} ثانية', other: '{n} ثانية' },
+          marks:     { zero: 'بلا درجات', one: 'درجة واحدة', two: 'درجتان', few: '{n} درجات', many: '{n} درجة', other: '{n} درجة' },
+          words:     { zero: '0 كلمة', one: 'كلمة واحدة', two: 'كلمتان', few: '{n} كلمات', many: '{n} كلمة', other: '{n} كلمة' },
+        },
+
+        qp: {
+          docTitle: '{n} — FirOb',
+          availableTitle: 'الاختبارات المتاحة', availableSubtitle: 'اختر اختبارًا لقراءة تعليماته قبل البدء.',
+          state: { new: 'متاح', overdue: 'متأخر', resume: 'قيد التقدّم', done: 'تم التسليم' },
+          cta: { new: 'عرض التعليمات', resume: 'استئناف المحاولة', done: 'عرض التسليم' },
+          notFound: 'لم نجد هذا الاختبار ضمن اختباراتك المتاحة.', backToAvailable: 'الاختبارات المتاحة',
+
+          infoQuestions: 'الأسئلة', infoDuration: 'المدة', infoMarks: 'الدرجة الكلية', infoAttempts: 'المحاولات المسموحة',
+          lateNotice: 'انتهى موعد هذا الاختبار، ويُقبل التسليم المتأخر — سيظهر للمعلّم أنه متأخر.',
+          closedNotice: 'انتهى موعد هذا الاختبار ولا يقبل التسليم المتأخر.',
+          rules: [
+            'يبدأ المؤقّت عند الضغط على «ابدأ»، ويستمر حتى لو خرجت من الصفحة.',
+            'تُحفظ إجاباتك تلقائيًا بعد كل تغيير، ويمكنك الاستئناف من حيث توقفت قبل انتهاء الوقت.',
+            'يُسلَّم الاختبار تلقائيًا عند انتهاء الوقت.',
+            'يمكنك تمييز أي سؤال بعلم للعودة إليه، والتنقل بين الأسئلة من لوحة الأسئلة.',
+          ],
+          notNow: 'ليس الآن', start: 'ابدأ الاختبار',
+          lateBadge: 'تسليم متأخر', resumed: 'استُؤنفت محاولتك المحفوظة — الوقت استمر أثناء غيابك.',
+
+          progressLabel: 'تقدّم الإجابة', answeredOf: 'أُجيب {n} من {m}',
+          saved: 'حُفظ · {t}', saveFailed: 'تعذّر الحفظ في هذا المتصفح',
+          timeLeftLabel: 'الوقت المتبقي: {t}', timeWarn5: 'تبقّت 5 دقائق على انتهاء الاختبار.', timeWarn1: 'تبقّت دقيقة واحدة — سيُسلَّم الاختبار تلقائيًا عند انتهاء الوقت.',
+
+          questionNofM: 'السؤال {n} من {m}',
+          type: { mcq: 'اختيار من متعدد', tf: 'صواب أو خطأ', essay: 'سؤال مقالي' },
+          flag: 'علِّم للمراجعة', trueLabel: 'صواب', falseLabel: 'خطأ', clearAnswer: 'مسح الإجابة',
+          essayPlaceholder: 'اكتب إجابتك هنا بالتفصيل…', charsOf: '{n} / {max} حرف',
+          prevQuestion: 'السابق', nextQuestion: 'التالي', submitQuiz: 'تسليم الاختبار',
+
+          navGridTitle: 'لوحة الأسئلة', navGridToggle: 'الأسئلة', legendLabel: 'دليل الألوان', unansweredN: '{n} غير مُجاب',
+          answered: 'مُجاب', unanswered: 'غير مُجاب', flagged: 'معلَّم للمراجعة', navItem: 'السؤال {n}، {s}',
+
+          saveExit: 'حفظ وخروج',
+          exitTitle: 'حفظ والخروج من الاختبار؟',
+          exitDesc: 'إجاباتك محفوظة. الوقت يستمر وينتهي الساعة {t} — عُد قبلها لإكمال الاختبار، وإلا سيُسلَّم تلقائيًا.',
+          exitCancel: 'متابعة الاختبار', exitConfirm: 'حفظ وخروج',
+
+          submitTitle: 'تأكيد تسليم الاختبار',
+          submitDesc: 'راجع ملخص إجاباتك. لا يمكن تعديل الإجابات بعد التسليم.',
+          warnUnanswered: 'أسئلة غير مُجابة ستُسلَّم فارغة: {list}', goToQuestion: 'الذهاب إلى السؤال {n}', flaggedList: 'معلَّمة للمراجعة: {list}',
+          submitCancel: 'مراجعة الإجابات', submitConfirm: 'تسليم نهائي',
+
+          doneTitle: 'تم تسليم الاختبار', doneTimeout: 'انتهى الوقت وسُلِّم الاختبار تلقائيًا',
+          doneSummary: 'أجبت عن {n} من {m} — سُلِّم في {t}.', doneGrading: 'تُصحَّح أسئلة الاختيار فورًا، والأسئلة المقالية بعد مراجعة المعلّم.',
+          attemptId: 'رقم المحاولة', viewResult: 'عرض النتيجة', backToDashboard: 'لوحة الطالب',
+          leaveWarn: 'الاختبار جارٍ — إجاباتك محفوظة لكن الوقت يستمر.',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Student Portal',
+        mainMenu: 'Main menu', mainNav: 'Main navigation',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search my subjects & quizzes…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', logout: 'Log out',
+        roleStudent: 'Student',
+        navGroups: { overview: 'Overview', learning: 'Learning', account: 'Account' },
+        navItems: {
+          dashboard: 'Dashboard', courses: 'Courses', catalog: 'Public Catalog',
+          availableQuizzes: 'Available Quizzes', quizResults: 'Quiz Results', quizHistory: 'Attempt History',
+          profile: 'Profile', notificationCenter: 'Notification Center',
+        },
+        notif: {
+          resultPublished: 'Result published for "Motion & Force Quiz" — Physics',
+          upcomingReminder: '"Periodic Table Quiz" is due tomorrow — Chemistry',
+          gradePosted: 'Your teacher manually graded "Grammar Rules Quiz"',
+        },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          questions: { zero: 'No questions', one: '{n} question', other: '{n} questions' },
+          minutes:   { zero: '0 min', one: '{n} minute', other: '{n} minutes' },
+          seconds:   { zero: '0 seconds', one: '{n} second', other: '{n} seconds' },
+          marks:     { zero: 'No marks', one: '{n} mark', other: '{n} marks' },
+          words:     { zero: '0 words', one: '{n} word', other: '{n} words' },
+        },
+
+        qp: {
+          docTitle: '{n} — FirOb',
+          availableTitle: 'Available Quizzes', availableSubtitle: 'Pick a quiz to read its instructions before starting.',
+          state: { new: 'Available', overdue: 'Overdue', resume: 'In progress', done: 'Submitted' },
+          cta: { new: 'View instructions', resume: 'Resume attempt', done: 'View submission' },
+          notFound: 'We couldn’t find this quiz among your available quizzes.', backToAvailable: 'Available Quizzes',
+
+          infoQuestions: 'Questions', infoDuration: 'Duration', infoMarks: 'Total marks', infoAttempts: 'Attempts allowed',
+          lateNotice: 'This quiz is past its due date and accepts late submission — your teacher will see it as late.',
+          closedNotice: 'This quiz is past its due date and does not accept late submission.',
+          rules: [
+            'The timer starts when you press “Start” and keeps running even if you leave the page.',
+            'Your answers are saved automatically after every change; you can resume where you left off before time runs out.',
+            'The quiz is submitted automatically when time is up.',
+            'You can flag any question to come back to it, and move between questions from the question palette.',
+          ],
+          notNow: 'Not now', start: 'Start Quiz',
+          lateBadge: 'Late submission', resumed: 'Your saved attempt was resumed — the timer kept running while you were away.',
+
+          progressLabel: 'Answer progress', answeredOf: '{n} of {m} answered',
+          saved: 'Saved · {t}', saveFailed: 'Couldn’t save in this browser',
+          timeLeftLabel: 'Time left: {t}', timeWarn5: '5 minutes left in the quiz.', timeWarn1: '1 minute left — the quiz will be submitted automatically when time is up.',
+
+          questionNofM: 'Question {n} of {m}',
+          type: { mcq: 'Multiple choice', tf: 'True / False', essay: 'Essay' },
+          flag: 'Flag for review', trueLabel: 'True', falseLabel: 'False', clearAnswer: 'Clear answer',
+          essayPlaceholder: 'Write your detailed answer here…', charsOf: '{n} / {max} characters',
+          prevQuestion: 'Previous', nextQuestion: 'Next', submitQuiz: 'Submit Quiz',
+
+          navGridTitle: 'Question Palette', navGridToggle: 'Questions', legendLabel: 'Legend', unansweredN: '{n} unanswered',
+          answered: 'Answered', unanswered: 'Unanswered', flagged: 'Flagged for review', navItem: 'Question {n}, {s}',
+
+          saveExit: 'Save & Exit',
+          exitTitle: 'Save and leave the quiz?',
+          exitDesc: 'Your answers are saved. The timer keeps running and ends at {t} — come back before then to finish, otherwise it will be submitted automatically.',
+          exitCancel: 'Continue Quiz', exitConfirm: 'Save & Exit',
+
+          submitTitle: 'Confirm Quiz Submission',
+          submitDesc: 'Review your summary. Answers can’t be changed after submitting.',
+          warnUnanswered: 'Unanswered questions will be submitted blank: {list}', goToQuestion: 'Go to question {n}', flaggedList: 'Flagged for review: {list}',
+          submitCancel: 'Review Answers', submitConfirm: 'Submit Final',
+
+          doneTitle: 'Quiz submitted', doneTimeout: 'Time was up — the quiz was submitted automatically',
+          doneSummary: 'You answered {n} of {m} — submitted {t}.', doneGrading: 'Multiple-choice questions are graded instantly; essays after your teacher reviews them.',
+          attemptId: 'Attempt ID', viewResult: 'View Result', backToDashboard: 'Student Dashboard',
+          leaveWarn: 'The quiz is in progress — your answers are saved but the timer keeps running.',
+        },
+      },
+    };
+
+    const LETTERS = { ar: ['أ', 'ب', 'ج', 'د', 'هـ'], en: ['A', 'B', 'C', 'D', 'E'] };
+    const TYPE_ICON = { mcq: 'fa-list-check', tf: 'fa-circle-half-stroke', essay: 'fa-pen-nib' };
+    const params = new URLSearchParams(location.search);
+    const CODE = params.get('code');
+    const keyRun = (c) => 'firob-attempt:' + c, keyDone = (c) => 'firob-attempt-done:' + c;
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'availableQuizzes',
+      liveMsg: '',
+      get expanded() { return this.mobile || !this.collapsed; },
+      get studentName() { return STUDENT[this.locale]; },
+      get initials() { return STUDENT[this.locale].trim().split(/\s+/).slice(0, 2).map(w => w[0]).join(this.locale === 'ar' ? '‌' : '').toUpperCase(); },
+      announce(msg) { this.liveMsg = ''; this.$nextTick(() => { this.liveMsg = msg; }); },
+      LETTERS, TYPE_ICON,
+
+      /* ---------- المرحلة والاختبار ---------- */
+      phase: 'list',                 // list | notfound | intro | running | done
+      code: CODE,
+      quiz: CODE ? QUIZZES[CODE] || null : null,
+      get examMode() { return this.phase === 'running'; },
+      get overdue() { return !!this.quiz && this.quiz.dueOffset < 0; },
+      get late() { return this.overdue && this.quiz.lateAllowed; },
+      get closed() { return this.overdue && !this.quiz.lateAllowed; },
+      get total() { return this.quiz ? this.quiz.questions.length : 0; },
+      get totalMarks() { return this.quiz ? this.quiz.questions.reduce((s, q) => s + q.marks, 0) : 0; },
+      get available() {
+        return Object.entries(QUIZZES).map(([code, q]) => ({ code, ...q, overdue: q.dueOffset < 0,
+          state: store.get(keyDone(code), null) ? 'done' : (store.get(keyRun(code), null) ? 'resume' : 'new') }));
+      },
+
+      /* ---------- المحاولة ---------- */
+      attemptId: null,
+      currentIndex: 0,
+      answers: [],
+      endsAt: 0,
+      now: Date.now(),
+      resumed: false,
+      submitted: false,
+      leaving: false,
+      busy: false,
+      gridOpen: false,
+      exitModalOpen: false,
+      submitModalOpen: false,
+      doneInfo: null,
+      saveState: '', savedAt: null,
+      _timer: null, _warned: {}, _returnFocus: null,
+
+      get q() { return this.quiz?.questions[this.currentIndex]; },
+      get ans() { return this.answers[this.currentIndex] || { value: null, flagged: false }; },
+      options(q) {
+        if (q.type === 'tf') return [
+          { ar: I18N.ar.qp.trueLabel, en: I18N.en.qp.trueLabel, icon: 'fa-check text-success-700 dark:text-success-500' },
+          { ar: I18N.ar.qp.falseLabel, en: I18N.en.qp.falseLabel, icon: 'fa-xmark text-error-700 dark:text-red-300' },
+        ];
+        return q.options;
+      },
+      isAnswered(i) {
+        const q = this.quiz?.questions[i], a = this.answers[i];
+        if (!q || !a) return false;
+        return q.type === 'essay' ? (typeof a.value === 'string' && a.value.trim().length > 0) : a.value !== null && a.value !== undefined;
+      },
+      get answeredCount() { return this.answers.reduce((n, _, i) => n + (this.isAnswered(i) ? 1 : 0), 0); },
+      get flaggedCount() { return this.answers.filter(a => a.flagged).length; },
+      get progressPct() { return this.total ? Math.round(this.answeredCount / this.total * 100) : 0; },
+      get firstUnanswered() { return this.answers.findIndex((_, i) => !this.isAnswered(i)); },
+      numList(pred) {
+        const ns = this.answers.map((a, i) => pred(a, i) ? this.fmt(i + 1) : null).filter(Boolean);
+        return ns.length > 10 ? ns.slice(0, 10).join('، ') + '…' : ns.join(this.locale === 'ar' ? '، ' : ', ');
+      },
+      get unansweredList() { return this.numList((a, i) => !this.isAnswered(i)); },
+      get flaggedList() { return this.numList(a => a.flagged); },
+      get charCount() { const v = this.ans.value; return typeof v === 'string' ? v.length : 0; },
+      get wordCount() { const v = this.ans.value; return typeof v === 'string' && v.trim() ? v.trim().split(/\s+/).length : 0; },
+
+      /* ---------- المؤقّت (من موعد انتهاء ثابت) ---------- */
+      get timeLeft() { return Math.max(0, Math.ceil((this.endsAt - this.now) / 1000)); },
+      get formattedTime() {
+        const t = this.timeLeft, h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+        return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(s).padStart(2, '0');
+      },
+      get spokenTime() {
+        const m = Math.floor(this.timeLeft / 60), s = this.timeLeft % 60;
+        return m ? this.pluralize('minutes', m) : this.pluralize('seconds', s);
+      },
+      tick() {
+        this.now = Date.now();
+        if (this.phase !== 'running') return;
+        const tl = this.timeLeft;
+        if (tl <= 300 && tl > 60 && !this._warned[5]) { this._warned[5] = true; this.announce(this.t('qp.timeWarn5')); }
+        if (tl <= 60 && tl > 0 && !this._warned[1]) { this._warned[1] = true; this._warned[5] = true; this.announce(this.t('qp.timeWarn1')); }
+        if (tl === 0) this.finalize('timeout');
+      },
+      startTicking() {
+        clearInterval(this._timer);
+        this._timer = setInterval(() => this.tick(), 1000);
+        this.tick();
+      },
+
+      /* ---------- البدء والحفظ والاستئناف ---------- */
+      startAttempt() {
+        if (this.closed || !this.quiz) return;
+        this.attemptId = 'ATT-2210-' + Date.now().toString(36).toUpperCase().slice(-6);
+        this.endsAt = Date.now() + this.quiz.duration * 60000;     // في Laravel: ends_at من الخادم (+ وقت إضافي للطالب إن وُجد)
+        this.answers = this.quiz.questions.map(q => ({ id: q.id, value: null, flagged: false }));
+        this.currentIndex = 0; this.resumed = false;
+        this.phase = 'running'; this.persist(); this.startTicking();
+        this.$nextTick(() => document.getElementById('question-heading')?.focus());
+      },
+      persist() {
+        if (this.phase !== 'running' || this.submitted) return;
+        const ok = store.set(keyRun(this.code), { attemptId: this.attemptId, endsAt: this.endsAt, answers: this.answers, current: this.currentIndex, late: this.late });
+        this.saveState = ok ? 'saved' : 'failed'; this.savedAt = new Date();
+      },
+      get saveStatus() {
+        if (this.saveState === 'failed') return this.t('qp.saveFailed');
+        return this.savedAt ? this.tf('qp.saved', { t: this.fmtClock(this.savedAt) }) : '';
+      },
+      touch() { /* x-model يحدّث القيمة؛ الحفظ عبر $watch العميق */ },
+
+      /* ---------- التنقّل بين الأسئلة ---------- */
+      goTo(i) {
+        if (i < 0 || i >= this.total) return;
+        this.currentIndex = i; this.persist();
+        this.$nextTick(() => {
+          document.getElementById('question-heading')?.focus({ preventScroll: true });
+          if (this.mobile) document.getElementById('question-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        });
+      },
+      setAnswer(v) { if (this.answers[this.currentIndex]) this.answers[this.currentIndex].value = v; },
+      toggleFlag() { const a = this.answers[this.currentIndex]; if (a) a.flagged = !a.flagged; },
+      openGrid() { this.gridOpen = true; },
+      closeGrid(returnFocus = true) {
+        if (!this.gridOpen) return;
+        this.gridOpen = false;
+        if (returnFocus && this.mobile) this.$nextTick(() => this.$refs.gridBtn?.focus());
+      },
+
+      /* ---------- حفظ وخروج ---------- */
+      openExitModal() { this._returnFocus = document.activeElement; this.exitModalOpen = true; },
+      closeExitModal() { this.exitModalOpen = false; this.$nextTick(() => this._returnFocus?.focus?.()); },
+      confirmExit() {
+        this.persist(); this.leaving = true;
+        window.location.href = 'student-dashboard.html#upcoming';
+      },
+
+      /* ---------- التسليم (مرة واحدة فقط) ---------- */
+      openSubmitModal() { this._returnFocus = document.activeElement; this.submitModalOpen = true; },
+      closeSubmitModal(returnFocus = true) { if (this.busy) return; this.submitModalOpen = false; if (returnFocus) this.$nextTick(() => this._returnFocus?.focus?.()); },
+      confirmSubmit() {
+        if (this.busy || this.submitted) return;
+        this.busy = true;
+        setTimeout(() => { this.busy = false; this.finalize('manual'); }, 700);   // في Laravel: $wire.submit() داخل معاملة idempotent
+      },
+      finalize(reason) {
+        if (this.submitted) return;                       // حارس التسليم المزدوج (انتهاء الوقت أثناء الإرسال)
+        this.submitted = true;
+        clearInterval(this._timer);
+        this.exitModalOpen = this.submitModalOpen = this.gridOpen = false; this.busy = false;
+        const submittedAt = reason === 'timeout' ? Math.min(Date.now(), this.endsAt) : Date.now();
+        this.doneInfo = { attemptId: this.attemptId, reason, answered: this.answeredCount, total: this.total, submittedAt,
+                          // بيانات تلخيصية تقرأها صفحتا السجل والنتيجة (في Laravel: سجل quiz_attempts نفسه)
+                          code: this.code, subject: this.quiz.subject, title: this.quiz.title, totalMarks: this.totalMarks,
+                          duration: this.quiz.duration, attemptsAllowed: this.quiz.attemptsAllowed,
+                          durationSec: Math.max(0, Math.round((submittedAt - (this.endsAt - this.quiz.duration * 60000)) / 1000)) };
+        store.set(keyDone(this.code), this.doneInfo);
+        store.remove(keyRun(this.code));
+        this.phase = 'done'; this.updateTitle();
+        this.$nextTick(() => document.getElementById('done-title')?.focus());
+      },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) { return String(this.t(path)).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : '')); },
+      get intlLocale() { return this.locale === 'ar' ? 'ar-u-nu-latn' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intlLocale).format(n); },
+      fmtClock(d) { return new Intl.DateTimeFormat(this.intlLocale, { hour: 'numeric', minute: '2-digit' }).format(new Date(d)); },
+      fmtDateTime(d) { return new Intl.DateTimeFormat(this.intlLocale, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(d)); },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      relMin(min) {
+        const rtf = new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto', style: 'short' });
+        return min < 60 ? rtf.format(-min, 'minute') : (min < 1440 ? rtf.format(-Math.round(min / 60), 'hour') : rtf.format(-Math.round(min / 1440), 'day'));
+      },
+      updateTitle() { document.title = this.tf('qp.docTitle', { n: this.quiz ? this.quiz.title[this.locale] : this.t('qp.availableTitle') }); },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        this.updateTitle();
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقّل (بوابة الطالب) — مخفي أثناء المحاولة ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'student-dashboard.html' },
+        ]},
+        { group: 'learning', items: [
+          { key: 'courses', icon: 'fa-solid fa-book-open', href: 'student-courses.html' },
+          { key: 'catalog', icon: 'fa-solid fa-layer-group', href: 'learning-objects-catalog.html' },
+          { key: 'availableQuizzes', icon: 'fa-solid fa-pen-to-square', href: 'quiz-player.html' },
+          { key: 'quizResults', icon: 'fa-solid fa-chart-simple', href: 'student-quiz-result.html' },
+          { key: 'quizHistory', icon: 'fa-solid fa-clock-rotate-left', href: 'student-quiz-history.html' },
+        ]},
+        { group: 'account', items: [
+          { key: 'profile', icon: 'fa-regular fa-user', href: '../common/profile.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+
+      notifications: [
+        { id: 1, key: 'resultPublished', min: 15,   read: false, icon: 'fa-solid fa-square-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'upcomingReminder', min: 120, read: false, icon: 'fa-regular fa-clock', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+        { id: 3, key: 'gradePosted', min: 1440,     read: true,  icon: 'fa-solid fa-pen', tone: 'bg-primary-500/15 text-brand' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) { this.mobileNav = false; this.gridOpen = false; } });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+
+        if (!CODE) this.phase = 'list';
+        else if (!this.quiz) this.phase = 'notfound';
+        else {
+          const done = store.get(keyDone(CODE), null);
+          const run = store.get(keyRun(CODE), null);
+          if (done) { this.doneInfo = done; this.phase = 'done'; }
+          else if (run && run.endsAt && Array.isArray(run.answers) && run.answers.length === this.total) {
+            Object.assign(this, { attemptId: run.attemptId, endsAt: run.endsAt, answers: run.answers, currentIndex: Math.min(run.current || 0, this.total - 1), resumed: true });
+            this.phase = 'running';
+            if (Date.now() >= this.endsAt) this.finalize('timeout');           // انتهى الوقت أثناء الغياب ← تسليم تلقائي
+            else this.startTicking();
+          } else this.phase = 'intro';
+        }
+        this.updateTitle();
+
+        this.$watch('answers', () => this.persist(), { deep: true });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) this.tick(); });   // تصحيح فوري عند العودة للتبويب
+        window.addEventListener('beforeunload', (e) => {
+          if (this.phase === 'running' && !this.leaving) { this.persist(); e.preventDefault(); e.returnValue = this.t('qp.leaveWarn'); }
+        });
+      },
+      onGlobalKey(e) {
+        if (this.examMode) return;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          if (g && g.offsetParent !== null) g.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        if (this.gridOpen) this.closeGrid();
+      },
+    };
+  }
+</script>
+</body>
+</html>

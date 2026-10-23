@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- لوحة تحكم محمية خلف تسجيل الدخول: لا فهرسة ولا وصف تسويقي ولا OG -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>مصفوفة الأدوار والصلاحيات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج اللغة والاتجاه قبل الرسم (يمنع قفزة RTL ↔ LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || null;
+    if (!l) { try { l = localStorage.getItem('firob-locale'); } catch (e) {} }
+    l = l === 'en' ? 'en' : 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ الأيقونات: تحميل غير حاجب للرسم (المساحة محجوزة مسبقًا في CSS لمنع القفز) -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin referrerpolicy="no-referrer" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer"></noscript>
+
+<!-- ⑤ Tailwind (إصدار مثبّت) + التوكنز المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        danger: v('danger'), ok: v('ok'), warn: v('warn'), info: v('info'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑥ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* ألوان الحالة النصية — كلها ≥ 4.5:1 على البطاقة والشارات الشفافة */
+      --danger: 185 28 28;  --ok: 4 120 87;       --warn: 180 83 9;    --info: 29 78 216;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --warn: 252 211 77;  --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي — clip لا يكسر position: sticky */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    i[class*='fa-'] { display: inline-block; min-width: 1em; text-align: center; font-style: normal; }
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .dark .panel { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .icon-btn { @apply relative inline-grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-soft hover:text-brand disabled:opacity-50 sm:h-10 sm:w-10; }
+    .nav-link { @apply flex min-h-[2.75rem] items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line-strong/60 text-sm text-muted transition-colors hover:bg-soft hover:text-brand disabled:pointer-events-none disabled:opacity-40 sm:h-9 sm:w-9; }
+    .act[aria-current="page"] { @apply border-transparent bg-primary-500 text-white hover:bg-primary-600 hover:text-white; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info/15 text-info; }
+    .badge-danger  { @apply bg-error-500/15 text-danger; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block min-h-[2.75rem] w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover:not(:disabled) { @apply border-primary-500; }
+    .field:focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled, .field[aria-disabled="true"] { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار (حلقة التركيز من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition-colors disabled:pointer-events-none disabled:opacity-50; touch-action: manipulation; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line-strong/60 bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex min-h-[2.75rem] w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition-colors hover:bg-soft focus:bg-soft focus:outline-none disabled:cursor-not-allowed disabled:opacity-40; }
+    .menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--brand)); }
+
+    /* ---------- قائمة الاختيار المخصصة (Select-only Combobox) ---------- */
+    .combo-list { @apply absolute z-50 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex min-h-[2.75rem] w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2 text-start text-sm font-medium text-ink transition-colors hover:bg-soft sm:min-h-[2.5rem]; }
+    .combo-option.is-active   { @apply bg-soft; box-shadow: inset 0 0 0 2px rgb(var(--brand) / .5); }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- SweetAlert2 ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; border: 1px solid rgb(var(--line)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; font-size: .9375rem !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-timer-progress-bar { background: rgb(var(--brand) / .5) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- شارة الدور النظامي ---------- */
+    .badge-warning { @apply bg-warning-500/15 text-warn; }
+
+    /* ---------- مربع اختيار المصفوفة (مع حالة جزئية) ---------- */
+    .check { @apply inline-block h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-line-strong bg-field align-middle transition-colors; }
+    .check:hover:not(:disabled) { @apply border-primary-500; }
+    .check:checked { @apply border-primary-500 bg-primary-500; background-size: 100% 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5L15 6.5'/%3E%3C/svg%3E"); }
+    .check:indeterminate { @apply border-primary-500 bg-primary-500; background-size: 60% 60%; background-position: center; background-repeat: no-repeat;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 10h10'/%3E%3C/svg%3E"); }
+    .check:disabled { @apply cursor-not-allowed opacity-45; }
+    .check-on { @apply border-primary-500 bg-primary-500; }
+
+    /* ---------- المفتاح (Switch) — منطقة لمس 44px ---------- */
+    .switch { @apply inline-flex cursor-pointer items-center; }
+    .switch-track { @apply relative h-6 w-11 shrink-0 rounded-full bg-line-strong transition-colors; }
+    .switch-track::after { content: ''; @apply absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform; }
+    .peer:checked ~ .switch-track { @apply bg-primary-500; }
+    .peer:checked ~ .switch-track::after { transform: translateX(1.25rem); }
+    [dir='rtl'] .peer:checked ~ .switch-track::after { transform: translateX(-1.25rem); }
+    .peer:focus-visible ~ .switch-track { box-shadow: var(--ring); }
+    .peer:disabled ~ .switch-track { @apply opacity-60; }
+    .switch:has(.peer:disabled) { @apply cursor-not-allowed; }
+
+    /* ---------- مصفوفة الصلاحيات ---------- */
+    .matrix-scroll { @apply overflow-auto; max-height: min(44rem, 70dvh); overscroll-behavior: contain; }
+    .matrix-scroll:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--brand)); }
+    .matrix-table { border-collapse: separate; border-spacing: 0; }       /* شرط عمل sticky داخل الجداول */
+    .matrix-sticky-col { position: sticky; inset-inline-start: 0; z-index: 10; }
+    .matrix-sticky-head { position: sticky; top: 0; z-index: 20; }
+    .matrix-sticky-corner { position: sticky; inset-inline-start: 0; top: 0; z-index: 30; }
+    .matrix-cell { @apply border-b border-line px-3 py-2.5 align-middle; }
+    /* فاصل العمود الثابت يبقى ظاهرًا أثناء التمرير الأفقي */
+    .matrix-edge { box-shadow: inset -1px 0 0 rgb(var(--line)); }
+    [dir='rtl'] .matrix-edge { box-shadow: inset 1px 0 0 rgb(var(--line)); }
+    /* صف المجموعة: خلفية معتمة (كانت شفافة فيظهر المحتوى خلف العمود الثابت) */
+    .matrix-group-row > * { background-color: rgb(var(--soft)); }
+    .matrix-row:hover > td { background-color: rgb(var(--soft) / .45); }
+    .matrix-row > td.is-changed { background-color: rgb(247 217 51 / .14); }
+    .matrix-flash { animation: matrixFlash 1.6s ease-out; }
+    @keyframes matrixFlash { 0%, 100% { box-shadow: inset 0 0 0 9999px transparent; } 15%, 45% { box-shadow: inset 0 0 0 9999px rgb(var(--brand) / .16); } }
+
+    /* ---------- مقياس الحصة ---------- */
+    .quota-track { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-700; }
+  }
+</style>
+
+<!-- ⑦ Alpine.js 3.14.8 + Focus -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑧ SweetAlert2 (إصدار مثبّت، مؤجَّل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+</head>
+
+<body x-data="shell()"
+      @keydown.escape.window="closeAll()"
+      @keydown.window.ctrl.k.prevent="focusSearch()" @keydown.window.meta.k.prevent="focusSearch()"
+      @scroll.window.passive="openMenuId !== null && closeMenu()" @resize.window="openMenuId !== null && closeMenu()"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلانات قارئ الشاشة -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav) ? 'true' : null" :inert="mobile && !mobileNav">
+
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <img x-show="expanded" src="../asset/images/firob-logo.png" alt="FirOb" width="124" height="32" decoding="async"
+             class="block h-8 w-auto max-w-[8.5rem] shrink-0 object-contain dark:brightness-125">
+        <img x-show="!expanded" x-cloak src="../asset/images/firob-favicon.png" alt="FirOb" width="36" height="36" decoding="async"
+             class="block h-9 w-9 shrink-0 object-contain">
+        <span class="min-w-0 flex-1 border-s border-line ps-3" x-show="expanded">
+          <span class="block truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></span>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="closeMobileNav()" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)" :id="'ng-' + group.group"></p>
+          <div class="mx-auto mb-2 h-px w-8 bg-line" x-show="!expanded" aria-hidden="true"></div>
+          <ul class="space-y-1" role="list" :aria-labelledby="expanded ? 'ng-' + group.group : null">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href" class="nav-link relative"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? ' (' + navCount(item) + ')' : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold"
+                        :class="active === item.key ? 'bg-white/20 text-white' : (item.tone === 'primary' ? 'bg-primary-500/15 text-brand' : 'bg-accent-500 text-onaccent')"
+                        x-text="navCount(item)"></span>
+                  <span x-show="navCount(item) && !expanded" x-cloak class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+                        :class="item.tone === 'primary' ? 'bg-primary-500' : 'bg-accent-500'" aria-hidden="true"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()"
+              aria-controls="sidebar" :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+        <i class="fa-solid fa-angles-left transition-transform" :class="collapsed ? 'ltr:-scale-x-100' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 ps-[max(.5rem,env(safe-area-inset-left))] pe-[max(.5rem,env(safe-area-inset-right))] sm:gap-2 sm:ps-6 sm:pe-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" x-ref="navToggle" class="icon-btn lg:hidden" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="mobileNav.toString()" :aria-label="mobileNav ? t('closeMenu') : t('openMenu')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn hidden lg:inline-grid" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')" aria-keyshortcuts="Control+K Meta+K"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong/60 bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted lg:inline-flex" x-text="isMac ? '⌘ K' : 'Ctrl K'">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button type="button" class="icon-btn md:hidden" @click="toggleMobileSearch()" aria-controls="mobile-search"
+                  :aria-expanded="searchOpen.toString()" :aria-label="t('openSearch')">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          </button>
+
+          <button type="button"
+                  class="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10"
+                  @click="toggleLocale()" :aria-label="t('switchLang')" :title="t('switchLang')">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" aria-hidden="true" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="t('darkMode')" :title="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" x-ref="notifBtn" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="dialog" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications') + (unread ? ' — ' + tf('notifUnread', { n: unread }) : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="dialog" aria-labelledby="notif-title">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <h2 id="notif-title" class="font-extrabold" x-text="t('notifications')"></h2>
+                <button type="button" class="min-h-[2.25rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                        :disabled="!unread" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('unreadSr') + ': '"></span>
+                        <span x-text="tf('notif.' + n.key, { pct: seatPct })"></span>
+                      </p>
+                      <p class="text-xs text-muted"><time :datetime="isoAgo(n.mins)" x-text="ago(n.mins)"></time></p>
+                    </div>
+                    <span x-show="!n.read" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true"></span>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center rounded-xl text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i><span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- الحساب -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" x-ref="profileBtn" class="flex min-h-[2.75rem] max-w-[14rem] items-center gap-2 rounded-xl p-1 transition-colors hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials(me.name)"></span>
+              <span class="sr-only md:hidden" x-text="t('accountMenu')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="me.name"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted transition-transform md:block" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <nav id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-60" :aria-label="t('accountMenu')">
+              <ul role="list" class="py-1">
+                <li><a href="../common/profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="TenantSettingsForm.html" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('navItems.orgSettings')"></span></a></li>
+                <li><a href="../common/errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('statusErrors')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4 rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <form id="mobile-search" role="search" x-cloak x-show="searchOpen" x-transition.opacity class="border-t border-line px-3 py-2 md:hidden" @submit.prevent>
+        <label for="q-m" class="sr-only" x-text="t('searchPlaceholder')"></label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q-m" x-ref="mobileSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')"
+                 class="h-11 w-full rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+        </div>
+      </form>
+
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li><span class="text-ink" aria-current="page" x-text="t('navItems.roleMatrix')"></span></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-04: مصفوفة الأدوار والصلاحيات ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          :style="'padding-bottom:' + (dirty ? 'calc(9rem + env(safe-area-inset-bottom, 0px))' : 'max(1.5rem, env(safe-area-inset-bottom, 0px))')">
+
+      <!-- العنوان + الإجراءات -->
+      <div class="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('rm.title')">مصفوفة الأدوار والصلاحيات</h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('rm.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button type="button" class="btn btn-outline" :disabled="!dirty || busy" @click="openModal('discard')">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i><span x-text="t('rm.discardChanges')"></span>
+          </button>
+          <button type="button" class="btn btn-primary" :disabled="!dirty || busy" @click="openModal('review')">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+            <span x-text="dirty ? tf('rm.reviewSaveN', { n: fmt(changes.length) }) : t('rm.saveChanges')"></span>
+          </button>
+          <button type="button" x-ref="addBtn" class="btn btn-accent" @click="openCreateRole(null, $el)">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i><span x-text="t('rm.addRole')"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= المؤشرات ================= -->
+      <section aria-labelledby="kpi-title">
+        <h2 id="kpi-title" class="sr-only" x-text="t('rm.kpiTitle')"></h2>
+        <ul class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" role="list">
+          <template x-for="k in kpis" :key="k.key">
+            <li class="panel p-4 sm:p-5" :class="k.key === 'kpiPending' && dirty && '!border-accent-600/60'">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rm.' + k.key)"></h3>
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.tone" aria-hidden="true"><i :class="'fa-solid ' + k.icon"></i></span>
+              </div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="fmt(k.value)"></p>
+              <p x-show="k.note" class="mt-0.5 truncate text-xs text-muted" x-text="k.note"></p>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ================= البحث والفلاتر ================= -->
+      <section class="panel p-4 sm:p-5" aria-labelledby="filters-title">
+        <h2 id="filters-title" class="sr-only" x-text="t('rm.filtersTitle')"></h2>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div class="relative min-w-0 flex-1">
+            <label for="perm-search" class="sr-only" x-text="t('rm.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+            <input id="perm-search" x-ref="permSearch" type="search" x-model="search" autocomplete="off" enterkeyhint="search" :placeholder="t('rm.searchPlaceholder')"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          </div>
+
+          <div class="relative w-full shrink-0 lg:w-60"
+               x-data="selectDropdown({ id: 'module-filter', options: () => [{ value: 'all', label: t('rm.moduleAll') }, ...permissionGroups.map(g => ({ value: g.key, label: groupName(g) }))], get: () => moduleFilter, set: (v) => moduleFilter = v })"
+               @click.outside="closeList()">
+            <span id="module-filter-label" class="sr-only" x-text="t('rm.moduleFilterLabel')"></span>
+            <button type="button" id="module-filter" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="module-filter-label module-filter"
+                    :aria-expanded="open.toString()" aria-controls="module-filter-list" :aria-activedescendant="activeId"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold" :class="moduleFilter !== 'all' && '!border-brand'"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="module-filter-list" role="listbox" aria-labelledby="module-filter-label" tabindex="-1"
+                x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 lg:flex lg:shrink-0">
+            <button type="button" class="btn btn-outline" @click="toggleAllGroups()" :aria-pressed="(!allGroupsCollapsed).toString()">
+              <i class="fa-solid fa-chevron-down text-xs transition-transform" :class="!allGroupsCollapsed && 'rotate-180'" aria-hidden="true"></i>
+              <span x-text="allGroupsCollapsed ? t('rm.expandAll') : t('rm.collapseAll')"></span>
+            </button>
+            <button type="button" class="btn btn-outline" :disabled="!visiblePermCodes.length || !editableRoles.length" @click="openModal('global')">
+              <i class="fa-solid" :class="globalAllChecked ? 'fa-square-minus' : 'fa-square-check'" aria-hidden="true"></i>
+              <span x-text="globalAllChecked ? t('rm.revokeAllGlobal') : t('rm.grantAllGlobal')"></span>
+            </button>
+          </div>
+        </div>
+        <p x-show="filtersActive" x-cloak class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span x-text="tf('rm.filteredNote', { n: fmt(visiblePermCodes.length), total: fmt(allPermCodes.length) })"></span>
+          <button type="button" class="font-bold text-brand underline-offset-4 hover:underline" @click="resetFilters()" x-text="t('rm.resetFilters')"></button>
+        </p>
+      </section>
+
+      <!-- حالة لا نتائج -->
+      <div x-show="!visibleGroups.length" x-cloak class="panel px-5 py-14 text-center">
+        <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-key text-xl"></i></span>
+        <p class="font-extrabold text-ink" x-text="t('rm.emptyTitle')"></p>
+        <button type="button" @click="resetFilters()" class="btn btn-outline mt-4"><i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('rm.resetFilters')"></span></button>
+      </div>
+
+      <!-- ================= المصفوفة — سطح المكتب (≥ 1280px) — تُرسم فقط عند الحاجة ================= -->
+      <template x-if="wide">
+        <section x-show="visibleGroups.length" class="panel overflow-hidden" aria-labelledby="matrix-title">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
+            <h2 id="matrix-title" class="text-base font-extrabold text-ink" x-text="t('rm.matrixTitle')"></h2>
+            <p class="text-xs text-muted" x-text="t('rm.matrixHint')"></p>
+          </div>
+
+          <div x-ref="matrixScroll" class="matrix-scroll scroll-thin" tabindex="0" role="region" :aria-label="t('rm.matrixScrollLabel')">
+            <table class="matrix-table w-full text-sm" :style="'min-width:' + (17 + roles.length * 10) + 'rem'">
+              <caption class="sr-only" x-text="t('rm.matrixCaption')"></caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="matrix-sticky-corner matrix-cell border-e border-line bg-soft text-start" style="width:17rem">
+                    <span class="text-xs font-extrabold text-ink" x-text="t('rm.colModulePermission')"></span>
+                  </th>
+                  <template x-for="role in roles" :key="role.id">
+                    <th scope="col" class="matrix-sticky-head matrix-cell bg-soft text-center" style="width:10rem" :class="role.id === flashedRoleId && 'matrix-flash'">
+                      <div class="flex flex-col items-center gap-1">
+                        <div class="flex max-w-full items-center gap-1">
+                          <i x-show="role.isSystem" class="fa-solid fa-lock shrink-0 text-[11px] text-warn" aria-hidden="true"></i>
+                          <span class="truncate text-sm font-extrabold text-ink" :title="roleName(role)" x-text="roleName(role)"></span>
+                          <span x-show="role.isSystem" class="sr-only" x-text="'(' + t('rm.roleSystemBadge') + ')'"></span>
+                          <span x-show="role.isCustom" class="sr-only" x-text="'(' + t('rm.roleCustomBadge') + ')'"></span>
+                          <span x-show="role.isCustom" class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500" :title="t('rm.roleCustomBadge')" aria-hidden="true"></span>
+                        </div>
+                        <span class="text-[11px] font-medium text-muted" x-text="tf('rm.usersN', { n: fmt(role.users) })"></span>
+                        <div class="flex items-center gap-1">
+                          <template x-if="!role.isSystem">
+                            <label class="inline-grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-line-strong/60 bg-card hover:bg-page" :title="t('rm.selectVisibleForRole')">
+                              <input type="checkbox" class="check !h-4 !w-4"
+                                     :aria-label="tf('rm.selectVisibleForRoleAria', { role: roleName(role) })"
+                                     :checked="isRoleFullyChecked(role)"
+                                     x-effect="$el.indeterminate = !isRoleFullyChecked(role) && isRolePartiallyChecked(role)"
+                                     @change="toggleRole(role)">
+                            </label>
+                          </template>
+                          <button type="button" class="act !h-8 !w-8 bg-card" data-kebab @click="toggleMenu(role, $event)" @keydown.down.prevent="toggleMenu(role, $event, true)"
+                                  aria-haspopup="menu" aria-controls="kebab-menu" :aria-expanded="(openMenuId === role.id).toString()" :aria-label="t('rm.colActions') + ': ' + roleName(role)">
+                            <i class="fa-solid fa-ellipsis-vertical text-xs" aria-hidden="true"></i>
+                          </button>
+                          <span x-show="roleChangeCount(role)" x-cloak class="badge badge-accent !px-1.5 tabular-nums" :title="t('rm.changedCount')"
+                                x-text="fmt(roleChangeCount(role))"></span>
+                        </div>
+                      </div>
+                    </th>
+                  </template>
+                </tr>
+              </thead>
+              <template x-for="group in visibleGroups" :key="group.key">
+                <tbody :id="'grp-rows-' + group.key">
+                  <tr class="matrix-group-row">
+                    <th scope="rowgroup" class="matrix-sticky-col matrix-cell matrix-edge text-start">
+                      <button type="button" class="flex min-h-[2.25rem] w-full items-center gap-2.5 rounded-lg text-start"
+                              @click="collapsedGroups[group.key] = !collapsedGroups[group.key]"
+                              :aria-expanded="(!collapsedGroups[group.key]).toString()" :aria-controls="'grp-rows-' + group.key">
+                        <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="collapsedGroups[group.key] && 'ltr:-rotate-90 rtl:rotate-90'" aria-hidden="true"></i>
+                        <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-500/10 text-brand" aria-hidden="true"><i :class="group.icon" class="text-xs"></i></span>
+                        <span class="min-w-0 flex-1 truncate text-xs font-extrabold text-ink" x-text="groupName(group)"></span>
+                        <span class="shrink-0 text-[11px] font-bold text-muted tabular-nums" x-text="fmt(group.permissions.length)"></span>
+                      </button>
+                    </th>
+                    <template x-for="role in roles" :key="role.id">
+                      <td class="matrix-cell text-center">
+                        <template x-if="role.isSystem">
+                          <span><i class="fa-solid fa-lock text-sm text-ok" aria-hidden="true"></i><span class="sr-only" x-text="t('rm.grantedLocked')"></span></span>
+                        </template>
+                        <template x-if="!role.isSystem">
+                          <input type="checkbox" class="check"
+                                 :aria-label="tf('rm.groupSelectAllAria', { group: groupName(group), role: roleName(role) })"
+                                 :checked="isGroupFullyCheckedForRole(group, role)"
+                                 x-effect="$el.indeterminate = !isGroupFullyCheckedForRole(group, role) && isGroupPartiallyCheckedForRole(group, role)"
+                                 @change="toggleGroupForRole(group, role)">
+                        </template>
+                      </td>
+                    </template>
+                  </tr>
+                  <template x-for="perm in group.permissions" :key="perm.code">
+                    <tr x-show="!collapsedGroups[group.key]" class="matrix-row">
+                      <th scope="row" class="matrix-sticky-col matrix-cell matrix-edge bg-card text-start font-normal">
+                        <p class="flex min-w-0 items-center gap-1.5 text-sm font-bold text-ink">
+                          <span class="truncate" x-text="permName(perm)" :title="permDesc(perm)"></span>
+                          <i x-show="perm.danger" class="fa-solid fa-triangle-exclamation shrink-0 text-[11px] text-warn" :title="t('rm.dangerous')" aria-hidden="true"></i>
+                          <span x-show="perm.danger" class="sr-only" x-text="'(' + t('rm.dangerous') + ')'"></span>
+                        </p>
+                        <p class="truncate text-xs text-muted"><bdi dir="ltr" x-text="perm.code"></bdi></p>
+                      </th>
+                      <template x-for="role in roles" :key="role.id">
+                        <td class="matrix-cell relative text-center transition-colors" :class="isCellChanged(role, perm.code) && 'is-changed'">
+                          <span x-show="isCellChanged(role, perm.code)" class="absolute end-2 top-2 h-1.5 w-1.5 rounded-full bg-accent-600" aria-hidden="true"></span>
+                          <template x-if="role.isSystem">
+                            <span><i class="fa-solid fa-lock text-sm text-ok" aria-hidden="true"></i><span class="sr-only" x-text="t('rm.grantedLocked')"></span></span>
+                          </template>
+                          <template x-if="!role.isSystem">
+                            <input type="checkbox" class="check"
+                                   :aria-label="roleName(role) + ' — ' + permName(perm) + (isCellChanged(role, perm.code) ? ' (' + t('rm.changed') + ')' : '')"
+                                   :checked="cellChecked(role, perm.code)"
+                                   @change="toggleCell(role, perm.code)">
+                          </template>
+                        </td>
+                      </template>
+                    </tr>
+                  </template>
+                </tbody>
+              </template>
+            </table>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line px-5 py-3.5 text-xs font-bold text-muted">
+            <span class="inline-flex items-center gap-1.5"><span class="check check-on pointer-events-none !h-4 !w-4" aria-hidden="true"></span> <span x-text="t('rm.legendGranted')"></span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="check pointer-events-none !h-4 !w-4" aria-hidden="true"></span> <span x-text="t('rm.legendNotGranted')"></span></span>
+            <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-lock text-ok" aria-hidden="true"></i> <span x-text="t('rm.legendLocked')"></span></span>
+            <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-accent-600" aria-hidden="true"></span> <span x-text="t('rm.legendChanged')"></span></span>
+            <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-warn" aria-hidden="true"></i> <span x-text="t('rm.legendDangerous')"></span></span>
+          </div>
+        </section>
+      </template>
+
+      <!-- ================= الجوال واللوحي (< 1280px): دور واحد في كل مرة ================= -->
+      <template x-if="!wide">
+        <section class="space-y-4" aria-labelledby="matrix-title-mobile">
+          <h2 id="matrix-title-mobile" class="sr-only" x-text="t('rm.matrixTitle')"></h2>
+
+          <!-- اختيار الدور: radiogroup بالأسهم -->
+          <div class="panel p-2">
+            <div class="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scroll-thin" role="radiogroup" :aria-label="t('rm.mobileRoleTabsLabel')" @keydown="roleKey($event)">
+              <template x-for="role in roles" :key="'tab-' + role.id">
+                <button type="button" role="radio" :id="'rt-' + role.id" :aria-checked="(selectedMobileRoleId === role.id).toString()" :tabindex="selectedMobileRoleId === role.id ? 0 : -1"
+                        @click="selectedMobileRoleId = role.id"
+                        class="flex min-h-[2.75rem] shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-bold transition-colors"
+                        :class="selectedMobileRoleId === role.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25' : 'text-ink hover:bg-soft'">
+                  <i x-show="role.isSystem" class="fa-solid fa-lock text-xs" aria-hidden="true"></i>
+                  <span x-text="roleName(role)"></span>
+                  <span x-show="roleChangeCount(role)" class="grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-accent-500 px-1 text-[11px] font-extrabold text-onaccent tabular-nums"
+                        x-text="fmt(roleChangeCount(role))"></span>
+                  <span x-show="roleChangeCount(role)" class="sr-only" x-text="t('rm.changedCount')"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- بطاقة الدور المحدد -->
+          <div class="panel flex flex-wrap items-start justify-between gap-3 p-4" :class="selectedMobileRole.id === flashedRoleId && 'matrix-flash'">
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="font-extrabold text-ink" x-text="roleName(selectedMobileRole)"></h3>
+                <span class="badge" :class="roleBadge(selectedMobileRole)" x-text="roleKind(selectedMobileRole)"></span>
+              </div>
+              <p class="mt-1 text-xs text-muted" x-text="roleDesc(selectedMobileRole)"></p>
+              <p class="mt-1.5 text-xs font-bold text-muted">
+                <i class="fa-solid fa-users me-1" aria-hidden="true"></i><span x-text="tf('rm.usersN', { n: fmt(selectedMobileRole.users) })"></span>
+                · <span x-text="tf('rm.grantedOf', { g: fmt(grantedCount(selectedMobileRole)), t: fmt(allPermCodes.length) })"></span>
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+              <button x-show="!selectedMobileRole.isSystem" type="button" class="btn btn-outline btn-sm" @click="toggleRole(selectedMobileRole)"
+                      x-text="isRoleFullyChecked(selectedMobileRole) ? t('rm.revokeVisible') : t('rm.grantVisible')"></button>
+              <button type="button" class="act" data-kebab @click="toggleMenu(selectedMobileRole, $event)" @keydown.down.prevent="toggleMenu(selectedMobileRole, $event, true)"
+                      aria-haspopup="menu" aria-controls="kebab-menu" :aria-expanded="(openMenuId === selectedMobileRole.id).toString()" :aria-label="t('rm.colActions') + ': ' + roleName(selectedMobileRole)">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <p x-show="selectedMobileRole.isSystem" class="flex items-start gap-2.5 rounded-xl border border-warning-500/40 bg-warning-500/10 p-3.5 text-xs font-bold text-warn">
+            <i class="fa-solid fa-lock mt-0.5 shrink-0" aria-hidden="true"></i><span x-text="t('rm.systemLockedNotice')"></span>
+          </p>
+
+          <!-- مجموعات الصلاحيات -->
+          <template x-for="group in visibleGroups" :key="'m-' + group.key">
+            <div class="panel overflow-hidden">
+              <h3>
+                <button type="button" class="flex min-h-[3.5rem] w-full items-center justify-between gap-3 p-4 text-start"
+                        @click="collapsedGroups[group.key] = !collapsedGroups[group.key]"
+                        :aria-expanded="(!collapsedGroups[group.key]).toString()" :aria-controls="'m-grp-' + group.key">
+                  <span class="flex min-w-0 items-center gap-3">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i :class="group.icon"></i></span>
+                    <span class="min-w-0">
+                      <span class="block truncate text-sm font-extrabold text-ink" x-text="groupName(group)"></span>
+                      <span class="block text-xs font-medium text-muted" x-text="tf('rm.groupGrantedCount', { granted: fmt(groupGrantedCountForRole(group, selectedMobileRole)), total: fmt(group.permissions.length) })"></span>
+                    </span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-muted transition-transform duration-200" :class="collapsedGroups[group.key] && 'ltr:-rotate-90 rtl:rotate-90'" aria-hidden="true"></i>
+                </button>
+              </h3>
+
+              <div :id="'m-grp-' + group.key" x-show="!collapsedGroups[group.key]" class="border-t border-line">
+                <div x-show="!selectedMobileRole.isSystem" class="flex justify-end border-b border-line px-4 py-1.5">
+                  <button type="button" class="min-h-[2.5rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline" @click="toggleGroupForRole(group, selectedMobileRole)"
+                          :aria-label="(isGroupFullyCheckedForRole(group, selectedMobileRole) ? t('rm.deselectAllShort') : t('rm.selectAllShort')) + ': ' + groupName(group)"
+                          x-text="isGroupFullyCheckedForRole(group, selectedMobileRole) ? t('rm.deselectAllShort') : t('rm.selectAllShort')"></button>
+                </div>
+                <ul class="divide-y divide-line" role="list">
+                  <template x-for="perm in group.permissions" :key="perm.code">
+                    <li class="flex items-center justify-between gap-3 p-4" :class="isCellChanged(selectedMobileRole, perm.code) && 'bg-accent-500/10'">
+                      <span class="min-w-0">
+                        <span :id="'pl-' + perm.code" class="flex min-w-0 items-center gap-1.5 text-sm font-bold text-ink">
+                          <span class="truncate" x-text="permName(perm)"></span>
+                          <i x-show="perm.danger" class="fa-solid fa-triangle-exclamation shrink-0 text-[11px] text-warn" aria-hidden="true"></i>
+                          <span x-show="perm.danger" class="sr-only" x-text="'(' + t('rm.dangerous') + ')'"></span>
+                          <span x-show="isCellChanged(selectedMobileRole, perm.code)" class="badge badge-accent !px-1.5 !py-0 text-[10px]" x-text="t('rm.changed')"></span>
+                        </span>
+                        <span :id="'pd-' + perm.code" class="block text-xs text-muted">
+                          <span x-text="permDesc(perm)"></span> · <bdi dir="ltr" x-text="perm.code"></bdi>
+                        </span>
+                      </span>
+                      <label class="switch -m-2 shrink-0 p-2">
+                        <input type="checkbox" role="switch" class="peer sr-only"
+                               :aria-labelledby="'pl-' + perm.code" :aria-describedby="'pd-' + perm.code"
+                               :checked="selectedMobileRole.isSystem || cellChecked(selectedMobileRole, perm.code)"
+                               :disabled="selectedMobileRole.isSystem"
+                               @change="toggleCell(selectedMobileRole, perm.code)">
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+          </template>
+        </section>
+      </template>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" loading="lazy" decoding="async" class="block h-7 w-auto shrink-0 object-contain dark:brightness-125">
+          <p class="min-w-0 text-sm text-muted">
+            <span x-text="t('footer.tagline')"></span>
+            <span class="block text-xs sm:inline sm:text-sm">
+              <span class="hidden sm:inline" aria-hidden="true">·</span>
+              © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+            </span>
+          </p>
+        </div>
+        <nav :aria-label="t('footer.nav')" class="min-w-0">
+          <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+            <li><a href="../index.html" class="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-muted underline-offset-4 transition-colors hover:text-brand hover:underline"><i class="fa-solid fa-sitemap text-xs" aria-hidden="true"></i><span x-text="t('footer.screens')"></span></a></li>
+            <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+              <li><span class="inline-flex cursor-not-allowed items-center text-muted/70" aria-disabled="true"><span x-text="t('footer.' + k)"></span><span class="sr-only" x-text="' (' + t('footer.soon') + ')'"></span></span></li>
+            </template>
+          </ul>
+        </nav>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="badge badge-muted" dir="ltr" x-text="version"></span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     شريط التغييرات غير المحفوظة — عائم أسفل الشاشة (يعرض العدد الفعلي)
+     ========================================================================== -->
+<div x-show="dirty" x-cloak
+     x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+     x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0"
+     class="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 sm:px-6" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom, 0px));"
+     role="region" :aria-label="t('rm.unsavedRegion')">
+  <div class="pointer-events-auto flex w-full max-w-2xl flex-col items-stretch gap-3 rounded-2xl border border-accent-600/50 bg-card p-4 shadow-pop sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex min-w-0 items-center gap-2.5">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-500/25 text-onaccent dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-pen-to-square text-sm"></i></span>
+      <div class="min-w-0">
+        <p class="text-sm font-extrabold text-ink" x-text="tf('rm.unsavedBarText', { n: fmt(changes.length) })"></p>
+        <p class="text-xs text-muted">
+          <span class="text-ok" x-text="'+' + fmt(grantedChanges.length) + ' ' + t('rm.grantedWord')"></span> ·
+          <span class="text-danger" x-text="'−' + fmt(revokedChanges.length) + ' ' + t('rm.revokedWord')"></span>
+          <span x-show="grantsDangerous.length" class="font-bold text-warn" x-text="' · ' + tf('rm.dangerCount', { n: fmt(grantsDangerous.length) })"></span>
+        </p>
+      </div>
+    </div>
+    <div class="flex shrink-0 items-center gap-2">
+      <button type="button" class="btn btn-outline btn-sm flex-1 sm:flex-none" :disabled="busy" @click="openModal('discard')" x-text="t('rm.unsavedBarDiscard')"></button>
+      <button type="button" class="btn btn-primary btn-sm flex-1 sm:flex-none" :disabled="busy" @click="openModal('review')">
+        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span x-text="t('rm.reviewSave')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+<!-- إعلان عدد التغييرات لقارئ الشاشة (مؤجَّل كي لا يقاطع النقر المتتالي) -->
+<p class="sr-only" role="status" aria-live="polite" x-text="changesLive"></p>
+
+<!-- ==========================================================================
+     قائمة إجراءات الدور (Kebab) — بموضع ثابت يُقاس بعد العرض
+     ========================================================================== -->
+<div id="kebab-menu" x-ref="kebab" x-show="openMenuId !== null" x-cloak x-transition.opacity.duration.120ms
+     class="fixed z-[70] w-64 overflow-hidden rounded-2xl border border-line bg-card py-1 shadow-pop"
+     :style="'top:' + menuPos.top + 'px; left:' + menuPos.left + 'px;'"
+     role="menu" :aria-label="kebabRole ? t('rm.colActions') + ': ' + roleName(kebabRole) : null"
+     @click.outside="if (!$event.target.closest('[data-kebab]')) closeMenu()"
+     @keydown.down.prevent="menuMove(1)" @keydown.up.prevent="menuMove(-1)"
+     @keydown.home.prevent="menuMove(0, true)" @keydown.end.prevent="menuMove(-1, true)"
+     @keydown.escape.stop.prevent="closeMenu(true)" @keydown.tab.prevent="closeMenu(true)">
+  <template x-if="kebabRole">
+    <div>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('edit')" :disabled="kebabRole.isSystem">
+        <i class="fa-solid fa-pen w-4 text-muted" aria-hidden="true"></i> <span x-text="t('rm.menuEditRole')"></span>
+      </button>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('clone')">
+        <i class="fa-solid fa-clone w-4 text-muted" aria-hidden="true"></i> <span x-text="t('rm.menuCloneRole')"></span>
+      </button>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('toggleAll')" :disabled="kebabRole.isSystem">
+        <i class="fa-solid w-4 text-muted" :class="isRoleFullyChecked(kebabRole) ? 'fa-square-minus' : 'fa-square-check'" aria-hidden="true"></i>
+        <span x-text="isRoleFullyChecked(kebabRole) ? t('rm.revokeVisible') : t('rm.grantVisible')"></span>
+      </button>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item" @click="menuAction('reset')" :disabled="!roleChangeCount(kebabRole)">
+        <i class="fa-solid fa-rotate-left w-4 text-muted" aria-hidden="true"></i> <span x-text="t('rm.menuResetRole')"></span>
+      </button>
+      <a role="menuitem" tabindex="-1" class="menu-item" :href="'users.html?role=' + encodeURIComponent(kebabRole.key)">
+        <i class="fa-solid fa-users w-4 text-muted" aria-hidden="true"></i> <span x-text="tf('rm.menuViewUsers', { n: fmt(kebabRole.users) })"></span>
+      </a>
+      <div class="my-1 border-t border-line" role="separator"></div>
+      <button type="button" role="menuitem" tabindex="-1" class="menu-item !text-danger hover:!bg-error-500/10" @click="menuAction('delete')" :disabled="kebabRole.isSystem">
+        <i class="fa-solid fa-trash w-4" aria-hidden="true"></i> <span x-text="t('rm.menuDeleteRole')"></span>
+      </button>
+      <p x-show="kebabRole.isSystem" class="flex items-start gap-2 border-t border-line px-4 py-2.5 text-xs text-muted">
+        <i class="fa-solid fa-lock mt-0.5 text-warn" aria-hidden="true"></i><span x-text="t('rm.systemRoleMenuNotice')"></span>
+      </p>
+    </div>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية — إضافة / تعديل / استنساخ دور (تُحفظ فورًا؛ المصفوفة منفصلة)
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePanel()" aria-hidden="true"></div>
+
+  <form @submit.prevent="submitRole()" novalidate x-show="panelOpen" x-trap.noscroll.inert="panelOpen"
+        role="dialog" aria-modal="true" aria-labelledby="panel-title" aria-describedby="panel-desc"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+        class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5" style="padding-top: max(1.25rem, env(safe-area-inset-top, 0px));">
+      <div class="min-w-0">
+        <h2 id="panel-title" class="text-lg font-extrabold text-ink" x-text="editingRole ? t('rm.panelEditTitle') : (roleForm.cloneFromId ? t('rm.panelCloneTitle') : t('rm.panelAddTitle'))"></h2>
+        <p id="panel-desc" class="text-xs text-muted" x-text="t('rm.panelDesc')"></p>
+      </div>
+      <button type="button" class="icon-btn" @click="closePanel()" :disabled="busy" :aria-label="t('rm.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+      <div>
+        <label for="rf-name" class="label"><span x-text="t('rm.fieldRoleName')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="rf-name" type="text" x-model="roleForm.name" required aria-required="true" maxlength="60" autocomplete="off" class="field"
+               @blur="touched = true" :aria-invalid="(!!nameError && (touched || formSubmitted)).toString()"
+               :aria-describedby="nameError && (touched || formSubmitted) ? 'rf-name-err' : null">
+        <p id="rf-name-err" class="err" x-show="nameError && (touched || formSubmitted)"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="nameError ? t('rm.' + nameError) : ''"></span></p>
+      </div>
+
+      <div>
+        <label for="rf-key" class="label" x-text="t('rm.fieldRoleKey')"></label>
+        <input id="rf-key" type="text" dir="ltr" readonly :value="editingRole ? editingRole.key : roleKeyPreview" class="field rtl:text-right font-mono text-xs" aria-describedby="rf-key-hint" tabindex="-1">
+        <p id="rf-key-hint" class="hint" x-text="editingRole ? t('rm.fieldRoleKeyLocked') : t('rm.fieldRoleKeyHint')"></p>
+      </div>
+
+      <div>
+        <label for="rf-desc" class="label" x-text="t('rm.fieldDescription')"></label>
+        <textarea id="rf-desc" rows="3" maxlength="200" x-model="roleForm.description" class="field resize-y" aria-describedby="rf-desc-count"></textarea>
+        <p id="rf-desc-count" class="mt-1 text-end text-xs tabular-nums text-muted" x-text="fmt(roleForm.description.length) + ' / 200'"></p>
+      </div>
+
+      <!-- استنساخ (عند الإنشاء فقط) -->
+      <div x-show="!editingRole" class="relative"
+           x-data="selectDropdown({ id: 'rf-clone', options: () => [{ value: '', label: t('rm.cloneNone') }, ...roles.map(r => ({ value: String(r.id), label: roleName(r), desc: tf('rm.grantedOf', { g: fmt(grantedCount(r)), t: fmt(allPermCodes.length) }) }))], get: () => String(roleForm.cloneFromId || ''), set: (v) => roleForm.cloneFromId = v ? Number(v) : '' })"
+           @click.outside="closeList()">
+        <span id="rf-clone-label" class="label" x-text="t('rm.fieldCloneFrom')"></span>
+        <button type="button" id="rf-clone" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="rf-clone-label rf-clone"
+                :aria-expanded="open.toString()" aria-controls="rf-clone-list" :aria-activedescendant="activeId" aria-describedby="rf-clone-hint"
+                class="field flex w-full items-center justify-between gap-2 text-start" @click="toggleList()" @keydown="onKey($event)">
+          <span class="truncate" x-text="triggerLabel"></span>
+          <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+        </button>
+        <ul x-show="open" x-cloak x-ref="list" id="rf-clone-list" role="listbox" aria-labelledby="rf-clone-label" tabindex="-1"
+            x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+          <template x-for="(item, idx) in items" :key="item.value">
+            <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                @click="choose(item)" @mousemove="active = idx">
+              <span class="min-w-0">
+                <span class="block truncate" x-text="item.label"></span>
+                <span x-show="item.desc" class="block truncate text-xs font-normal text-muted" x-text="item.desc"></span>
+              </span>
+              <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+            </li>
+          </template>
+        </ul>
+        <p id="rf-clone-hint" class="hint" x-text="cloneHint"></p>
+      </div>
+    </div>
+
+    <div x-show="discardAsk" x-cloak class="shrink-0 border-t border-warning-500/40 bg-warning-500/10 p-4" role="alertdialog" aria-labelledby="discard-text">
+      <p id="discard-text" class="text-sm font-bold text-ink" x-text="t('rm.panelDiscardAsk')"></p>
+      <div class="mt-3 flex flex-wrap justify-end gap-2">
+        <button type="button" x-ref="keepEditing" class="btn btn-outline btn-sm" @click="discardAsk = false; $nextTick(() => document.getElementById('rf-name')?.focus())" x-text="t('rm.keepEditing')"></button>
+        <button type="button" class="btn btn-danger btn-sm" @click="forceClosePanel()" x-text="t('rm.discard')"></button>
+      </div>
+    </div>
+
+    <footer x-show="!discardAsk" class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4" style="padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('rm.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy" :aria-busy="busy.toString()">
+        <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('rm.saving') : (editingRole ? t('rm.saveRole') : t('rm.createRole'))"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة موحّدة: مراجعة وحفظ / تراجع / منح-سحب شامل / حذف دور / مغادرة الصفحة
+     ========================================================================== -->
+<div x-cloak x-show="modal" x-transition.opacity class="fixed inset-0 z-[65] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+  <div x-show="modal" x-trap.noscroll.inert="modal" :role="modal === 'review' ? 'dialog' : 'alertdialog'" aria-modal="true" aria-labelledby="md-title" aria-describedby="md-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop" :class="modal === 'review' ? 'max-w-xl' : 'max-w-md'">
+    <template x-if="modal">
+      <div class="flex min-h-0 flex-col">
+        <div class="min-h-0 overflow-y-auto p-6 scroll-thin">
+          <div class="flex items-start gap-3">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-full" :class="modalMeta.tone" aria-hidden="true"><i class="fa-solid text-lg" :class="modalMeta.icon"></i></span>
+            <div class="min-w-0 flex-1">
+              <h2 id="md-title" class="text-lg font-extrabold text-ink" x-text="modalMeta.title"></h2>
+              <p id="md-desc" class="mt-1 text-sm text-muted" x-text="modalMeta.text"></p>
+            </div>
+          </div>
+
+          <!-- مراجعة التغييرات قبل الحفظ -->
+          <template x-if="modal === 'review'">
+            <div class="mt-5 space-y-4">
+              <p x-show="grantsDangerous.length" class="flex items-start gap-2 rounded-xl border border-warning-500/40 bg-warning-500/10 p-3 text-xs font-bold text-warn">
+                <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i><span x-text="tf('rm.reviewDanger', { n: fmt(grantsDangerous.length) })"></span>
+              </p>
+              <template x-for="grp in changesByRole" :key="grp.role.id">
+                <section class="rounded-xl border border-line">
+                  <h3 class="flex items-center justify-between gap-2 border-b border-line bg-soft/60 px-3 py-2 text-sm font-extrabold text-ink">
+                    <span class="truncate" x-text="roleName(grp.role)"></span>
+                    <span class="shrink-0 text-xs font-bold text-muted" x-text="tf('rm.usersN', { n: fmt(grp.role.users) })"></span>
+                  </h3>
+                  <ul class="divide-y divide-line text-sm" role="list">
+                    <template x-for="c in grp.items" :key="c.code">
+                      <li class="flex items-center gap-2 px-3 py-2">
+                        <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-extrabold" :class="c.granted ? 'bg-success-500/15 text-ok' : 'bg-error-500/15 text-danger'" aria-hidden="true" x-text="c.granted ? '+' : '−'"></span>
+                        <span class="sr-only" x-text="c.granted ? t('rm.grantedWord') : t('rm.revokedWord')"></span>
+                        <span class="min-w-0 flex-1 truncate" x-text="permName(permByCode[c.code])"></span>
+                        <i x-show="c.granted && permByCode[c.code].danger" class="fa-solid fa-triangle-exclamation text-xs text-warn" :title="t('rm.dangerous')" aria-hidden="true"></i>
+                        <bdi dir="ltr" class="shrink-0 text-xs text-muted" x-text="c.code"></bdi>
+                      </li>
+                    </template>
+                  </ul>
+                </section>
+              </template>
+            </div>
+          </template>
+
+          <!-- حذف الدور: نقل المستخدمين -->
+          <template x-if="modal === 'deleteRole' && roleToDelete && roleToDelete.users">
+            <fieldset class="mt-5">
+              <legend class="label" x-text="tf('rm.reassignLegend', { n: fmt(roleToDelete.users) })"></legend>
+              <div class="space-y-2">
+                <template x-for="r in roles.filter(x => x.id !== roleToDelete.id)" :key="'ra-' + r.id">
+                  <label class="flex min-h-[2.75rem] cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm font-bold transition-colors has-[:focus-visible]:shadow-[var(--ring)]"
+                         :class="reassignTo === r.id ? 'border-brand bg-soft text-brand' : 'border-line-strong/60 text-ink hover:border-primary-500'">
+                    <input type="radio" name="reassign" class="h-4 w-4 accent-[rgb(var(--brand))]" :value="r.id" @change="reassignTo = r.id" :checked="reassignTo === r.id">
+                    <span class="min-w-0 flex-1 truncate" x-text="roleName(r)"></span>
+                    <i x-show="r.isSystem" class="fa-solid fa-lock text-xs text-warn" aria-hidden="true"></i>
+                  </label>
+                </template>
+              </div>
+            </fieldset>
+          </template>
+        </div>
+
+        <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-page/40 p-4 sm:flex-row sm:justify-end sm:gap-3">
+          <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="modalMeta.cancel"></button>
+          <button type="button" class="btn" :class="modalMeta.btn" :disabled="busy || modalBlocked" :aria-busy="busy.toString()" @click="modalConfirm()">
+            <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i>
+            <span x-text="modalMeta.confirm"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن الاختيار المخصص (Select-only Combobox — نمط WAI-ARIA APG).
+   * ↓/↑ Home/End · Enter/Space اختيار · Tab اختيار وانتقال · Esc إغلاق (دون إغلاق اللوحة الأم)
+   * · البحث بأول الأحرف · ينقلب للأعلى عند ضيق المساحة.
+   */
+  function selectDropdown({ id, options, get, set, disabled = () => false }) {
+    return {
+      open: false, active: -1, dropUp: false, _q: '', _qt: null,
+      get items() { return options(); },
+      get isDisabled() { return !!disabled(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { return this.selectedItem ? this.selectedItem.label : ''; },
+      get activeId() { return this.open && this.active > -1 && this.items[this.active] ? this.optId(this.items[this.active]) : null; },
+      optId(item) { return id + '-opt-' + item.value; },
+      isSelected(item) { return get() === item.value; },
+      openList() {
+        if (this.isDisabled || !this.items.length) return;
+        const r = this.$refs.btn.getBoundingClientRect();
+        const need = Math.min(224, this.items.length * 46 + 16);
+        this.dropUp = r.bottom + need > window.innerHeight - 8 && r.top > need;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item, refocus = true) { set(item.value); this.closeList(); if (refocus) this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() {
+        this.$nextTick(() => {
+          const list = this.$refs.list, el = list?.children[this.active];
+          if (!list || !el) return;
+          /* تمرير يدوي داخل القائمة فقط (scrollIntoView قد يحرّك الصفحة أو اللوحة) */
+          if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+          else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+        });
+      },
+      onKey(e) {
+        if (this.isDisabled) return;
+        const k = e.key;
+        if (k === 'ArrowDown') { e.preventDefault(); this.move(1); }
+        else if (k === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scrollActiveIntoView(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = this.items.length - 1; this.scrollActiveIntoView(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape' && this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); }
+        else if (k === 'Tab' && this.open) { if (this.active > -1) this.choose(this.items[this.active], false); else this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          this._q += k.toLowerCase(); clearTimeout(this._qt); this._qt = setTimeout(() => this._q = '', 600);
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this._q));
+          if (i > -1) { if (!this.open) this.openList(); this.active = i; this.scrollActiveIntoView(); }
+        }
+      },
+    };
+  }
+
+  /* ---------- النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json ---------- */
+  const I18N = {
+    ar: {
+      skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+      mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+      openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة', expandSidebar: 'توسيع القائمة',
+      searchPlaceholder: 'ابحث في النظام…', openSearch: 'فتح البحث',
+      switchLang: 'تغيير اللغة إلى English', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+      notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', notifUnread: '{n} غير مقروءة', unreadSr: 'غير مقروء',
+      allMarked: 'تم تعليم جميع الإشعارات كمقروءة.', viewAllNotif: 'عرض جميع الإشعارات',
+      accountMenu: 'قائمة الحساب', roleTenantAdmin: 'مسؤول المؤسسة (Tenant Admin)',
+      profile: 'الملف الشخصي', statusErrors: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+      breadcrumbLabel: 'مسار التنقل', breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+      navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+      navItems: {
+        orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+        academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+        concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+        aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+        subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+      },
+      notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى ({pct}%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+      footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', nav: 'روابط التذييل', screens: 'خريطة الشاشات',
+                help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', soon: 'قريبًا' },
+
+      rm: {
+        title: 'مصفوفة الأدوار والصلاحيات', subtitle: 'حدِّد الصلاحيات الممنوحة لكل دور داخل منظمتك، وأنشئ أدوارًا مخصصة حسب الحاجة.',
+        addRole: 'إضافة دور', saveChanges: 'حفظ التغييرات', reviewSaveN: 'مراجعة وحفظ ({n})', reviewSave: 'مراجعة وحفظ', saving: 'جارٍ الحفظ…',
+        discardChanges: 'تراجع عن التغييرات',
+        kpiTitle: 'ملخص الأدوار', kpiTotalRoles: 'الأدوار', kpiTotalPermissions: 'الصلاحيات', kpiCustomRoles: 'أدوار مخصّصة', kpiPending: 'تغييرات غير محفوظة',
+        kpiRolesNote: 'منها {n} نظامي ثابت', kpiDangerNote: 'منها {n} حساسة', kpiPendingNote: '+{g} ممنوحة · −{r} مسحوبة',
+        filtersTitle: 'البحث والتصفية', searchPlaceholder: 'ابحث باسم الصلاحية أو مفتاحها، مثل users.create…',
+        moduleFilterLabel: 'تصفية حسب الوحدة', moduleAll: 'كل الوحدات', resetFilters: 'مسح الفلاتر',
+        filteredNote: 'معروض {n} من {total} صلاحية — إجراءات «تحديد الكل» تشمل المعروض فقط.',
+        emptyTitle: 'لا توجد صلاحيات مطابقة للبحث',
+        expandAll: 'توسيع المجموعات', collapseAll: 'طيّ المجموعات',
+        grantAllGlobal: 'منح المعروض للجميع', revokeAllGlobal: 'سحب المعروض من الجميع',
+        matrixTitle: 'الصلاحيات حسب الدور', matrixHint: 'مرّر أفقيًا لرؤية كل الأدوار؛ عمود الصلاحيات ورأس الأدوار ثابتان.',
+        matrixScrollLabel: 'مصفوفة الصلاحيات (قابلة للتمرير)', matrixCaption: 'مصفوفة الصلاحيات: الصفوف صلاحيات مجمّعة حسب الوحدة، والأعمدة أدوار',
+        colModulePermission: 'الوحدة / الصلاحية', colActions: 'إجراءات',
+        roleSystemBadge: 'دور نظامي', roleCustomBadge: 'دور مخصّص', roleStandardBadge: 'دور أساسي',
+        usersN: '{n} مستخدم', grantedOf: '{g} من {t} صلاحية',
+        selectVisibleForRole: 'منح/سحب كل الصلاحيات المعروضة', selectVisibleForRoleAria: 'كل الصلاحيات المعروضة للدور {role}',
+        grantVisible: 'منح الكل', revokeVisible: 'سحب الكل', selectAllShort: 'تحديد الكل', deselectAllShort: 'إلغاء التحديد',
+        grantedLocked: 'ممنوحة — ثابتة (دور نظامي)', changed: 'معدّلة', changedCount: 'تغييرات غير محفوظة لهذا الدور',
+        groupSelectAllAria: 'كل صلاحيات {group} للدور {role}', groupGrantedCount: 'ممنوحة {granted} من {total}',
+        dangerous: 'صلاحية حساسة',
+        legendGranted: 'ممنوحة', legendNotGranted: 'غير ممنوحة', legendLocked: 'ثابتة (دور نظامي)', legendChanged: 'معدّلة ولم تُحفظ', legendDangerous: 'صلاحية حساسة',
+        mobileRoleTabsLabel: 'اختيار الدور', systemLockedNotice: 'دور نظامي يملك كل الصلاحيات دائمًا ولا يمكن تعديلها. يمكنك استنساخه لإنشاء دور مخصّص.',
+        systemRoleMenuNotice: 'دور نظامي — يمكن استنساخه فقط.',
+        menuEditRole: 'تعديل الاسم والوصف', menuCloneRole: 'استنساخ الدور', menuResetRole: 'التراجع عن تغييرات هذا الدور', menuViewUsers: 'عرض المستخدمين ({n})', menuDeleteRole: 'حذف الدور',
+        panelAddTitle: 'إضافة دور جديد', panelCloneTitle: 'استنساخ دور', panelEditTitle: 'تعديل الدور', close: 'إغلاق',
+        panelDesc: 'يُحفظ الدور فورًا. تعديل صلاحياته يتم في المصفوفة ثم «حفظ».',
+        fieldRoleName: 'اسم الدور', fieldRoleKey: 'مفتاح الدور (Key)',
+        fieldRoleKeyHint: 'يُولَّد بحروف لاتينية من الاسم، ولا يتغير بعد الإنشاء.', fieldRoleKeyLocked: 'لا يمكن تغيير المفتاح بعد الإنشاء.',
+        fieldDescription: 'الوصف', fieldCloneFrom: 'نسخ الصلاحيات من دور', cloneNone: 'بدون صلاحيات (دور فارغ)',
+        cloneHintNone: 'سيبدأ الدور بلا صلاحيات، ويمكنك منحها من المصفوفة.', cloneHintFrom: 'ستُنسخ {n} صلاحية من «{role}».',
+        cloneHintUnsaved: 'يشمل ذلك تغييرات غير محفوظة على الدور المصدر.', cloneNamePrefix: 'نسخة من {name}',
+        nameRequired: 'اسم الدور مطلوب.', nameShort: 'الاسم لا يقل عن حرفين.', nameTaken: 'يوجد دور بهذا الاسم.',
+        panelDiscardAsk: 'لديك بيانات غير محفوظة. هل تريد تجاهلها؟', keepEditing: 'متابعة', discard: 'تجاهل',
+        cancel: 'إلغاء', back: 'رجوع', saveRole: 'حفظ الدور', createRole: 'إنشاء الدور',
+        unsavedRegion: 'تغييرات غير محفوظة', unsavedBarText: 'تغييرات غير محفوظة: {n}', unsavedBarDiscard: 'تراجع',
+        grantedWord: 'ممنوحة', revokedWord: 'مسحوبة', dangerCount: '{n} حساسة', liveChanges: 'تغييرات غير محفوظة: {n}', liveNone: 'لا توجد تغييرات غير محفوظة.',
+        reviewTitle: 'مراجعة التغييرات قبل الحفظ', reviewText: 'ستُطبَّق {n} تغييرات على {r} دور فور الحفظ، وتُسجَّل في سجل النشاط.',
+        reviewDanger: 'تمنح هذه التغييرات {n} صلاحية حساسة. تأكد أن الأدوار المعنية تحتاجها فعلًا.', saveNow: 'حفظ التغييرات',
+        discardTitle: 'التراجع عن كل التغييرات؟', discardText: 'ستُفقد {n} تغييرات غير محفوظة وتعود المصفوفة لآخر حالة محفوظة.', discardConfirm: 'تراجع عن الكل',
+        globalGrantTitle: 'منح الصلاحيات المعروضة لكل الأدوار؟', globalRevokeTitle: 'سحب الصلاحيات المعروضة من كل الأدوار؟',
+        globalText: 'يشمل {p} صلاحية × {r} دور قابل للتعديل (الدور النظامي لا يتأثر). يمكنك المراجعة قبل الحفظ.',
+        globalDanger: ' بينها {n} صلاحيات حساسة.', globalGrantConfirm: 'منح للجميع', globalRevokeConfirm: 'سحب من الجميع',
+        deleteRoleTitle: 'حذف الدور «{name}»؟', deleteRoleText: 'لا يمكن التراجع عن الحذف، وستُفقد أي تغييرات غير محفوظة على هذا الدور.',
+        deleteRoleTextUsers: 'لا يمكن التراجع عن الحذف. لدى هذا الدور {n} مستخدم، اختر دورًا لنقلهم إليه.',
+        reassignLegend: 'نقل المستخدمين ({n}) إلى:', deleteRoleConfirm: 'حذف الدور',
+        leaveTitle: 'مغادرة الصفحة دون حفظ؟', leaveText: 'لديك {n} تغييرات غير محفوظة في المصفوفة ستُفقد.', leaveConfirm: 'مغادرة دون حفظ', stay: 'البقاء',
+        toastRoleCreated: 'تم إنشاء «{name}» (معاينة فقط)', toastRoleUpdated: 'تم تحديث «{name}» (معاينة فقط)',
+        toastRoleDeleted: 'تم حذف «{name}» (معاينة فقط)', toastMatrixSaved: 'تم حفظ التغييرات ({n}) (معاينة فقط)', toastMatrixDiscarded: 'تم التراجع عن التغييرات غير المحفوظة.',
+        toastRoleReset: 'تم التراجع عن تغييرات «{name}».',
+      },
+    },
+    en: {
+      skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+      mainMenu: 'Main menu', mainNav: 'Main navigation',
+      openMenu: 'Open menu', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar', expandSidebar: 'Expand sidebar',
+      searchPlaceholder: 'Search the system…', openSearch: 'Open search',
+      switchLang: 'Change language to العربية', lightMode: 'Light mode', darkMode: 'Dark mode',
+      notifications: 'Notifications', markAllRead: 'Mark all as read', notifUnread: '{n} unread', unreadSr: 'Unread',
+      allMarked: 'All notifications marked as read.', viewAllNotif: 'View all notifications',
+      accountMenu: 'Account menu', roleTenantAdmin: 'Tenant Admin',
+      profile: 'Profile', statusErrors: 'System Status & Errors', logout: 'Log out',
+      breadcrumbLabel: 'Breadcrumb', breadcrumb: { home: 'Home', org: 'Organization Management' },
+      navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+      navItems: {
+        orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+        academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+        concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+        aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+        subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+      },
+      notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'User seat quota is nearing its limit ({pct}%)', reset: 'A password reset link was sent successfully' },
+      footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', nav: 'Footer links', screens: 'Screen map',
+                help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', soon: 'coming soon' },
+
+      rm: {
+        title: 'Role & Permission Matrix', subtitle: 'Define the permissions granted to each role in your organization, and create custom roles as needed.',
+        addRole: 'Add role', saveChanges: 'Save changes', reviewSaveN: 'Review & save ({n})', reviewSave: 'Review & save', saving: 'Saving…',
+        discardChanges: 'Discard changes',
+        kpiTitle: 'Roles summary', kpiTotalRoles: 'Roles', kpiTotalPermissions: 'Permissions', kpiCustomRoles: 'Custom roles', kpiPending: 'Unsaved changes',
+        kpiRolesNote: '{n} fixed system role', kpiDangerNote: '{n} sensitive', kpiPendingNote: '+{g} granted · −{r} revoked',
+        filtersTitle: 'Search and filters', searchPlaceholder: 'Search by permission name or key, e.g. users.create…',
+        moduleFilterLabel: 'Filter by module', moduleAll: 'All modules', resetFilters: 'Reset filters',
+        filteredNote: 'Showing {n} of {total} permissions — “select all” actions apply to visible ones only.',
+        emptyTitle: 'No permissions match your search',
+        expandAll: 'Expand groups', collapseAll: 'Collapse groups',
+        grantAllGlobal: 'Grant visible to all', revokeAllGlobal: 'Revoke visible from all',
+        matrixTitle: 'Permissions by role', matrixHint: 'Scroll sideways to see all roles; the permission column and role header stay fixed.',
+        matrixScrollLabel: 'Permission matrix (scrollable)', matrixCaption: 'Permission matrix: rows are permissions grouped by module, columns are roles',
+        colModulePermission: 'Module / Permission', colActions: 'Actions',
+        roleSystemBadge: 'System role', roleCustomBadge: 'Custom role', roleStandardBadge: 'Standard role',
+        usersN: '{n} users', grantedOf: '{g} of {t} permissions',
+        selectVisibleForRole: 'Grant/revoke all visible permissions', selectVisibleForRoleAria: 'All visible permissions for {role}',
+        grantVisible: 'Grant all', revokeVisible: 'Revoke all', selectAllShort: 'Select all', deselectAllShort: 'Deselect all',
+        grantedLocked: 'Granted — fixed (system role)', changed: 'changed', changedCount: 'Unsaved changes for this role',
+        groupSelectAllAria: 'All {group} permissions for {role}', groupGrantedCount: 'Granted {granted} of {total}',
+        dangerous: 'Sensitive permission',
+        legendGranted: 'Granted', legendNotGranted: 'Not granted', legendLocked: 'Fixed (system role)', legendChanged: 'Changed, not saved', legendDangerous: 'Sensitive permission',
+        mobileRoleTabsLabel: 'Select role', systemLockedNotice: 'A system role always has every permission and cannot be edited. Clone it to create a custom role.',
+        systemRoleMenuNotice: 'System role — can only be cloned.',
+        menuEditRole: 'Edit name & description', menuCloneRole: 'Clone role', menuResetRole: "Undo this role's changes", menuViewUsers: 'View users ({n})', menuDeleteRole: 'Delete role',
+        panelAddTitle: 'Add new role', panelCloneTitle: 'Clone role', panelEditTitle: 'Edit role', close: 'Close',
+        panelDesc: 'The role is saved immediately. Its permissions are edited in the matrix, then “Save”.',
+        fieldRoleName: 'Role name', fieldRoleKey: 'Role key',
+        fieldRoleKeyHint: 'Generated in Latin letters from the name; it does not change after creation.', fieldRoleKeyLocked: "The key can't be changed after creation.",
+        fieldDescription: 'Description', fieldCloneFrom: 'Copy permissions from a role', cloneNone: 'No permissions (empty role)',
+        cloneHintNone: 'The role starts with no permissions; grant them in the matrix.', cloneHintFrom: '{n} permissions will be copied from “{role}”.',
+        cloneHintUnsaved: 'This includes unsaved changes on the source role.', cloneNamePrefix: 'Copy of {name}',
+        nameRequired: 'Role name is required.', nameShort: 'Name must be at least 2 characters.', nameTaken: 'A role with this name already exists.',
+        panelDiscardAsk: 'You have unsaved details. Discard them?', keepEditing: 'Keep editing', discard: 'Discard',
+        cancel: 'Cancel', back: 'Go back', saveRole: 'Save role', createRole: 'Create role',
+        unsavedRegion: 'Unsaved changes', unsavedBarText: 'Unsaved changes: {n}', unsavedBarDiscard: 'Discard',
+        grantedWord: 'granted', revokedWord: 'revoked', dangerCount: '{n} sensitive', liveChanges: 'Unsaved changes: {n}', liveNone: 'No unsaved changes.',
+        reviewTitle: 'Review changes before saving', reviewText: '{n} changes across {r} roles will apply immediately and be recorded in the activity log.',
+        reviewDanger: 'These changes grant {n} sensitive permissions. Make sure the roles really need them.', saveNow: 'Save changes',
+        discardTitle: 'Discard all changes?', discardText: '{n} unsaved changes will be lost and the matrix returns to its last saved state.', discardConfirm: 'Discard all',
+        globalGrantTitle: 'Grant visible permissions to all roles?', globalRevokeTitle: 'Revoke visible permissions from all roles?',
+        globalText: 'Affects {p} permissions × {r} editable roles (the system role is unaffected). You can review before saving.',
+        globalDanger: ' Includes {n} sensitive permissions.', globalGrantConfirm: 'Grant to all', globalRevokeConfirm: 'Revoke from all',
+        deleteRoleTitle: 'Delete role “{name}”?', deleteRoleText: 'Deletion cannot be undone, and any unsaved changes for this role will be lost.',
+        deleteRoleTextUsers: 'Deletion cannot be undone. This role has {n} users; choose a role to move them to.',
+        reassignLegend: 'Move users ({n}) to:', deleteRoleConfirm: 'Delete role',
+        leaveTitle: 'Leave without saving?', leaveText: 'You have {n} unsaved matrix changes that will be lost.', leaveConfirm: 'Leave without saving', stay: 'Stay',
+        toastRoleCreated: '“{name}” created (preview only)', toastRoleUpdated: '“{name}” updated (preview only)',
+        toastRoleDeleted: '“{name}” deleted (preview only)', toastMatrixSaved: 'Changes saved ({n}) (preview only)', toastMatrixDiscarded: 'Unsaved changes discarded.',
+        toastRoleReset: 'Changes to “{name}” undone.',
+      },
+    },
+  };
+
+  /* نقحرة عربية → لاتينية لمفتاح الدور (نفس جدول onboarding) */
+  const AR_LATIN = {
+    'ا':'a','أ':'a','إ':'i','آ':'a','ء':'','ئ':'e','ؤ':'o','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh',
+    'د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z','ع':'a','غ':'gh',
+    'ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w','ي':'y','ى':'a','ة':'a','ـ':'',
+    '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9',
+  };
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const mdMQ = window.matchMedia('(min-width: 768px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+    const P = (code, ar, en, dar, den, danger = false) => ({ code, names: { ar, en }, descs: { ar: dar, en: den }, danger });
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches, wide: wideMQ.matches,
+      isMac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+      mobileNav: false, collapsed: false, searchOpen: false,
+      notifOpen: false, profileOpen: false,
+      active: 'roleMatrix', live: '', changesLive: '',
+      year: new Date().getFullYear(), version: 'v1.0.0',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const get = (d) => path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), d);
+        const s = get(I18N[this.locale]);
+        return s !== undefined ? s : (get(I18N.ar) ?? path);
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      intl() { return this.locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intl(), { maximumFractionDigits: 1 }).format(n); },
+      ago(mins) {
+        const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' });
+        if (mins < 60) return rtf.format(-mins, 'minute');
+        if (mins < 1440) return rtf.format(-Math.round(mins / 60), 'hour');
+        return rtf.format(-Math.round(mins / 1440), 'day');
+      },
+      isoAgo(mins) { return new Date(Date.now() - mins * 60000).toISOString(); },
+      initials(name) {
+        const p = String(name).trim().split(/\s+/);
+        return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        const h = document.documentElement;
+        h.lang = loc; h.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(loc);
+        else { try { localStorage.setItem('firob-locale', loc); } catch (e) {} }
+        document.title = this.t('rm.title') + ' — FirOb';
+        this.closeMenu();
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* ---------- التنقل ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) { return item.key === 'notificationCenter' ? this.unread : (item.count || 0); },
+
+      /* ---------- الإشعارات ---------- */
+      notifications: [
+        { id: 1, key: 'invite', mins: 10,   read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota',  mins: 120,  read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warn' },
+        { id: 3, key: 'reset',  mins: 1440, read: true,  icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-ok' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      markAllRead() { this.notifications.forEach(n => n.read = true); this.announce(this.t('allMarked')); },
+      me: { id: 1, name: 'سارة أحمد المصري' }, seatPct: 80,
+
+      /* =====================================================================
+         البيانات (Mock) — في Laravel: Spatie Permission (roles / permissions / role_has_permissions)
+         الأسماء ثنائية اللغة لأن الواجهة عربية/إنجليزية
+         ===================================================================== */
+      permissionGroups: [
+        { key: 'users', names: { ar: 'إدارة المستخدمين', en: 'User Management' }, icon: 'fa-solid fa-users', permissions: [
+          P('users.view',   'عرض المستخدمين',  'View users',   'عرض قائمة المستخدمين وملفاتهم.', 'View the list and profile details of users.'),
+          P('users.create', 'إضافة مستخدمين',  'Create users', 'دعوة مستخدمين وإنشاء حسابات.', 'Invite and create new user accounts.'),
+          P('users.edit',   'تعديل المستخدمين', 'Edit users',   'تعديل البيانات والأدوار.', "Update users' profile data and roles.", true),
+          P('users.delete', 'حذف المستخدمين',  'Delete users', 'حذف الحسابات نهائيًا.', 'Permanently remove user accounts.', true),
+        ]},
+        { key: 'resources', names: { ar: 'المستودع التعليمي', en: 'Resource Repository' }, icon: 'fa-solid fa-folder-open', permissions: [
+          P('resources.view',    'عرض الموارد',   'View resources',    'تصفح الموارد التعليمية.', 'Browse uploaded learning resources.'),
+          P('resources.upload',  'رفع الموارد',   'Upload resources',  'إضافة ملفات للمستودع.', 'Add new files to the repository.'),
+          P('resources.approve', 'اعتماد الموارد', 'Approve resources', 'اعتماد الموارد المرسلة أو رفضها.', 'Approve or reject submitted resources.'),
+          P('resources.delete',  'حذف الموارد',   'Delete resources',  'حذف الموارد نهائيًا.', 'Permanently remove resources.', true),
+        ]},
+        { key: 'reports', names: { ar: 'التقارير والتحليلات', en: 'Reports & Analytics' }, icon: 'fa-solid fa-chart-pie', permissions: [
+          P('reports.view',   'عرض التقارير',  'View reports',   'الوصول للوحات التحليل.', 'Access analytics dashboards and reports.'),
+          P('reports.export', 'تصدير التقارير', 'Export reports', 'تصدير البيانات CSV أو PDF.', 'Export report data to CSV or PDF.'),
+        ]},
+        { key: 'settings', names: { ar: 'إعدادات المنظمة', en: 'Tenant Settings' }, icon: 'fa-solid fa-sliders', permissions: [
+          P('settings.view',   'عرض الإعدادات',  'View settings',   'عرض إعدادات المنظمة.', 'View tenant configuration settings.'),
+          P('settings.update', 'تعديل الإعدادات', 'Update settings', 'تغيير إعدادات المنظمة.', 'Modify tenant configuration settings.', true),
+        ]},
+      ],
+      roles: [
+        { id: 1, key: 'tenant_admin',     names: { ar: 'مدير المنظمة', en: 'Tenant Admin' },     descs: { ar: 'صلاحيات إدارية كاملة على مساحة المنظمة.', en: 'Full administrative access across the tenant workspace.' }, isSystem: true,  isCustom: false, users: 2 },
+        { id: 2, key: 'content_reviewer', names: { ar: 'مراجع محتوى', en: 'Content Reviewer' },  descs: { ar: 'يراجع الموارد المرسلة ويعتمدها أو يرفضها.', en: 'Reviews, approves, or rejects submitted resources.' }, isSystem: false, isCustom: false, users: 3 },
+        { id: 3, key: 'editor',           names: { ar: 'معلّم / محرّر', en: 'Teacher / Editor' }, descs: { ar: 'ينشئ المواد والموارد التعليمية ويعدّلها.', en: 'Creates and edits learning materials and resources.' }, isSystem: false, isCustom: false, users: 5 },
+        { id: 4, key: 'auditor',          names: { ar: 'مدقّق', en: 'Auditor' },                 descs: { ar: 'اطلاع فقط لأغراض التدقيق والامتثال.', en: 'Read-only access for compliance review.' }, isSystem: false, isCustom: false, users: 1 },
+        { id: 5, key: 'qa_specialist',    names: { ar: 'أخصائي جودة', en: 'QA Specialist' },      descs: { ar: 'دور مخصّص لفحص جودة الموارد.', en: 'Custom role for quality-assurance spot checks.' }, isSystem: false, isCustom: true, users: 1 },
+      ],
+      matrix: {
+        1: { 'users.view': true, 'users.create': true, 'users.edit': true, 'users.delete': true, 'resources.view': true, 'resources.upload': true, 'resources.approve': true, 'resources.delete': true, 'reports.view': true, 'reports.export': true, 'settings.view': true, 'settings.update': true },
+        2: { 'users.view': true, 'resources.view': true, 'resources.upload': true, 'resources.approve': true, 'reports.view': true },
+        3: { 'resources.view': true, 'resources.upload': true },
+        4: { 'users.view': true, 'resources.view': true, 'reports.view': true, 'reports.export': true, 'settings.view': true },
+        5: { 'resources.view': true, 'resources.approve': true, 'reports.view': true },
+      },
+      originalMatrix: {},
+      nextRoleId: 6, busy: false,
+
+      roleName(r) { return (r && (r.names[this.locale] || r.names.ar)) || ''; },
+      roleDesc(r) { return (r && (r.descs[this.locale] || r.descs.ar)) || ''; },
+      groupName(g) { return g.names[this.locale] || g.names.ar; },
+      permName(p) { return p ? (p.names[this.locale] || p.names.ar) : ''; },
+      permDesc(p) { return p ? (p.descs[this.locale] || p.descs.ar) : ''; },
+      roleKind(r) { return r.isSystem ? this.t('rm.roleSystemBadge') : (r.isCustom ? this.t('rm.roleCustomBadge') : this.t('rm.roleStandardBadge')); },
+      roleBadge(r) { return r.isSystem ? 'badge-warning' : (r.isCustom ? 'badge-accent' : 'badge-primary'); },
+      get allPermCodes() { return this.permissionGroups.flatMap(g => g.permissions.map(p => p.code)); },
+      get permByCode() { const m = {}; this.permissionGroups.forEach(g => g.permissions.forEach(p => { m[p.code] = p; })); return m; },
+      get editableRoles() { return this.roles.filter(r => !r.isSystem); },
+
+      /* ---------- البحث والفلترة (تعمل فعلًا) ---------- */
+      search: '', moduleFilter: 'all',
+      get filtersActive() { return !!this.search.trim() || this.moduleFilter !== 'all'; },
+      get visibleGroups() {
+        const q = this.search.trim().toLowerCase();
+        return this.permissionGroups
+          .filter(g => this.moduleFilter === 'all' || g.key === this.moduleFilter)
+          .map(g => ({ ...g, permissions: g.permissions.filter(p => !q || p.code.includes(q) || p.names.ar.includes(q) || p.names.en.toLowerCase().includes(q)) }))
+          .filter(g => g.permissions.length);
+      },
+      get visiblePermCodes() { return this.visibleGroups.flatMap(g => g.permissions.map(p => p.code)); },
+      resetFilters() { this.search = ''; this.moduleFilter = 'all'; this.$nextTick(() => this.$refs.permSearch?.focus()); },
+
+      /* ---------- طيّ المجموعات ---------- */
+      collapsedGroups: {},
+      get allGroupsCollapsed() { return this.visibleGroups.length > 0 && this.visibleGroups.every(g => this.collapsedGroups[g.key]); },
+      toggleAllGroups() { const c = !this.allGroupsCollapsed; this.permissionGroups.forEach(g => { this.collapsedGroups[g.key] = c; }); },
+
+      /* ---------- منطق المصفوفة ---------- */
+      cellChecked(role, code) { return role.isSystem || !!this.matrix[role.id]?.[code]; },
+      setCell(role, code, val) { if (!role.isSystem) { if (!this.matrix[role.id]) this.matrix[role.id] = {}; this.matrix[role.id][code] = val; } },
+      toggleCell(role, code) { this.setCell(role, code, !this.cellChecked(role, code)); },
+      grantedCount(role) { return role.isSystem ? this.allPermCodes.length : this.allPermCodes.filter(c => this.matrix[role.id]?.[c]).length; },
+
+      /* «تحديد الكل» على مستوى الدور يشمل الصلاحيات المعروضة فقط (يتسق مع الفلترة) */
+      isRoleFullyChecked(role) { const v = this.visiblePermCodes; return v.length > 0 && v.every(c => this.cellChecked(role, c)); },
+      isRolePartiallyChecked(role) { return this.visiblePermCodes.some(c => this.cellChecked(role, c)); },
+      toggleRole(role) { if (role.isSystem) return; const v = !this.isRoleFullyChecked(role); this.visiblePermCodes.forEach(c => this.setCell(role, c, v)); },
+
+      isGroupFullyCheckedForRole(group, role) { return group.permissions.every(p => this.cellChecked(role, p.code)); },
+      isGroupPartiallyCheckedForRole(group, role) { return group.permissions.some(p => this.cellChecked(role, p.code)); },
+      toggleGroupForRole(group, role) { if (role.isSystem) return; const v = !this.isGroupFullyCheckedForRole(group, role); group.permissions.forEach(p => this.setCell(role, p.code, v)); },
+      groupGrantedCountForRole(group, role) { return group.permissions.filter(p => this.cellChecked(role, p.code)).length; },
+
+      get globalAllChecked() { return this.editableRoles.length > 0 && this.editableRoles.every(r => this.isRoleFullyChecked(r)); },
+
+      /* ---------- التغييرات: فرق محسوب (وليس علمًا) ---------- */
+      get changes() {
+        const out = [];
+        for (const r of this.roles) {
+          if (r.isSystem) continue;
+          for (const c of this.allPermCodes) {
+            const was = !!this.originalMatrix[r.id]?.[c], now = !!this.matrix[r.id]?.[c];
+            if (was !== now) out.push({ role: r, code: c, granted: now });
+          }
+        }
+        return out;
+      },
+      get dirty() { return this.changes.length > 0; },
+      get grantedChanges() { return this.changes.filter(c => c.granted); },
+      get revokedChanges() { return this.changes.filter(c => !c.granted); },
+      get grantsDangerous() { return this.grantedChanges.filter(c => this.permByCode[c.code]?.danger); },
+      get changesByRole() {
+        return this.roles.map(role => ({ role, items: this.changes.filter(c => c.role.id === role.id) })).filter(g => g.items.length);
+      },
+      isCellChanged(role, code) { return !role.isSystem && !!this.originalMatrix[role.id]?.[code] !== !!this.matrix[role.id]?.[code]; },
+      roleChangeCount(role) { return this.changes.filter(c => c.role.id === role.id).length; },
+      resetRole(role) {
+        this.matrix[role.id] = clone(this.originalMatrix[role.id] || {});
+        this.toast('info', this.tf('rm.toastRoleReset', { name: this.roleName(role) }));
+      },
+
+      /* ---------- المؤشرات ---------- */
+      get kpis() {
+        const dangerTotal = this.allPermCodes.filter(c => this.permByCode[c].danger).length;
+        return [
+          { key: 'kpiTotalRoles',       icon: 'fa-user-shield',          value: this.roles.length,                       tone: 'bg-primary-500/10 text-brand', note: this.tf('rm.kpiRolesNote', { n: this.fmt(this.roles.filter(r => r.isSystem).length) }) },
+          { key: 'kpiTotalPermissions', icon: 'fa-key',                  value: this.allPermCodes.length,                tone: 'bg-info/15 text-info', note: this.tf('rm.kpiDangerNote', { n: this.fmt(dangerTotal) }) },
+          { key: 'kpiCustomRoles',      icon: 'fa-wand-magic-sparkles',  value: this.roles.filter(r => r.isCustom).length, tone: 'bg-accent-500/20 text-onaccent dark:text-accent-500' },
+          { key: 'kpiPending',          icon: 'fa-pen-to-square',        value: this.changes.length,                     tone: this.dirty ? 'bg-accent-500/25 text-onaccent dark:text-accent-500' : 'bg-line text-muted',
+            note: this.dirty ? this.tf('rm.kpiPendingNote', { g: this.fmt(this.grantedChanges.length), r: this.fmt(this.revokedChanges.length) }) : '' },
+        ];
+      },
+
+      /* ---------- إبراز دور (بعد الإنشاء) ---------- */
+      flashedRoleId: null,
+      flashRole(id) {
+        this.flashedRoleId = id;
+        setTimeout(() => { this.flashedRoleId = null; }, 1700);
+      },
+
+      /* ---------- الجوال: اختيار الدور ---------- */
+      selectedMobileRoleId: 2,
+      get selectedMobileRole() { return this.roles.find(r => r.id === this.selectedMobileRoleId) || this.roles[0]; },
+      roleKey(e) {
+        const rtl = document.documentElement.dir === 'rtl';
+        const d = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1, Home: -999, End: 999 }[e.key];
+        if (d === undefined) return;
+        e.preventDefault();
+        const ids = this.roles.map(r => r.id);
+        const i = Math.min(Math.max(ids.indexOf(this.selectedMobileRoleId) + d, 0), ids.length - 1);
+        this.selectedMobileRoleId = ids[i];
+        this.$nextTick(() => document.getElementById('rt-' + ids[i])?.focus());
+      },
+
+      /* ---------- النوافذ الموحّدة ---------- */
+      modal: null, roleToDelete: null, reassignTo: null, pendingHref: null, _modalReturn: null,
+      openModal(type, payload = null) {
+        this.closeMenu();
+        this._modalReturn = document.activeElement;
+        if (type === 'deleteRole') { this.roleToDelete = payload; this.reassignTo = null; }
+        if (type === 'leave') this.pendingHref = payload;
+        this.modal = type;
+      },
+      get modalMeta() {
+        const n = this.fmt(this.changes.length);
+        switch (this.modal) {
+          case 'review': return { title: this.t('rm.reviewTitle'), text: this.tf('rm.reviewText', { n, r: this.fmt(this.changesByRole.length) }),
+            confirm: this.t('rm.saveNow'), cancel: this.t('rm.back'), btn: 'btn-primary', tone: 'bg-primary-500/15 text-brand', icon: 'fa-list-check' };
+          case 'discard': return { title: this.t('rm.discardTitle'), text: this.tf('rm.discardText', { n }),
+            confirm: this.t('rm.discardConfirm'), cancel: this.t('rm.back'), btn: 'btn-danger', tone: 'bg-error-500/15 text-danger', icon: 'fa-rotate-left' };
+          case 'global': {
+            const grant = !this.globalAllChecked;
+            const danger = grant ? this.visiblePermCodes.filter(c => this.permByCode[c].danger).length : 0;
+            return { title: grant ? this.t('rm.globalGrantTitle') : this.t('rm.globalRevokeTitle'),
+              text: this.tf('rm.globalText', { p: this.fmt(this.visiblePermCodes.length), r: this.fmt(this.editableRoles.length) }) + (danger ? this.tf('rm.globalDanger', { n: this.fmt(danger) }) : ''),
+              confirm: grant ? this.t('rm.globalGrantConfirm') : this.t('rm.globalRevokeConfirm'), cancel: this.t('rm.cancel'),
+              btn: grant ? 'btn-accent' : 'btn-danger', tone: grant ? 'bg-warning-500/15 text-warn' : 'bg-error-500/15 text-danger', icon: grant ? 'fa-triangle-exclamation' : 'fa-square-minus' };
+          }
+          case 'deleteRole': {
+            const r = this.roleToDelete || { users: 0, names: { ar: '', en: '' } };
+            return { title: this.tf('rm.deleteRoleTitle', { name: this.roleName(r) }),
+              text: r.users ? this.tf('rm.deleteRoleTextUsers', { n: this.fmt(r.users) }) : this.t('rm.deleteRoleText'),
+              confirm: this.t('rm.deleteRoleConfirm'), cancel: this.t('rm.cancel'), btn: 'btn-danger', tone: 'bg-error-500/15 text-danger', icon: 'fa-trash' };
+          }
+          case 'leave': return { title: this.t('rm.leaveTitle'), text: this.tf('rm.leaveText', { n }),
+            confirm: this.t('rm.leaveConfirm'), cancel: this.t('rm.stay'), btn: 'btn-danger', tone: 'bg-warning-500/15 text-warn', icon: 'fa-door-open' };
+        }
+        return { title: '', text: '', confirm: '', cancel: '', btn: '', tone: '', icon: '' };
+      },
+      get modalBlocked() { return this.modal === 'deleteRole' && !!this.roleToDelete?.users && !this.reassignTo; },
+      closeModal() {
+        if (this.busy) return;
+        this.modal = null; this.roleToDelete = null; this.pendingHref = null;
+        const el = this._modalReturn;
+        setTimeout(() => (el && el.isConnected && el.offsetParent !== null ? el : document.getElementById('main'))?.focus({ preventScroll: true }), 60);
+      },
+      async modalConfirm() {
+        if (this.busy || this.modalBlocked) return;
+        const type = this.modal;
+        if (type === 'review') {
+          this.busy = true;
+          /* Livewire: $wire.syncPermissions(changes) — الخادم يتحقق من الصلاحية ويسجّل في activity_log */
+          await new Promise(r => setTimeout(r, 600));
+          const n = this.changes.length;
+          this.originalMatrix = clone(this.matrix);
+          this.busy = false;
+          this.toast('success', this.tf('rm.toastMatrixSaved', { n: this.fmt(n) }));
+        } else if (type === 'discard') {
+          this.matrix = clone(this.originalMatrix);
+          this.toast('info', this.t('rm.toastMatrixDiscarded'));
+        } else if (type === 'global') {
+          const v = !this.globalAllChecked;
+          this.editableRoles.forEach(r => this.visiblePermCodes.forEach(c => this.setCell(r, c, v)));
+        } else if (type === 'deleteRole') {
+          const role = this.roleToDelete;
+          this.busy = true;
+          await new Promise(r => setTimeout(r, 450));
+          if (role.users && this.reassignTo) { const to = this.roles.find(x => x.id === this.reassignTo); if (to) to.users += role.users; }
+          this.roles = this.roles.filter(r => r.id !== role.id);
+          delete this.matrix[role.id]; delete this.originalMatrix[role.id];
+          if (this.selectedMobileRoleId === role.id) this.selectedMobileRoleId = this.roles[0].id;
+          this.busy = false;
+          this.toast('success', this.tf('rm.toastRoleDeleted', { name: this.roleName(role) }));
+        } else if (type === 'leave') {
+          const href = this.pendingHref;
+          this._leaving = true;
+          this.modal = null;
+          window.location.href = href;
+          return;
+        }
+        this.modal = null; this.roleToDelete = null;
+        const el = this._modalReturn;
+        setTimeout(() => (el && el.isConnected && el.offsetParent !== null ? el : document.getElementById('main'))?.focus({ preventScroll: true }), 60);
+      },
+
+      /* ---------- اللوحة الجانبية: إضافة / تعديل / استنساخ ---------- */
+      panelOpen: false, editingRole: null, formSubmitted: false, touched: false, discardAsk: false, _snapshot: '', _panelTrigger: null,
+      roleForm: { name: '', description: '', cloneFromId: '' },
+      slugify(text) {
+        return String(text || '').toLowerCase().replace(/[ً-ْ]/g, '')
+          .replace(/[؀-ۿ]/g, ch => AR_LATIN[ch] ?? '')
+          .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+      },
+      uniqueKey(base) {
+        let k = base || 'custom_role', i = 2;
+        while (this.roles.some(r => r.key === k)) k = (base || 'custom_role') + '_' + i++;
+        return k;
+      },
+      get roleKeyPreview() { return this.uniqueKey(this.slugify(this.roleForm.name)); },
+      get nameError() {
+        const n = this.roleForm.name.trim().toLowerCase();
+        if (!n) return 'nameRequired';
+        if (n.length < 2) return 'nameShort';
+        if (this.roles.some(r => r.id !== this.editingRole?.id && (r.names.ar.toLowerCase() === n || r.names.en.toLowerCase() === n))) return 'nameTaken';
+        return '';
+      },
+      get cloneSource() { return this.roleForm.cloneFromId ? this.roles.find(r => r.id === this.roleForm.cloneFromId) : null; },
+      get cloneHint() {
+        const s = this.cloneSource;
+        if (!s) return this.t('rm.cloneHintNone');
+        return this.tf('rm.cloneHintFrom', { n: this.fmt(this.grantedCount(s)), role: this.roleName(s) }) + (this.roleChangeCount(s) ? ' ' + this.t('rm.cloneHintUnsaved') : '');
+      },
+      get panelDirty() { return JSON.stringify(this.roleForm) !== this._snapshot; },
+      openCreateRole(cloneFromId = null, trigger = null) {
+        this.closeMenu();
+        this._panelTrigger = trigger || this._menuBtn || this.$refs.addBtn;
+        this.editingRole = null;
+        const src = cloneFromId ? this.roles.find(r => r.id === cloneFromId) : null;
+        this.roleForm = { name: src ? this.tf('rm.cloneNamePrefix', { name: this.roleName(src) }) : '', description: src ? this.roleDesc(src) : '', cloneFromId: cloneFromId || '' };
+        this._openPanel();
+      },
+      openEditRole(role) {
+        this._panelTrigger = this._menuBtn;
+        this.editingRole = role;
+        this.roleForm = { name: this.roleName(role), description: this.roleDesc(role), cloneFromId: '' };
+        this._openPanel();
+      },
+      _openPanel() {
+        this.formSubmitted = false; this.touched = false; this.discardAsk = false;
+        this._snapshot = JSON.stringify(this.roleForm);
+        this.panelOpen = true;
+        setTimeout(() => { const i = document.getElementById('rf-name'); i?.focus(); i?.select(); }, 80);
+      },
+      closePanel() {
+        if (this.busy) return;
+        if (this.panelDirty && !this.discardAsk) { this.discardAsk = true; this.$nextTick(() => this.$refs.keepEditing?.focus()); return; }
+        this.forceClosePanel();
+      },
+      forceClosePanel() {
+        this.panelOpen = false; this.discardAsk = false;
+        const t = this._panelTrigger;
+        setTimeout(() => (t && t.isConnected && t.offsetParent !== null ? t : this.$refs.addBtn)?.focus(), 320);
+      },
+      async submitRole() {
+        if (this.busy) return;
+        this.formSubmitted = true;
+        if (this.nameError) { this.$nextTick(() => document.getElementById('rf-name')?.focus()); return; }
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 500));
+        const name = this.roleForm.name.trim(), desc = this.roleForm.description.trim();
+        if (this.editingRole) {
+          this.editingRole.names[this.locale] = name;
+          this.editingRole.descs[this.locale] = desc;
+          this.toast('success', this.tf('rm.toastRoleUpdated', { name }));
+        } else {
+          /* الإنشاء ذرّي: الدور + صلاحياته المنسوخة تُحفظ معًا (لا تظهر كتغييرات معلّقة) */
+          const id = this.nextRoleId++, src = this.cloneSource, base = {};
+          this.allPermCodes.forEach(c => { base[c] = src ? this.cellChecked(src, c) : false; });
+          this.roles.push({ id, key: this.roleKeyPreview, names: { ar: name, en: name }, descs: { ar: desc, en: desc }, isSystem: false, isCustom: true, users: 0 });
+          this.matrix[id] = base;
+          this.originalMatrix[id] = clone(base);
+          this.selectedMobileRoleId = id;
+          this.toast('success', this.tf('rm.toastRoleCreated', { name }));
+          this.flashRole(id);
+          this.$nextTick(() => { const s = this.$refs.matrixScroll; if (s) s.scrollTo({ left: document.documentElement.dir === 'rtl' ? -s.scrollWidth : s.scrollWidth, behavior: 'smooth' }); });
+        }
+        this.busy = false;
+        this._snapshot = JSON.stringify(this.roleForm);
+        this.forceClosePanel();
+      },
+
+      /* ---------- قائمة إجراءات الدور (Kebab) ---------- */
+      openMenuId: null, kebabRole: null, menuPos: { top: -999, left: -999 }, _menuBtn: null,
+      toggleMenu(role, evt, viaKey = false) {
+        if (this.openMenuId === role.id && !viaKey) { this.closeMenu(true); return; }
+        this._menuBtn = evt.currentTarget;
+        this.kebabRole = role;
+        this.menuPos = { top: -999, left: -999 };
+        this.openMenuId = role.id;
+        this.$nextTick(() => requestAnimationFrame(() => {
+          const r = this._menuBtn.getBoundingClientRect(), m = this.$refs.kebab, pad = 8, gap = 6;
+          const w = m.offsetWidth, h = m.offsetHeight, rtl = document.documentElement.dir === 'rtl';
+          let left = rtl ? r.left : r.right - w;
+          left = Math.min(Math.max(pad, left), window.innerWidth - w - pad);
+          let top = r.bottom + gap;
+          if (top + h > window.innerHeight - pad) top = Math.max(pad, r.top - h - gap);
+          this.menuPos = { top, left };
+          this.menuMove(0, true);
+        }));
+      },
+      menuItems() { return [...(this.$refs.kebab?.querySelectorAll('[role=menuitem]:not([disabled])') || [])]; },
+      menuMove(step, abs = false) {
+        const items = this.menuItems(); if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        const n = abs ? (step < 0 ? items.length - 1 : 0) : (i + step + items.length) % items.length;
+        items[n].focus({ preventScroll: true });
+      },
+      closeMenu(returnFocus = false) {
+        if (this.openMenuId === null) return;
+        this.openMenuId = null;
+        if (returnFocus) this.$nextTick(() => this._menuBtn?.focus());
+      },
+      menuAction(a) {
+        const r = this.kebabRole;
+        this.closeMenu();
+        if (a === 'edit')      this.openEditRole(r);
+        if (a === 'clone')     this.openCreateRole(r.id, this._menuBtn);
+        if (a === 'toggleAll') { this.toggleRole(r); this.$nextTick(() => this._menuBtn?.focus()); }
+        if (a === 'reset')     { this.resetRole(r); this.$nextTick(() => this._menuBtn?.focus()); }
+        if (a === 'delete')    this.openModal('deleteRole', r);
+      },
+
+      /* ---------- Toast ---------- */
+      toast(icon, msg) {
+        this.announce(msg);
+        if (!window.Swal) return;
+        Swal.fire({
+          toast: true, position: 'top-end', icon, title: msg,
+          showConfirmButton: false, timer: 3500, timerProgressBar: true,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); },
+        });
+      },
+
+      /* ---------- البحث العام ---------- */
+      focusSearch() {
+        if (this.panelOpen || this.modal) return;
+        if (mdMQ.matches) { this.$refs.globalSearch?.focus(); this.$refs.globalSearch?.select(); return; }
+        this.searchOpen = true;
+        this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      toggleMobileSearch() {
+        this.searchOpen = !this.searchOpen;
+        if (this.searchOpen) this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        this.originalMatrix = clone(this.matrix);
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        mdMQ.addEventListener('change', (m) => { if (m.matches) this.searchOpen = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; this.closeMenu(); });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('rm.title') + ' — FirOb';
+
+        /* إعلان عدد التغييرات بعد التوقف عن النقر */
+        this.$watch('changes.length', (n) => {
+          clearTimeout(this._chgT);
+          this._chgT = setTimeout(() => { this.changesLive = n ? this.tf('rm.liveChanges', { n: this.fmt(n) }) : this.t('rm.liveNone'); }, 700);
+        });
+        /* حماية المغادرة: إغلاق التبويب أو إعادة التحميل */
+        window.addEventListener('beforeunload', (e) => { if (this.dirty && !this._leaving) { e.preventDefault(); e.returnValue = ''; } });
+        /* حماية المغادرة: الروابط الداخلية (القائمة الجانبية، المسار، …) */
+        document.addEventListener('click', (e) => {
+          const a = e.target.closest && e.target.closest('a[href]');
+          if (!a || !this.dirty || a.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+          const href = a.getAttribute('href');
+          if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+          e.preventDefault();
+          this.mobileNav = false; this.notifOpen = false; this.profileOpen = false;
+          this.openModal('leave', a.href);
+        }, true);
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.applyTheme(e.matches);
+          });
+        } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      closeMobileNav() { this.mobileNav = false; this.$nextTick(() => this.$refs.navToggle?.focus()); },
+      applyTheme(isDark) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('theme-color')?.setAttribute('content', isDark ? '#09141B' : '#F1EDE7');
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() {
+        this.applyTheme(!this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        if (this.modal)       { this.closeModal(); return; }
+        if (this.panelOpen)   { if (this.discardAsk) { this.discardAsk = false; return; } this.closePanel(); return; }
+        if (this.openMenuId !== null) { this.closeMenu(true); return; }
+        if (this.notifOpen)   { this.notifOpen = false;   this.$refs.notifBtn?.focus(); return; }
+        if (this.profileOpen) { this.profileOpen = false; this.$refs.profileBtn?.focus(); return; }
+        if (this.searchOpen)  { this.searchOpen = false; return; }
+        if (this.mobileNav)   { this.closeMobileNav(); }
+      },
+    };
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>تحليلات استهلاك الذكاء الاصطناعي — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  { @apply bg-accent-500/25 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- مقطع أزرار (Segmented control) ---------- */
+    .seg { @apply inline-flex flex-wrap items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-muted transition; }
+    .seg-btn[aria-pressed="true"] { @apply bg-primary-500 text-white shadow; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-2.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill  { @apply h-full rounded-full transition-all duration-500; }
+    .kpi-track   { @apply flex h-2 w-full overflow-hidden rounded-full bg-line; }
+
+    /* ---------- بطاقة الرسم البياني (Chart placeholder) ---------- */
+    .chart-card { @apply panel flex flex-col p-4 sm:p-5; }
+    .chart-box  { @apply relative w-full flex-1; }
+    .swatch     { @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full; }
+
+    /* ---------- النافذة المنبثقة (Modal) ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+    .code-block  { @apply max-h-56 overflow-auto rounded-xl border border-line bg-page/60 p-3.5 font-mono text-[11px] leading-6 text-ink; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || detailsOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="TenantSettingsForm.html" role="menuitem" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></a>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('navGroups.aiTools')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.aiAnalytics')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-08: تحليلات استهلاك الذكاء الاصطناعي ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1600px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- ================= العنوان + زر التصدير ================= -->
+      <section class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('ai.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('ai.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-outline shrink-0" @click="exportCsv()">
+          <i class="fa-solid fa-file-export" aria-hidden="true"></i><span x-text="t('ai.toolbar.exportCsv')"></span>
+        </button>
+      </section>
+
+      <!-- ================= مقياس حصة التوكنز الشهرية (QuotaMeter) ================= -->
+      <section class="panel p-4 sm:p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex min-w-0 items-start gap-4">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent-500/25 text-yellow-900 dark:text-accent-500" aria-hidden="true">
+              <i class="fa-solid fa-gauge-high text-xl"></i>
+            </span>
+            <div class="min-w-0">
+              <p class="font-extrabold text-ink" x-text="t('ai.quota.title')"></p>
+              <p class="mt-0.5 text-sm text-muted" x-text="t('ai.quota.caption')"></p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 lg:shrink-0" role="list" :aria-label="t('ai.quota.legendTitle')">
+            <span class="badge badge-primary" role="listitem"><span class="swatch bg-primary-500" aria-hidden="true"></span><span x-text="t('ai.quota.legendNormal')"></span></span>
+            <span class="badge badge-accent" role="listitem"><span class="swatch bg-accent-500" aria-hidden="true"></span><span x-text="t('ai.quota.legendWarning')"></span></span>
+            <span class="badge badge-danger" role="listitem"><span class="swatch bg-error-600" aria-hidden="true"></span><span x-text="t('ai.quota.legendExceeded')"></span></span>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex flex-wrap items-end justify-between gap-2">
+            <p class="text-2xl font-extrabold tabular-nums" dir="ltr" style="text-align:start">
+              2,150,000 <span class="text-base font-bold text-muted">/ 2,500,000</span>
+            </p>
+            <span class="badge badge-accent"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span x-text="tf('ai.quota.usedPct', { v: 86 })"></span></span>
+          </div>
+          <div class="quota-track mt-2.5" role="progressbar" aria-valuenow="86" aria-valuemin="0" aria-valuemax="100" :aria-label="t('ai.quota.title')">
+            <div class="quota-fill bg-accent-500" style="width:86%"></div>
+          </div>
+          <p class="mt-2 text-xs font-bold text-accent-700 dark:text-accent-500">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> <span x-text="t('ai.quota.warningNote')"></span>
+          </p>
+          <p class="mt-1 text-xs text-muted" x-text="t('ai.quota.resetHint')"></p>
+        </div>
+      </section>
+
+      <!-- ================= صف المؤشرات السريعة (Quick KPI Row) ================= -->
+      <section aria-label="مؤشرات استهلاك الذكاء الاصطناعي" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+
+        <!-- إجمالي التوكنز المستهلكة -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.totalTokens')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+          </div>
+          <div>
+            <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" dir="ltr" style="text-align:start">2,150,000</p>
+            <div class="kpi-track mt-3">
+              <div class="bg-primary-500" style="width:60%"></div>
+              <div class="bg-accent-500" style="width:40%"></div>
+            </div>
+            <p class="mt-1.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.tokenSplit', { p: 60, c: 40 })"></p>
+          </div>
+        </div>
+
+        <!-- التكلفة التقديرية -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.totalCost')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span>
+          </div>
+          <div>
+            <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" dir="ltr" style="text-align:start">$482.35</p>
+            <p class="mt-3.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.avgCostPerCall', { v: '0.0186' })"></p>
+          </div>
+        </div>
+
+        <!-- أكثر الأدوات استخدامًا -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.mostActiveFeature')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-500/25 text-yellow-900 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+          </div>
+          <div>
+            <p class="mt-2 truncate text-2xl font-extrabold sm:text-3xl" x-text="t('ai.features.quiz_generation')"></p>
+            <div class="mt-3 kpi-track">
+              <div class="bg-accent-500" style="width:38%"></div>
+            </div>
+            <p class="mt-1.5 text-xs font-bold text-muted" x-text="tf('ai.kpi.mostActiveShare', { v: 38 })"></p>
+          </div>
+        </div>
+
+        <!-- المستخدمون النشطون -->
+        <div class="panel flex h-full flex-col justify-between p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('ai.kpi.activeUsers')"></p>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+          </div>
+          <div>
+            <p class="mt-2 text-2xl font-extrabold tabular-nums sm:text-3xl" dir="ltr" style="text-align:start">47 <span class="text-base font-bold text-muted">/ 60</span></p>
+            <p class="mt-3.5 text-xs font-bold text-muted" x-text="t('ai.kpi.activeUsersCaption')"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= شبكة الرسوم البيانية (Tailwind/SVG Placeholders) ================= -->
+      <section aria-label="الرسوم البيانية التحليلية" class="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-3">
+
+        <!-- اتجاه استهلاك التوكنز -->
+        <div class="chart-card xl:col-span-2" style="min-height:22rem">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+              <h2 class="font-extrabold" x-text="t('ai.charts.trendTitle')"></h2>
+              <p class="text-xs text-muted" x-text="t('ai.charts.trendSubtitle')"></p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><span class="swatch bg-primary-500" aria-hidden="true"></span><span x-text="t('ai.charts.legendPrompt')"></span></span>
+              <span class="inline-flex items-center gap-1.5 text-xs font-bold text-muted"><span class="swatch bg-accent-500" aria-hidden="true"></span><span x-text="t('ai.charts.legendCompletion')"></span></span>
+            </div>
+          </div>
+          <div class="chart-box mt-3" style="min-height:15rem" dir="ltr">
+            <svg viewBox="0 0 400 160" preserveAspectRatio="none" role="img" :aria-label="t('ai.charts.trendTitle')" class="h-full w-full">
+              <defs>
+                <linearGradient id="trendFillPrompt" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0E80A1" stop-opacity="0.32"></stop>
+                  <stop offset="100%" stop-color="#0E80A1" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+              <g stroke="currentColor" class="text-line" stroke-width="1">
+                <line x1="0" y1="20" x2="400" y2="20"></line>
+                <line x1="0" y1="60" x2="400" y2="60"></line>
+                <line x1="0" y1="100" x2="400" y2="100"></line>
+                <line x1="0" y1="140" x2="400" y2="140"></line>
+              </g>
+              <path d="M0,140 L0,110 L57,96 L114,118 L171,74 L228,88 L285,48 L342,62 L400,36 L400,140 Z" fill="url(#trendFillPrompt)"></path>
+              <polyline points="0,110 57,96 114,118 171,74 228,88 285,48 342,62 400,36" fill="none" stroke="#0E80A1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              <polyline points="0,138 57,128 114,132 171,112 228,118 285,96 342,104 400,86" fill="none" stroke="#F7D933" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              <template x-for="pt in [[0,110],[57,96],[114,118],[171,74],[228,88],[285,48],[342,62],[400,36]]">
+                <circle :cx="pt[0]" :cy="pt[1]" r="3.5" fill="#0E80A1"></circle>
+              </template>
+            </svg>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-[11px] font-bold text-muted">
+            <span x-text="t('ai.charts.day1')"></span><span x-text="t('ai.charts.day2')"></span><span x-text="t('ai.charts.day3')"></span><span x-text="t('ai.charts.day4')"></span>
+            <span x-text="t('ai.charts.day5')"></span><span x-text="t('ai.charts.day6')"></span><span x-text="t('ai.charts.day7')"></span>
+          </div>
+        </div>
+
+        <!-- توزيع الاستخدام حسب ميزة الذكاء الاصطناعي -->
+        <div class="chart-card" style="min-height:22rem">
+          <h2 class="font-extrabold" x-text="t('ai.charts.featureTitle')"></h2>
+          <p class="text-xs text-muted" x-text="t('ai.charts.featureSubtitle')"></p>
+          <ul class="mt-4 flex-1 space-y-3.5" role="list">
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs font-bold"><span x-text="t('ai.features.quiz_generation')"></span><span class="tabular-nums text-muted">38%</span></div>
+              <div class="kpi-track"><div class="bg-primary-500" style="width:38%"></div></div>
+            </li>
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs font-bold"><span x-text="t('ai.features.content_summarization')"></span><span class="tabular-nums text-muted">24%</span></div>
+              <div class="kpi-track"><div class="bg-accent-500" style="width:24%"></div></div>
+            </li>
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs font-bold"><span x-text="t('ai.features.concept_assist')"></span><span class="tabular-nums text-muted">19%</span></div>
+              <div class="kpi-track"><div class="bg-primary-800" style="width:19%"></div></div>
+            </li>
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs font-bold"><span x-text="t('ai.features.question_bank_enrichment')"></span><span class="tabular-nums text-muted">12%</span></div>
+              <div class="kpi-track"><div class="bg-info-500" style="width:12%"></div></div>
+            </li>
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs font-bold"><span x-text="t('ai.features.translation_assist')"></span><span class="tabular-nums text-muted">7%</span></div>
+              <div class="kpi-track"><div class="bg-neutral-300" style="width:7%"></div></div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر ================= -->
+      <section class="panel space-y-3 p-3.5 sm:p-4">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <form role="search" class="relative min-w-0 flex-1" @submit.prevent>
+            <label for="ai-q" class="sr-only" x-text="t('ai.toolbar.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+            <input id="ai-q" type="search" x-model="filters.query" :placeholder="t('ai.toolbar.searchPlaceholder')"
+                   class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-3 ps-10 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          </form>
+
+          <div class="seg shrink-0 overflow-x-auto" role="radiogroup" :aria-label="t('ai.toolbar.statusAll')">
+            <button type="button" class="seg-btn whitespace-nowrap" :aria-pressed="(filters.status === 'all').toString()" @click="filters.status = 'all'">
+              <span x-text="t('ai.toolbar.statusAll')"></span>
+            </button>
+            <button type="button" class="seg-btn whitespace-nowrap" :aria-pressed="(filters.status === 'success').toString()" @click="filters.status = 'success'">
+              <i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span>
+            </button>
+            <button type="button" class="seg-btn whitespace-nowrap" :aria-pressed="(filters.status === 'failed').toString()" @click="filters.status = 'failed'">
+              <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.status.failed')"></span>
+            </button>
+            <button type="button" class="seg-btn whitespace-nowrap" :aria-pressed="(filters.status === 'throttled').toString()" @click="filters.status = 'throttled'">
+              <i class="fa-solid fa-hourglass-half" aria-hidden="true"></i><span x-text="t('ai.status.throttled')"></span>
+            </button>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="clearFilters()">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.toolbar.clearFilters')"></span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+
+          <!-- فلتر ميزة الذكاء الاصطناعي -->
+          <div class="relative"
+               x-data="selectDropdown({
+                 options: () => [
+                   { value: 'all', label: t('ai.toolbar.featureAll') },
+                   { value: 'quiz_generation', label: t('ai.features.quiz_generation') },
+                   { value: 'content_summarization', label: t('ai.features.content_summarization') },
+                   { value: 'concept_assist', label: t('ai.features.concept_assist') },
+                   { value: 'question_bank_enrichment', label: t('ai.features.question_bank_enrichment') },
+                   { value: 'translation_assist', label: t('ai.features.translation_assist') },
+                 ],
+                 get: () => filters.feature,
+                 set: (v) => filters.feature = v,
+               })"
+               @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+            <label for="ai-filter-feature" class="sr-only" x-text="t('ai.toolbar.featureAll')"></label>
+            <button type="button" id="ai-filter-feature" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-filter-feature-list"
+                    :aria-activedescendant="active > -1 ? 'ai-filter-feature-opt-' + items[active].value : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()"
+                    @keydown.down.prevent="move(1)"
+                    @keydown.up.prevent="move(-1)"
+                    @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                    @keydown.space.prevent="toggleList()">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-filter-feature-list" role="listbox" aria-labelledby="ai-filter-feature"
+                x-transition.origin.top.duration.150ms
+                class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="'ai-filter-feature-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <!-- فلتر المزوّد والنموذج -->
+          <div class="relative"
+               x-data="selectDropdown({
+                 options: () => [
+                   { value: 'all', label: t('ai.toolbar.modelAll') },
+                   { value: 'gpt-4o', label: 'OpenAI · gpt-4o' },
+                   { value: 'gpt-4o-mini', label: 'OpenAI · gpt-4o-mini' },
+                   { value: 'claude-3-5-sonnet', label: 'Anthropic · Claude 3.5 Sonnet' },
+                   { value: 'gemini-1-5-pro', label: 'Google · Gemini 1.5 Pro' },
+                 ],
+                 get: () => filters.model,
+                 set: (v) => filters.model = v,
+               })"
+               @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+            <label for="ai-filter-model" class="sr-only" x-text="t('ai.toolbar.modelAll')"></label>
+            <button type="button" id="ai-filter-model" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-filter-model-list"
+                    :aria-activedescendant="active > -1 ? 'ai-filter-model-opt-' + items[active].value : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()"
+                    @keydown.down.prevent="move(1)"
+                    @keydown.up.prevent="move(-1)"
+                    @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                    @keydown.space.prevent="toggleList()">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-filter-model-list" role="listbox" aria-labelledby="ai-filter-model"
+                x-transition.origin.top.duration.150ms
+                class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="'ai-filter-model-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <!-- فلتر نطاق التاريخ -->
+          <div class="relative"
+               x-data="selectDropdown({
+                 options: () => [
+                   { value: 'today', label: t('ai.toolbar.dateRange.today') },
+                   { value: 'last7', label: t('ai.toolbar.dateRange.last7') },
+                   { value: 'last30', label: t('ai.toolbar.dateRange.last30') },
+                   { value: 'month', label: t('ai.toolbar.dateRange.month') },
+                   { value: 'custom', label: t('ai.toolbar.dateRange.custom') },
+                 ],
+                 get: () => filters.dateRange,
+                 set: (v) => filters.dateRange = v,
+               })"
+               @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+            <label for="ai-filter-range" class="sr-only" x-text="t('ai.toolbar.dateRange.last30')"></label>
+            <button type="button" id="ai-filter-range" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="ai-filter-range-list"
+                    :aria-activedescendant="active > -1 ? 'ai-filter-range-opt-' + items[active].value : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()"
+                    @keydown.down.prevent="move(1)"
+                    @keydown.up.prevent="move(-1)"
+                    @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                    @keydown.space.prevent="toggleList()">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ai-filter-range-list" role="listbox" aria-labelledby="ai-filter-range"
+                x-transition.origin.top.duration.150ms
+                class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="'ai-filter-range-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <div class="flex gap-2" x-show="filters.dateRange === 'custom'" x-cloak>
+            <input type="date" class="field" dir="ltr" x-model="filters.customFrom" :aria-label="t('ai.toolbar.dateRangeVals.from')">
+            <input type="date" class="field" dir="ltr" x-model="filters.customTo" :aria-label="t('ai.toolbar.dateRangeVals.to')">
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= جدول سجلات الاستخدام التفصيلية ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="ai-table-title">
+        <div class="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div class="min-w-0">
+            <h2 id="ai-table-title" class="font-extrabold" x-text="t('ai.table.title')"></h2>
+            <p class="text-xs text-muted" x-text="t('ai.table.subtitle')"></p>
+          </div>
+          <!-- عارض حالات الواجهة (معاينة تصميم فقط) -->
+          <div class="seg shrink-0" role="radiogroup" :aria-label="t('ai.table.previewState')">
+            <button type="button" class="seg-btn" :aria-pressed="(tableView === 'data').toString()" @click="tableView = 'data'" x-text="t('ai.table.stateData')"></button>
+            <button type="button" class="seg-btn" :aria-pressed="(tableView === 'empty').toString()" @click="tableView = 'empty'" x-text="t('ai.table.stateEmpty')"></button>
+            <button type="button" class="seg-btn" :aria-pressed="(tableView === 'loading').toString()" @click="tableView = 'loading'" x-text="t('ai.table.stateLoading')"></button>
+          </div>
+        </div>
+
+        <!-- حالة التحميل -->
+        <div x-show="tableView === 'loading'" x-cloak class="flex flex-col items-center justify-center gap-3 py-16">
+          <i class="fa-solid fa-circle-notch animate-spin text-3xl text-brand" aria-hidden="true"></i>
+          <p class="text-sm font-bold text-muted" x-text="t('ai.table.loadingTitle')"></p>
+        </div>
+
+        <!-- حالة فارغة -->
+        <div x-show="tableView === 'empty'" x-cloak class="py-14 text-center">
+          <span class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-primary-500/15 text-brand"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></span>
+          <p class="font-bold" x-text="t('ai.table.emptyTitle')"></p>
+          <p class="mt-1 text-xs text-muted" x-text="t('ai.table.emptyDesc')"></p>
+          <button type="button" class="btn btn-outline btn-sm mt-3" @click="clearFilters()" x-text="t('ai.table.clearSearch')"></button>
+        </div>
+
+        <!-- حالة البيانات -->
+        <div x-show="tableView === 'data'" x-cloak>
+
+          <!-- بطاقات — جوال/تابلت -->
+          <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+            <li class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-start justify-between gap-2">
+                <span class="badge badge-muted" x-text="t('ai.features.quiz_generation')"></span>
+                <span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">سع</span>
+                <div class="min-w-0">
+                  <p class="truncate font-bold leading-5">سارة عبد الله</p>
+                  <span class="badge badge-primary mt-0.5" x-text="t('ai.roles.teacher')"></span>
+                </div>
+              </div>
+              <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold" dir="ltr" style="text-align:start">OpenAI / gpt-4o</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start">1,270</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start"><span x-text="tf('ai.table.relMinutes', { n: 12 })"></span></dd></div>
+                <div><dt class="text-muted">Job ID</dt><dd class="mt-0.5 truncate font-bold tabular-nums" dir="ltr" style="text-align:start">AIJ-20450</dd></div>
+              </dl>
+              <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                      @click="openDetails({ id:'AIJ-20450', time:'2026-10-04 09:42', user:'سارة عبد الله', role:'teacher', feature:'quiz_generation', provider:'OpenAI', model:'gpt-4o', prompt:860, completion:410, total:1270, cost:0.0192, duration:1840, status:'success', payload:'{\n  \&quot;feature\&quot;: \&quot;quiz_generation\&quot;,\n  \&quot;subject_id\&quot;: 482,\n  \&quot;concept_id\&quot;: 1193,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;question_count\&quot;: 10,\n  \&quot;max_tokens\&quot;: 900\n}', error:null })">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+              </button>
+            </li>
+
+            <li class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-start justify-between gap-2">
+                <span class="badge badge-muted" x-text="t('ai.features.concept_assist')"></span>
+                <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.status.failed')"></span></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">يإ</span>
+                <div class="min-w-0">
+                  <p class="truncate font-bold leading-5">يوسف إبراهيم</p>
+                  <span class="badge badge-accent mt-0.5" x-text="t('ai.roles.editor')"></span>
+                </div>
+              </div>
+              <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold" dir="ltr" style="text-align:start">Anthropic / Claude 3.5 Sonnet</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start">640</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start"><span x-text="tf('ai.table.relHours', { n: 1 })"></span></dd></div>
+                <div><dt class="text-muted">Job ID</dt><dd class="mt-0.5 truncate font-bold tabular-nums" dir="ltr" style="text-align:start">AIJ-20447</dd></div>
+              </dl>
+              <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                      @click="openDetails({ id:'AIJ-20447', time:'2026-10-04 08:15', user:'يوسف إبراهيم', role:'editor', feature:'concept_assist', provider:'Anthropic', model:'Claude 3.5 Sonnet', prompt:420, completion:0, total:420, cost:0.0051, duration:30210, status:'failed', payload:'{\n  \&quot;feature\&quot;: \&quot;concept_assist\&quot;,\n  \&quot;concept_id\&quot;: 1193,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;max_tokens\&quot;: 600\n}', error:'Anthropic\\TimeoutException: Request exceeded 30000ms timeout while generating concept assistance for concept #1193.' })">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+              </button>
+            </li>
+
+            <li class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-start justify-between gap-2">
+                <span class="badge badge-muted" x-text="t('ai.features.content_summarization')"></span>
+                <span class="badge badge-accent"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i><span x-text="t('ai.status.throttled')"></span></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">لم</span>
+                <div class="min-w-0">
+                  <p class="truncate font-bold leading-5">لينا مرعي</p>
+                  <span class="badge badge-primary mt-0.5" x-text="t('ai.roles.teacher')"></span>
+                </div>
+              </div>
+              <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold" dir="ltr" style="text-align:start">OpenAI / gpt-4o-mini</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start">980</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start"><span x-text="tf('ai.table.relHours', { n: 3 })"></span></dd></div>
+                <div><dt class="text-muted">Job ID</dt><dd class="mt-0.5 truncate font-bold tabular-nums" dir="ltr" style="text-align:start">AIJ-20439</dd></div>
+              </dl>
+              <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                      @click="openDetails({ id:'AIJ-20439', time:'2026-10-04 06:30', user:'لينا مرعي', role:'teacher', feature:'content_summarization', provider:'OpenAI', model:'gpt-4o-mini', prompt:710, completion:270, total:980, cost:0.0043, duration:2210, status:'throttled', payload:'{\n  \&quot;feature\&quot;: \&quot;content_summarization\&quot;,\n  \&quot;resource_id\&quot;: 7741,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;max_tokens\&quot;: 500\n}', error:'RateLimitException: Monthly plan rate limit reached for feature \&quot;content_summarization\&quot;; request queued and retried.' })">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+              </button>
+            </li>
+
+            <li class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-start justify-between gap-2">
+                <span class="badge badge-muted" x-text="t('ai.features.question_bank_enrichment')"></span>
+                <span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">مص</span>
+                <div class="min-w-0">
+                  <p class="truncate font-bold leading-5">محمود صالح</p>
+                  <span class="badge badge-info mt-0.5" x-text="t('ai.roles.reviewer')"></span>
+                </div>
+              </div>
+              <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold" dir="ltr" style="text-align:start">Google / Gemini 1.5 Pro</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start">2,140</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start"><span x-text="tf('ai.table.relHours', { n: 6 })"></span></dd></div>
+                <div><dt class="text-muted">Job ID</dt><dd class="mt-0.5 truncate font-bold tabular-nums" dir="ltr" style="text-align:start">AIJ-20428</dd></div>
+              </dl>
+              <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                      @click="openDetails({ id:'AIJ-20428', time:'2026-10-04 03:52', user:'محمود صالح', role:'reviewer', feature:'question_bank_enrichment', provider:'Google', model:'Gemini 1.5 Pro', prompt:1390, completion:750, total:2140, cost:0.0268, duration:3120, status:'success', payload:'{\n  \&quot;feature\&quot;: \&quot;question_bank_enrichment\&quot;,\n  \&quot;subject_id\&quot;: 118,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;question_count\&quot;: 20\n}', error:null })">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+              </button>
+            </li>
+
+            <li class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-start justify-between gap-2">
+                <span class="badge badge-muted" x-text="t('ai.features.translation_assist')"></span>
+                <span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">رح</span>
+                <div class="min-w-0">
+                  <p class="truncate font-bold leading-5">رنا الحلو</p>
+                  <span class="badge badge-primary mt-0.5" x-text="t('ai.roles.teacher')"></span>
+                </div>
+              </div>
+              <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold" dir="ltr" style="text-align:start">OpenAI / gpt-4o</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start">860</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start"><span x-text="tf('ai.table.relHours', { n: 9 })"></span></dd></div>
+                <div><dt class="text-muted">Job ID</dt><dd class="mt-0.5 truncate font-bold tabular-nums" dir="ltr" style="text-align:start">AIJ-20411</dd></div>
+              </dl>
+              <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                      @click="openDetails({ id:'AIJ-20411', time:'2026-10-03 23:10', user:'رنا الحلو', role:'teacher', feature:'translation_assist', provider:'OpenAI', model:'gpt-4o', prompt:540, completion:320, total:860, cost:0.0129, duration:1510, status:'success', payload:'{\n  \&quot;feature\&quot;: \&quot;translation_assist\&quot;,\n  \&quot;resource_id\&quot;: 5520,\n  \&quot;source_locale\&quot;: \&quot;ar\&quot;,\n  \&quot;target_locale\&quot;: \&quot;en\&quot;\n}', error:null })">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+              </button>
+            </li>
+
+            <li class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-start justify-between gap-2">
+                <span class="badge badge-muted" x-text="t('ai.features.quiz_generation')"></span>
+                <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.status.failed')"></span></span>
+              </div>
+              <div class="mt-2.5 flex items-center gap-2.5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">خم</span>
+                <div class="min-w-0">
+                  <p class="truncate font-bold leading-5">خالد مرعي</p>
+                  <span class="badge badge-accent mt-0.5" x-text="t('ai.roles.editor')"></span>
+                </div>
+              </div>
+              <dl class="mt-2.5 grid grid-cols-2 gap-2 border-t border-line pt-2.5 text-xs">
+                <div><dt class="text-muted" x-text="t('ai.table.colProvider')"></dt><dd class="mt-0.5 truncate font-bold" dir="ltr" style="text-align:start">Anthropic / Claude 3.5 Sonnet</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTokens')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start">510</dd></div>
+                <div><dt class="text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start"><span x-text="tf('ai.table.relDays', { n: 1 })"></span></dd></div>
+                <div><dt class="text-muted">Job ID</dt><dd class="mt-0.5 truncate font-bold tabular-nums" dir="ltr" style="text-align:start">AIJ-20398</dd></div>
+              </dl>
+              <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                      @click="openDetails({ id:'AIJ-20398', time:'2026-10-03 14:05', user:'خالد مرعي', role:'editor', feature:'quiz_generation', provider:'Anthropic', model:'Claude 3.5 Sonnet', prompt:510, completion:0, total:510, cost:0.0061, duration:1420, status:'failed', payload:'{\n  \&quot;feature\&quot;: \&quot;quiz_generation\&quot;,\n  \&quot;subject_id\&quot;: 206,\n  \&quot;concept_id\&quot;: 884,\n  \&quot;question_count\&quot;: 10\n}', error:'Anthropic\\InvalidResponseException: Model returned malformed JSON while parsing quiz question options for concept #884.' })">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span x-text="t('ai.table.viewDetails')"></span>
+              </button>
+            </li>
+          </ul>
+
+          <!-- جدول — سطح المكتب -->
+          <div class="hidden overflow-x-auto xl:block">
+            <table class="w-full min-w-[1080px] text-sm">
+              <caption class="sr-only" x-text="t('ai.table.title')"></caption>
+              <thead class="bg-soft/60 text-xs text-muted">
+                <tr>
+                  <th scope="col" class="whitespace-nowrap px-5 py-3 text-start font-extrabold" x-text="t('ai.table.colTimestamp')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colUser')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colFeature')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colProvider')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colTokens')"></th>
+                  <th scope="col" class="whitespace-nowrap px-4 py-3 text-start font-extrabold" x-text="t('ai.table.colStatus')"></th>
+                  <th scope="col" class="whitespace-nowrap px-5 py-3 text-end font-extrabold" x-text="t('ai.table.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <tr class="transition hover:bg-soft/40">
+                  <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" dir="ltr" style="text-align:start" :title="'2026-10-04 09:42'"><span x-text="tf('ai.table.relMinutes', { n: 12 })"></span></td>
+                  <td class="max-w-[12rem] px-4 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">سع</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">سارة عبد الله</p>
+                        <span class="badge badge-primary mt-0.5" x-text="t('ai.roles.teacher')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="t('ai.features.quiz_generation')"></span></td>
+                  <td class="whitespace-nowrap px-4 py-3.5 text-muted" dir="ltr" style="text-align:start">OpenAI / gpt-4o</td>
+                  <td class="whitespace-nowrap px-4 py-3.5" dir="ltr" style="text-align:start">
+                    <p class="font-extrabold tabular-nums">1,270</p>
+                    <p class="text-[11px] tabular-nums text-muted">P 860 · C 410</p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span></span></td>
+                  <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                    <button type="button" class="act ms-auto" :aria-label="t('ai.table.viewDetails')"
+                            @click="openDetails({ id:'AIJ-20450', time:'2026-10-04 09:42', user:'سارة عبد الله', role:'teacher', feature:'quiz_generation', provider:'OpenAI', model:'gpt-4o', prompt:860, completion:410, total:1270, cost:0.0192, duration:1840, status:'success', payload:'{\n  \&quot;feature\&quot;: \&quot;quiz_generation\&quot;,\n  \&quot;subject_id\&quot;: 482,\n  \&quot;concept_id\&quot;: 1193,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;question_count\&quot;: 10,\n  \&quot;max_tokens\&quot;: 900\n}', error:null })">
+                      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" dir="ltr" style="text-align:start" :title="'2026-10-04 08:15'"><span x-text="tf('ai.table.relHours', { n: 1 })"></span></td>
+                  <td class="max-w-[12rem] px-4 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">يإ</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">يوسف إبراهيم</p>
+                        <span class="badge badge-accent mt-0.5" x-text="t('ai.roles.editor')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="t('ai.features.concept_assist')"></span></td>
+                  <td class="whitespace-nowrap px-4 py-3.5 text-muted" dir="ltr" style="text-align:start">Anthropic / Claude 3.5 Sonnet</td>
+                  <td class="whitespace-nowrap px-4 py-3.5" dir="ltr" style="text-align:start">
+                    <p class="font-extrabold tabular-nums">640</p>
+                    <p class="text-[11px] tabular-nums text-muted">P 420 · C 0</p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-danger"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.status.failed')"></span></span></td>
+                  <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                    <button type="button" class="act ms-auto" :aria-label="t('ai.table.viewDetails')"
+                            @click="openDetails({ id:'AIJ-20447', time:'2026-10-04 08:15', user:'يوسف إبراهيم', role:'editor', feature:'concept_assist', provider:'Anthropic', model:'Claude 3.5 Sonnet', prompt:420, completion:0, total:420, cost:0.0051, duration:30210, status:'failed', payload:'{\n  \&quot;feature\&quot;: \&quot;concept_assist\&quot;,\n  \&quot;concept_id\&quot;: 1193,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;max_tokens\&quot;: 600\n}', error:'Anthropic\\TimeoutException: Request exceeded 30000ms timeout while generating concept assistance for concept #1193.' })">
+                      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" dir="ltr" style="text-align:start" :title="'2026-10-04 06:30'"><span x-text="tf('ai.table.relHours', { n: 3 })"></span></td>
+                  <td class="max-w-[12rem] px-4 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">لم</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">لينا مرعي</p>
+                        <span class="badge badge-primary mt-0.5" x-text="t('ai.roles.teacher')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="t('ai.features.content_summarization')"></span></td>
+                  <td class="whitespace-nowrap px-4 py-3.5 text-muted" dir="ltr" style="text-align:start">OpenAI / gpt-4o-mini</td>
+                  <td class="whitespace-nowrap px-4 py-3.5" dir="ltr" style="text-align:start">
+                    <p class="font-extrabold tabular-nums">980</p>
+                    <p class="text-[11px] tabular-nums text-muted">P 710 · C 270</p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-accent"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i><span x-text="t('ai.status.throttled')"></span></span></td>
+                  <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                    <button type="button" class="act ms-auto" :aria-label="t('ai.table.viewDetails')"
+                            @click="openDetails({ id:'AIJ-20439', time:'2026-10-04 06:30', user:'لينا مرعي', role:'teacher', feature:'content_summarization', provider:'OpenAI', model:'gpt-4o-mini', prompt:710, completion:270, total:980, cost:0.0043, duration:2210, status:'throttled', payload:'{\n  \&quot;feature\&quot;: \&quot;content_summarization\&quot;,\n  \&quot;resource_id\&quot;: 7741,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;max_tokens\&quot;: 500\n}', error:'RateLimitException: Monthly plan rate limit reached for feature \&quot;content_summarization\&quot;; request queued and retried.' })">
+                      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" dir="ltr" style="text-align:start" :title="'2026-10-04 03:52'"><span x-text="tf('ai.table.relHours', { n: 6 })"></span></td>
+                  <td class="max-w-[12rem] px-4 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">مص</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">محمود صالح</p>
+                        <span class="badge badge-info mt-0.5" x-text="t('ai.roles.reviewer')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="t('ai.features.question_bank_enrichment')"></span></td>
+                  <td class="whitespace-nowrap px-4 py-3.5 text-muted" dir="ltr" style="text-align:start">Google / Gemini 1.5 Pro</td>
+                  <td class="whitespace-nowrap px-4 py-3.5" dir="ltr" style="text-align:start">
+                    <p class="font-extrabold tabular-nums">2,140</p>
+                    <p class="text-[11px] tabular-nums text-muted">P 1,390 · C 750</p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span></span></td>
+                  <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                    <button type="button" class="act ms-auto" :aria-label="t('ai.table.viewDetails')"
+                            @click="openDetails({ id:'AIJ-20428', time:'2026-10-04 03:52', user:'محمود صالح', role:'reviewer', feature:'question_bank_enrichment', provider:'Google', model:'Gemini 1.5 Pro', prompt:1390, completion:750, total:2140, cost:0.0268, duration:3120, status:'success', payload:'{\n  \&quot;feature\&quot;: \&quot;question_bank_enrichment\&quot;,\n  \&quot;subject_id\&quot;: 118,\n  \&quot;locale\&quot;: \&quot;ar\&quot;,\n  \&quot;question_count\&quot;: 20\n}', error:null })">
+                      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" dir="ltr" style="text-align:start" :title="'2026-10-03 23:10'"><span x-text="tf('ai.table.relHours', { n: 9 })"></span></td>
+                  <td class="max-w-[12rem] px-4 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">رح</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">رنا الحلو</p>
+                        <span class="badge badge-primary mt-0.5" x-text="t('ai.roles.teacher')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="t('ai.features.translation_assist')"></span></td>
+                  <td class="whitespace-nowrap px-4 py-3.5 text-muted" dir="ltr" style="text-align:start">OpenAI / gpt-4o</td>
+                  <td class="whitespace-nowrap px-4 py-3.5" dir="ltr" style="text-align:start">
+                    <p class="font-extrabold tabular-nums">860</p>
+                    <p class="text-[11px] tabular-nums text-muted">P 540 · C 320</p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span x-text="t('ai.status.success')"></span></span></td>
+                  <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                    <button type="button" class="act ms-auto" :aria-label="t('ai.table.viewDetails')"
+                            @click="openDetails({ id:'AIJ-20411', time:'2026-10-03 23:10', user:'رنا الحلو', role:'teacher', feature:'translation_assist', provider:'OpenAI', model:'gpt-4o', prompt:540, completion:320, total:860, cost:0.0129, duration:1510, status:'success', payload:'{\n  \&quot;feature\&quot;: \&quot;translation_assist\&quot;,\n  \&quot;resource_id\&quot;: 5520,\n  \&quot;source_locale\&quot;: \&quot;ar\&quot;,\n  \&quot;target_locale\&quot;: \&quot;en\&quot;\n}', error:null })">
+                      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="whitespace-nowrap px-5 py-3.5 tabular-nums text-muted" dir="ltr" style="text-align:start" :title="'2026-10-03 14:05'"><span x-text="tf('ai.table.relDays', { n: 1 })"></span></td>
+                  <td class="max-w-[12rem] px-4 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-soft text-xs font-extrabold text-brand" aria-hidden="true">خم</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-bold leading-5">خالد مرعي</p>
+                        <span class="badge badge-accent mt-0.5" x-text="t('ai.roles.editor')"></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-muted" x-text="t('ai.features.quiz_generation')"></span></td>
+                  <td class="whitespace-nowrap px-4 py-3.5 text-muted" dir="ltr" style="text-align:start">Anthropic / Claude 3.5 Sonnet</td>
+                  <td class="whitespace-nowrap px-4 py-3.5" dir="ltr" style="text-align:start">
+                    <p class="font-extrabold tabular-nums">510</p>
+                    <p class="text-[11px] tabular-nums text-muted">P 510 · C 0</p>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3.5"><span class="badge badge-danger"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i><span x-text="t('ai.status.failed')"></span></span></td>
+                  <td class="whitespace-nowrap px-5 py-3.5 text-end">
+                    <button type="button" class="act ms-auto" :aria-label="t('ai.table.viewDetails')"
+                            @click="openDetails({ id:'AIJ-20398', time:'2026-10-03 14:05', user:'خالد مرعي', role:'editor', feature:'quiz_generation', provider:'Anthropic', model:'Claude 3.5 Sonnet', prompt:510, completion:0, total:510, cost:0.0061, duration:1420, status:'failed', payload:'{\n  \&quot;feature\&quot;: \&quot;quiz_generation\&quot;,\n  \&quot;subject_id\&quot;: 206,\n  \&quot;concept_id\&quot;: 884,\n  \&quot;question_count\&quot;: 10\n}', error:'Anthropic\\InvalidResponseException: Model returned malformed JSON while parsing quiz question options for concept #884.' })">
+                      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ترقيم مبسّط (سيُستبدل بترقيم Livewire الفعلي) -->
+          <div class="flex flex-col items-center justify-between gap-3 border-t border-line p-4 sm:flex-row">
+            <p class="text-xs font-bold text-muted" x-text="tf('ai.table.showingCount', { n: 6, total: 248 })"></p>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="act" aria-disabled="true" :aria-label="t('ai.table.prevPage')"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i></button>
+              <span class="px-2 text-xs font-bold text-muted" x-text="tf('ai.table.pageOf', { n: 1, total: 42 })"></span>
+              <button type="button" class="act" :aria-label="t('ai.table.nextPage')"><i class="fa-solid ltr:fa-chevron-left rtl:fa-chevron-right" aria-hidden="true"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col gap-4 px-3 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     النافذة — فاحص تفاصيل السجل (Log Detail Inspector Modal)
+     ========================================================================== -->
+<div x-cloak x-show="detailsOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="details-title" @keydown.escape.window="closeDetails()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDetails()"></div>
+
+  <template x-if="selectedLog">
+    <div x-show="detailsOpen" x-trap.noscroll="detailsOpen"
+         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+         class="modal-panel">
+
+      <!-- رأس النافذة -->
+      <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4 sm:p-5">
+        <div class="min-w-0">
+          <h2 id="details-title" class="text-lg font-extrabold text-brand" x-text="t('ai.modal.title')"></h2>
+          <p class="mt-1 truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="'#' + selectedLog.id"></p>
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="badge badge-muted" x-text="t('ai.features.' + selectedLog.feature)"></span>
+            <span class="badge" :class="selectedLog.status === 'success' ? 'badge-success' : selectedLog.status === 'failed' ? 'badge-danger' : 'badge-accent'">
+              <i class="fa-solid" :class="selectedLog.status === 'success' ? 'fa-circle-check' : selectedLog.status === 'failed' ? 'fa-circle-xmark' : 'fa-hourglass-half'" aria-hidden="true"></i>
+              <span x-text="t('ai.status.' + selectedLog.status)"></span>
+            </span>
+          </div>
+        </div>
+        <button type="button" class="icon-btn shrink-0" @click="closeDetails()" :aria-label="t('ai.modal.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </header>
+
+      <!-- محتوى النافذة -->
+      <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+
+        <!-- بيانات الطلب -->
+        <section>
+          <h3 class="mb-2 text-sm font-extrabold text-ink" x-text="t('ai.modal.requestMeta')"></h3>
+          <dl class="grid grid-cols-1 gap-3 rounded-xl border border-line p-3.5 sm:grid-cols-2">
+            <div><dt class="text-xs text-muted" x-text="t('ai.table.colUser')"></dt><dd class="mt-0.5 truncate font-bold" x-text="selectedLog.user"></dd></div>
+            <div><dt class="text-xs text-muted" x-text="t('ai.table.colTimestamp')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start" x-text="selectedLog.time"></dd></div>
+            <div><dt class="text-xs text-muted" x-text="t('ai.modal.provider')"></dt><dd class="mt-0.5 font-bold" dir="ltr" style="text-align:start" x-text="selectedLog.provider + ' / ' + selectedLog.model"></dd></div>
+            <div><dt class="text-xs text-muted" x-text="t('ai.modal.duration')"></dt><dd class="mt-0.5 font-bold tabular-nums" dir="ltr" style="text-align:start" x-text="selectedLog.duration + ' ms'"></dd></div>
+          </dl>
+        </section>
+
+        <!-- تفصيل حساب التوكنز -->
+        <section>
+          <h3 class="mb-2 text-sm font-extrabold text-ink" x-text="t('ai.modal.tokenBreakdown')"></h3>
+          <div class="rounded-xl border border-line p-3.5">
+            <div class="kpi-track">
+              <div class="bg-primary-500" :style="'width:' + Math.round((selectedLog.prompt / Math.max(selectedLog.total,1)) * 100) + '%'"></div>
+              <div class="bg-accent-500" :style="'width:' + Math.round((selectedLog.completion / Math.max(selectedLog.total,1)) * 100) + '%'"></div>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p class="text-[11px] font-bold text-muted" x-text="t('ai.modal.prompt')"></p>
+                <p class="mt-0.5 font-extrabold tabular-nums" dir="ltr" x-text="selectedLog.prompt.toLocaleString('en-US')"></p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-muted" x-text="t('ai.modal.completion')"></p>
+                <p class="mt-0.5 font-extrabold tabular-nums" dir="ltr" x-text="selectedLog.completion.toLocaleString('en-US')"></p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-muted" x-text="t('ai.modal.total')"></p>
+                <p class="mt-0.5 font-extrabold tabular-nums text-brand" dir="ltr" x-text="selectedLog.total.toLocaleString('en-US')"></p>
+              </div>
+            </div>
+            <p class="mt-3 border-t border-line pt-3 text-xs font-bold text-muted">
+              <span x-text="t('ai.modal.estimatedCost')"></span>: <span class="font-extrabold text-ink tabular-nums" dir="ltr" x-text="'$' + selectedLog.cost.toFixed(4)"></span>
+            </p>
+          </div>
+        </section>
+
+        <!-- حمولة المهمة الخام -->
+        <section>
+          <h3 class="mb-2 text-sm font-extrabold text-ink" x-text="t('ai.modal.payload')"></h3>
+          <pre class="code-block" dir="ltr" x-text="selectedLog.payload"></pre>
+        </section>
+
+        <!-- أثر الخطأ (عند الفشل فقط) -->
+        <section x-show="selectedLog.status === 'failed'" x-cloak>
+          <h3 class="mb-2 flex items-center gap-2 text-sm font-extrabold text-error-700 dark:text-error-500">
+            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> <span x-text="t('ai.modal.errorTrace')"></span>
+          </h3>
+          <pre class="code-block border-error-600/40 bg-error-500/5 text-error-700 dark:text-error-500" dir="ltr" x-text="selectedLog.error"></pre>
+        </section>
+      </div>
+
+      <!-- تذييل النافذة -->
+      <footer class="flex shrink-0 justify-end gap-3 border-t border-line p-4 sm:p-5">
+        <button type="button" class="btn btn-outline" @click="closeDetails()" x-text="t('ai.modal.close')"></button>
+      </footer>
+    </div>
+  </template>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة ADM-08 — تحليلات استهلاك الذكاء الاصطناعي. مبنية على نفس هيكل "Dashboard Shell"
+   * المعتمد في صفحات مسؤول المؤسسة. سجلات الجدول والرسوم البيانية بيانات تجريبية ثابتة
+   * (Static Mock Data) تمثل جدول ai_usage_logs — الفلترة، البحث، والترقيم الفعلي سيُنفَّذ
+   * لاحقًا عبر Livewire + Eloquent.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة توكنز الذكاء الاصطناعي من الحد الأقصى (86%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+
+        ai: {
+          title: 'تحليلات استهلاك الذكاء الاصطناعي',
+          subtitle: 'راقب استهلاك التوكنز، التكلفة التقديرية، ومدى الالتزام بحصة الخطة الشهرية عبر جميع ميزات الذكاء الاصطناعي في منظمتك.',
+          quota: {
+            title: 'حصة التوكنز الشهرية', caption: 'إجمالي التوكنز المستهلكة (Prompt + Completion) مقابل حد الخطة الحالية',
+            legendTitle: 'مؤشرات الحالة', legendNormal: 'طبيعي (أقل من 80%)', legendWarning: 'تحذير (80–99%)', legendExceeded: 'تجاوز الحصة (100%+)',
+            usedPct: 'تم استهلاك {v}% من الحصة', warningNote: 'اقتربت منظمتك من الحد الأقصى للحصة الشهرية؛ يُنصح بمراجعة الاستخدام أو ترقية الخطة.',
+            resetHint: 'تتجدد الحصة في بداية كل شهر ميلادي.',
+          },
+          kpi: {
+            totalTokens: 'إجمالي التوكنز المستهلكة', tokenSplit: 'طلب (Prompt) {p}% · استجابة (Completion) {c}%',
+            totalCost: 'التكلفة التقديرية', avgCostPerCall: 'بمتوسط ${v} لكل استدعاء',
+            mostActiveFeature: 'أكثر ميزة ذكاء اصطناعي استخدامًا', mostActiveShare: 'تمثل {v}% من إجمالي الاستدعاءات هذا الشهر',
+            activeUsers: 'المستخدمون النشطون للذكاء الاصطناعي', activeUsersCaption: 'مستخدمًا استخدم ميزة ذكاء اصطناعي واحدة على الأقل هذا الشهر',
+          },
+          charts: {
+            trendTitle: 'اتجاه استهلاك التوكنز', trendSubtitle: 'إجمالي توكنز Prompt و Completion خلال آخر 7 أيام',
+            legendPrompt: 'Prompt', legendCompletion: 'Completion',
+            day1: 'الأحد', day2: 'الإثنين', day3: 'الثلاثاء', day4: 'الأربعاء', day5: 'الخميس', day6: 'الجمعة', day7: 'السبت',
+            featureTitle: 'توزيع الاستخدام حسب الميزة', featureSubtitle: 'نسبة استدعاءات كل ميزة ذكاء اصطناعي من الإجمالي',
+          },
+          toolbar: {
+            searchPlaceholder: 'بحث باسم المستخدم، مفتاح الميزة، أو رقم المهمة…',
+            featureAll: 'كل ميزات الذكاء الاصطناعي', modelAll: 'كل النماذج والمزوّدين',
+            statusAll: 'كل الحالات', clearFilters: 'مسح الفلاتر', exportCsv: 'تصدير السجل CSV',
+            dateRange: { today: 'اليوم', last7: 'آخر 7 أيام', last30: 'آخر 30 يومًا', month: 'هذا الشهر', custom: 'نطاق مخصّص' },
+            dateRangeVals: { from: 'من', to: 'إلى' },
+          },
+          status: { success: 'نجاح', failed: 'فشل', throttled: 'مقيّد (Throttled)' },
+          roles: { teacher: 'معلّم', editor: 'محرّر', reviewer: 'مراجع' },
+          features: {
+            quiz_generation: 'مولّد الاختبارات', content_summarization: 'ملخّص المحتوى',
+            concept_assist: 'مساعد المفاهيم', question_bank_enrichment: 'إغناء بنك الأسئلة', translation_assist: 'مساعد الترجمة',
+          },
+          table: {
+            title: 'سجلات الاستخدام التفصيلية', subtitle: 'كل استدعاء للذكاء الاصطناعي مسجّل مع تفاصيل التوكنز والحالة (ai_usage_logs)',
+            previewState: 'معاينة حالة الجدول', stateData: 'بيانات', stateEmpty: 'فارغة', stateLoading: 'تحميل',
+            colTimestamp: 'التاريخ والوقت', colUser: 'المستخدم', colFeature: 'ميزة AI', colProvider: 'المزوّد والنموذج',
+            colTokens: 'التوكنز (Prompt+Completion)', colStatus: 'الحالة', colActions: 'إجراءات',
+            viewDetails: 'عرض تفاصيل المهمة',
+            relMinutes: 'منذ {n} د', relHours: 'منذ {n} س', relDays: 'منذ {n} يوم',
+            loadingTitle: 'جارٍ تحميل سجلات الاستخدام…',
+            emptyTitle: 'لا توجد نتائج مطابقة', emptyDesc: 'لم يتم العثور على سجلات استخدام تطابق معايير البحث أو الفلاتر الحالية.', clearSearch: 'مسح الفلاتر',
+            showingCount: 'عرض {n} من إجمالي {total} سجلًا', pageOf: 'صفحة {n} من {total}', prevPage: 'الصفحة السابقة', nextPage: 'الصفحة التالية',
+          },
+          modal: {
+            title: 'فاحص تفاصيل المهمة', close: 'إغلاق', requestMeta: 'بيانات الطلب', provider: 'المزوّد والنموذج', duration: 'مدة المعالجة',
+            tokenBreakdown: 'تفصيل حساب التوكنز', prompt: 'Prompt', completion: 'Completion', total: 'الإجمالي', estimatedCost: 'التكلفة التقديرية',
+            payload: 'حمولة المهمة الخام (Raw Job Payload)', errorTrace: 'أثر الخطأ (Error Trace)',
+          },
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'AI token quota is nearing its limit (86%)', reset: 'A password reset link was sent successfully' },
+
+        ai: {
+          title: 'AI Usage Analytics',
+          subtitle: "Track token consumption, estimated cost, and your monthly plan quota compliance across all AI features in your organization.",
+          quota: {
+            title: 'Monthly Token Allowance', caption: 'Total tokens consumed (Prompt + Completion) against the current plan limit',
+            legendTitle: 'Status indicators', legendNormal: 'Normal (under 80%)', legendWarning: 'Warning (80–99%)', legendExceeded: 'Quota exceeded (100%+)',
+            usedPct: '{v}% of quota used', warningNote: "Your organization is nearing its monthly quota limit; consider reviewing usage or upgrading your plan.",
+            resetHint: 'The quota resets at the start of every calendar month.',
+          },
+          kpi: {
+            totalTokens: 'Total Tokens Consumed', tokenSplit: 'Prompt {p}% · Completion {c}%',
+            totalCost: 'Estimated AI Cost', avgCostPerCall: 'Averaging ${v} per call',
+            mostActiveFeature: 'Most Active AI Feature', mostActiveShare: 'Accounts for {v}% of total calls this month',
+            activeUsers: 'Active AI Users', activeUsersCaption: 'Users who used at least one AI feature this month',
+          },
+          charts: {
+            trendTitle: 'Token Consumption Trend', trendSubtitle: 'Total Prompt and Completion tokens over the last 7 days',
+            legendPrompt: 'Prompt', legendCompletion: 'Completion',
+            day1: 'Sun', day2: 'Mon', day3: 'Tue', day4: 'Wed', day5: 'Thu', day6: 'Fri', day7: 'Sat',
+            featureTitle: 'Feature Usage Breakdown', featureSubtitle: 'Share of total calls by AI feature',
+          },
+          toolbar: {
+            searchPlaceholder: 'Search by user name, feature key, or job ID…',
+            featureAll: 'All AI Features', modelAll: 'All Models & Providers',
+            statusAll: 'All Statuses', clearFilters: 'Clear Filters', exportCsv: 'Export Log CSV',
+            dateRange: { today: 'Today', last7: 'Last 7 days', last30: 'Last 30 days', month: 'This month', custom: 'Custom range' },
+            dateRangeVals: { from: 'From', to: 'To' },
+          },
+          status: { success: 'Success', failed: 'Failed', throttled: 'Throttled' },
+          roles: { teacher: 'Teacher', editor: 'Editor', reviewer: 'Reviewer' },
+          features: {
+            quiz_generation: 'Quiz Generator', content_summarization: 'Content Summarizer',
+            concept_assist: 'Concept Assist', question_bank_enrichment: 'Question Bank Enrichment', translation_assist: 'Translation Assist',
+          },
+          table: {
+            title: 'Detailed Usage Logs', subtitle: 'Every AI invocation logged with token and status detail (ai_usage_logs)',
+            previewState: 'Preview table state', stateData: 'Data', stateEmpty: 'Empty', stateLoading: 'Loading',
+            colTimestamp: 'Date & Time', colUser: 'User', colFeature: 'AI Feature', colProvider: 'Provider & Model',
+            colTokens: 'Tokens (Prompt+Completion)', colStatus: 'Status', colActions: 'Actions',
+            viewDetails: 'View Job Details',
+            relMinutes: '{n}m ago', relHours: '{n}h ago', relDays: '{n}d ago',
+            loadingTitle: 'Loading usage logs…',
+            emptyTitle: 'No matching results', emptyDesc: 'No usage logs matched the current search or filter criteria.', clearSearch: 'Clear Filters',
+            showingCount: 'Showing {n} of {total} logs', pageOf: 'Page {n} of {total}', prevPage: 'Previous page', nextPage: 'Next page',
+          },
+          modal: {
+            title: 'Job Detail Inspector', close: 'Close', requestMeta: 'Request Metadata', provider: 'Provider & Model', duration: 'Processing duration',
+            tokenBreakdown: 'Token Calculation Breakdown', prompt: 'Prompt', completion: 'Completion', total: 'Total', estimatedCost: 'Estimated cost',
+            payload: 'Raw Job Payload', errorTrace: 'Error Trace',
+          },
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'aiAnalytics',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- شريط البحث والفلاتر (ربط حقول فقط — بلا منطق فلترة؛ سيُنفَّذ عبر Livewire) ---------- */
+      filters: { query: '', status: 'all', feature: 'all', model: 'all', dateRange: 'last30', customFrom: '', customTo: '' },
+      clearFilters() {
+        this.filters = { query: '', status: 'all', feature: 'all', model: 'all', dateRange: 'last30', customFrom: '', customTo: '' };
+      },
+      exportCsv() { this.toastSuccess(this.t('ai.toolbar.exportCsv') + (this.locale === 'ar' ? ' — بدأ التصدير (معاينة فقط)' : ' — export started (preview only)')); },
+
+      /* ---------- معاينة حالات الجدول (Loading / Empty / Data) ---------- */
+      tableView: 'data',
+
+      /* ---------- نافذة فاحص تفاصيل المهمة ---------- */
+      detailsOpen: false, selectedLog: null,
+      openDetails(log) { this.selectedLog = log; this.detailsOpen = true; },
+      closeDetails() { this.detailsOpen = false; },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true, position: 'top-end', icon: 'success', title: msg,
+          showConfirmButton: false, timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        this.detailsOpen = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

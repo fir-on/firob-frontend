@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>تفاصيل محاولة وتصحيح — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-accent-700 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مؤشر صحة/خطأ الإجابة (AnswerIndicator) ---------- */
+    .ans-indicator { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm; }
+
+    /* ---------- حقل الدرجة اليدوية (ScoreInput) ---------- */
+    .score-input { @apply h-11 w-24 rounded-lg border border-line-strong bg-field px-3 text-center text-sm font-extrabold tabular-nums text-ink transition; }
+    .score-input:hover { @apply border-primary-500; }
+    .score-input:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="quizGradingManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li><a href="quizzes.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.quizzes')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li><a href="quiz-results.html" class="transition hover:text-brand hover:underline" x-text="t('qg.breadcrumbResults')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('qg.breadcrumbCurrent')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — تفاصيل محاولة الطالب وتصحيحها ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1100px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + روابط التنقّل -->
+      <section class="flex flex-col gap-4">
+        <div class="min-w-0">
+          <div class="mb-2 flex flex-wrap items-center gap-2">
+            <a href="quiz-results.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid ltr:fa-arrow-right rtl:fa-arrow-left" aria-hidden="true"></i>
+              <span x-text="t('qg.backToResults')"></span>
+            </a>
+            <span class="text-line-strong" aria-hidden="true">·</span>
+            <a href="quizzes.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid fa-clipboard-question" aria-hidden="true"></i>
+              <span x-text="t('qg.backToQuizzes')"></span>
+            </a>
+          </div>
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('qg.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qg.subtitle')"></p>
+        </div>
+      </section>
+
+      <!-- ================= بيانات الطالب والمحاولة ================= -->
+      <section class="panel p-4 sm:p-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex min-w-0 items-start gap-3.5">
+            <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-soft text-lg font-extrabold text-brand" aria-hidden="true" x-text="attempt.initials"></span>
+            <div class="min-w-0">
+              <p class="truncate text-lg font-extrabold leading-7 text-ink" x-text="attempt.studentName"></p>
+              <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right" x-text="attempt.studentId"></p>
+              <div class="mt-2 flex items-center gap-1.5">
+                <span class="badge badge-muted font-mono" x-text="attempt.quizCode"></span>
+              </div>
+              <p class="mt-1.5 text-sm font-bold leading-6 text-ink" x-text="attempt.quizTitle"></p>
+            </div>
+          </div>
+
+          <span class="badge shrink-0 self-start text-sm" :class="hasPending ? 'badge-warning' : (passed ? 'badge-success' : 'badge-danger')">
+            <i class="fa-solid" :class="hasPending ? 'fa-hourglass-half' : (passed ? 'fa-circle-check' : 'fa-circle-xmark')" aria-hidden="true"></i>
+            <span x-text="hasPending ? t('qg.statusPending') : (passed ? t('qg.statusPassed') : t('qg.statusFailed'))"></span>
+          </span>
+        </div>
+
+        <dl class="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-4 text-xs sm:grid-cols-4">
+          <div>
+            <dt class="font-bold text-muted" x-text="t('qg.submittedAt')"></dt>
+            <dd class="mt-1 font-bold text-ink" x-text="attempt.submittedAt"></dd>
+          </div>
+          <div>
+            <dt class="font-bold text-muted" x-text="t('qg.timeTaken')"></dt>
+            <dd class="mt-1 font-bold tabular-nums text-ink" x-text="attempt.timeTaken"></dd>
+          </div>
+          <div>
+            <dt class="font-bold text-muted" x-text="t('qg.score')"></dt>
+            <dd class="mt-1 font-extrabold tabular-nums text-brand" x-text="totalEarned + ' / ' + totalMax"></dd>
+          </div>
+          <div>
+            <dt class="font-bold text-muted" x-text="t('qg.percentage')"></dt>
+            <dd class="mt-1 font-extrabold tabular-nums text-brand" x-text="percentage + '%'"></dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- ================= تفصيل الإجابات والتصحيح (quiz_answers) ================= -->
+      <section class="panel p-4 sm:p-6" aria-labelledby="answers-title">
+        <h2 id="answers-title" class="mb-4 flex items-center gap-2 text-base font-extrabold text-ink">
+          <i class="fa-solid fa-list-check text-brand" aria-hidden="true"></i>
+          <span x-text="t('qg.answersTitle')"></span>
+        </h2>
+
+        <ul class="space-y-4" role="list">
+          <template x-for="(a, idx) in answers" :key="a.id">
+            <li class="rounded-xl border border-line p-4">
+
+              <!-- رأس السؤال -->
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <p class="min-w-0 flex-1 font-bold leading-6 text-ink">
+                  <span class="text-muted" x-text="t('qg.questionLabel') + ' ' + (idx + 1) + ':'"></span>
+                  <span x-text="a.questionAr"></span>
+                </p>
+                <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+                  <span class="badge" :class="a.auto ? 'badge-info' : 'badge-accent'">
+                    <i class="fa-solid" :class="a.auto ? 'fa-robot' : 'fa-pen-to-square'" aria-hidden="true"></i>
+                    <span x-text="a.auto ? t('qg.gradedAuto') : t('qg.gradedManual')"></span>
+                  </span>
+
+                  <!-- شارة النتيجة: تلقائي -->
+                  <template x-if="a.auto">
+                    <span class="badge" :class="a.isCorrect ? 'badge-success' : 'badge-danger'" x-text="a.marksEarned + ' / ' + a.marksTotal"></span>
+                  </template>
+
+                  <!-- شارة النتيجة: يدوي -->
+                  <template x-if="!a.auto">
+                    <span class="badge" :class="a.marksEarned === null ? 'badge-warning' : 'badge-success'">
+                      <i class="fa-solid" :class="a.marksEarned === null ? 'fa-hourglass-half' : 'fa-circle-check'" aria-hidden="true"></i>
+                      <span x-text="a.marksEarned === null ? t('qg.pendingGrading') : (a.marksEarned + ' / ' + a.marksTotal)"></span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+
+              <!-- ========== تصحيح تلقائي (MCQ / صحيح-خطأ) ========== -->
+              <template x-if="a.auto">
+                <div class="mt-3 flex items-start gap-3">
+                  <span class="ans-indicator" :class="a.isCorrect ? 'bg-success-500/15 text-success-700 dark:text-success-500' : 'bg-error-500/15 text-error-700 dark:text-error-500'" aria-hidden="true">
+                    <i class="fa-solid" :class="a.isCorrect ? 'fa-check' : 'fa-xmark'"></i>
+                  </span>
+                  <dl class="grid min-w-0 flex-1 grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div class="min-w-0">
+                      <dt class="font-bold text-muted" x-text="t('qg.studentAnswer')"></dt>
+                      <dd class="truncate font-bold text-ink" x-text="a.studentAnswerAr"></dd>
+                    </div>
+                    <div class="min-w-0" x-show="!a.isCorrect">
+                      <dt class="font-bold text-muted" x-text="t('qg.correctAnswer')"></dt>
+                      <dd class="truncate font-bold text-success-700 dark:text-success-500" x-text="a.correctAnswerAr"></dd>
+                    </div>
+                  </dl>
+                </div>
+              </template>
+
+              <!-- ========== تصحيح يدوي (مقالي / إجابة قصيرة) ========== -->
+              <template x-if="!a.auto">
+                <div class="mt-3 space-y-3">
+                  <div>
+                    <p class="mb-1.5 text-xs font-bold text-muted" x-text="t('qg.studentAnswer')"></p>
+                    <p class="whitespace-pre-wrap rounded-lg border border-line bg-soft/60 p-3 text-sm leading-6 text-ink" x-text="a.studentAnswerAr"></p>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-start">
+                    <div>
+                      <label class="label" :for="'score-' + a.id" x-text="t('qg.marksAwarded')"></label>
+                      <div class="flex items-center gap-2">
+                        <input type="number" :id="'score-' + a.id" class="score-input" min="0" :max="a.marksTotal" step="1"
+                               x-model.number="a.marksEarned" :aria-label="t('qg.marksAwarded')">
+                        <span class="shrink-0 text-sm font-bold text-muted" x-text="'/ ' + a.marksTotal"></span>
+                      </div>
+                    </div>
+                    <div class="min-w-0">
+                      <label class="label" :for="'feedback-' + a.id" x-text="t('qg.teacherNote')"></label>
+                      <textarea :id="'feedback-' + a.id" class="field" rows="2" x-model="a.feedbackAr" :placeholder="t('qg.teacherNotePlaceholder')"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ================= ملاحظات المعلّم العامة والنتيجة النهائية ================= -->
+      <section class="panel grid grid-cols-1 gap-5 p-4 sm:p-6 lg:grid-cols-[1fr_18rem]">
+        <div class="min-w-0">
+          <label class="label" for="general-comment" x-text="t('qg.generalComment')"></label>
+          <textarea id="general-comment" class="field" rows="4" x-model="generalComment" :placeholder="t('qg.generalCommentPlaceholder')"></textarea>
+          <p class="hint" x-text="t('qg.generalCommentHint')"></p>
+        </div>
+
+        <div class="rounded-xl border border-line bg-soft/60 p-4 text-center">
+          <p class="text-xs font-bold text-muted" x-text="t('qg.finalGrade')"></p>
+          <p class="mt-1.5 text-3xl font-extrabold tabular-nums text-brand" x-text="totalEarned + ' / ' + totalMax"></p>
+          <p class="mt-0.5 text-sm font-bold tabular-nums text-muted" x-text="percentage + '%'"></p>
+          <span class="badge mt-3" :class="hasPending ? 'badge-warning' : (passed ? 'badge-success' : 'badge-danger')">
+            <i class="fa-solid" :class="hasPending ? 'fa-hourglass-half' : (passed ? 'fa-circle-check' : 'fa-circle-xmark')" aria-hidden="true"></i>
+            <span x-text="hasPending ? t('qg.statusPending') : (passed ? t('qg.statusPassed') : t('qg.statusFailed'))"></span>
+          </span>
+          <p class="mt-3 text-[11px] leading-5 text-muted" x-text="tf('qg.passMarkNotice', { mark: passMark })"></p>
+        </div>
+      </section>
+
+      <!-- ================= إجراءات الحفظ والنشر ================= -->
+      <section class="panel flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center sm:justify-end sm:p-5">
+        <p class="me-auto hidden text-xs text-muted sm:block" x-text="t('qg.actionsHint')"></p>
+        <button type="button" class="btn btn-outline" @click="saveChanges()">
+          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+          <span x-text="t('qg.saveChanges')"></span>
+        </button>
+        <button type="button" class="btn btn-primary" @click="publishResult()">
+          <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+          <span x-text="published ? t('qg.published') : t('qg.publishResult')"></span>
+        </button>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1100px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * حالة واجهة تفاصيل محاولة الطالب وتصحيحها — مبنية على نفس هيكل "Dashboard Shell" المعتمد
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد (مطابقة quiz-results.html).
+   * بيانات المحاولة وإجاباتها (quiz_attempts + quiz_answers) أدناه بيانات ثابتة (Static Mock Records) —
+   * عمليات الحفظ والنشر الفعلية ستُنفَّذ لاحقًا عبر Livewire + Eloquent.
+   */
+  function quizGradingManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    /* ---------- بيانات المحاولات الثابتة (quiz_attempts + quiz_answers) — مطابقة quiz-results.html ---------- */
+    const ATTEMPTS_MOCK = {
+      'ATT-1042': {
+        attempt: {
+          id: 'ATT-1042', studentName: 'ريم خالد الفرا', studentId: 'STU-1042', initials: 'رف',
+          quizCode: 'QZ-MATH-101', quizTitle: 'اختبار تشخيصي: الأعداد الصحيحة',
+          submittedAt: '02 مارس 2026 — 10:15 صباحًا', timeTaken: '14:52',
+        },
+        answers: [
+          { id: 'QA-1', auto: true, questionAr: 'أيّ من الأعداد التالية يُعدّ عددًا صحيحًا سالبًا؟', studentAnswerAr: '-5', correctAnswerAr: '-5', isCorrect: true, marksEarned: 5, marksTotal: 5 },
+          { id: 'QA-2', auto: true, questionAr: 'ناتج جمع (+3) و (-7) يساوي؟', studentAnswerAr: '-4', correctAnswerAr: '-4', isCorrect: true, marksEarned: 5, marksTotal: 5 },
+          { id: 'QA-3', auto: false, questionAr: 'اشرح باستخدام مثال كيف نطرح عددين صحيحين مختلفين في الإشارة.', studentAnswerAr: 'نحوّل الطرح إلى جمع المعكوس، مثل (5) - (2) = (5) + (-2) = 3.', marksEarned: 3, marksTotal: 5, feedbackAr: 'إجابة صحيحة جزئيًا، ينقصها مثال إضافي يوضّح حالة الأعداد السالبة.' },
+        ],
+      },
+      'ATT-1077': {
+        attempt: {
+          id: 'ATT-1077', studentName: 'أحمد ياسر حمدان', studentId: 'STU-1077', initials: 'أح',
+          quizCode: 'QZ-MATH-102', quizTitle: 'اختبار تكويني: خصائص الضرب',
+          submittedAt: '02 مارس 2026 — 14:05 مساءً', timeTaken: '11:40',
+        },
+        answers: [
+          { id: 'QA-1', auto: true, questionAr: 'ما ناتج (4) × (-3)؟', studentAnswerAr: '-12', correctAnswerAr: '-12', isCorrect: true, marksEarned: 5, marksTotal: 5 },
+          { id: 'QA-2', auto: false, questionAr: 'وضّح خاصية التوزيع في الضرب بمثال عددي.', studentAnswerAr: '2 × (3 + 4) = 2×3 + 2×4 = 14', marksEarned: 4, marksTotal: 5, feedbackAr: 'إجابة جيدة وصحيحة، مع إمكانية إضافة شرح أوضح لخطوات التوزيع.' },
+        ],
+      },
+      'ATT-1090': {
+        attempt: {
+          id: 'ATT-1090', studentName: 'دانة سامي قديح', studentId: 'STU-1090', initials: 'دق',
+          quizCode: 'QZ-SCI-201', quizTitle: 'اختبار ختامي: تركيب الخلية',
+          submittedAt: '01 مارس 2026 — 09:40 صباحًا', timeTaken: '35:10',
+        },
+        answers: [
+          { id: 'QA-1', auto: true, questionAr: 'أي عضية مسؤولة عن توليد الطاقة (ATP) داخل الخلية؟', studentAnswerAr: 'النواة', correctAnswerAr: 'الميتوكوندريا', isCorrect: false, marksEarned: 0, marksTotal: 5 },
+          { id: 'QA-2', auto: true, questionAr: 'الغشاء البلازمي يُنظّم دخول وخروج المواد من الخلية. (صحيح / خطأ)', studentAnswerAr: 'صحيح', correctAnswerAr: 'صحيح', isCorrect: true, marksEarned: 5, marksTotal: 5 },
+          { id: 'QA-3', auto: false, questionAr: 'اذكر الفرق بين الخلية النباتية والخلية الحيوانية من حيث الجدار الخلوي.', studentAnswerAr: 'لا يوجد فرق بينهما، كلتاهما تحتويان على جدار خلوي بالشكل نفسه.', marksEarned: 3, marksTotal: 25, feedbackAr: 'الإجابة غير دقيقة؛ الخلية الحيوانية لا تحتوي على جدار خلوي.' },
+          { id: 'QA-4', auto: false, questionAr: 'اشرح بأسلوبك كيف تساهم الميتوكوندريا والنواة معًا في الحفاظ على نشاط الخلية.', studentAnswerAr: 'النواة تتحكم في كل أعمال الخلية وتحتوي على المادة الوراثية التي توجّه تصنيع البروتينات، بينما تقوم الميتوكوندريا بتوليد الطاقة اللازمة لهذه العمليات عبر التنفس الخلوي.', marksEarned: 14, marksTotal: 15, feedbackAr: 'إجابة جيدة تربط بين وظيفتي العضيتين، مع إمكانية إضافة أمثلة أكثر تحديدًا لنوع الطاقة (ATP).' },
+        ],
+      },
+      'ATT-1121': {
+        attempt: {
+          id: 'ATT-1121', studentName: 'لين ناصر الحلاق', studentId: 'STU-1121', initials: 'لح',
+          quizCode: 'QZ-ARAB-301', quizTitle: 'اختبار تكويني: عناصر القصة القصيرة',
+          submittedAt: '28 فبراير 2026 — 16:20 مساءً', timeTaken: '08:40',
+        },
+        answers: [
+          { id: 'QA-1', auto: true, questionAr: 'حدّد نوع الشخصية الرئيسية في القصة: (مسطحة / نامية)', studentAnswerAr: 'نامية', correctAnswerAr: 'نامية', isCorrect: true, marksEarned: 3, marksTotal: 3 },
+          { id: 'QA-2', auto: false, questionAr: 'اذكر عنصرين من عناصر القصة القصيرة مع تعريف مختصر لكل منهما.', studentAnswerAr: 'الحبكة: تسلسل الأحداث، والشخصية: من يقوم بالأحداث.', marksEarned: 4, marksTotal: 5, feedbackAr: 'تعريف الحبكة دقيق، وتعريف الشخصية يحتاج توضيحًا أوسع.' },
+        ],
+      },
+      'ATT-1134': {
+        attempt: {
+          id: 'ATT-1134', studentName: 'كريم باسم النجار', studentId: 'STU-1134', initials: 'كن',
+          quizCode: 'QZ-ARAB-302', quizTitle: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية',
+          submittedAt: '25 فبراير 2026 — 11:03 صباحًا', timeTaken: '40:02',
+        },
+        answers: [
+          { id: 'QA-1', auto: true, questionAr: 'ما الزمن الغالب على سرد النصوص الأدبية في هذه الوحدة؟', studentAnswerAr: 'المستقبل', correctAnswerAr: 'الماضي', isCorrect: false, marksEarned: 0, marksTotal: 5 },
+          { id: 'QA-2', auto: true, questionAr: 'الرمز الأدبي يحمل أكثر من معنى ظاهري وباطني. (صحيح / خطأ)', studentAnswerAr: 'صحيح', correctAnswerAr: 'صحيح', isCorrect: true, marksEarned: 5, marksTotal: 5 },
+          { id: 'QA-3', auto: false, questionAr: 'حلّل النص الأدبي الأول موضحًا الرمزية المستخدمة فيه.', studentAnswerAr: 'النص يتحدث عن الطبيعة ويصف الأشجار والأنهار بشكل عام.', marksEarned: 13, marksTotal: 25, feedbackAr: 'وصف عام للنص دون تحليل رمزي كافٍ أو ربط بالسياق التاريخي.' },
+          { id: 'QA-4', auto: false, questionAr: 'ما العلاقة بين النصوص الأدبية المدروسة في هذه الوحدة؟', studentAnswerAr: 'كلها نصوص أدبية قديمة.', marksEarned: 10, marksTotal: 25, feedbackAr: 'إجابة عامة دون تفصيل كافٍ لعناصر الربط بين النصوص.' },
+        ],
+      },
+    };
+    const urlParams = new URLSearchParams(window.location.search);
+    const matchedAttempt = ATTEMPTS_MOCK[urlParams.get('attempt')] || ATTEMPTS_MOCK['ATT-1090'];
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'لوحة التحكم' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { newAttempt: 'طالب جديد أنهى محاولة: «اختبار ختامي: تركيب الخلية»', lowPassRate: 'نسبة النجاح في «اختبار ختامي: تركيب الخلية» أقل من 50%', aiFeedbackReady: 'اكتملت ملاحظات الذكاء الاصطناعي لمحاولة طالب جديدة' },
+
+        qg: {
+          breadcrumbResults: 'نتائج الاختبارات', breadcrumbCurrent: 'تفاصيل محاولة وتصحيح',
+          backToResults: 'العودة إلى نتائج الاختبارات', backToQuizzes: 'العودة إلى قائمة الاختبارات',
+          title: 'تفاصيل محاولة الطالب وتصحيحها', subtitle: 'راجع إجابات الطالب سؤالًا بسؤال، صحّح الأسئلة المقالية يدويًا، وأضف ملاحظاتك قبل اعتماد النشر.',
+          statusPassed: 'ناجح', statusFailed: 'راسب', statusPending: 'بانتظار التصحيح اليدوي',
+          submittedAt: 'وقت التسليم', timeTaken: 'الوقت المستغرق', score: 'الدرجة', percentage: 'النسبة',
+          answersTitle: 'تفصيل الإجابات والتصحيح', questionLabel: 'سؤال',
+          gradedAuto: 'تصحيح تلقائي', gradedManual: 'تصحيح يدوي', pendingGrading: 'بانتظار التصحيح',
+          studentAnswer: 'إجابة الطالب', correctAnswer: 'الإجابة الصحيحة',
+          marksAwarded: 'الدرجة الممنوحة', teacherNote: 'ملاحظة المعلّم', teacherNotePlaceholder: 'أضف ملاحظة توضّح سبب الدرجة الممنوحة للطالب…',
+          generalComment: 'ملاحظات المعلّم العامة', generalCommentPlaceholder: 'ملاحظة عامة على أداء الطالب في هذه المحاولة…',
+          generalCommentHint: 'تظهر هذه الملاحظة للطالب عند اعتماد النشر.',
+          finalGrade: 'الدرجة النهائية', passMarkNotice: 'الحد الأدنى للنجاح {mark}% من الدرجة الكلية.',
+          actionsHint: 'لن تُنشر الدرجة للطالب إلا بعد الضغط على «اعتماد النشر».',
+          saveChanges: 'حفظ التعديلات', publishResult: 'اعتماد النشر للطالب', published: 'تم النشر للطالب',
+          toastSaved: 'تم حفظ التعديلات بنجاح (معاينة فقط)', toastPublished: 'تم اعتماد النشر للطالب بنجاح (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Dashboard' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { newAttempt: 'A student just finished an attempt: "Summative Quiz: Cell Structure"', lowPassRate: 'Pass rate for "Summative Quiz: Cell Structure" is below 50%', aiFeedbackReady: 'AI feedback for a new student attempt is ready' },
+
+        qg: {
+          breadcrumbResults: 'Quiz Results', breadcrumbCurrent: 'Attempt Details & Grading',
+          backToResults: 'Back to Quiz Results', backToQuizzes: 'Back to Quizzes List',
+          title: "Student Attempt Details & Grading", subtitle: "Review the student's answers question by question, manually grade essay questions, and add your notes before publishing the result.",
+          statusPassed: 'Passed', statusFailed: 'Failed', statusPending: 'Awaiting Manual Grading',
+          submittedAt: 'Submitted At', timeTaken: 'Time Taken', score: 'Score', percentage: 'Percentage',
+          answersTitle: 'Answer Breakdown & Grading', questionLabel: 'Question',
+          gradedAuto: 'Auto-graded', gradedManual: 'Manual grading', pendingGrading: 'Awaiting grading',
+          studentAnswer: "Student's Answer", correctAnswer: 'Correct Answer',
+          marksAwarded: 'Marks Awarded', teacherNote: 'Teacher Note', teacherNotePlaceholder: "Add a note explaining the student's awarded mark…",
+          generalComment: 'Overall Teacher Feedback', generalCommentPlaceholder: "A general note on the student's performance in this attempt…",
+          generalCommentHint: 'This note is shown to the student once the result is published.',
+          finalGrade: 'Final Grade', passMarkNotice: 'The minimum passing mark is {mark}% of the total grade.',
+          actionsHint: 'The grade is not visible to the student until you publish it.',
+          saveChanges: 'Save Changes', publishResult: 'Publish Result to Student', published: 'Published to Student',
+          toastSaved: 'Changes saved successfully (preview only)', toastPublished: 'Result published to student successfully (preview only)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'quizzes',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'newAttempt', time: '6m', read: false, icon: 'fa-solid fa-circle-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'lowPassRate', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-error-500/15 text-error-700 dark:text-error-500' },
+        { id: 3, key: 'aiFeedbackReady', time: '5h', read: true, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-accent-700 dark:text-accent-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- بيانات المحاولة الثابتة (quiz_attempts) — مُحدَّدة عبر معرّف المحاولة في رابط الصفحة ---------- */
+      attempt: matchedAttempt.attempt,
+      passMark: 60,
+
+      /* ---------- تفصيل الإجابات الثابتة (quiz_answers) — خليط تلقائي/يدوي ---------- */
+      answers: matchedAttempt.answers,
+      generalComment: '',
+      published: false,
+
+      /* ---------- حسابات الدرجة النهائية ---------- */
+      get totalEarned() { return this.answers.reduce((sum, a) => sum + (Number(a.marksEarned) || 0), 0); },
+      get totalMax() { return this.answers.reduce((sum, a) => sum + (Number(a.marksTotal) || 0), 0); },
+      get percentage() { return this.totalMax ? Math.round((this.totalEarned / this.totalMax) * 100) : 0; },
+      get hasPending() { return this.answers.some(a => !a.auto && a.marksEarned === null); },
+      get passed() { return this.percentage >= this.passMark; },
+
+      /* ---------- الإجراءات (معاينة فقط — بلا تعديل فعلي للبيانات) ---------- */
+      saveChanges() { this.toastSuccess(this.t('qg.toastSaved')); },
+      publishResult() {
+        this.published = true;
+        this.toastSuccess(this.t('qg.toastPublished'));
+        setTimeout(() => { window.location.href = 'quiz-results.html'; }, 1100);
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

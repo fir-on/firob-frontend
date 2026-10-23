@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>طابور المراجعة — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+<!-- بيانات تجريبية مشتركة (مقررات/وحدات/دروس/مفاهيم) — تُحذف عند الانتقال إلى Laravel -->
+<script src="../asset/js/firob-mock-data.js"></script>
+<!-- نسخة احتياطية مطابقة: تعمل الصفحة حتى لو لم يُوضع الملف في asset/js -->
+<script>
+window.FIROB_MOCK = window.FIROB_MOCK || {
+  /* إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس شاشة ADM-05 */
+  structure: {
+    units:   { enabled: true, required: true },
+    lessons: { enabled: true, required: true },
+  },
+
+  /* المقررات (Subject) — الصف خاصية على المقرر (subjects.grade_id) */
+  courses: [
+    { id: 'math-g7', ar: 'الرياضيات - الصف السابع',     en: 'Mathematics - Grade 7',     gradeAr: 'السابع الأساسي', gradeEn: 'Grade 7', icon: 'fa-square-root-variable', cls: 'bg-primary-500/10 text-brand' },
+    { id: 'sci-g8',  ar: 'العلوم العامة - الصف الثامن', en: 'General Science - Grade 8', gradeAr: 'الثامن الأساسي', gradeEn: 'Grade 8', icon: 'fa-flask',                cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+    { id: 'arab-g9', ar: 'اللغة العربية - الصف التاسع', en: 'Arabic Language - Grade 9', gradeAr: 'التاسع الأساسي', gradeEn: 'Grade 9', icon: 'fa-book-open',            cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+  ],
+
+  /* الوحدات (Unit — units.subject_id) */
+  units: [
+    { id: 'u101', courseId: 'math-g7', ar: 'الوحدة الأولى: الأعداد الصحيحة',      en: 'Unit 1: Integers' },
+    { id: 'u102', courseId: 'math-g7', ar: 'الوحدة الثانية: الكسور والنسب',       en: 'Unit 2: Fractions & Ratios' },
+    { id: 'u201', courseId: 'sci-g8',  ar: 'الوحدة الأولى: الخلية ومكوناتها',     en: 'Unit 1: The Cell & Its Components' },
+    { id: 'u202', courseId: 'sci-g8',  ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions' },
+    { id: 'u301', courseId: 'arab-g9', ar: 'الوحدة الأولى: النصوص الأدبية',       en: 'Unit 1: Literary Texts' },
+  ],
+
+  /* الدروس (Lesson — lessons.unit_id) */
+  lessons: [
+    { id: 'l1011', unitId: 'u101', ar: 'جمع الأعداد الصحيحة وطرحها',        en: 'Adding & Subtracting Integers' },
+    { id: 'l1012', unitId: 'u101', ar: 'ضرب الأعداد الصحيحة وقسمتها',       en: 'Multiplying & Dividing Integers' },
+    { id: 'l1021', unitId: 'u102', ar: 'تبسيط الكسور',                      en: 'Simplifying Fractions' },
+    { id: 'l1022', unitId: 'u102', ar: 'النسبة والتناسب',                   en: 'Ratio & Proportion' },
+    { id: 'l2011', unitId: 'u201', ar: 'مكونات الخلية النباتية',             en: 'Plant Cell Components' },
+    { id: 'l2012', unitId: 'u201', ar: 'تركيب الخلية النباتية والحيوانية',   en: 'Plant & Animal Cell Structure' },
+    { id: 'l2021', unitId: 'u202', ar: 'أنواع التفاعلات الكيميائية',         en: 'Types of Chemical Reactions' },
+    { id: 'l2022', unitId: 'u202', ar: 'موازنة المعادلات الكيميائية',        en: 'Balancing Chemical Equations' },
+    { id: 'l3011', unitId: 'u301', ar: 'تحليل النص الشعري',                 en: 'Analysing Poetry' },
+    { id: 'l3012', unitId: 'u301', ar: 'عناصر القصة القصيرة',               en: 'Short Story Elements' },
+  ],
+
+  /* المفاهيم (Concept) — links = withCount(['learningObjects', 'questions']) */
+  concepts: [
+    { id: 1,  code: 'CPT-MATH-001', ar: 'الأعداد الصحيحة الموجبة والسالبة', en: 'Positive & Negative Integers',
+      descAr: 'يشرح مفهوم الأعداد الصحيحة الموجبة والسالبة وطرق تمثيلها على خط الأعداد.',
+      descEn: 'Explains positive and negative integers and how to represent them on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', links: { objects: 6, questions: 24 } },
+    { id: 2,  code: 'CPT-MATH-002', ar: 'خاصية الإبدال في الضرب', en: 'Commutative Property of Multiplication',
+      descAr: 'يوضّح أن ترتيب العددين المضروبين لا يغيّر حاصل الضرب.',
+      descEn: 'Shows that the order of the two multiplied numbers does not change the product.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', links: { objects: 3, questions: 10 } },
+    { id: 3,  code: 'CPT-MATH-003', ar: 'القيمة المطلقة للعدد', en: 'Absolute Value of a Number',
+      descAr: 'يعرّف القيمة المطلقة بأنها المسافة بين العدد والصفر على خط الأعداد.',
+      descEn: 'Defines absolute value as the distance between a number and zero on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 4,  code: 'CPT-SCI-004', ar: 'تركيب الخلية النباتية والحيوانية', en: 'Plant & Animal Cell Structure',
+      descAr: 'يقارن بين مكونات الخلية النباتية والخلية الحيوانية ووظائف كل عضو فيها.',
+      descEn: 'Compares the components of plant and animal cells and the function of each organelle.',
+      courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', links: { objects: 4, questions: 12 } },
+    { id: 5,  code: 'CPT-SCI-005', ar: 'موازنة المعادلة الكيميائية', en: 'Balancing Chemical Equations',
+      descAr: 'يشرح كيفية موازنة عدد الذرات في طرفي المعادلة الكيميائية باستخدام المعاملات.',
+      descEn: 'Explains how to balance atom counts on both sides of a chemical equation using coefficients.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: null, links: { objects: 2, questions: 0 } },
+    { id: 6,  code: 'CPT-ARAB-006', ar: 'عناصر القصة القصيرة: الشخصية', en: 'Elements of the Short Story: Character',
+      descAr: 'يتناول دور الشخصية في بناء الحبكة وأنواعها في القصة القصيرة.',
+      descEn: 'Covers the role of character in building the plot and its types within a short story.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', links: { objects: 5, questions: 18 } },
+    { id: 7,  code: 'CPT-UNFL-007', ar: 'الصورة الشعرية', en: 'Poetic Imagery',
+      descAr: 'يعرّف الصورة الشعرية ودورها في تجسيد المعنى وإثراء النص الأدبي.',
+      descEn: 'Defines poetic imagery and its role in embodying meaning and enriching literary text.',
+      courseId: null, unitId: null, lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 8,  code: 'CPT-MATH-008', ar: 'تبسيط الكسور الاعتيادية', en: 'Simplifying Common Fractions',
+      descAr: 'يشرح قسمة البسط والمقام على العامل المشترك الأكبر للوصول إلى أبسط صورة.',
+      descEn: 'Explains dividing numerator and denominator by their GCD to reach the simplest form.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', links: { objects: 2, questions: 8 } },
+    { id: 9,  code: 'CPT-MATH-009', ar: 'النسبة المئوية', en: 'Percentages',
+      descAr: 'يعرّف النسبة المئوية كنسبة من مئة ويطبّقها على مسائل حياتية.',
+      descEn: 'Defines a percentage as a ratio out of one hundred and applies it to everyday problems.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 10, code: 'CPT-SCI-010', ar: 'التفاعلات الطاردة والماصة للحرارة', en: 'Exothermic & Endothermic Reactions',
+      descAr: 'يميّز بين التفاعلات التي تُطلق الحرارة والتي تمتصها مع أمثلة من الحياة اليومية.',
+      descEn: 'Distinguishes reactions that release heat from those that absorb it, with everyday examples.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', links: { objects: 1, questions: 6 } },
+    { id: 11, code: 'CPT-ARAB-011', ar: 'الوزن الشعري', en: 'Poetic Metre',
+      descAr: 'يعرّف الوزن الشعري والتفعيلات الأساسية في الشعر العربي.',
+      descEn: 'Defines poetic metre and the basic feet of Arabic poetry.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3011', links: { objects: 0, questions: 0 } },
+    { id: 12, code: 'CPT-ARAB-012', ar: 'التشبيه', en: 'Simile',
+      descAr: 'يعرّف التشبيه وأركانه الأربعة وأنواعه.',
+      descEn: 'Defines the simile, its four components and its types.',
+      courseId: 'arab-g9', unitId: null, lessonId: null, links: { objects: 3, questions: 0 } },
+  ],
+};
+</script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }  /* كان 3.81:1 في الداكن */
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }  /* كان 3.93:1 في الداكن */
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }  /* كان 4.28:1 */
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-success { @apply bg-success-700 text-white hover:bg-success-800; }  /* كان 2.54:1 ← ≈5.5:1 */
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- تبويبات نوع العنصر (Segmented Tabs) ---------- */
+    .seg-tab { @apply inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .seg-tab[aria-selected="true"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600 hover:text-white; }
+    .seg-tab .seg-count { @apply inline-grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-black/10 px-1 text-[11px] font-extrabold; }
+    .seg-tab[aria-selected="true"] .seg-count { @apply bg-white/25; }
+
+    /* ---------- سلسلة التصنيف الأكاديمي (Breadcrumb Chip) ---------- */
+    .class-chain { @apply flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-bold text-muted; }
+    .class-chain i { @apply text-[9px] text-muted; }
+
+    /* ---------- أسباب الرفض الشائعة ---------- */
+    .reason-chip { @apply inline-flex min-h-[2rem] items-center gap-1.5 rounded-full border border-line-strong px-3 py-1 text-xs font-bold text-ink transition-colors hover:border-primary-500; }
+    .reason-chip[aria-pressed="true"] { @apply border-primary-700 bg-soft text-brand; }
+
+    /* ---------- الأداء + الطبقات ---------- */
+    li.rq-card { content-visibility: auto; contain-intrinsic-size: auto 240px; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="reviewQueueManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="navCount(item)"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li x-text="t('navGroups.content')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.reviewQueue')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — طابور المراجعة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان -->
+      <section class="min-w-0">
+        <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('rq.title')"></h1>
+        <p class="mt-1 max-w-3xl text-sm text-muted sm:text-base" x-text="t('rq.subtitle')"></p>
+      </section>
+
+      <!-- ================= مؤشرات الأداء — محسوبة من البيانات ================= -->
+      <section :aria-label="t('rq.kpisLabel')" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <template x-for="k in kpiCards" :key="k.key">
+          <div class="panel p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rq.kpi.' + k.key)"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.cls" aria-hidden="true"><i class="fa-solid" :class="k.icon"></i></span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="fmt(kpis[k.key])"></p>
+            <p class="mt-1 text-xs text-muted" x-text="t('rq.kpiHint.' + k.key)"></p>
+          </div>
+        </template>
+      </section>
+
+      <!-- ================= التبويبات (نمط ARIA Tabs كامل) ================= -->
+      <div class="panel p-2 sm:p-3">
+        <div class="flex flex-wrap items-center gap-2" role="tablist" :aria-label="t('rq.tabsLabel')" @keydown="onTabKey($event)">
+          <template x-for="k in KINDS" :key="k">
+            <button type="button" role="tab" class="seg-tab" :id="'tab-' + k" aria-controls="rq-panel"
+                    :aria-selected="(activeTab === k).toString()" :tabindex="activeTab === k ? 0 : -1" @click="setTab(k)">
+              <i class="fa-solid" :class="TAB_ICON[k]" aria-hidden="true"></i>
+              <span x-text="t('rq.tab.' + k)"></span>
+              <span class="seg-count" aria-hidden="true" x-text="count(k)"></span>
+              <span class="sr-only" x-text="'(' + tf('rq.pendingN', { n: count(k) }) + ')'"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <!-- ================= لوحة التبويب ================= -->
+      <section id="rq-panel" role="tabpanel" :aria-labelledby="'tab-' + activeTab" class="space-y-4">
+
+        <!-- البحث والفلاتر -->
+        <div class="panel flex flex-wrap items-center gap-3 p-4 sm:p-5" role="search" :aria-label="t('rq.filtersLabel')">
+          <div class="relative min-w-0 flex-[2_1_16rem]">
+            <label for="rq-search" class="sr-only" x-text="t('rq.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+            <input id="rq-search" x-ref="rqSearch" type="search" x-model.debounce.200ms="search" :placeholder="t('rq.searchPlaceholder')" autocomplete="off"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line-strong bg-field ps-10 pe-3 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none">
+          </div>
+          <div class="min-w-0 flex-[1_1_14rem]"
+               x-data="selectDropdown({ id: 'rq-course', options: () => courseOptions(), get: () => courseFilter, set: (v) => { courseFilter = v }, placeholder: '—' })"
+               @click.outside="closeList()">
+            <label id="rq-course-label" for="rq-course" class="sr-only" x-text="t('rq.colCourse')"></label>
+            <div class="relative" data-combo-anchor>
+              <button type="button" id="rq-course" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="rq-course-list"
+                      :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                      class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                      @click="toggleList()" @keydown="onKey($event)">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="rq-course-list" role="listbox" aria-labelledby="rq-course-label"
+                  x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+          <div class="min-w-0 flex-[1_1_12rem]"
+               x-data="selectDropdown({ id: 'rq-source', options: () => sourceOptions(), get: () => sourceFilter, set: (v) => { sourceFilter = v }, placeholder: '—' })"
+               @click.outside="closeList()">
+            <label id="rq-source-label" for="rq-source" class="sr-only" x-text="t('rq.colSource')"></label>
+            <div class="relative" data-combo-anchor>
+              <button type="button" id="rq-source" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="rq-source-list"
+                      :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                      class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                      @click="toggleList()" @keydown="onKey($event)">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="rq-source-list" role="listbox" aria-labelledby="rq-source-label"
+                  x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+          <div class="min-w-0 flex-[1_1_12rem]"
+               x-data="selectDropdown({ id: 'rq-sort', options: () => sortOptions(), get: () => sortBy, set: (v) => { sortBy = v }, placeholder: '—' })"
+               @click.outside="closeList()">
+            <label id="rq-sort-label" for="rq-sort" class="sr-only" x-text="t('rq.colSort')"></label>
+            <div class="relative" data-combo-anchor>
+              <button type="button" id="rq-sort" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="rq-sort-list"
+                      :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                      class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                      @click="toggleList()" @keydown="onKey($event)">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="rq-sort-list" role="listbox" aria-labelledby="rq-sort-label"
+                  x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline h-11 flex-[1_1_auto] sm:flex-none" @click="resetFilters()" :disabled="!activeFilterCount">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>
+            <span x-text="t('rq.resetFilters')"></span>
+            <span x-show="activeFilterCount" class="badge badge-primary px-2" x-text="activeFilterCount"></span>
+          </button>
+        </div>
+
+        <!-- شريط التحديد الجماعي -->
+        <div x-show="rows.length" class="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card px-4 py-3">
+          <label class="inline-flex min-h-[2.75rem] cursor-pointer items-center gap-2.5 text-sm font-bold">
+            <input type="checkbox" class="h-5 w-5 shrink-0 accent-primary-500" :checked="allSelected"
+                   x-effect="$el.indeterminate = someSelected && !allSelected" @change="toggleAll($event.target.checked)">
+            <span x-text="selected.length ? tf('rq.selectedN', { items: pluralize('items', selected.length) }) : t('rq.selectAll')"></span>
+          </label>
+          <div x-show="selected.length" x-cloak class="ms-auto flex flex-wrap gap-2">
+            <button type="button" class="btn btn-success btn-sm" @click="approveSelected()" :disabled="!eligibleSelected.length">
+              <i class="fa-solid fa-check-double" aria-hidden="true"></i>
+              <span x-text="tf('rq.approveN', { n: eligibleSelected.length })"></span>
+            </button>
+            <button type="button" class="btn btn-outline btn-sm !text-danger hover:!bg-error-500/10" aria-haspopup="dialog" @click="openReject(selectedItems, $event)">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              <span x-text="tf('rq.rejectN', { n: selected.length })"></span>
+            </button>
+          </div>
+          <p x-show="selected.length && eligibleSelected.length < selected.length" x-cloak class="basis-full text-xs font-bold text-warning-800 dark:text-warning-500"
+             x-text="tf('rq.batchSkipNote', { n: selected.length - eligibleSelected.length })"></p>
+        </div>
+
+        <p class="sr-only" role="status" aria-live="polite" x-text="liveMsg"></p>
+
+        <!-- حالة فارغة -->
+        <div x-show="!rows.length" x-cloak class="panel flex flex-col items-center gap-3 p-10 text-center">
+          <span class="grid h-14 w-14 place-items-center rounded-full bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true">
+            <i class="fa-solid text-xl" :class="activeFilterCount ? 'fa-filter-circle-xmark' : 'fa-circle-check'"></i>
+          </span>
+          <h2 class="text-lg font-extrabold text-ink" x-text="activeFilterCount ? t('rq.emptyFilteredTitle') : t('rq.emptyTitle')"></h2>
+          <p class="max-w-sm text-sm text-muted" x-text="activeFilterCount ? t('rq.emptyFilteredSub') : t('rq.emptySub')"></p>
+          <button x-show="activeFilterCount" type="button" class="btn btn-outline mt-1" @click="resetFilters(); $refs.rqSearch.focus()">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('rq.resetFilters')"></span>
+          </button>
+        </div>
+
+        <!-- ================= بطاقات (أقل من xl) — عرض واحد فقط يُرسم ================= -->
+        <template x-if="rows.length && !wide">
+          <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="list" :aria-label="t('rq.tab.' + activeTab)">
+            <template x-for="it in rows" :key="it.id">
+              <li class="rq-card panel flex min-w-0 flex-col gap-3 p-4" :data-rq="it.id" :class="isSelected(it) && 'ring-2 ring-primary-500/50'">
+                <div class="flex items-start gap-3">
+                  <input type="checkbox" class="mt-1 h-5 w-5 shrink-0 accent-primary-500" :checked="isSelected(it)" @change="toggleSel(it)"
+                         :aria-label="tf('rq.selectItem', { title: title(it) })">
+                  <div class="min-w-0 flex-1">
+                    <h2 class="line-clamp-2 font-extrabold leading-6" :lang="titleLang(it)" dir="auto" style="text-align: match-parent" x-text="title(it)"></h2>
+                    <p class="truncate text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="it.refId"></bdi></p>
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="badge" :class="subMeta(it).cls"><i class="fa-solid text-[10px]" :class="subMeta(it).icon" aria-hidden="true"></i> <span x-text="subMeta(it).label"></span></span>
+                  <span x-show="it.source === 'ai'" class="badge badge-accent"><i class="fa-solid fa-wand-magic-sparkles text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.src.ai')"></span></span>
+                  <span x-show="isLate(it)" class="badge badge-warning"><i class="fa-solid fa-clock text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.late')"></span></span>
+                </div>
+                <ol x-show="!missingLevels(it).length" class="class-chain" :aria-label="t('rq.colClassification')">
+                  <template x-for="(s, i) in pathOf(it)" :key="s.level">
+                    <li class="inline-flex min-w-0 items-center gap-1.5">
+                      <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
+                      <span :class="i === pathOf(it).length - 1 && 'text-ink'" x-text="s.label"></span>
+                    </li>
+                  </template>
+                </ol>
+                <p x-show="missingLevels(it).length" :id="'why-' + it.id" class="flex flex-wrap items-start gap-x-1.5 text-xs font-bold text-warning-800 dark:text-warning-500">
+                  <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
+                  <span x-text="missingText(it)"></span>
+                  <a :href="fixUrl(it)" class="underline underline-offset-2 hover:text-brand" x-text="t('rq.fixClassification')"></a>
+                </p>
+                <p class="flex items-center gap-2 text-xs text-muted">
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" lang="ar" aria-hidden="true" x-text="initials(it.submittedBy)"></span>
+                  <span class="min-w-0"><span class="block truncate font-bold text-ink" x-text="it.submittedBy"></span>
+                  <time class="block" :datetime="it.submittedAt" :title="new Date(it.submittedAt).toLocaleString(locale)" x-text="ago(it.submittedAt)"></time></span>
+                </p>
+                <div class="mt-auto flex items-center justify-end gap-1.5 border-t border-line pt-3">
+                          <button type="button" data-act="preview" class="act group relative" @click="openPreview(it, $event)" aria-haspopup="dialog" :aria-label="t('rq.actPreview') + ': ' + title(it)"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('rq.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                          <button type="button" data-act="reject" class="act group relative !text-danger hover:!bg-error-500/10" @click="openReject([it], $event)" aria-haspopup="dialog" :aria-label="t('rq.actReject') + ': ' + title(it)"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('rq.actReject')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                          <button type="button" data-act="approve" class="act group relative border-success-700 text-success-700 hover:!bg-success-500/10 dark:border-success-500 dark:text-success-500" @click="approve(it)" :aria-disabled="(!!missingLevels(it).length).toString()" :aria-describedby="missingLevels(it).length ? 'why-' + it.id : null" :class="missingLevels(it).length && 'cursor-not-allowed opacity-50'" :aria-label="t('rq.actApprove') + ': ' + title(it)"><i class="fa-solid fa-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="missingLevels(it).length ? t('rq.blockedShort') : t('rq.actApprove')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </template>
+
+        <!-- ================= جدول (xl+) ================= -->
+        <template x-if="rows.length && wide">
+          <div class="panel overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[1080px] border-collapse text-sm">
+                <caption class="sr-only" x-text="t('rq.tab.' + activeTab) + ' — ' + pluralize('items', rows.length)"></caption>
+                <thead>
+                  <tr class="bg-soft text-ink">
+                    <th scope="col" class="w-12 px-4 py-3.5"><span class="sr-only" x-text="t('rq.colSelect')"></span></th>
+                    <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colItem')"></th>
+                    <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colClassification')"></th>
+                    <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colSubmitted')"></th>
+                    <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('rq.colActions')"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="it in rows" :key="it.id">
+                    <tr class="transition-colors hover:bg-soft/40" :data-rq="it.id" :class="isSelected(it) && 'bg-primary-500/5'">
+                      <td class="px-4 py-4 align-middle">
+                        <input type="checkbox" class="h-5 w-5 accent-primary-500" :checked="isSelected(it)" @change="toggleSel(it)"
+                               :aria-label="tf('rq.selectItem', { title: title(it) })">
+                      </td>
+                      <td class="px-4 py-4 align-middle">
+                        <div class="min-w-0 max-w-[24rem]">
+                          <p class="truncate font-extrabold leading-6" :lang="titleLang(it)" dir="auto" style="text-align: match-parent" :title="title(it)" x-text="title(it)"></p>
+                          <p class="truncate text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="it.refId"></bdi></p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <span class="badge" :class="subMeta(it).cls"><i class="fa-solid text-[10px]" :class="subMeta(it).icon" aria-hidden="true"></i> <span x-text="subMeta(it).label"></span></span>
+                          <span x-show="it.source === 'ai'" class="badge badge-accent"><i class="fa-solid fa-wand-magic-sparkles text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.src.ai')"></span></span>
+                          <span x-show="isLate(it)" class="badge badge-warning"><i class="fa-solid fa-clock text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.late')"></span></span>
+                        </div>
+                      </td>
+                      <td class="max-w-[20rem] px-4 py-4 align-middle">
+                        <ol x-show="!missingLevels(it).length" class="class-chain" :aria-label="t('rq.colClassification')">
+                          <template x-for="(s, i) in pathOf(it)" :key="s.level">
+                            <li class="inline-flex min-w-0 items-center gap-1.5">
+                              <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
+                              <span :class="i === pathOf(it).length - 1 && 'text-ink'" x-text="s.label"></span>
+                            </li>
+                          </template>
+                        </ol>
+                        <p x-show="missingLevels(it).length" :id="'why-' + it.id" class="flex flex-wrap items-start gap-x-1.5 text-xs font-bold text-warning-800 dark:text-warning-500">
+                          <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
+                          <span x-text="missingText(it)"></span>
+                          <a :href="fixUrl(it)" class="underline underline-offset-2 hover:text-brand" x-text="t('rq.fixClassification')"></a>
+                        </p>
+                      </td>
+                      <td class="px-4 py-4 align-middle">
+                        <p class="flex items-center gap-2 text-xs text-muted">
+                          <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" lang="ar" aria-hidden="true" x-text="initials(it.submittedBy)"></span>
+                          <span class="min-w-0"><span class="block truncate font-bold text-ink" x-text="it.submittedBy"></span>
+                          <time class="block" :datetime="it.submittedAt" :title="new Date(it.submittedAt).toLocaleString(locale)" x-text="ago(it.submittedAt)"></time></span>
+                        </p>
+                      </td>
+                      <td class="px-5 py-4 align-middle">
+                        <div class="flex justify-end gap-1.5">
+                          <button type="button" data-act="preview" class="act group relative" @click="openPreview(it, $event)" aria-haspopup="dialog" :aria-label="t('rq.actPreview') + ': ' + title(it)"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('rq.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                          <button type="button" data-act="reject" class="act group relative !text-danger hover:!bg-error-500/10" @click="openReject([it], $event)" aria-haspopup="dialog" :aria-label="t('rq.actReject') + ': ' + title(it)"><i class="fa-solid fa-xmark" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('rq.actReject')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                          <button type="button" data-act="approve" class="act group relative border-success-700 text-success-700 hover:!bg-success-500/10 dark:border-success-500 dark:text-success-500" @click="approve(it)" :aria-disabled="(!!missingLevels(it).length).toString()" :aria-describedby="missingLevels(it).length ? 'why-' + it.id : null" :class="missingLevels(it).length && 'cursor-not-allowed opacity-50'" :aria-label="t('rq.actApprove') + ': ' + title(it)"><i class="fa-solid fa-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="missingLevels(it).length ? t('rq.blockedShort') : t('rq.actApprove')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </section>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     لوحة المعاينة — يرى المراجع المحتوى كاملًا قبل القرار، مع التنقل للعنصر التالي
+     ========================================================================== -->
+<div x-show="previewOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closePreview()" aria-hidden="true"></div>
+
+  <div x-show="previewOpen" x-trap.noscroll.noreturn="previewOpen && !rejectModalOpen" role="dialog" aria-modal="true" aria-labelledby="pv-title"
+       @keydown.escape.stop.prevent="closePreview()"
+       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="absolute inset-y-0 end-0 flex w-full max-w-xl flex-col border-s border-line bg-card shadow-pop">
+    <template x-if="pv">
+      <div class="flex min-h-0 flex-1 flex-col">
+        <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line bg-soft p-5">
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-muted" x-text="tf('rq.posOf', { n: pvIndex + 1, total: rows.length }) + ' · ' + t('rq.tab.' + pv.kind)"></p>
+            <h2 id="pv-title" class="mt-0.5 text-lg font-extrabold leading-7 text-ink" :lang="titleLang(pv)" dir="auto" style="text-align: match-parent" x-text="title(pv)"></h2>
+            <p class="text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="pv.refId"></bdi></p>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <button type="button" class="icon-btn" @click="stepPreview(-1)" :disabled="pvIndex <= 0" :aria-label="t('rq.prevItem')"><i class="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn" @click="stepPreview(1)" :disabled="pvIndex >= rows.length - 1" :aria-label="t('rq.nextItem')"><i class="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn" @click="closePreview()" :aria-label="t('rq.closePreview')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          </div>
+        </header>
+
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5">
+          <!-- البيانات الوصفية -->
+          <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div><dt class="text-xs font-bold text-muted" x-text="t('rq.colClassification')"></dt>
+              <dd class="mt-1">
+                <span x-show="!missingLevels(pv).length" x-text="pathOf(pv).map(s => s.label).join(' › ')"></span>
+                <span x-show="missingLevels(pv).length" class="font-bold text-warning-800 dark:text-warning-500" x-text="missingText(pv)"></span>
+              </dd></div>
+            <div><dt class="text-xs font-bold text-muted" x-text="t('rq.colSubmitted')"></dt>
+              <dd class="mt-1"><span x-text="pv.submittedBy"></span> · <time :datetime="pv.submittedAt" x-text="ago(pv.submittedAt)"></time></dd></div>
+            <div><dt class="text-xs font-bold text-muted" x-text="t('rq.source')"></dt>
+              <dd class="mt-1"><span class="badge" :class="pv.source === 'ai' ? 'badge-accent' : 'badge-muted'">
+                <i class="fa-solid text-[10px]" :class="pv.source === 'ai' ? 'fa-wand-magic-sparkles' : 'fa-user-pen'" aria-hidden="true"></i>
+                <span x-text="t('rq.src.' + pv.source)"></span></span></dd></div>
+            <div><dt class="text-xs font-bold text-muted" x-text="t('rq.colType')"></dt>
+              <dd class="mt-1"><span class="badge" :class="subMeta(pv).cls" x-text="subMeta(pv).label"></span></dd></div>
+          </dl>
+          <p x-show="pv.note" class="rounded-lg bg-soft px-3 py-2.5 text-sm text-muted"><i class="fa-regular fa-comment me-1 text-brand" aria-hidden="true"></i><span class="font-bold text-ink" x-text="t('rq.submitterNote') + ': '"></span><span x-text="pv.note"></span></p>
+
+          <!-- المحتوى -->
+          <section :aria-label="t('rq.contentLabel')" class="rounded-xl border border-line p-4">
+            <template x-if="pv.kind === 'concepts'">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div lang="ar" dir="rtl"><h3 class="font-extrabold" x-text="pv.titleAr"></h3><p class="mt-1 text-sm leading-6 text-muted" x-text="pv.body.descAr"></p></div>
+                <div lang="en" dir="ltr" class="border-line sm:border-s sm:ps-4"><h3 class="font-extrabold" x-text="pv.titleEn"></h3><p class="mt-1 text-sm leading-6 text-muted" x-text="pv.body.descEn"></p></div>
+              </div>
+            </template>
+            <template x-if="pv.kind === 'learningObjects'">
+              <div class="space-y-3">
+                <div class="grid aspect-video place-items-center rounded-lg bg-soft text-center">
+                  <div>
+                    <i class="fa-solid text-4xl text-brand" :class="subMeta(pv).icon" aria-hidden="true"></i>
+                    <p class="mt-2 text-sm font-bold"><bdi dir="ltr" x-text="pv.body.file"></bdi></p>
+                    <p class="text-xs text-muted"><bdi dir="ltr" x-text="pv.body.size"></bdi></p>
+                  </div>
+                </div>
+                <ul x-show="pv.body.points" class="space-y-1.5 text-sm leading-6 text-muted" lang="ar" dir="rtl" role="list">
+                  <template x-for="(p, i) in pv.body.points || []" :key="i"><li class="flex gap-2"><i class="fa-solid fa-circle mt-2 text-[6px] text-brand" aria-hidden="true"></i><span x-text="p"></span></li></template>
+                </ul>
+                <p class="text-xs text-muted" x-text="t('rq.fileNote')"></p>
+              </div>
+            </template>
+            <template x-if="pv.kind === 'quizzes'">
+              <div lang="ar" dir="rtl" class="space-y-3">
+                <p class="font-bold leading-7" x-text="pv.body.text"></p>
+                <ul x-show="pv.body.options" class="space-y-1.5 text-sm" role="list">
+                  <template x-for="(op, i) in pv.body.options || []" :key="i">
+                    <li class="flex items-center gap-2 rounded-lg px-3 py-1.5" :class="i === pv.body.correct ? 'bg-success-50 font-bold text-ink dark:bg-success-500/10' : 'text-muted'">
+                      <i class="fa-regular" :class="i === pv.body.correct ? 'fa-circle-dot text-success-700 dark:text-success-500' : 'fa-circle'" aria-hidden="true"></i>
+                      <span x-text="op"></span>
+                      <span x-show="i === pv.body.correct" class="ms-auto text-xs text-success-700 dark:text-success-500" x-text="t('rq.correct')"></span>
+                    </li>
+                  </template>
+                </ul>
+                <p x-show="pv.body.answer !== undefined" class="rounded-lg bg-success-50 px-3 py-2 text-sm dark:bg-success-500/10">
+                  <span class="font-bold" x-text="t('rq.correct') + ': '"></span>
+                  <span x-text="pv.body.answer === true ? t('rq.true') : pv.body.answer === false ? t('rq.false') : pv.body.answer"></span>
+                </p>
+                <p x-show="pv.body.questions" class="text-sm text-muted" x-text="tf('rq.quizMeta', { q: pv.body.questions, m: pv.body.marks, d: pv.body.minutes })"></p>
+                <p x-show="pv.body.explanation" class="rounded-lg bg-soft px-3 py-2.5 text-xs leading-5 text-muted">
+                  <span class="font-bold text-ink" x-text="t('rq.explanation') + ': '"></span><span x-text="pv.body.explanation"></span>
+                </p>
+              </div>
+            </template>
+          </section>
+        </div>
+
+        <footer class="shrink-0 space-y-2 border-t border-line p-4">
+          <p x-show="missingLevels(pv).length" id="pv-why" class="text-xs font-bold text-warning-800 dark:text-warning-500">
+            <i class="fa-solid fa-triangle-exclamation me-1" aria-hidden="true"></i><span x-text="missingText(pv)"></span>
+            <a :href="fixUrl(pv)" class="ms-1 underline underline-offset-2" x-text="t('rq.fixClassification')"></a>
+          </p>
+          <div class="flex flex-wrap justify-end gap-2">
+            <button type="button" class="btn btn-outline !text-danger hover:!bg-error-500/10" aria-haspopup="dialog" @click="openReject([pv], $event)">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+            </button>
+            <button type="button" id="pv-approve" class="btn btn-success" :aria-disabled="(!!missingLevels(pv).length).toString()"
+                    :aria-describedby="missingLevels(pv).length ? 'pv-why' : null" :class="missingLevels(pv).length && 'cursor-not-allowed opacity-60'"
+                    @click="approve(pv)">
+              <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.approveAndNext')"></span>
+            </button>
+          </div>
+        </footer>
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة الرفض — فردي أو جماعي، سبب إلزامي (≥ 10 أحرف) + أسباب شائعة
+     ========================================================================== -->
+<div x-cloak x-show="rejectModalOpen" x-transition.opacity class="fixed inset-0 z-[70] grid place-items-center p-4">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeRejectModal()" aria-hidden="true"></div>
+
+  <form novalidate @submit.prevent="confirmReject()" x-show="rejectModalOpen" x-trap.noscroll.noreturn="rejectModalOpen"
+        role="dialog" aria-modal="true" aria-labelledby="rj-title" aria-describedby="rj-desc"
+        @keydown.escape.stop.prevent="closeRejectModal()"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="rj-title" class="text-lg font-extrabold text-ink" x-text="rejectTargets.length > 1 ? tf('rq.rejectTitleN', { items: pluralize('items', rejectTargets.length) }) : t('rq.rejectTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closeRejectModal()" :disabled="busy" :aria-label="t('rq.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+      <div id="rj-desc" class="text-sm text-muted">
+        <p x-text="t('rq.rejectDesc')"></p>
+        <ul class="mt-1.5 space-y-0.5" role="list">
+          <template x-for="it in rejectTargets.slice(0, 4)" :key="it.id">
+            <li class="truncate font-bold text-ink" :lang="titleLang(it)" dir="auto" style="text-align: match-parent" x-text="'• ' + title(it)"></li>
+          </template>
+          <li x-show="rejectTargets.length > 4" class="text-xs" x-text="tf('rq.andMore', { n: rejectTargets.length - 4 })"></li>
+        </ul>
+      </div>
+
+      <fieldset class="min-w-0">
+        <legend class="label" x-text="t('rq.quickReasons')"></legend>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="r in REASONS" :key="r">
+            <button type="button" class="reason-chip" :aria-pressed="rejectTags.includes(r).toString()" @click="toggleTag(r)">
+              <i class="fa-solid text-[10px]" :class="rejectTags.includes(r) ? 'fa-check' : 'fa-plus'" aria-hidden="true"></i>
+              <span x-text="t('rq.reason.' + r)"></span>
+            </button>
+          </template>
+        </div>
+      </fieldset>
+
+      <div>
+        <label for="rj-reason" class="label"><span x-text="t('rq.rejectReasonLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <textarea id="rj-reason" x-ref="reason" x-model="rejectReason" rows="4" maxlength="1000" class="field resize-y" aria-required="true"
+                  :placeholder="t('rq.rejectReasonPlaceholder')" :aria-invalid="(rejectSubmitted && !!reasonError).toString()" aria-describedby="rj-err rj-count"></textarea>
+        <div class="mt-1.5 flex items-start justify-between gap-3">
+          <p id="rj-err" class="err !mt-0" x-show="rejectSubmitted && reasonError"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="reasonError"></span></p>
+          <p id="rj-count" class="ms-auto shrink-0 text-xs tabular-nums text-muted" dir="ltr" x-text="rejectReason.trim().length + ' / 1000'"></p>
+        </div>
+        <p class="hint" x-text="t('rq.rejectHint')"></p>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeRejectModal()" x-text="t('rq.cancel')"></button>
+      <button type="submit" class="btn btn-danger" :disabled="busy" :aria-busy="busy.toString()">
+        <i class="fa-solid fa-circle-notch motion-safe:animate-spin" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('rq.rejecting') : t('rq.rejectConfirm')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Select-only Combobox — نمط ARIA APG).
+   * options: () => [{ value, label }] | get: () => القيمة | set: (v) => تحديث
+   * لوحة المفاتيح: ↑↓ Home End Enter Space Esc Tab + البحث بالكتابة (type-ahead).
+   * Esc يوقف الانتشار حتى لا يُغلق اللوحة الجانبية/النافذة الأم (C5).
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : placeholder; },
+      optId(item) { return this.id + '-opt-' + (item.value === '' ? 'none' : item.value); },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة طابور المراجعة.
+   * — العناصر مبنية على window.FIROB_MOCK (نفس المقررات/الوحدات/الدروس/المفاهيم في الشاشات الأخرى).
+   * — القرار يُغيّر الحالة فعليًا: يختفي العنصر، تتحدث العدادات و KPI وشارة القائمة، مع تراجع خلال 6 ثوانٍ.
+   * — قاعدة «ناقص التصنيف» هي نفسها في الخادم (ClassificationValidator) وتعتمد على إعدادات الهيكل الأكاديمي.
+   * — في Livewire: approve()/rejectItem() داخل DB::transaction + lockForUpdate + فحص status === pending.
+   */
+  function reviewQueueManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+    const M = window.FIROB_MOCK;
+    const C = (code) => M.concepts.find(c => c.code === code);
+    const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    /* عناصر تجريبية — في Laravel: ReviewRequest::pending()->with('reviewable…')->paginate(20) */
+    const conceptItem = (id, code, hours, by, source, note) => {
+      const c = C(code);
+      return { id, kind: 'concepts', sub: 'concept', refId: c.code, titleAr: c.ar, titleEn: c.en, courseId: c.courseId, unitId: c.unitId, lessonId: c.lessonId,
+               source, submittedBy: by, submittedAt: ago(hours), note, body: { descAr: c.descAr, descEn: c.descEn }, status: 'pending' };
+    };
+    const ITEMS = [
+      conceptItem('rv-c1', 'CPT-MATH-003', 52, 'سارة أحمد المصري', 'human', 'تحديث الوصف بعد ملاحظات المشرف.'),
+      conceptItem('rv-c2', 'CPT-SCI-010', 120, 'نور حسن عودة', 'human', ''),
+      conceptItem('rv-c3', 'CPT-ARAB-011', 20, 'ليان عمر الشريف', 'human', ''),
+      conceptItem('rv-c4', 'CPT-MATH-009', 6, 'محمد خالد يوسف', 'human', ''),
+      { id: 'rv-c5', kind: 'concepts', sub: 'concept', refId: 'CPT-MATH-013', titleAr: 'المعكوس الجمعي', titleEn: 'Additive Inverse',
+        courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', source: 'ai', submittedBy: 'سارة أحمد المصري', submittedAt: ago(1), note: '',
+        body: { descAr: 'العدد الذي إذا جُمع مع عدد آخر كان الناتج صفرًا، مثل 5 و−5.', descEn: 'The number that, added to another, gives zero — e.g. 5 and −5.' }, status: 'pending' },
+
+      { id: 'rv-l1', kind: 'learningObjects', sub: 'video', refId: 'LO-VID-102', titleAr: 'فيديو: مكونات الخلية النباتية', titleEn: 'Video: Plant Cell Components',
+        courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2011', source: 'human', submittedBy: 'محمد خالد يوسف', submittedAt: ago(98), note: '',
+        body: { file: 'plant-cell.mp4', size: '48.2 MB' }, status: 'pending' },
+      { id: 'rv-l2', kind: 'learningObjects', sub: 'interactive', refId: 'LO-SIM-045', titleAr: 'محاكاة: موازنة المعادلات الكيميائية', titleEn: 'Simulation: Balancing Chemical Equations',
+        courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2022', source: 'human', submittedBy: 'نور حسن عودة', submittedAt: ago(50), note: 'نسخة محدّثة تدعم الجوال.',
+        body: { file: 'balance-sim.zip', size: '6.4 MB' }, status: 'pending' },
+      { id: 'rv-l3', kind: 'learningObjects', sub: 'document', refId: 'LO-DOC-077', titleAr: 'ورقة عمل: النسبة والتناسب', titleEn: 'Worksheet: Ratio & Proportion',
+        courseId: 'math-g7', unitId: 'u102', lessonId: null, source: 'human', submittedBy: 'يوسف إبراهيم النجار', submittedAt: ago(26), note: '',
+        body: { file: 'ratio-worksheet.pdf', size: '1.2 MB' }, status: 'pending' },
+      { id: 'rv-l4', kind: 'learningObjects', sub: 'text', refId: 'LO-TXT-090', titleAr: 'ملخص: جمع الأعداد الصحيحة وطرحها', titleEn: 'Summary: Adding & Subtracting Integers',
+        courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', source: 'ai', submittedBy: 'سارة أحمد المصري', submittedAt: ago(0.5), note: '',
+        body: { file: 'summary.txt', size: '2 KB', points: ['الأعداد الصحيحة تشمل الموجبة والسالبة والصفر.', 'عند جمع عددين لهما الإشارة نفسها نجمع القيمتين ونحتفظ بالإشارة.', 'الطرح يعني جمع المعكوس الجمعي: أ − ب = أ + (−ب).'] }, status: 'pending' },
+
+      { id: 'rv-q1', kind: 'quizzes', sub: 'mcq', refId: 'QZ-MATH-210', titleAr: 'ما نتيجة ضرب (-4) × (-3)؟', titleEn: '',
+        courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', source: 'ai', submittedBy: 'سارة أحمد المصري', submittedAt: ago(3), note: '',
+        body: { text: 'ما نتيجة ضرب (-4) × (-3)؟', options: ['12', '-12', '7', '-7'], correct: 0, explanation: 'حاصل ضرب عددين سالبين موجب دائمًا.' }, status: 'pending' },
+      { id: 'rv-q2', kind: 'quizzes', sub: 'essay', refId: 'QZ-SCI-087', titleAr: 'قارن بين الخلية النباتية والخلية الحيوانية من حيث الشكل والعضيات.', titleEn: '',
+        courseId: 'sci-g8', unitId: 'u201', lessonId: null, source: 'human', submittedBy: 'يوسف إبراهيم النجار', submittedAt: ago(77), note: '',
+        body: { text: 'قارن بين الخلية النباتية والخلية الحيوانية من حيث الشكل والعضيات.', explanation: 'ثلاثة فروق صحيحة (3) · تنظيم المقارنة (2).' }, status: 'pending' },
+      { id: 'rv-q3', kind: 'quizzes', sub: 'tf', refId: 'QZ-ARAB-056', titleAr: 'الشخصية النامية تتطور وتتغير بتطور أحداث القصة.', titleEn: '',
+        courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', source: 'human', submittedBy: 'ليان عمر الشريف', submittedAt: ago(30), note: '',
+        body: { text: 'الشخصية النامية تتطور وتتغير بتطور أحداث القصة.', answer: true, explanation: 'بخلاف الشخصية الثابتة التي لا تتغير.' }, status: 'pending' },
+      { id: 'rv-q4', kind: 'quizzes', sub: 'fill', refId: 'QZ-MATH-211', titleAr: 'القيمة المطلقة للعدد (-9) تساوي ____.', titleEn: '',
+        courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', source: 'ai', submittedBy: 'سارة أحمد المصري', submittedAt: ago(2), note: '',
+        body: { text: 'القيمة المطلقة للعدد (-9) تساوي ____.', answer: '9', explanation: 'القيمة المطلقة هي المسافة بين العدد والصفر.' }, status: 'pending' },
+      { id: 'rv-q5', kind: 'quizzes', sub: 'quiz', refId: 'QZ-SCI-088', titleAr: 'اختبار قصير: أنواع التفاعلات الكيميائية', titleEn: 'Short Quiz: Types of Chemical Reactions',
+        courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', source: 'human', submittedBy: 'نور حسن عودة', submittedAt: ago(140), note: 'للاستخدام في الأسبوع القادم.',
+        body: { text: 'اختبار قصير من 10 أسئلة متنوعة حول التفاعلات الطاردة والماصة للحرارة.', questions: 10, marks: 20, minutes: 15 }, status: 'pending' },
+    ];
+
+    const I18N = {
+      ar: {
+        docTitle: 'طابور المراجعة — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد المحتوى والأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { submitted: 'أُرسل مفهوم جديد للمراجعة: «المعكوس الجمعي»', ai: 'وصلت دفعة محتوى مولّد بالذكاء الاصطناعي إلى الطابور', late: 'عناصر تنتظر المراجعة منذ أكثر من 3 أيام' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          items: { zero: 'لا عناصر', one: 'عنصر واحد', two: 'عنصران', few: '{n} عناصر', many: '{n} عنصرًا', other: '{n} عنصر' },
+        },
+        rel: { now: 'الآن' },
+
+        rq: {
+          title: 'طابور المراجعة', subtitle: 'راجع المفاهيم والعناصر التعليمية والأسئلة المُرسلة من المعلمين والمحررين أو المولّدة بالذكاء الاصطناعي، ثم اعتمدها أو ارفضها مع توضيح السبب.',
+          kpisLabel: 'مؤشرات الطابور',
+          kpi: { pending: 'بانتظار المراجعة', late: 'متأخرة (> 3 أيام)', approvedToday: 'اعتُمدت اليوم', rejectedToday: 'رُفضت اليوم' },
+          kpiHint: { pending: 'في كل الأنواع', late: 'الأولوية للأقدم', approvedToday: 'آخر 24 ساعة', rejectedToday: 'أُعيدت مع ملاحظات' },
+          tabsLabel: 'نوع العنصر', pendingN: '{n} بانتظار المراجعة',
+          tab: { concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', quizzes: 'الاختبارات والأسئلة' },
+          filtersLabel: 'بحث وفلترة الطابور', searchPlaceholder: 'ابحث بالعنوان أو الرمز أو المُرسل…',
+          allCourses: 'كل المقررات', allSources: 'كل المصادر', sortOldest: 'الأقدم أولًا', sortNewest: 'الأحدث أولًا',
+          colCourse: 'المقرر', colSource: 'المصدر', colSort: 'الترتيب', resetFilters: 'مسح الفلاتر',
+          src: { ai: 'مولّد بالذكاء الاصطناعي', human: 'بشري' },
+          sub: { concept: 'مفهوم', video: 'فيديو', interactive: 'تفاعلي', document: 'مستند', text: 'نص', mcq: 'اختيار من متعدد', tf: 'صح / خطأ', fill: 'إكمال الفراغ', essay: 'مقالي', quiz: 'اختبار كامل' },
+          late: 'متأخر', source: 'المصدر',
+          selectAll: 'تحديد الكل', selectedN: 'محدد: {items}', selectItem: 'تحديد «{title}»', colSelect: 'تحديد',
+          approveN: 'اعتماد ({n})', rejectN: 'رفض ({n})', batchSkipNote: 'سيُتجاوَز {n} ناقص التصنيف عند الاعتماد الجماعي.',
+          colItem: 'العنصر', colType: 'النوع', colClassification: 'التصنيف الأكاديمي', colSubmitted: 'مُرسل بواسطة', colActions: 'إجراءات المراجعة',
+          level: { course: 'المقرر', unit: 'الوحدة', lesson: 'الدرس' },
+          missing: 'لا يمكن الاعتماد — ينقصه: {levels}.', fixClassification: 'استكمال التصنيف',
+          actPreview: 'معاينة', actApprove: 'اعتماد', actReject: 'رفض', blockedShort: 'الاعتماد غير متاح — ناقص التصنيف', approveAndNext: 'اعتماد والانتقال للتالي',
+          emptyTitle: 'لا عناصر بانتظار المراجعة هنا', emptySub: 'أنجزت هذا القسم — تحقّق من التبويبات الأخرى.',
+          emptyFilteredTitle: 'لا نتائج مطابقة', emptyFilteredSub: 'جرّب تعديل البحث أو مسح الفلاتر.',
+          posOf: '{n} من {total}', prevItem: 'العنصر السابق', nextItem: 'العنصر التالي', closePreview: 'إغلاق المعاينة',
+          submitterNote: 'ملاحظة المُرسل', contentLabel: 'المحتوى', correct: 'الإجابة الصحيحة', true: 'صحيح', false: 'خاطئ', explanation: 'التفسير / معايير التصحيح',
+          quizMeta: '{q} سؤالًا · {m} درجة · {d} دقيقة', fileNote: 'معاينة الملف الفعلية تُعرض هنا في النسخة النهائية (مشغّل فيديو / عارض PDF / إطار المحاكاة).',
+          rejectTitle: 'رفض العنصر', rejectTitleN: 'رفض {items}', rejectDesc: 'سيُرسل السبب إلى مُعِدّ المحتوى مع إشعار:', andMore: '… و{n} أخرى',
+          quickReasons: 'أسباب شائعة (اختياري)',
+          reason: { accuracy: 'خطأ علمي', classification: 'تصنيف غير صحيح', language: 'أخطاء لغوية', duplicate: 'محتوى مكرر', quality: 'جودة منخفضة' },
+          rejectReasonLabel: 'سبب الرفض', rejectReasonPlaceholder: 'وضّح ما يجب تعديله ليُقبل العنصر…', rejectHint: 'اكتب ملاحظة قابلة للتنفيذ؛ ستظهر للمُرسل كما هي.',
+          rejectReasonRequired: 'سبب الرفض مطلوب.', rejectReasonMin: 'أضف شرحًا من 10 أحرف على الأقل يوضّح المطلوب تعديله.',
+          cancel: 'إلغاء', rejectConfirm: 'تأكيد الرفض', rejecting: 'جارٍ الرفض…',
+          decided: { approved: 'اعتُمد {what}. متبقٍ في هذا القسم: {left}.', rejected: 'رُفض {what} وأُرسل السبب. متبقٍ في هذا القسم: {left}.' },
+          blocked: 'لا يمكن اعتماد عنصر ناقص التصنيف. استكمل التصنيف أولًا.', skipped: 'تُجووز {items} ناقص التصنيف.',
+          undo: 'تراجع', undone: 'تم التراجع وأُعيد العنصر إلى الطابور.',
+        },
+      },
+      en: {
+        docTitle: 'Review Queue — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Content & Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { submitted: 'A new concept was submitted for review: "Additive Inverse"', ai: 'A batch of AI-generated content arrived in the queue', late: 'Some items have been waiting for more than 3 days' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          items: { zero: 'no items', one: '{n} item', other: '{n} items' },
+        },
+        rel: { now: 'just now' },
+
+        rq: {
+          title: 'Review Queue', subtitle: 'Review concepts, learning objects and questions submitted by teachers and editors or generated by AI, then approve them or reject them with a clear reason.',
+          kpisLabel: 'Queue indicators',
+          kpi: { pending: 'Pending review', late: 'Overdue (> 3 days)', approvedToday: 'Approved today', rejectedToday: 'Rejected today' },
+          kpiHint: { pending: 'Across all types', late: 'Oldest first', approvedToday: 'Last 24 hours', rejectedToday: 'Sent back with notes' },
+          tabsLabel: 'Item type', pendingN: '{n} pending review',
+          tab: { concepts: 'Concepts', learningObjects: 'Learning Objects', quizzes: 'Quizzes & Questions' },
+          filtersLabel: 'Search and filter the queue', searchPlaceholder: 'Search by title, code or submitter…',
+          allCourses: 'All courses', allSources: 'All sources', sortOldest: 'Oldest first', sortNewest: 'Newest first',
+          colCourse: 'Course', colSource: 'Source', colSort: 'Sort', resetFilters: 'Clear filters',
+          src: { ai: 'AI-generated', human: 'Human' },
+          sub: { concept: 'Concept', video: 'Video', interactive: 'Interactive', document: 'Document', text: 'Text', mcq: 'Multiple choice', tf: 'True / False', fill: 'Fill in the blank', essay: 'Essay', quiz: 'Full quiz' },
+          late: 'Overdue', source: 'Source',
+          selectAll: 'Select all', selectedN: '{items} selected', selectItem: 'Select "{title}"', colSelect: 'Select',
+          approveN: 'Approve ({n})', rejectN: 'Reject ({n})', batchSkipNote: '{n} with incomplete classification will be skipped on bulk approval.',
+          colItem: 'Item', colType: 'Type', colClassification: 'Academic classification', colSubmitted: 'Submitted by', colActions: 'Review actions',
+          level: { course: 'course', unit: 'unit', lesson: 'lesson' },
+          missing: 'Cannot approve — missing: {levels}.', fixClassification: 'Complete classification',
+          actPreview: 'Preview', actApprove: 'Approve', actReject: 'Reject', blockedShort: 'Approval unavailable — incomplete classification', approveAndNext: 'Approve & next',
+          emptyTitle: 'Nothing waiting for review here', emptySub: 'This section is done — check the other tabs.',
+          emptyFilteredTitle: 'No matching items', emptyFilteredSub: 'Try changing the search or clearing filters.',
+          posOf: '{n} of {total}', prevItem: 'Previous item', nextItem: 'Next item', closePreview: 'Close preview',
+          submitterNote: 'Submitter note', contentLabel: 'Content', correct: 'Correct answer', true: 'True', false: 'False', explanation: 'Explanation / rubric',
+          quizMeta: '{q} questions · {m} marks · {d} minutes', fileNote: 'The real file preview (video player / PDF viewer / simulation frame) appears here in the final build.',
+          rejectTitle: 'Reject item', rejectTitleN: 'Reject {items}', rejectDesc: 'The reason will be sent to the content author with a notification:', andMore: '… and {n} more',
+          quickReasons: 'Common reasons (optional)',
+          reason: { accuracy: 'Factual error', classification: 'Wrong classification', language: 'Language errors', duplicate: 'Duplicate content', quality: 'Low quality' },
+          rejectReasonLabel: 'Rejection reason', rejectReasonPlaceholder: 'Explain what must change for the item to be accepted…', rejectHint: 'Write an actionable note; the submitter sees it as written.',
+          rejectReasonRequired: 'A rejection reason is required.', rejectReasonMin: 'Add at least 10 characters explaining what to change.',
+          cancel: 'Cancel', rejectConfirm: 'Confirm rejection', rejecting: 'Rejecting…',
+          decided: { approved: '{what} approved. Remaining in this section: {left}.', rejected: '{what} rejected and the reason was sent. Remaining in this section: {left}.' },
+          blocked: 'An item with incomplete classification cannot be approved. Complete the classification first.', skipped: '{items} with incomplete classification skipped.',
+          undo: 'Undo', undone: 'Undone — the item is back in the queue.',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: wideMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'reviewQueue',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      fmt(n) { return Number(n).toLocaleString('en-US'); },
+      ago(iso) {
+        const diff = (Date.now() - new Date(iso)) / 1000, rtf = new Intl.RelativeTimeFormat(this.locale, { numeric: 'auto' });
+        if (diff < 60) return this.t('rel.now');
+        if (diff < 3600) return rtf.format(-Math.round(diff / 60), 'minute');
+        if (diff < 86400) return rtf.format(-Math.round(diff / 3600), 'hour');
+        return rtf.format(-Math.round(diff / 86400), 'day');
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html' },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) {
+        if (item.key === 'notificationCenter') return this.unread;
+        if (item.key === 'reviewQueue') return this.pending.length;
+        return item.count || 0;
+      },
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      notifications: [
+        { id: 1, key: 'submitted', time: '1h', read: false, icon: 'fa-solid fa-inbox', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'ai', time: '3h', read: false, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+        { id: 3, key: 'late', time: '1d', read: true, icon: 'fa-solid fa-hourglass-half', tone: 'bg-warning-500/15 text-warning-800 dark:text-warning-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- البيانات ---------- */
+      KINDS: ['concepts', 'learningObjects', 'quizzes'],
+      TAB_ICON: { concepts: 'fa-diagram-project', learningObjects: 'fa-cubes', quizzes: 'fa-circle-question' },
+      REASONS: ['accuracy', 'classification', 'language', 'duplicate', 'quality'],
+      LATE_HOURS: 72,
+      items: ITEMS,
+      history: { approved: 8, rejected: 3 },          // قرارات سابقة اليوم (من الخادم)
+
+      title(it) { return this.locale === 'en' && it.titleEn ? it.titleEn : it.titleAr; },
+      titleLang(it) { return this.locale === 'en' && it.titleEn ? 'en' : 'ar'; },
+      course(id) { return M.courses.find(c => c.id === id); },
+      pathOf(it) {
+        const L = this.locale;
+        return [
+          { level: 'course', label: this.course(it.courseId)?.[L] },
+          { level: 'unit', label: M.units.find(u => u.id === it.unitId)?.[L] },
+          { level: 'lesson', label: M.lessons.find(l => l.id === it.lessonId)?.[L] },
+        ].filter(s => s.label);
+      },
+      missingLevels(it) {
+        const s = M.structure, m = [];
+        if (!it.courseId) m.push('course');
+        if (s.units.enabled && s.units.required && !it.unitId) m.push('unit');
+        if (s.lessons.enabled && s.lessons.required && !it.lessonId) m.push('lesson');
+        return m;
+      },
+      missingText(it) {
+        return this.tf('rq.missing', { levels: this.missingLevels(it).map(l => this.t('rq.level.' + l)).join(this.locale === 'ar' ? '، ' : ', ') });
+      },
+      fixUrl(it) {
+        return { concepts: 'concept-editor.html?code=' + encodeURIComponent(it.refId) + '&mode=complete', learningObjects: 'learning-objects.html', quizzes: 'quizzes.html' }[it.kind];
+      },
+      subMeta(it) {
+        const m = {
+          concept: ['fa-diagram-project', 'badge-primary'], video: ['fa-film', 'badge-danger'], interactive: ['fa-puzzle-piece', 'badge-accent'],
+          document: ['fa-file-pdf', 'badge-info'], text: ['fa-file-lines', 'badge-muted'],
+          mcq: ['fa-list-ol', 'badge-primary'], tf: ['fa-check-double', 'badge-info'], fill: ['fa-i-cursor', 'badge-muted'], essay: ['fa-pen-nib', 'badge-accent'], quiz: ['fa-clipboard-list', 'badge-success'],
+        }[it.sub];
+        return { icon: m[0], cls: m[1], label: this.t('rq.sub.' + it.sub) };
+      },
+      isLate(it) { return (Date.now() - new Date(it.submittedAt)) / 3600e3 > this.LATE_HOURS; },
+      initials(name) { return name.split(/\s+/).slice(0, 2).map(w => w[0]).join(''); },
+
+      get pending() { return this.items.filter(i => i.status === 'pending'); },
+      count(kind) { return this.pending.filter(i => i.kind === kind).length; },
+      get kpis() {
+        const today = (s) => this.items.filter(i => i.status === s).length;
+        return { pending: this.pending.length, late: this.pending.filter(i => this.isLate(i)).length,
+                 approvedToday: this.history.approved + today('approved'), rejectedToday: this.history.rejected + today('rejected') };
+      },
+      kpiCards: [
+        { key: 'pending', icon: 'fa-hourglass-half', cls: 'bg-primary-500/10 text-brand' },
+        { key: 'late', icon: 'fa-clock', cls: 'bg-warning-500/15 text-warning-800 dark:text-warning-500' },
+        { key: 'approvedToday', icon: 'fa-circle-check', cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { key: 'rejectedToday', icon: 'fa-circle-xmark', cls: 'bg-error-500/15 text-error-700 dark:text-red-300' },
+      ],
+
+      /* ---------- التبويبات والفلاتر (Livewire: #[Url] tab/course/source/sort) ---------- */
+      activeTab: 'concepts',
+      search: '', courseFilter: 'all', sourceFilter: 'all', sortBy: 'oldest',
+      setTab(k) { this.activeTab = k; this.selected = []; },
+      onTabKey(e) {
+        const K = this.KINDS, i = K.indexOf(this.activeTab), rtl = document.documentElement.dir === 'rtl';
+        const map = { [rtl ? 'ArrowLeft' : 'ArrowRight']: (i + 1) % 3, [rtl ? 'ArrowRight' : 'ArrowLeft']: (i + 2) % 3, Home: 0, End: 2 };
+        if (!(e.key in map)) return;
+        e.preventDefault();
+        this.setTab(K[map[e.key]]);
+        this.$nextTick(() => document.getElementById('tab-' + this.activeTab)?.focus());
+      },
+      courseOptions() { return [{ value: 'all', label: this.t('rq.allCourses') }, ...M.courses.map(c => ({ value: c.id, label: c[this.locale] }))]; },
+      sourceOptions() { return [{ value: 'all', label: this.t('rq.allSources') }, { value: 'ai', label: this.t('rq.src.ai') }, { value: 'human', label: this.t('rq.src.human') }]; },
+      sortOptions() { return [{ value: 'oldest', label: this.t('rq.sortOldest') }, { value: 'newest', label: this.t('rq.sortNewest') }]; },
+      get activeFilterCount() { return (this.search.trim() ? 1 : 0) + (this.courseFilter !== 'all') + (this.sourceFilter !== 'all'); },
+      resetFilters() { this.search = ''; this.courseFilter = 'all'; this.sourceFilter = 'all'; },
+      get rows() {
+        const q = this.search.trim().toLowerCase();
+        const dir = this.sortBy === 'oldest' ? 1 : -1;
+        return this.pending
+          .filter(i => i.kind === this.activeTab)
+          .filter(i => this.courseFilter === 'all' || i.courseId === this.courseFilter)
+          .filter(i => this.sourceFilter === 'all' || i.source === this.sourceFilter)
+          .filter(i => !q || [i.titleAr, i.titleEn, i.refId, i.submittedBy].some(s => (s || '').toLowerCase().includes(q)))
+          .sort((a, b) => dir * a.submittedAt.localeCompare(b.submittedAt));
+      },
+
+      /* ---------- التحديد الجماعي ---------- */
+      selected: [],
+      isSelected(it) { return this.selected.includes(it.id); },
+      toggleSel(it) { this.selected = this.isSelected(it) ? this.selected.filter(id => id !== it.id) : [...this.selected, it.id]; },
+      get allSelected() { return !!this.rows.length && this.rows.every(r => this.selected.includes(r.id)); },
+      get someSelected() { return this.rows.some(r => this.selected.includes(r.id)); },
+      toggleAll(on) { this.selected = on ? this.rows.map(r => r.id) : []; },
+      get selectedItems() { return this.rows.filter(r => this.selected.includes(r.id)); },
+      get eligibleSelected() { return this.selectedItems.filter(r => !this.missingLevels(r).length); },
+
+      /* ---------- القرار (اعتماد / رفض) مع تراجع ---------- */
+      liveMsg: '',
+      announce(msg) { this.liveMsg = ''; this.$nextTick(() => { this.liveMsg = msg; }); },
+      focusAfter(index) {
+        this.$nextTick(() => {
+          const next = this.rows[index] || this.rows[index - 1];
+          const el = next && document.querySelector(`[data-rq="${next.id}"] [data-act=preview]`);
+          (el || document.getElementById('tab-' + this.activeTab))?.focus();
+        });
+      },
+      decide(list, status, extra = {}) {
+        const firstIdx = this.rows.indexOf(list[0]);
+        list.forEach(it => Object.assign(it, { status, decidedAt: new Date().toISOString() }, extra));
+        this.selected = this.selected.filter(id => !list.some(it => it.id === id));
+        const what = list.length === 1 ? '«' + this.title(list[0]) + '»' : this.pluralize('items', list.length);
+        const msg = this.tf('rq.decided.' + status, { what, left: this.fmt(this.count(this.activeTab)) });
+        this.announce(msg);
+        if (!this.previewOpen && !this.rejectModalOpen) this.focusAfter(firstIdx);
+        if (!window.Swal) return;
+        Swal.fire({
+          toast: true, position: 'top-end', icon: status === 'approved' ? 'success' : 'info', title: msg,
+          showConfirmButton: true, confirmButtonText: this.t('rq.undo'), timer: 6000, timerProgressBar: true,
+          customClass: { popup: 'firob-swal firob-toast' },
+        }).then(r => {
+          if (!r.isConfirmed) return;
+          list.forEach(it => Object.assign(it, { status: 'pending', decidedAt: null, reason: null, tags: null }));
+          this.announce(this.t('rq.undone'));
+        });
+      },
+      approve(it) {
+        if (this.missingLevels(it).length) { this.announce(this.t('rq.blocked')); return; }
+        const inPreview = this.previewOpen && this.pv === it, idx = this.rows.indexOf(it);
+        this.decide([it], 'approved');
+        if (inPreview) this.afterPreviewDecision(idx);
+      },
+      approveSelected() {
+        const ok = this.eligibleSelected, skipped = this.selectedItems.length - ok.length;
+        if (!ok.length) return;
+        this.decide(ok, 'approved');
+        if (skipped) this.$nextTick(() => this.announce(this.liveMsg + ' ' + this.tf('rq.skipped', { items: this.pluralize('items', skipped) })));
+      },
+
+      /* ---------- نافذة الرفض ---------- */
+      rejectModalOpen: false, rejectTargets: [], rejectReason: '', rejectTags: [], rejectSubmitted: false, busy: false, _returnTo: null,
+      get reasonError() {
+        // الأسباب الشائعة وحدها لا تكفي: يجب شرح حر (≥ 10 أحرف) يوضّح ما يُعدَّل
+        const chips = new Set(this.REASONS.map(r => '• ' + this.t('rq.reason.' + r)));
+        const free = this.rejectReason.split('\n').filter(l => !chips.has(l.trim())).join(' ').trim().length;
+        if (!this.rejectReason.trim()) return this.t('rq.rejectReasonRequired');
+        return free < 10 ? this.t('rq.rejectReasonMin') : '';
+      },
+      openReject(list, ev) {
+        if (!list.length) return;
+        this._returnTo = ev?.currentTarget || null;
+        this.rejectTargets = list; this.rejectReason = ''; this.rejectTags = []; this.rejectSubmitted = false;
+        this.rejectModalOpen = true;
+        this.$nextTick(() => setTimeout(() => this.$refs.reason?.focus(), 60));
+      },
+      toggleTag(r) {
+        const label = this.t('rq.reason.' + r);
+        if (this.rejectTags.includes(r)) {
+          this.rejectTags = this.rejectTags.filter(x => x !== r);
+          this.rejectReason = this.rejectReason.split('\n').filter(l => l.trim() !== '• ' + label).join('\n');
+        } else {
+          this.rejectTags = [...this.rejectTags, r];
+          this.rejectReason = (this.rejectReason.trim() ? this.rejectReason.replace(/\s+$/, '') + '\n' : '') + '• ' + label;
+        }
+      },
+      closeRejectModal() {
+        if (this.busy) return;
+        this.rejectModalOpen = false;
+        const back = this._returnTo;
+        this.$nextTick(() => { if (back?.isConnected && back.offsetParent !== null) back.focus(); });
+      },
+      async confirmReject() {
+        this.rejectSubmitted = true;
+        if (this.reasonError) { this.$refs.reason.focus(); return; }
+        this.busy = true;
+        await sleep(450);                                         // Livewire: $wire.rejectItem(ids, reason, tags)
+        this.busy = false;
+        const list = this.rejectTargets, inPreview = this.previewOpen && list.includes(this.pv), idx = this.rows.indexOf(list[0]);
+        this.rejectModalOpen = false;
+        this.decide(list, 'rejected', { reason: this.rejectReason.trim(), tags: [...this.rejectTags] });
+        if (inPreview) this.afterPreviewDecision(idx);
+        else this.focusAfter(idx);
+      },
+
+      /* ---------- لوحة المعاينة ---------- */
+      previewOpen: false, pvId: null, _pvReturn: null,
+      get pv() { return this.items.find(i => i.id === this.pvId) || null; },
+      get pvIndex() { return this.rows.findIndex(r => r.id === this.pvId); },
+      openPreview(it, ev) {
+        this._pvReturn = ev?.currentTarget || null;
+        this.pvId = it.id; this.previewOpen = true;
+      },
+      stepPreview(d) {
+        const r = this.rows[this.pvIndex + d];
+        if (r) this.pvId = r.id;
+      },
+      afterPreviewDecision(idx) {
+        const next = this.rows[idx] || this.rows[idx - 1];
+        if (next) { this.pvId = next.id; this.$nextTick(() => document.getElementById('pv-approve')?.focus()); }
+        else this.closePreview();
+      },
+      closePreview() {
+        this.previewOpen = false;
+        const id = this.pvId, back = this._pvReturn;
+        this.$nextTick(() => {
+          const row = document.querySelector(`[data-rq="${id}"] [data-act=preview]`);
+          if (row) row.focus();
+          else if (back?.isConnected && back.offsetParent !== null) back.focus();
+          else document.getElementById('tab-' + this.activeTab)?.focus();
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        ['search', 'courseFilter', 'sourceFilter'].forEach(k => this.$watch(k, () => { this.selected = []; }));
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          (g && g.offsetParent !== null ? g : this.$refs.rqSearch)?.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — المعاينة والنافذة تعالجان Esc بنفسيهما
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>

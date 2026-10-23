@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>خريطة النموذج الأولي — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض الوضع الفاتح) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="asset/images/firob-favicon.png">
+
+<!-- ③ Tailwind + الألوان المعتمدة (Style Guide v1.0) — مطابقة لبقية الصفحات -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      fontSize: {
+        caption: ['0.875rem',  { lineHeight: '1.375rem' }],
+        label:   ['0.9375rem', { lineHeight: '1.5rem'   }],
+        body:    ['1rem',      { lineHeight: '1.5rem'   }],
+        lead:    ['1.0625rem', { lineHeight: '1.75rem'  }],
+        h1:      ['clamp(1.5rem, 1rem + 1.7vh, 2rem)',     { lineHeight: '1.3'  }],
+        display: ['clamp(1.75rem, 1rem + 2.4vh, 2.75rem)', { lineHeight: '1.35' }],
+      },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        error:   { 500:'#EF4444', 600:'#DC2626' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ④ طبقة المكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;  --glow: 14 128 161;
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --glow: 14 128 161;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; }
+    html[lang='en'] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+    body { @apply min-h-full bg-page text-body text-ink antialiased transition-colors duration-300; }
+    [x-cloak] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .ic { @apply h-5 w-5 shrink-0 fill-none stroke-current; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+    .btn { @apply inline-flex select-none items-center justify-center gap-2.5 whitespace-nowrap rounded-xl border border-transparent px-4 text-label font-bold transition duration-150; padding-block: .625rem; }
+    .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+    .btn-lg { @apply px-6 text-[1.0625rem] leading-7 active:translate-y-px; padding-block: .875rem; }
+    .btn-accent { @apply bg-accent-500 text-onaccent; }
+    .btn-accent:hover { @apply bg-accent-600; }
+    .btn-ghost { @apply bg-transparent text-brand; }
+    .btn-ghost:hover { @apply bg-soft; }
+
+    .tool { @apply grid h-10 w-10 place-items-center rounded-xl border border-line-strong bg-field text-muted transition-colors hover:bg-soft hover:text-ink; }
+    .tool:focus-visible { outline: none; box-shadow: var(--ring); }
+
+    .card { @apply rounded-3xl border border-line bg-card shadow-card transition-colors duration-300; }
+    .dark .card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .75); }
+
+    /* بطاقة شاشة في الخريطة */
+    .screen {
+      @apply relative flex items-start gap-3.5 rounded-2xl border border-line bg-card p-4 text-start transition duration-150;
+    }
+    .screen:hover { @apply -translate-y-0.5 border-primary-500 shadow-card; }
+    .screen:focus-visible { outline: none; box-shadow: var(--ring); }
+    .screen.is-static { cursor: default; }
+    .screen.is-static:hover { transform: none; border-color: rgb(var(--line)); box-shadow: none; }
+    .screen-ic { @apply grid h-11 w-11 shrink-0 place-items-center self-start rounded-xl bg-soft text-brand; }
+    .screen-head { @apply flex flex-wrap items-center gap-2; }
+    .screen-t  { @apply block min-w-0 text-label font-extrabold text-ink; }
+    .screen-d  { @apply mt-1 block text-caption leading-5 text-muted; }
+    .screen-f  { @apply mt-2 block w-full max-w-full truncate rounded-md bg-field px-1.5 py-0.5 font-mono text-xs text-muted; }
+
+    .grp { @apply mb-3 flex items-center gap-2.5 text-caption font-extrabold uppercase tracking-wide text-line-strong; }
+    .grp::after { content: ''; @apply h-px flex-1 bg-line; }
+
+    /* علامة الحالة/الرمز على كل شاشة (Status Tag) */
+    .tag { @apply inline-flex shrink-0 items-center rounded-md bg-soft px-1.5 py-0.5 font-mono text-[0.6875rem] font-extrabold tracking-wide text-brand; }
+    .tag-muted { @apply bg-line text-muted; }
+
+    /* بطاقة رأس المرحلة (Phase Header) */
+    .phase {
+      @apply mb-10 scroll-mt-24 rounded-3xl border border-line bg-card/60 p-[clamp(1rem,2.5vw,1.5rem)] shadow-card;
+    }
+    .phase-h {
+      @apply mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4;
+    }
+    .phase-no {
+      @apply grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary-500 text-lead font-extrabold text-white;
+    }
+
+    /* شريط التنقّل السريع بين المراحل */
+    .jump { @apply inline-flex items-center gap-2 rounded-xl border border-line-strong bg-field px-3.5 py-2 text-caption font-bold text-ink transition hover:border-primary-500 hover:text-brand; }
+  }
+</style>
+
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script>
+  function hub() {
+    return {
+      dark: document.documentElement.classList.contains('dark'),
+      toggleTheme() { this.dark = !this.dark; FIROB.setTheme(this.dark); },
+
+      /* اللغة هنا تُثبَّت فقط لتنتقل مع المستخدم إلى الشاشة التالية */
+      lang: (window.FIROB && FIROB.locale) || 'ar',
+      setLang(l) { this.lang = l; FIROB.setLocale(l); },
+    };
+  }
+</script>
+</head>
+
+<body x-data="hub()" class="py-8">
+
+<svg width="0" height="0" class="absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6h1M17 12v6M14 15h6"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4M15 12v3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h14a2 2 0 012 2 2 2 0 000 4 2 2 0 01-2 2H5a2 2 0 01-2-2 2 2 0 000-4z"/><path d="M12 7v10"/></symbol>
+  <symbol id="i-wizard" viewBox="0 0 24 24"><path d="M4 18h6M4 6h16M4 12h10"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1116 0"/><path d="M12 14l4-3"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 011-1h9a1 1 0 011 1v16M15 10h4a1 1 0 011 1v10M2 21h20M8 8h3M8 12h3M8 16h3"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 18h16M4 18L3 8l5 3 4-6 4 6 5-3-1 10"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1.2 0 2-.8 2-2 0-1.4-1-1.6-1-2.6 0-.8.6-1.4 1.4-1.4H16a5 5 0 005-5c0-3.9-4-7-9-7z"/><circle cx="7.5" cy="11.5" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="9" r="1"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-cubes" viewBox="0 0 24 24"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-invoice" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></symbol>
+  <symbol id="i-robot" viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10" rx="2"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M12 8V5M9 5h6"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-sitemap" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M12 7v3M12 10H6v3M12 10h6v3"/><rect x="3" y="15" width="6" height="4" rx="1"/><rect x="15" y="15" width="6" height="4" rx="1"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h5v16H6a2 2 0 00-2 2V5z"/><path d="M20 5a2 2 0 00-2-2h-5v16h5a2 2 0 012 2V5z"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19l-4 1z"/><path d="M14 7l3 3"/></symbol>
+  <symbol id="i-checklist" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 1.5-1.5M4 12l1 1 1.5-1.5M4 18l1 1 1.5-1.5"/></symbol>
+  <symbol id="i-quiz" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 011-1h4a1 1 0 011 1v1"/><path d="M10.5 10a1.5 1.5 0 113 0c0 1-1.5 1.3-1.5 2.3M12 15.5h.01"/></symbol>
+  <symbol id="i-warning-triangle" viewBox="0 0 24 24"><path d="M12 3L3 20h18L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 1112 0c0 3 1 4.5 2 6H4c1-1.5 2-3 2-6z"/><path d="M9.5 20a2.5 2.5 0 005 0"/></symbol>
+  <symbol id="i-graduation" viewBox="0 0 24 24"><path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/><path d="M6.5 9.5V15c0 1.66 2.46 3 5.5 3s5.5-1.34 5.5-3V9.5"/><path d="M21 8v6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 011 1v10a1 1 0 01-1 1H9l-5 4v-4a1 1 0 01-1-1V6a1 1 0 011-1z"/></symbol>
+</svg>
+
+<div class="mx-auto w-full max-w-5xl px-4 sm:px-6">
+
+  <!-- ═════ الترويسة ═════ -->
+  <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="inline-flex items-center rounded-xl bg-white p-1 shadow-card">
+        <img src="asset/images/firob-logo.png" alt="FirOb" class="block h-10 w-auto max-w-[12rem] object-contain">
+      </div>
+      <div>
+        <h1 class="text-h1 font-extrabold text-ink">خريطة النموذج الأولي</h1>
+        <p class="mt-0.5 text-caption text-muted">كل الشاشات مترابطة — اختر أي شاشة أو ابدأ المسار الكامل.</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button type="button" class="tool" @click="toggleTheme()" :aria-pressed="dark"
+              :aria-label="dark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'">
+        <svg class="ic" x-show="!dark"><use href="#i-moon"/></svg>
+        <svg class="ic" x-show="dark" x-cloak><use href="#i-sun"/></svg>
+      </button>
+      <div class="flex h-10 items-center rounded-xl border border-line-strong bg-field p-1" role="group" aria-label="اللغة">
+        <button type="button" lang="ar" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                :class="lang === 'ar' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'ar'" @click="setLang('ar')">عربي</button>
+        <button type="button" lang="en" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                :class="lang === 'en' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'en'" @click="setLang('en')">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═════ ابدأ العرض ═════ -->
+  <section class="card mb-6 flex flex-wrap items-center justify-between gap-4 p-[clamp(1rem,3vw,1.75rem)]">
+    <div class="min-w-[16rem] flex-1">
+      <h2 class="text-lead font-extrabold text-ink">رحلة التقييم الكاملة — من الزائر إلى الطالب والمسؤول</h2>
+      <p class="mt-1.5 text-caption leading-6 text-muted">
+        4 مراحل متتالية تحاكي رحلة الاستخدام الحقيقية: بوابة عامة ← تأليف مؤسسي ← تعلّم الطالب ← حوكمة النظام.
+        كل بطاقة تحمل رمز الشاشة (مثل <bdi class="tag" dir="ltr">PUB-01</bdi>) كعلامة حالة وترتيب.
+      </p>
+    </div>
+    <a href="firob-landing.html" target="_blank" rel="noopener noreferrer" class="btn btn-accent btn-lg shrink-0">
+      <span>ابدأ الرحلة من البوابة العامة</span>
+      <svg class="ic ltr:rotate-180"><use href="#i-arrow"/></svg>
+    </a>
+  </section>
+
+  <!-- ═════ شريط التنقّل السريع بين المراحل ═════ -->
+  <nav class="mb-10 flex flex-wrap gap-2" aria-label="التنقّل بين مراحل الرحلة">
+    <a href="#phase-1" class="jump"><svg class="ic h-4 w-4"><use href="#i-building"/></svg> 1. البوابة العامة والمصادقة</a>
+    <a href="#phase-2" class="jump"><svg class="ic h-4 w-4"><use href="#i-sitemap"/></svg> 2. مسؤول المؤسسة والتأليف</a>
+    <a href="#phase-3" class="jump"><svg class="ic h-4 w-4"><use href="#i-graduation"/></svg> 3. رحلة تعلّم الطالب</a>
+    <a href="#phase-4" class="jump"><svg class="ic h-4 w-4"><use href="#i-crown"/></svg> 4. حوكمة المسؤول العام</a>
+    <a href="#phase-5" class="jump"><svg class="ic h-4 w-4"><use href="#i-bell"/></svg> 5. صفحات مشتركة ومرجعية</a>
+  </nav>
+
+  <!-- ═════════════════════════════════════════════════════════
+       المرحلة 1 — البوابة العامة والمصادقة (Public Guest + Auth)
+       ═════════════════════════════════════════════════════════ -->
+  <section id="phase-1" class="phase">
+    <div class="phase-h">
+      <div class="flex items-center gap-3.5">
+        <span class="phase-no">1</span>
+        <div>
+          <h2 class="text-lead font-extrabold text-ink">البوابة العامة والمصادقة — Public Guest Portal</h2>
+          <p class="mt-0.5 text-caption text-muted">زائر بلا تسجيل دخول يستكشف الكتالوج والباقات، ثم يسجّل دخوله أو ينشئ حسابًا.</p>
+        </div>
+      </div>
+      <a href="firob-landing.html" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm shrink-0">
+        ابدأ هذه المرحلة <svg class="ic ltr:rotate-180 h-4 w-4"><use href="#i-arrow"/></svg>
+      </a>
+    </div>
+
+    <h3 class="grp">1.1 البوابة العامة — بدون تسجيل دخول</h3>
+    <div class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="firob-landing.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الصفحة التسويقية العامة</span><span class="tag">PUB-01</span></span>
+          <span class="screen-d">صفحة الهبوط التسويقية لمنصّة FirOb: الميزات، الباقات، وأسئلة شائعة، بلا حاجة لتسجيل الدخول — نقطة البداية لزائر جديد قبل إنشاء حساب أو تسجيل الدخول.</span>
+          <bdi class="screen-f" dir="ltr" title="firob-landing.html">firob-landing.html</bdi>
+        </span>
+      </a>
+    </div>
+    <p class="mb-6 -mt-3 text-caption leading-6 text-muted">
+      ⚠ كتالوج العناصر التعليمية العام ومعاينة الـ Sandbox للزائر غير المسجَّل لم يُصمَّما كشاشتين مستقلتين بعد
+      (انظر STU-08 و STU-04 للنسخة المتاحة بعد تسجيل الدخول كطالب) — سيُضافان إلى هذا القسم فور تصميمهما.
+    </p>
+
+    <h3 class="grp">1.2 المصادقة — Guest → Workspace</h3>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="auth/login.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-lock"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تسجيل الدخول</span><span class="tag tag-muted">AUTH-01</span></span>
+          <span class="screen-d">تبديل الصفة عند الدخول (مدير نظام / مدير مؤسسة ومعلم / طالب / زائر)، معرّف المنشأة + البريد + كلمة المرور، مع مسار 2FA اختياري وأزرار دخول تجريبي لكل صفة.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/login.html">auth/login.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/register.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-user-plus"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">إنشاء حساب</span><span class="tag tag-muted">AUTH-02</span></span>
+          <span class="screen-d">تسجيل منشأة جديدة، ينتهي إلى شاشة تأكيد البريد.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/register.html">auth/register.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/verify-email.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-mail"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تأكيد البريد الإلكتروني</span><span class="tag tag-muted">AUTH-03</span></span>
+          <span class="screen-d">إعادة الإرسال بعدّاد تنازلي + محاكاة فتح الرابط.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/verify-email.html">auth/verify-email.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/forgot-password.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-key"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">نسيت كلمة المرور</span><span class="tag tag-muted">AUTH-04</span></span>
+          <span class="screen-d">طلب رابط الاستعادة، ثم محاكاة فتحه من البريد.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/forgot-password.html">auth/forgot-password.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/reset-password.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-key"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تعيين كلمة مرور جديدة</span><span class="tag tag-muted">AUTH-05</span></span>
+          <span class="screen-d">ثلاث حالات: النموذج، تم التغيير، رابط منتهي.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/reset-password.html">auth/reset-password.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/two-factor.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-shield"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">التحقق بخطوتين (2FA)</span><span class="tag tag-muted">AUTH-06</span></span>
+          <span class="screen-d">رمز OTP أو رمز استرداد، ثم الانتقال للوحة التحكم.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/two-factor.html">auth/two-factor.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/accept-invitation.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-ticket"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">قبول دعوة</span><span class="tag tag-muted">AUTH-07</span></span>
+          <span class="screen-d">إنشاء الحساب من دعوة، مع حالات الدعوة غير الصالحة.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/accept-invitation.html">auth/accept-invitation.html</bdi>
+        </span>
+      </a>
+
+      <a href="auth/onboarding.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-wizard"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">معالج تهيئة المنشأة</span><span class="tag tag-muted">AUTH-08</span></span>
+          <span class="screen-d">معالج متعدّد الخطوات ينتهي بالدخول إلى مساحة العمل.</span>
+          <bdi class="screen-f" dir="ltr" title="auth/onboarding.html">auth/onboarding.html</bdi>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════
+       المرحلة 2 — مسؤول المؤسسة ونظام التأليف (Tenant Admin & Authoring)
+       ═════════════════════════════════════════════════════════ -->
+  <section id="phase-2" class="phase">
+    <div class="phase-h">
+      <div class="flex items-center gap-3.5">
+        <span class="phase-no">2</span>
+        <div>
+          <h2 class="text-lead font-extrabold text-ink">مسؤول المؤسسة ونظام التأليف — Tenant Admin &amp; Authoring</h2>
+          <p class="mt-0.5 text-caption text-muted">من لوحة المؤسسة إلى تأليف المحتوى والاختبارات، مرورًا بمراجعة الجودة.</p>
+        </div>
+      </div>
+      <a href="tenant-admin/TenantDashboard.html" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm shrink-0">
+        ابدأ هذه المرحلة <svg class="ic ltr:rotate-180 h-4 w-4"><use href="#i-arrow"/></svg>
+      </a>
+    </div>
+
+    <h3 class="grp">2.1 اللوحة والحوكمة المؤسسية</h3>
+    <p class="mb-3 -mt-1 text-caption leading-6 text-muted">
+      شاشات إدارية ثانوية (مستخدمون، دعوات، صلاحيات، فوترة، إعدادات) تُفتح من لوحة المؤسسة أو من قائمة الإعدادات —
+      وليست جزءًا من الشريط الجانبي الأساسي لمسار التأليف (انظر الملاحظة في القائمة أدناه).
+    </p>
+    <div class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="tenant-admin/TenantDashboard.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-gauge"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">لوحة المؤسسة</span><span class="tag">ADM-01</span></span>
+          <span class="screen-d">نظرة عامة: الخطة الحالية، حصص الاستخدام، واختصارات الإدارة. أول شاشة في الشريط الجانبي الأساسي.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/TenantDashboard.html">tenant-admin/TenantDashboard.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/users.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-user-plus"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">المستخدمون</span><span class="tag">ADM-02</span></span>
+          <span class="screen-d">جدول مستخدمي المؤسسة، أدوارهم، وحالاتهم.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/users.html">tenant-admin/users.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/UserInvitations.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-mail"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الدعوات</span><span class="tag">ADM-03</span></span>
+          <span class="screen-d">دعوة مستخدمين جدد، متابعة حالة الدعوات وإعادة الإرسال.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/UserInvitations.html">tenant-admin/UserInvitations.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/RoleMatrixEditor.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-shield"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مصفوفة الصلاحيات</span><span class="tag">ADM-04</span></span>
+          <span class="screen-d">تحرير صلاحيات الأدوار داخل المؤسسة.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/RoleMatrixEditor.html">tenant-admin/RoleMatrixEditor.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/ActivityTimeline.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">سجل النشاط</span><span class="tag">ADM-05</span></span>
+          <span class="screen-d">تدقيق الأحداث داخل المؤسسة مع فلاتر وتفاصيل.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/ActivityTimeline.html">tenant-admin/ActivityTimeline.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/AIUsageAnalytics.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-robot"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تحليلات استهلاك AI</span><span class="tag">ADM-06</span></span>
+          <span class="screen-d">استهلاك الذكاء الاصطناعي والتكلفة على مستوى المؤسسة.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/AIUsageAnalytics.html">tenant-admin/AIUsageAnalytics.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/SubscriptionsAndInvoices.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-invoice"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الاشتراك والفوترة</span><span class="tag">ADM-07</span></span>
+          <span class="screen-d">تفاصيل الخطة الحالية، الفواتير، وسجل المدفوعات.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/SubscriptionsAndInvoices.html">tenant-admin/SubscriptionsAndInvoices.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/TenantSettingsForm.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-gear"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">إعدادات المؤسسة</span><span class="tag">ADM-08</span></span>
+          <span class="screen-d">هوية المؤسسة، سياسات النشر، والأمان.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/TenantSettingsForm.html">tenant-admin/TenantSettingsForm.html</bdi>
+        </span>
+      </a>
+    </div>
+
+    <h3 class="grp">2.2 الهيكل الأكاديمي والتأليف — Authoring</h3>
+    <div class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="tenant-admin/AcademicStructure.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-sitemap"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الهيكل الأكاديمي</span><span class="tag">CNT-01</span></span>
+          <span class="screen-d">الصفوف والمواد والوحدات والدروس — بنية المحتوى القابلة للتهيئة لكل مؤسسة. شاشة تهيئة تُفتح من الإعدادات، وليست عنصرًا مستقلًا في الشريط الجانبي (المواد/المناهج غير موجودين كعنصرَي تنقّل منفصلين — بحسب المتطلبات).</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/AcademicStructure.html">tenant-admin/AcademicStructure.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/CoursesManagement.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-book"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">إدارة المقررات</span><span class="tag">CNT-02</span></span>
+          <span class="screen-d">تفاصيل المادة الدراسية: الوحدات والدروس المرتبطة بها. أول عنصر في الشريط الجانبي الأساسي (Courses).</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/CoursesManagement.html">tenant-admin/CoursesManagement.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/concepts.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-cubes"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">المفاهيم</span><span class="tag">CNT-03</span></span>
+          <span class="screen-d">قائمة المفاهيم التعليمية، حالاتها، وربطها بالهيكل الأكاديمي.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/concepts.html">tenant-admin/concepts.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/concept-editor.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-edit"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">محرر المفهوم</span><span class="tag">CNT-04</span></span>
+          <span class="screen-d">تحرير محتوى المفهوم مع مساعد الذكاء الاصطناعي للمقترحات.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/concept-editor.html">tenant-admin/concept-editor.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/learning-objects.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-cubes"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">العناصر التعليمية</span><span class="tag">CNT-05</span></span>
+          <span class="screen-d">رفع وإدارة حزم SCORM وHTML5، ربطها بالمفاهيم والدروس، وضبط ظهورها العام أو الخاص.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/learning-objects.html">tenant-admin/learning-objects.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/ai-generator.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-wizard"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مولّد المحتوى والأسئلة (AI)</span><span class="tag">CNT-08</span></span>
+          <span class="screen-d">توليد أسئلة واختبارات، مفاهيم وشروحات، أو ملخصات دراسية بالذكاء الاصطناعي، مع سجل الاستخدام ومقياس التوكنز.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/ai-generator.html">tenant-admin/ai-generator.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/ReviewQueue.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-checklist"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">طابور المراجعة</span><span class="tag">CNT-07</span></span>
+          <span class="screen-d">اعتماد أو رفض عناصر المحتوى المُرسلة للمراجعة، مع إيضاح سبب الرفض.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/ReviewQueue.html">tenant-admin/ReviewQueue.html</bdi>
+        </span>
+      </a>
+    </div>
+
+    <h3 class="grp">2.3 الاختبارات والتقييمات</h3>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="tenant-admin/quizzes.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-quiz"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">قائمة الاختبارات</span><span class="tag">QZ-01</span></span>
+          <span class="screen-d">كل الاختبارات المرتبطة بالمقررات والوحدات والدروس، مع مؤشرات الأداء.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/quizzes.html">tenant-admin/quizzes.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/quiz-builder.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-wizard"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">منشئ الاختبارات</span><span class="tag">QZ-02</span></span>
+          <span class="screen-d">إنشاء اختبار يدويًا أو بتوليد الأسئلة بالذكاء الاصطناعي، ونشره أو حفظه كمسودة.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/quiz-builder.html">tenant-admin/quiz-builder.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/quiz-results.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">نتائج الاختبارات ومحاولات الطلبة</span><span class="tag">QZ-03</span></span>
+          <span class="screen-d">جدول محاولات الطلبة مع الدرجات ونسب النجاح، ولوحة جانبية موجزة لتصحيح كل إجابة مع ملاحظات الذكاء الاصطناعي.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/quiz-results.html">tenant-admin/quiz-results.html</bdi>
+        </span>
+      </a>
+
+      <a href="tenant-admin/quiz-grading.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-checklist"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تفاصيل محاولة وتصحيح</span><span class="tag">QZ-04</span></span>
+          <span class="screen-d">شاشة كاملة لمراجعة إجابات الطالب سؤالًا بسؤال، تصحيح الأسئلة المقالية يدويًا بدرجة وملاحظة، واعتماد نشر النتيجة.</span>
+          <bdi class="screen-f" dir="ltr" title="tenant-admin/quiz-grading.html">tenant-admin/quiz-grading.html</bdi>
+        </span>
+      </a>
+    </div>
+
+    <h3 class="grp">2.4 بوابة المعلم — Teacher Portal</h3>
+    <p class="mb-3 -mt-1 text-caption leading-6 text-muted">
+      بوابة منفصلة عن لوحة مسؤول المؤسسة، بشريط جانبي خاص يقتصر على مسارات التأليف والتصحيح للمعلّم
+      (مقرراته، شجرة المفاهيم، بنك الأسئلة، العناصر التعليمية، استوديو الذكاء الاصطناعي، وطابور التصحيح) —
+      دون أي من شاشات الحوكمة المؤسسية في 2.1.
+    </p>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <a href="teacher/teacher-dashboard.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-graduation"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">لوحة المعلم</span><span class="tag">TCH-01</span></span>
+          <span class="screen-d">بانر ترحيبي بإجراءات سريعة، مؤشرات أداء، طابور التصحيح الأخير، تقدّم المفاهيم حسب المقرر، وحصة الذكاء الاصطناعي الشخصية. أول شاشة في الشريط الجانبي الخاص بالمعلم.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/teacher-dashboard.html">teacher/teacher-dashboard.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/CoursesManagement.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-book"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مقرراتي الدراسية</span><span class="tag">TCH-02</span></span>
+          <span class="screen-d">المقررات المكلَّف بتدريسها المعلّم، بوحداتها ودروسها.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/CoursesManagement.html">teacher/CoursesManagement.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/concepts.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-cubes"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">شجرة المفاهيم</span><span class="tag">TCH-03</span></span>
+          <span class="screen-d">مفاهيم مقررات المعلّم وحالاتها، منظّمة ضمن الهيكل الأكاديمي.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/concepts.html">teacher/concepts.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/learning-objects.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مكتبة العناصر التعليمية</span><span class="tag">TCH-04</span></span>
+          <span class="screen-d">عناصر تعليمية خاصة بالمعلّم، ربطها بالمفاهيم والدروس.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/learning-objects.html">teacher/learning-objects.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/ai-generator.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-wizard"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مولّد المحتوى والأسئلة (AI)</span><span class="tag">TCH-05</span></span>
+          <span class="screen-d">استوديو الذكاء الاصطناعي الشخصي للمعلّم لتوليد أسئلة ومفاهيم وملخصات.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/ai-generator.html">teacher/ai-generator.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/quizzes.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-quiz"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">قائمة الاختبارات</span><span class="tag">TCH-06</span></span>
+          <span class="screen-d">اختبارات المعلّم عبر مقرراته، مع مؤشرات الأداء.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/quizzes.html">teacher/quizzes.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/quiz-builder.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-wizard"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">منشئ الاختبارات</span><span class="tag">TCH-07</span></span>
+          <span class="screen-d">إنشاء اختبار يدويًا أو بتوليد الأسئلة بالذكاء الاصطناعي، ونشره أو حفظه كمسودة.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/quiz-builder.html">teacher/quiz-builder.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/quiz-results.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">نتائج الاختبارات</span><span class="tag">TCH-08</span></span>
+          <span class="screen-d">محاولات الطلبة في اختبارات المعلّم، بالدرجات ونسب النجاح.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/quiz-results.html">teacher/quiz-results.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/quiz-grading.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-checklist"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تفاصيل محاولة وتصحيح</span><span class="tag">TCH-09</span></span>
+          <span class="screen-d">مراجعة إجابات الطالب سؤالًا بسؤال وتصحيح الأسئلة المقالية يدويًا.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/quiz-grading.html">teacher/quiz-grading.html</bdi>
+        </span>
+      </a>
+
+      <a href="teacher/ReviewQueue.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-checklist"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">طلباتي للمراجعة</span><span class="tag">TCH-10</span></span>
+          <span class="screen-d">متابعة حالة محتوى المعلّم المُرسَل لمراجعة مسؤول المؤسسة، وأسباب الرفض إن وُجدت.</span>
+          <bdi class="screen-f" dir="ltr" title="teacher/ReviewQueue.html">teacher/ReviewQueue.html</bdi>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════
+       المرحلة 3 — رحلة تعلّم الطالب (Student Learning Journey)
+       ═════════════════════════════════════════════════════════ -->
+  <section id="phase-3" class="phase">
+    <div class="phase-h">
+      <div class="flex items-center gap-3.5">
+        <span class="phase-no">3</span>
+        <div>
+          <h2 class="text-lead font-extrabold text-ink">رحلة تعلّم الطالب — Student Learning Journey</h2>
+          <p class="mt-0.5 text-caption text-muted">من لوحة الطالب إلى المقرر فالمفهوم فالاختبار فالنتيجة فالسجل — مسار متتابع بالكامل.</p>
+        </div>
+      </div>
+      <a href="student/student-dashboard.html" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm shrink-0">
+        ابدأ هذه المرحلة <svg class="ic ltr:rotate-180 h-4 w-4"><use href="#i-arrow"/></svg>
+      </a>
+    </div>
+
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="student/student-dashboard.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-graduation"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الشاشة الرئيسية للطالب</span><span class="tag">STU-01</span></span>
+          <span class="screen-d">نظرة عامة على تقدّم الطالب: المواد المسجَّلة، مؤشرات الأداء، محاولات الاختبارات الأخيرة، والمهام القادمة.</span>
+          <bdi class="screen-f" dir="ltr" title="student/student-dashboard.html">student/student-dashboard.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/student-courses.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-sitemap"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تصفّح المقررات الدراسية</span><span class="tag">STU-02</span></span>
+          <span class="screen-d">تنقّل هرمي من المقرر إلى الوحدة فالدرس فالمفهوم، مع زبدة خبز ديناميكية وبحث وفلاتر — يعرض المحتوى المنشور فقط.</span>
+          <bdi class="screen-f" dir="ltr" title="student/student-courses.html">student/student-courses.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/concept-viewer.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-book"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">عارض المفهوم</span><span class="tag">STU-03</span></span>
+          <span class="screen-d">وصف ثنائي اللغة، وسائط تعليمية تفاعلية (فيديو/صور/PDF)، عناصر تعليمية مرتبطة، وتمرين تحقّق ذاتي سريع.</span>
+          <bdi class="screen-f" dir="ltr" title="student/concept-viewer.html">student/concept-viewer.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/learning-object-sandbox.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-cubes"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">عارض العنصر التعليمي — Sandbox</span><span class="tag">STU-04</span></span>
+          <span class="screen-d">منصّة تجربة تفاعلية (محاكاة HTML5) مع لوحة تحكّم بالمتغيّرات، ملاحظات الطالب، نقاط تحقّق ذاتي سريعة، وعناصر تعليمية مرتبطة.</span>
+          <bdi class="screen-f" dir="ltr" title="student/learning-object-sandbox.html">student/learning-object-sandbox.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/quiz-player.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-quiz"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مشغّل الاختبار التفاعلي</span><span class="tag">STU-05</span></span>
+          <span class="screen-d">شريط أدوات مركَّز مع مؤقّت ومؤشّر تقدّم، أسئلة اختيار من متعدد وصواب/خطأ ومقالية، تمييز للمراجعة، لوحة تنقّل سريعة بين الأسئلة، ونافذة تأكيد تسليم.</span>
+          <bdi class="screen-f" dir="ltr" title="student/quiz-player.html">student/quiz-player.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/student-quiz-result.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-checklist"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">نتيجة المحاولة وتفصيلها</span><span class="tag">STU-06</span></span>
+          <span class="screen-d">بطاقة أداء بالدرجة النهائية وحالة النجاح، تحليل حسب تصنيف بلوم المعرفي، تفصيل الإجابات سؤالًا بسؤال مع ملاحظات مُساعدة بالذكاء الاصطناعي، وتحميل تقرير PDF.</span>
+          <bdi class="screen-f" dir="ltr" title="student/student-quiz-result.html">student/student-quiz-result.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/student-quiz-history.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">سجل محاولات الاختبارات</span><span class="tag">STU-07</span></span>
+          <span class="screen-d">سجل كامل لمحاولات الطالب السابقة مع بطاقات تحليلية، بحث وفلاتر حسب المقرر والحالة والتاريخ، وروابط لعرض تفاصيل كل نتيجة أو إعادة المحاولة.</span>
+          <bdi class="screen-f" dir="ltr" title="student/student-quiz-history.html">student/student-quiz-history.html</bdi>
+        </span>
+      </a>
+
+      <a href="student/learning-objects-catalog.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الكتالوج العام للعناصر التعليمية</span><span class="tag">STU-08</span></span>
+          <span class="screen-d">كتالوج عام للعناصر التعليمية (محاكاة، أوراق عمل تفاعلية، نماذج ثلاثية الأبعاد، بطاقات تعليمية) مع بحث وفلاتر حسب النوع والصف وتصنيف بلوم، وتبديل بين عرض مسطّح وتجميع حسب الصف/المقرر.</span>
+          <bdi class="screen-f" dir="ltr" title="student/learning-objects-catalog.html">student/learning-objects-catalog.html</bdi>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════
+       المرحلة 4 — حوكمة المسؤول العام وحالة النظام (Super Admin Governance)
+       ═════════════════════════════════════════════════════════ -->
+  <section id="phase-4" class="phase">
+    <div class="phase-h">
+      <div class="flex items-center gap-3.5">
+        <span class="phase-no">4</span>
+        <div>
+          <h2 class="text-lead font-extrabold text-ink">حوكمة المسؤول العام — Super Admin Governance (Landlord)</h2>
+          <p class="mt-0.5 text-caption text-muted">إدارة المؤسسات والباقات والاشتراكات، وتحليلات AI عامة، وسجل النشاط عبر المنصّة.</p>
+        </div>
+      </div>
+      <a href="super-admin/overview.html" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm shrink-0">
+        ابدأ هذه المرحلة <svg class="ic ltr:rotate-180 h-4 w-4"><use href="#i-arrow"/></svg>
+      </a>
+    </div>
+
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="super-admin/overview.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-crown"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">لوحة المنصّة</span><span class="tag">LND-01</span></span>
+          <span class="screen-d">مؤشرات المنصّة، المؤسسات، الاشتراكات، والنشاط العام.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/overview.html">super-admin/overview.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/tenants.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-building"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">إدارة المؤسسات</span><span class="tag">LND-02</span></span>
+          <span class="screen-d">جدول المؤسسات + Slide-over للتفاصيل، بحث وفلاتر وإجراءات.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/tenants.html">super-admin/tenants.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/plans.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-cubes"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">إدارة الباقات</span><span class="tag">LND-04</span></span>
+          <span class="screen-d">تعريف باقات الاشتراك وحدودها وأسعارها.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/plans.html">super-admin/plans.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/subscriptions.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-layers"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الاشتراكات</span><span class="tag">LND-05</span></span>
+          <span class="screen-d">اشتراكات المؤسسات، حالاتها، والتجديد/الإلغاء.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/subscriptions.html">super-admin/subscriptions.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/payments.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-invoice"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الفواتير والمدفوعات</span><span class="tag">LND-06</span></span>
+          <span class="screen-d">سجل الفواتير وحالات الدفع والتحصيل.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/payments.html">super-admin/payments.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/system-settings.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-gear"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">إعدادات النظام</span><span class="tag">LND-07</span></span>
+          <span class="screen-d">إعدادات المنصّة العامة (أمان، نشر، هوية بصرية).</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/system-settings.html">super-admin/system-settings.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/activity-log.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-clock"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">سجل النشاط العام</span><span class="tag">LND-08</span></span>
+          <span class="screen-d">تدقيق الأحداث عبر كل المؤسسات مع تصدير CSV/JSON.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/activity-log.html">super-admin/activity-log.html</bdi>
+        </span>
+      </a>
+
+      <a href="super-admin/ai-analytics.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-robot"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">تحليلات AI العامة</span><span class="tag">LND-09</span></span>
+          <span class="screen-d">استهلاك الذكاء الاصطناعي والتكلفة عبر المنصّة.</span>
+          <bdi class="screen-f" dir="ltr" title="super-admin/ai-analytics.html">super-admin/ai-analytics.html</bdi>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════
+       المرحلة 5 — صفحات مشتركة ومعالجات الأخطاء + المرجع
+       ═════════════════════════════════════════════════════════ -->
+  <section id="phase-5" class="phase">
+    <div class="phase-h">
+      <div class="flex items-center gap-3.5">
+        <span class="phase-no">5</span>
+        <div>
+          <h2 class="text-lead font-extrabold text-ink">صفحات مشتركة ومعالجات الأخطاء — Shared &amp; Error Handlers</h2>
+          <p class="mt-0.5 text-caption text-muted">متاحة من أيقونة الجرس وقائمة الملف الشخصي في كل الأدوار، دون استثناء.</p>
+        </div>
+      </div>
+      <a href="common/profile.html" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm shrink-0">
+        ابدأ هذه المرحلة <svg class="ic ltr:rotate-180 h-4 w-4"><use href="#i-arrow"/></svg>
+      </a>
+    </div>
+
+    <h3 class="grp">5.1 مشتركة بين كل الأدوار</h3>
+    <div class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="common/profile.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-user-plus"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الملف الشخصي والإعدادات</span><span class="tag">COM-01</span></span>
+          <span class="screen-d">شاشة موحّدة بثلاثة تبويبات: البيانات الشخصية، الأمان والخصوصية (2FA، رموز الاسترداد، الجلسات النشطة، كلمة المرور، وسجل النشاط الأمني)، والتفضيلات والإشعارات — تُفتح من قائمة الملف الشخصي في كل الأدوار. تضم هذه الشاشة اعتبارًا من هذا الإصدار ما كانت شاشة COM-02 (الأمان والتحقق بخطوتين) تقدّمه سابقًا.</span>
+          <bdi class="screen-f" dir="ltr" title="common/profile.html">common/profile.html</bdi>
+        </span>
+      </a>
+
+      <div class="screen is-static opacity-70" aria-disabled="true">
+        <span class="screen-ic"><svg class="ic"><use href="#i-shield"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">الأمان والتحقق بخطوتين</span><span class="tag tag-muted">COM-02</span><span class="tag tag-muted">مدمجة ضمن COM-01</span></span>
+          <span class="screen-d">⚠️ مستهلَكة (Deprecated): تم دمج كل محتوى هذه الشاشة ضمن تبويب «الأمان والخصوصية» في common/profile.html. الملف لا يزال موجودًا فقط كإعادة توجيه (Redirect) للروابط القديمة.</span>
+          <bdi class="screen-f" dir="ltr" title="common/security.html → common/profile.html?tab=security">common/security.html → common/profile.html?tab=security</bdi>
+        </span>
+      </div>
+
+      <a href="common/notifications.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-bell"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">مركز الإشعارات</span><span class="tag">COM-03</span></span>
+          <span class="screen-d">تبويبات تصنيف، بحث، وقائمة إشعارات مقروءة/غير مقروءة مع إجراءات سريعة — تُفتح من أيقونة الجرس في كل الأدوار.</span>
+          <bdi class="screen-f" dir="ltr" title="common/notifications.html">common/notifications.html</bdi>
+        </span>
+      </a>
+
+      <a href="common/errors.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-warning-triangle"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">حالات النظام والأخطاء</span><span class="tag">COM-04</span></span>
+          <span class="screen-d">معاينة تفاعلية لكل حالات الخطأ: 403، 404، 419، 429، 500، تجاوز الحصة، والحساب المعلّق.</span>
+          <bdi class="screen-f" dir="ltr" title="common/errors.html">common/errors.html</bdi>
+        </span>
+      </a>
+    </div>
+
+    <h3 class="grp">5.2 القالب الرئيسي والمرجع — Reference</h3>
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+      <a href="style-guide.html" target="_blank" rel="noopener noreferrer" class="screen">
+        <span class="screen-ic"><svg class="ic"><use href="#i-palette"/></svg></span>
+        <span class="min-w-0">
+          <span class="screen-head"><span class="screen-t">دليل الأنماط</span><span class="tag tag-muted">REF-02</span></span>
+          <span class="screen-d">الألوان والخطوط والمكوّنات المعتمدة (v1.0).</span>
+          <bdi class="screen-f" dir="ltr" title="style-guide.html">style-guide.html</bdi>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <footer class="border-t border-line py-6 text-center text-caption text-muted">
+    © 2026 FirOb · نموذج أولي للعرض — الوضع الداكن واللغة يُحفظان وينتقلان بين الشاشات.
+  </footer>
+</div>
+
+</body>
+</html>

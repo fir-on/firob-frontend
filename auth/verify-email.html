@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<title>تحقق من بريدك الإلكتروني — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض الوضع الفاتح) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج تطبيق اللغة والاتجاه قبل الرسم (يمنع قفزة RTL → LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② الخطوط: Tajawal للواجهة العربية + Manrope للواجهة الإنجليزية -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ Tailwind (إصدار مثبّت) + الألوان المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      /* شاشات قصيرة: نضغط العناصر الثانوية بدل ظهور سكرول */
+      screens: {
+        short:  { raw: '(max-height: 760px)' },   /* لابتوب 13" / تابلت أفقي */
+        xshort: { raw: '(max-height: 560px)' },   /* جوال أفقي */
+      },
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      fontSize: {
+        caption: ['0.875rem',  { lineHeight: '1.375rem' }],                               // 14px
+        label:   ['0.9375rem', { lineHeight: '1.5rem'   }],                               // 15px
+        body:    ['1rem',      { lineHeight: '1.5rem'   }],                               // 16px
+        lead:    ['1.0625rem', { lineHeight: '1.75rem'  }],                               // 17px
+        h1:      ['clamp(1.375rem, 1rem + 1.5vh, 1.875rem)', { lineHeight: '1.3'  }],    // 22 → 30px
+        display: ['clamp(1.5rem, 0.9rem + 2.2vh, 2.5rem)',   { lineHeight: '1.35' }],    // 24 → 40px
+      },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        error:   { 500:'#EF4444', 600:'#DC2626' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ④ طبقة المكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;  --glow: 14 128 161;
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+      /* مسافات الأمان (النوتش / شريط الإيماءات) */
+      --sat: env(safe-area-inset-top, 0px);    --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);   --sar: env(safe-area-inset-right, 0px);
+      /* مساحة محجوزة أسفل المحتوى لشريط التجربة العائم */
+      --ribbon-h: 4rem;
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --glow: 14 128 161;
+    }
+
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang='en'] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* الصفحة ثابتة؛ التمرير (إن لزم) داخل منطقة البطاقة فقط — ولا تمرير أفقي إطلاقًا */
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; max-width: 100%; }
+    body { @apply bg-page text-body text-ink antialiased; -webkit-tap-highlight-color: transparent; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    [x-cloak] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    @keyframes breath  { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+    @keyframes ripple  { 0% { transform: scale(.92); opacity: .75; } 100% { transform: scale(1.65); opacity: 0; } }
+    @keyframes pop     { 0% { transform: scale(.3); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
+    @keyframes nudge   { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-2px) rotate(-6deg); } 60% { transform: translateY(0) rotate(4deg); } }
+    /* نبض مستمر هادئ (يشير إلى إجراء مطلوب) + موجة أقوى لمرة واحدة عند كل إرسال */
+    .ripple-idle  { animation: ripple 2.6s cubic-bezier(.2,.7,.3,1) infinite; }
+    .ripple-burst { animation: ripple 1.2s cubic-bezier(.2,.7,.3,1) 1 both; }
+    .pop    { animation: pop .45s cubic-bezier(.3,1.6,.5,1) 1 both; }
+    .nudge  { animation: nudge 2.6s ease-in-out infinite; transform-origin: 50% 80%; }
+
+    .app-h { height: 100vh; height: 100dvh; }
+    .safe-x { padding-left: var(--sal); padding-right: var(--sar); }
+    .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+
+    .ic { @apply h-5 w-5 shrink-0 fill-none stroke-current; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---- Buttons ---- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2.5 whitespace-nowrap rounded-xl border border-transparent px-4 text-label font-bold transition duration-150; padding-block: .625rem; touch-action: manipulation; }
+    .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+    .btn:disabled { @apply cursor-not-allowed opacity-60; }
+    .btn.is-loading { @apply pointer-events-none cursor-progress opacity-100; }
+    .btn-lg { @apply min-h-[3rem] px-6 text-[1.0625rem] leading-7 active:translate-y-px; padding-block: clamp(.6rem, 1.5vh, .875rem); }
+    .btn-accent { @apply bg-accent-500 text-onaccent shadow-lg shadow-accent-500/25; }
+    .btn-accent:not(:disabled):hover { @apply bg-accent-600; }
+    .btn-accent:not(:disabled):active { @apply bg-accent-700; }
+    .btn-ghost { @apply bg-transparent text-brand; }
+    .btn-ghost:not(:disabled):hover { @apply bg-soft; }
+    .btn-ghost:not(:disabled):active { @apply bg-soft-2; }
+    /* زر في حالة الانتظار: يبقى مقروءًا (ليس باهتًا) مع شريط تقدّم داخلي */
+    .btn-wait { @apply relative overflow-hidden border-line-strong bg-soft text-ink shadow-none; opacity: 1 !important; }
+
+    /* ---- Alerts (إشعار عائم) ---- */
+    .alert { @apply flex items-start gap-3 rounded-xl border border-s-4 p-4 text-caption font-medium; }
+    .alert-error   { background: #FEF2F2; border-color: #FEE2E2; border-inline-start-color: #EF4444; color: #991B1B; }
+    .alert-success { background: #ECFDF5; border-color: #D1FAE5; border-inline-start-color: #10B981; color: #065F46; }
+    .dark .alert-error   { background: #2A1518; border-color: rgb(239 68 68 / .30);  border-inline-start-color: #EF4444; color: #FCA5A5; }
+    .dark .alert-success { background: #0F2A24; border-color: rgb(16 185 129 / .30); border-inline-start-color: #10B981; color: #6EE7B7; }
+
+    /* ---- Card / Link / Tool ---- */
+    .card { @apply rounded-3xl border border-line bg-card shadow-card; }
+    .dark .card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .75); }
+    .link { @apply rounded text-caption font-bold text-brand underline-offset-4 transition-colors hover:underline; }
+    .link:focus-visible { outline: none; box-shadow: var(--ring); }
+    .tool { @apply grid h-10 w-10 place-items-center rounded-xl border border-line-strong bg-field text-muted transition-colors hover:bg-soft hover:text-ink; }
+    .tool:focus-visible { outline: none; box-shadow: var(--ring); }
+    .feature { @apply flex items-center gap-3.5 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md; padding: clamp(.5rem, 1.5vh, .875rem) 1rem; }
+    .pill { @apply rounded-full border border-line-strong px-3 py-0.5 text-[0.8125rem] font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50; }
+
+    /* ---- خطوات التفعيل ---- */
+    .step { @apply relative flex items-center gap-3 text-caption font-medium text-ink; }
+    .step-n { @apply relative z-[1] grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-line bg-soft text-[0.8125rem] font-extrabold text-brand; }
+    /* خط واصل بين الأرقام */
+    .step:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: .875rem; top: 1.75rem; height: calc(100% - 1rem); border-inline-start: 2px dashed rgb(var(--line)); }
+  }
+</style>
+
+<!-- ⑤ المنطق -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script>
+  /* النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json */
+  const I18N = {
+    ar: {
+      title: 'تحقق من بريدك الإلكتروني', skip: 'تخطّي إلى المحتوى',
+      brandTag: 'مستودعك التعليمي الذكي',
+      heroTitle: 'حسابك جاهز تقريبًا، بقي تأكيد بريدك فقط.',
+      hero1: 'تأكيد البريد يحمي حسابك ومنشأتك من أي استخدام غير مصرّح',
+      hero2: 'بعد التأكيد تنتقل مباشرة إلى مساحة عمل منشأتك',
+      hero3: 'يمكنك طلب رابط تحقق جديد متى احتجت',
+      subtitle: 'الخطوة الأخيرة لتفعيل حسابك.',
+      sentTo: 'أرسلنا رابط التحقق إلى:',
+      body: 'افتح الرسالة واضغط على رابط التأكيد لتفعيل حسابك.',
+      step1: 'افتح صندوق الوارد في بريدك',
+      step2: 'ابحث عن رسالة FirOb «تأكيد البريد الإلكتروني»',
+      step3: 'اضغط زر «تأكيد الحساب» داخل الرسالة',
+      stepsLabel: 'خطوات التفعيل',
+      openInbox: 'افتح {app}',
+      spamTip: 'لم تصلك الرسالة؟ تفقّد مجلد الرسائل غير المرغوب فيها (Spam)، وقد يستغرق وصولها بضع دقائق.',
+      resend: 'إعادة إرسال بريد التحقق', busy: 'جارٍ الإرسال…', wait: 'إعادة الإرسال متاحة بعد',
+      waitSr: 'يمكنك إعادة الإرسال بعد {s} ثانية.', readySr: 'يمكنك الآن إعادة إرسال بريد التحقق.',
+      success: 'تم إرسال رابط تحقق جديد إلى بريدك الإلكتروني بنجاح.',
+      serverErr: 'طلبات كثيرة خلال وقت قصير. انتظر قليلًا ثم حاول مجددًا.',
+      close: 'إغلاق التنبيه',
+      wrongEmail: 'ليس بريدك؟', otherAccount: 'تسجيل الدخول بحساب آخر',
+      backLogin: 'العودة لتسجيل الدخول', openLink: 'فتح رابط التحقق', simulated: 'محاكاة',
+      themeDark: 'تفعيل الوضع الداكن', themeLight: 'تفعيل الوضع الفاتح', langGroup: 'لغة الواجهة',
+      demoTitle: 'تجربة سريعة', demoOk: 'إرسال ناجح', demoBad: 'تجاوز الحد', demoLabel: 'شريط التجربة السريعة للنموذج الأولي',
+      rights: '© 2026 FirOb · جميع الحقوق محفوظة', screens: 'خريطة الشاشات',
+    },
+    en: {
+      title: 'Verify your email', skip: 'Skip to content',
+      brandTag: 'Your smart learning repository',
+      heroTitle: 'Your account is almost ready — just confirm your email.',
+      hero1: 'Email confirmation protects your account and institution',
+      hero2: 'Once confirmed, you go straight to your institution’s workspace',
+      hero3: 'You can request a new verification link anytime',
+      subtitle: 'One last step to activate your account.',
+      sentTo: 'We sent a verification link to:',
+      body: 'Open the email and click the confirmation link to activate your account.',
+      step1: 'Open your email inbox',
+      step2: 'Find the FirOb message “Verify Email Address”',
+      step3: 'Click “Verify account” inside the message',
+      stepsLabel: 'Activation steps',
+      openInbox: 'Open {app}',
+      spamTip: 'Didn’t get it? Check your Spam folder — it may take a few minutes to arrive.',
+      resend: 'Resend verification email', busy: 'Sending…', wait: 'You can resend in',
+      waitSr: 'You can resend in {s} seconds.', readySr: 'You can now resend the verification email.',
+      success: 'A new verification link has been sent to your email.',
+      serverErr: 'Too many requests. Please wait a moment and try again.',
+      close: 'Dismiss alert',
+      wrongEmail: 'Not your email?', otherAccount: 'Sign in with another account',
+      backLogin: 'Back to sign in', openLink: 'Open the verification link', simulated: 'Simulated',
+      themeDark: 'Switch to dark mode', themeLight: 'Switch to light mode', langGroup: 'Interface language',
+      demoTitle: 'Quick demo', demoOk: 'Successful send', demoBad: 'Rate limited', demoLabel: 'Prototype quick-demo ribbon',
+      rights: '© 2026 FirOb · All rights reserved', screens: 'Screen map',
+    },
+  };
+
+  /* اختصارات لفتح صندوق البريد حسب نطاق البريد (تحسين للتجربة فقط) */
+  const MAIL_APPS = [
+    { re: /^(gmail|googlemail)\.com$/i,                     name: 'Gmail',   url: 'https://mail.google.com/mail/u/0/#search/from%3Afirob' },
+    { re: /^(outlook|hotmail|live|msn)\.[a-z.]+$/i,          name: 'Outlook', url: 'https://outlook.live.com/mail/0/' },
+    { re: /^(yahoo|ymail)\.[a-z.]+$/i,                       name: 'Yahoo',   url: 'https://mail.yahoo.com/' },
+    { re: /^(icloud|me|mac)\.com$/i,                         name: 'iCloud',  url: 'https://www.icloud.com/mail' },
+  ];
+
+  const COOLDOWN_KEY = 'firob-verify-cooldown-until';
+
+  function app() {
+    return {
+      /* --- الحالة --- */
+      lang: (window.FIROB && FIROB.locale) || document.documentElement.lang || 'ar',
+      dark: document.documentElement.classList.contains('dark'),
+      email: 'user@example.com',          // Blade: {{ auth()->user()->email }}
+      busy: false, alert: '', alertTimer: null,
+      cooldown: 0, cooldownTotal: 60, cooldownUntil: 0, cooldownTimer: null, COOLDOWN: 60,
+      srMsg: '', pulse: 0,
+
+      /* --- شبكة العناصر التعليمية الزخرفية --- */
+      tone: { m: 'bg-white/10', l: 'bg-white/[.06]', d: 'bg-primary-900/30', a: 'bg-accent-500/80', '-': '' },
+      cells: [
+        'm','l:play','-','a:check','d','-',
+        '-','m','d:mail','-','l','-',
+        'd:book','-','m','-','a:send','-',
+        '-','d','-','l:folder','-','m',
+        'm','-','d','-','l:code','-',
+        '-','d','-','m','-','l',
+      ],
+
+      /* --- الترجمة والثيم --- */
+      t(k, vars) {
+        let s = (I18N[this.lang] && I18N[this.lang][k]) || I18N.ar[k] || k;
+        if (vars) Object.keys(vars).forEach(n => { s = s.replace('{' + n + '}', vars[n]); });
+        return s;
+      },
+      init() {
+        this.$watch('lang', () => this.applyLang()); this.applyLang(); this.syncMeta();
+        try {
+          const mq = window.matchMedia('(prefers-color-scheme: dark)');
+          mq.addEventListener?.('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.setTheme(e.matches, false);
+          });
+        } catch (_) {}
+
+        /* استئناف العدّاد بعد تحديث الصفحة (لا يُعاد ضبطه بالضغط على F5) */
+        let saved = null; try { saved = JSON.parse(sessionStorage.getItem(COOLDOWN_KEY) || 'null'); } catch (_) {}
+        if (saved && saved.until > Date.now()) this.startCooldown(Math.ceil((saved.until - Date.now()) / 1000), saved.until, saved.total);
+
+        /* تصحيح العدّاد عند العودة إلى التبويب (المتصفحات تُبطئ المؤقتات في الخلفية) */
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) this.tick(); });
+
+        /* Laravel: @if (session('status') === 'verification-link-sent') → this.afterSent() @endif */
+      },
+      applyLang() {
+        const h = document.documentElement;
+        h.lang = this.lang; h.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(this.lang);   /* يثبّت اللغة للصفحة التالية */
+        document.title = this.t('title') + ' — FirOb';
+      },
+      setTheme(isDark, persist = true) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        if (persist) { try { localStorage.setItem('firob-theme', isDark ? 'dark' : 'light'); } catch (e) {} }
+        this.syncMeta();
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() { this.setTheme(!this.dark); },
+      syncMeta() { document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7'); },
+
+      /* --- اختصار صندوق البريد --- */
+      get mailApp() {
+        const domain = (this.email.split('@')[1] || '').trim();
+        return MAIL_APPS.find(m => m.re.test(domain)) || null;
+      },
+
+      /* --- الإشعار --- */
+      notify(type, ms = 6000) {
+        this.alert = type; clearTimeout(this.alertTimer);
+        if (ms) this.alertTimer = setTimeout(() => this.alert = '', ms);
+      },
+      dismiss() { this.alert = ''; clearTimeout(this.alertTimer); },
+
+      /* --- العدّاد التنازلي (مبني على وقت انتهاء ثابت لا على عدد النبضات) --- */
+      get countdown() {
+        return String(Math.floor(this.cooldown / 60)).padStart(2, '0') + ':' + String(this.cooldown % 60).padStart(2, '0');
+      },
+      get cooldownPct() { return this.cooldownTotal ? (this.cooldown / this.cooldownTotal) * 100 : 0; },
+      startCooldown(sec, until, total) {
+        this.cooldownTotal = total || sec;
+        this.cooldownUntil = until || (Date.now() + sec * 1000);
+        try { sessionStorage.setItem(COOLDOWN_KEY, JSON.stringify({ until: this.cooldownUntil, total: this.cooldownTotal })); } catch (_) {}
+        clearInterval(this.cooldownTimer);
+        this.srMsg = this.t('waitSr', { s: sec });
+        this.tick();
+        this.cooldownTimer = setInterval(() => this.tick(), 250);
+      },
+      tick() {
+        if (!this.cooldownUntil) return;
+        const left = Math.max(0, Math.ceil((this.cooldownUntil - Date.now()) / 1000));
+        this.cooldown = left;
+        if (left === 0) {
+          clearInterval(this.cooldownTimer); this.cooldownUntil = 0;
+          try { sessionStorage.removeItem(COOLDOWN_KEY); } catch (_) {}
+          this.srMsg = this.t('readySr');   /* يُعلَن مرة واحدة لقارئ الشاشة */
+        }
+      },
+      resetCooldown() {
+        clearInterval(this.cooldownTimer); this.cooldown = 0; this.cooldownUntil = 0;
+        try { sessionStorage.removeItem(COOLDOWN_KEY); } catch (_) {}
+      },
+      afterSent() { this.notify('success'); this.pulse++; this.startCooldown(this.COOLDOWN); },
+
+      /* --- إعادة الإرسال --- */
+      async resend(force) {
+        if (this.busy || this.cooldown > 0) return;
+        this.dismiss(); this.busy = true;
+        /* ---- التكامل مع Laravel ----
+           Blade:    this.$refs.form.submit();   // POST route('verification.send') + @csrf
+           Livewire: $wire.resendVerification()
+           الـ Rate Limiting (throttle:6,1) يُفرض في الخادم فقط؛ العدّاد هنا تحسين للتجربة. */
+        await new Promise(r => setTimeout(r, 1000));   // محاكاة للعرض فقط
+        this.busy = false;
+        if (force === 'bad') { this.notify('error', 8000); this.startCooldown(30); return; }
+        this.afterSent();
+      },
+      demo(ok) { if (this.busy) return; this.resetCooldown(); this.resend(ok ? 'ok' : 'bad'); },
+    };
+  }
+</script>
+</head>
+
+<body x-data="app()">
+
+<!-- ========== Icon Sprite ========== -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-mail-open" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9z"/><path d="M3 10l9 6 9-6"/><path d="M7 8.5V6.5a1 1 0 011-1h8a1 1 0 011 1v2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4 18-7z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0012 3z"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 17l-5-5 5-5M5 12h11"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5v-7z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M7 19h12"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24"><path d="M5 21V4a1 1 0 011-1h10a1 1 0 011 1v17M3 21h18M13.5 12h.01"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></symbol>
+</svg>
+
+<a href="#verify-card" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:font-bold focus:text-onaccent" x-text="t('skip')">تخطّي إلى المحتوى</a>
+
+<!-- إعلانات العدّاد لقارئ الشاشة (مرة عند البدء ومرة عند الانتهاء، لا كل ثانية) -->
+<p class="sr-only" role="status" aria-live="polite" x-text="srMsg"></p>
+
+<!-- إشعار عائم: منطقة حيّة ثابتة في DOM، ومحتواها يظهر فوق الصفحة دون دفعها -->
+<div class="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4" style="top: calc(1rem + var(--sat));" aria-live="polite" aria-atomic="true">
+  <div x-show="alert" x-cloak
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-3 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+       class="pointer-events-auto w-full max-w-md rounded-xl bg-card shadow-pop">
+    <div class="alert" :class="alert === 'error' ? 'alert-error' : 'alert-success'" :role="alert === 'error' ? 'alert' : 'status'">
+      <svg class="ic mt-0.5" aria-hidden="true"><use :href="alert === 'error' ? '#i-x-circle' : '#i-check-circle'"/></svg>
+      <p class="flex-1" x-text="alert ? t(alert === 'error' ? 'serverErr' : 'success') : ''"></p>
+      <button type="button" class="-m-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg opacity-70 transition hover:opacity-100 focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+              @click="dismiss()" :aria-label="t('close')"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="app-h flex overflow-hidden">
+
+  <!-- ╔══════════ الجانب الأول: الهوية البصرية — يظهر من التابلت (md) فما فوق ══════════╗ -->
+  <aside class="relative hidden h-full overflow-hidden bg-gradient-to-br from-primary-500 via-primary-700 to-primary-900 text-white dark:from-[#0A4356] dark:via-[#062F3B] dark:to-[#031820] md:flex md:w-[42%] lg:w-1/2 xl:w-[46%]"
+         style="padding-top: var(--sat); padding-bottom: var(--sab);">
+
+    <div aria-hidden="true" class="absolute inset-0 grid grid-cols-6 grid-rows-6 gap-2 p-4 lg:gap-3 lg:p-6">
+      <template x-for="(c, i) in cells" :key="i">
+        <div class="grid place-items-center rounded-2xl motion-safe:animate-[breath_7s_ease-in-out_infinite]"
+             :class="tone[c.split(':')[0]]" :style="{ animationDelay: ((i * 7) % 11) * 0.5 + 's' }">
+          <template x-if="c.includes(':')">
+            <svg class="ic" :class="c.startsWith('a') ? 'text-onaccent' : 'text-white/70'"><use :href="'#i-' + c.split(':')[1]"/></svg>
+          </template>
+        </div>
+      </template>
+    </div>
+    <div aria-hidden="true" class="absolute -bottom-24 -start-24 h-80 w-80 rounded-full bg-accent-500/15 blur-3xl"></div>
+    <div aria-hidden="true" class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(7,60,76,.78)_0%,rgba(7,60,76,.5)_52%,transparent_100%)]"></div>
+
+    <div class="no-scrollbar relative z-10 m-auto flex max-h-full w-full flex-col items-center overflow-y-auto px-[clamp(1.5rem,4vw,4rem)] py-6 text-center short:py-4">
+      <div class="inline-flex items-center rounded-xl bg-white p-0 shadow-pop">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" width="352" height="96" decoding="async"
+             class="mx-1 -my-2.5 block h-[clamp(3.25rem,9vh,6rem)] w-auto max-w-[min(22rem,80%)] object-contain">
+      </div>
+      <p class="mt-3 text-lead font-bold text-primary-50 short:mt-2" x-text="t('brandTag')"></p>
+
+      <h2 class="mt-[clamp(1rem,3.4vh,2rem)] max-w-lg text-balance text-display font-extrabold" x-text="t('heroTitle')"></h2>
+
+      <ul class="mt-[clamp(1rem,3.4vh,2.25rem)] w-full max-w-md space-y-[clamp(.5rem,1.4vh,.75rem)] text-start text-label xshort:hidden">
+        <li class="feature">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-accent-500 short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-shield"/></svg></span>
+          <span class="font-medium" x-text="t('hero1')"></span>
+        </li>
+        <li class="feature">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-accent-500 short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-door"/></svg></span>
+          <span class="font-medium" x-text="t('hero2')"></span>
+        </li>
+        <li class="feature">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-accent-500 short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-refresh"/></svg></span>
+          <span class="font-medium" x-text="t('hero3')"></span>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- ╔══════════ الجانب الثاني: إشعار التحقق ══════════╗ -->
+  <div class="safe-x flex h-full min-w-0 flex-1 flex-col bg-[radial-gradient(48rem_22rem_at_50%_0%,rgb(var(--glow)/0.13),transparent)]">
+
+    <!-- شريط علوي (يحترم النوتش) -->
+    <div class="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 sm:px-8 lg:px-10" style="padding-top: calc(.5rem + var(--sat));">
+      <div class="flex min-w-0 items-center gap-2.5 md:hidden">
+        <span class="inline-flex items-center rounded-lg bg-white p-1 shadow-sm">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="112" height="28" class="block h-7 w-auto max-w-[8rem] object-contain">
+        </span>
+      </div>
+      <span class="hidden md:block" aria-hidden="true"></span>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <button type="button" class="tool" @click="toggleTheme()" :aria-pressed="dark"
+                :aria-label="dark ? t('themeLight') : t('themeDark')" :title="dark ? t('themeLight') : t('themeDark')">
+          <svg class="ic" x-show="!dark" aria-hidden="true"><use href="#i-moon"/></svg>
+          <svg class="ic" x-show="dark" x-cloak aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
+
+        <div class="flex h-10 items-center rounded-xl border border-line-strong bg-field p-1" role="group" :aria-label="t('langGroup')">
+          <button type="button" lang="ar" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                  :class="lang === 'ar' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'ar'" @click="lang = 'ar'">عربي</button>
+          <button type="button" lang="en" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                  :class="lang === 'en' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'en'" @click="lang = 'en'">EN</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- المحتوى: يتمركز تلقائيًا؛ وإن ضاق الارتفاع يتمرّر داخليًا مع حجز مساحة لشريط التجربة ومسافة الأمان -->
+    <main id="main" class="no-scrollbar flex min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pt-3 sm:px-8 short:pt-1"
+          style="padding-bottom: calc(var(--ribbon-h) + var(--sab));">
+      <div class="m-auto flex w-full flex-col items-center">
+      <section id="verify-card" tabindex="-1" class="card w-full max-w-[28rem] p-[clamp(1.25rem,3vh,2.25rem)] focus:outline-none max-[359px]:rounded-2xl max-[359px]:p-4 xshort:p-4" aria-labelledby="verify-title" aria-describedby="verify-body">
+
+        <!-- الترويسة -->
+        <header class="mb-[clamp(.75rem,2.2vh,1.5rem)] xshort:mb-2">
+          <div class="flex items-center gap-3">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-line bg-soft text-brand short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-mail"/></svg></span>
+            <h1 id="verify-title" class="text-h1 font-extrabold text-ink" x-text="t('title')">تحقق من بريدك الإلكتروني</h1>
+          </div>
+          <p class="mt-2 text-caption text-muted xshort:hidden" x-text="t('subtitle')"></p>
+        </header>
+
+        <div class="space-y-[clamp(.75rem,1.8vh,1.25rem)]">
+
+          <!-- ① البريد المرسل إليه + أيقونة نابضة (إجراء مطلوب) -->
+          <div class="flex items-center gap-4 rounded-2xl border border-line bg-soft/60 p-3 sm:p-3.5">
+            <div class="relative grid h-16 w-16 shrink-0 place-items-center short:h-14 short:w-14" aria-hidden="true">
+              <!-- نبض هادئ مستمر -->
+              <span class="ripple-idle absolute inset-0 rounded-2xl border-2 border-primary-500/40"></span>
+              <span class="ripple-idle absolute inset-0 rounded-2xl border-2 border-primary-500/30" style="animation-delay: 1.3s"></span>
+              <!-- موجة قوية عند كل إرسال -->
+              <template x-for="n in [pulse]" :key="'r' + n">
+                <span x-show="pulse > 0" class="ripple-burst absolute inset-0 rounded-2xl border-[3px] border-accent-500/80"></span>
+              </template>
+              <span class="absolute inset-0 rounded-2xl bg-primary-500 shadow-lg shadow-primary-500/30"></span>
+              <svg class="ic nudge relative !h-8 !w-8 text-white short:!h-7 short:!w-7"><use href="#i-mail-open"/></svg>
+              <template x-for="n in [pulse]" :key="'b' + n">
+                <span class="pop absolute -bottom-1.5 -end-1.5 grid h-7 w-7 place-items-center rounded-full border-[3px] border-card bg-accent-500 text-onaccent">
+                  <svg class="ic !h-3.5 !w-3.5" style="stroke-width:3"><use href="#i-check"/></svg>
+                </span>
+              </template>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-caption text-muted" x-text="t('sentTo')"></p>
+              <bdi dir="ltr" class="mt-0.5 block select-all break-all text-[1.0625rem] font-extrabold leading-snug text-ink" x-text="email">user@example.com</bdi>
+              <a x-show="mailApp" x-cloak :href="mailApp && mailApp.url" target="_blank" rel="noopener"
+                 class="link mt-1.5 inline-flex min-h-[2rem] items-center gap-1">
+                <span x-text="mailApp ? t('openInbox', { app: mailApp.name }) : ''"></span>
+                <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-external"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <p id="verify-body" class="text-label text-muted" x-text="t('body')"></p>
+
+          <!-- ② خطوات التفعيل — تُضغط في الشاشات القصيرة، وتُخفى فقط في الجوال الأفقي -->
+          <ol class="space-y-2.5 short:space-y-1.5 xshort:hidden" :aria-label="t('stepsLabel')">
+            <li class="step"><span class="step-n short:h-6 short:w-6" aria-hidden="true" x-text="lang === 'ar' ? '١' : '1'"></span><span x-text="t('step1')"></span></li>
+            <li class="step"><span class="step-n short:h-6 short:w-6" aria-hidden="true" x-text="lang === 'ar' ? '٢' : '2'"></span><span x-text="t('step2')"></span></li>
+            <li class="step"><span class="step-n short:h-6 short:w-6" aria-hidden="true" x-text="lang === 'ar' ? '٣' : '3'"></span><span x-text="t('step3')"></span></li>
+          </ol>
+
+          <!-- ③ زر إعادة الإرسال — Laravel: action="{{ route('verification.send') }}" + @csrf -->
+          <form x-ref="form" method="POST" action="/email/verification-notification" @submit.prevent="resend()">
+            <button type="submit" class="btn btn-lg w-full" :class="[cooldown > 0 && !busy ? 'btn-wait' : 'btn-accent', busy && 'is-loading']"
+                    :aria-busy="busy" :disabled="busy || cooldown > 0">
+              <!-- شريط التقدّم الزمني داخل الزر -->
+              <span x-show="cooldown > 0 && !busy" x-cloak class="absolute inset-y-0 start-0 bg-primary-500/15 transition-[width] duration-300 ease-linear dark:bg-primary-500/25" :style="'width:' + cooldownPct + '%'" aria-hidden="true"></span>
+              <svg x-show="busy" x-cloak class="ic relative animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg>
+              <svg x-show="!busy && cooldown === 0" class="ic relative rtl:-scale-x-100" aria-hidden="true"><use href="#i-send"/></svg>
+              <svg x-show="!busy && cooldown > 0" x-cloak class="ic relative" aria-hidden="true"><use href="#i-clock"/></svg>
+              <span x-show="busy" x-cloak class="relative" x-text="t('busy')"></span>
+              <span x-show="!busy && cooldown === 0" class="relative truncate" x-text="t('resend')">إعادة إرسال بريد التحقق</span>
+              <span x-show="!busy && cooldown > 0" x-cloak class="relative truncate"><span x-text="t('wait')"></span> <bdi dir="ltr" class="tabular-nums" x-text="countdown"></bdi></span>
+            </button>
+          </form>
+
+          <!-- ③-ب عرض فقط: يقوم مقام النقر على زر «تأكيد الحساب» داخل الرسالة.
+               في Laravel هذا رابط موقّع (signed URL) ينتهي إلى redirect نحو لوحة التحكم — احذف هذا الزر قبل الإطلاق. -->
+          <a href="onboarding.html" class="btn btn-ghost btn-lg w-full !border !border-dashed !border-line-strong">
+            <svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg>
+            <span class="truncate" x-text="t('openLink')"></span>
+            <span class="rounded-full bg-accent-500/20 px-2 py-0.5 text-[0.6875rem] font-extrabold text-accent-700 dark:text-accent-500" x-text="t('simulated')"></span>
+          </a>
+
+          <!-- ④ تلميح -->
+          <p class="flex items-start gap-2 rounded-xl border border-accent-200 bg-accent-100/60 px-3 py-2.5 text-caption text-onaccent dark:border-accent-500/25 dark:bg-accent-500/10 dark:text-accent-100">
+            <svg class="ic mt-0.5 !h-4 !w-4 text-accent-700 dark:text-accent-500" aria-hidden="true"><use href="#i-bulb"/></svg>
+            <span x-text="t('spamTip')"></span>
+          </p>
+        </div>
+
+        <!-- روابط مساعدة (div بدل p: لا يجوز وضع form داخل p — كان المتصفح يكسر البنية) -->
+        <div class="mt-[clamp(.75rem,2vh,1.25rem)] flex flex-col items-center gap-1 border-t border-line pt-[clamp(.75rem,2vh,1.25rem)]">
+          <div class="flex flex-wrap items-center justify-center gap-x-1.5 text-label text-muted">
+            <span x-text="t('wrongEmail')"></span>
+            <!-- Laravel: action="{{ route('logout') }}" + @csrf -->
+            <form method="POST" action="/logout" class="inline-flex">
+              <button type="submit" class="link inline-flex min-h-[2.75rem] items-center gap-1 !text-label">
+                <svg class="ic !h-4 !w-4 rtl:-scale-x-100" aria-hidden="true"><use href="#i-logout"/></svg><span x-text="t('otherAccount')"></span>
+              </button>
+            </form>
+          </div>
+          <a href="login.html" class="btn btn-ghost min-h-[2.75rem] !py-1.5 !text-caption">
+            <svg class="ic !h-4 !w-4 ltr:rotate-180" aria-hidden="true"><use href="#i-arrow"/></svg>
+            <span x-text="t('backLogin')"></span>
+          </a>
+        </div>
+      </section>
+
+      <!-- تذييل: داخل منطقة التمرير فلا يقتطع من ارتفاع البطاقة -->
+      <footer class="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-2 text-center text-[0.8125rem] text-muted short:mt-2">
+        <span x-text="t('rights')"></span>
+        <a href="../index.html" class="pill inline-flex items-center gap-1 text-muted hover:bg-soft hover:text-ink">
+          <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-home"/></svg><span x-text="t('screens')"></span>
+        </a>
+      </footer>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ========== شريط النموذج الأولي العائم (Prototype Ribbon) — معزول عن التذييل الإنتاجي، احذفه بالكامل قبل الإطلاق ========== -->
+<div class="fixed z-50" style="bottom: calc(.75rem + var(--sab)); inset-inline-end: calc(.75rem + var(--sar)); max-width: calc(100vw - 1.5rem - var(--sal) - var(--sar));"
+     role="region" :aria-label="t('demoLabel')">
+  <div class="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-full border border-dashed border-accent-500/70 bg-slate-900/90 p-1.5 shadow-pop backdrop-blur-md">
+    <span class="flex shrink-0 items-center gap-1 rounded-full bg-accent-500 px-2.5 py-1 text-[0.6875rem] font-extrabold uppercase tracking-wide text-onaccent">
+      <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-sparkle"/></svg>
+      <span class="hidden sm:inline" x-text="t('demoTitle')"></span>
+    </span>
+    <button type="button" class="pill min-h-[2.25rem] shrink-0 whitespace-nowrap !border-white/20 !text-white hover:!bg-white/10" :disabled="busy" @click="demo(true)" x-text="t('demoOk')"></button>
+    <button type="button" class="pill min-h-[2.25rem] shrink-0 whitespace-nowrap !border-red-400/60 !text-red-300 hover:!bg-red-500/15" :disabled="busy" @click="demo(false)" x-text="t('demoBad')"></button>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- مرجع داخلي لفريق التطوير والتصميم: لا فهرسة -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="دليل نظام التصميم ومكتبة المكوّنات المعتمدة لواجهات FirOb: الرموز، الخطوط، الأزرار، النماذج، الشارات، الكروت، النوافذ والإشعارات.">
+<title>دليل نظام التصميم v1.1 — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) + لون شريط المتصفح -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج معاينة الاتجاه (خاصة بالدليل فقط، تُحفظ للجلسة الحالية) قبل الرسم لمنع القفزة -->
+<script>
+  (function () {
+    try {
+      var d = sessionStorage.getItem('firob-sg-dir');
+      if (d === 'ltr' || d === 'rtl') document.documentElement.dir = d;
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="asset/images/firob-favicon.png">
+
+<!-- ④ Tailwind (إصدار مثبّت) + الرموز. في الإنتاج: CSS مبني مسبقًا عبر Vite + Tailwind 4 (انظر كتلة @theme في القسم ١) -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    /* أصناف تُستخدم داخل قيم x-transition فقط — نضمن توليدها */
+    safelist: ['translate-x-0', 'translate-x-full', '-translate-x-full', 'rtl:-translate-x-full', 'scale-95', 'scale-100'],
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        ok: v('ok'), warn: v('warn'), danger: v('danger'), info: v('info'),
+        onaccent: '#1E293B', // نص داكن ثابت فوق Accent في الوضعين — لا يتبع تبديل الثيم
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة الرموز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* نصوص الحالة — كلها ≥ 4.5:1 على الصفحة والكرت والشارات الشفافة (انظر مصفوفة التباين) */
+      --ok: 4 120 87;       --warn: 146 64 14;    --danger: 185 28 28;  --info: 29 78 216;
+      /* Focus مزدوج: فاصل بلون السطح + brand + هالة Accent — يتكيّف مع الثيم تلقائيًا */
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+      --header-h: 4rem;
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --ok: 110 231 183;    --warn: 252 211 77;   --danger: 252 165 165; --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+    body { @apply bg-page text-ink antialiased leading-relaxed; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    .en { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  }
+
+  @layer components {
+    .ic { @apply h-5 w-5 shrink-0 fill-none stroke-current; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .sec { @apply scroll-mt-32 py-8 lg:scroll-mt-24; }
+    .sec-title { @apply text-2xl font-extrabold text-brand sm:text-3xl; }
+    .code-inline { @apply rounded bg-line px-1.5 text-[0.8125rem] text-ink; }
+    .code-block { @apply overflow-x-auto rounded-xl border border-line p-4 text-xs leading-6; background: #0B1A22; color: #E2E8F0; }
+
+    /* ---------- Buttons (التركيز من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-transparent px-4 py-2.5 text-sm font-bold leading-5 transition-colors duration-150; touch-action: manipulation; }
+    .btn.is-focus { box-shadow: var(--ring); }
+    .btn:disabled, .btn[aria-disabled='true'] { @apply cursor-not-allowed opacity-50; }
+    .btn.is-loading { @apply pointer-events-none cursor-progress opacity-100; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-lg { @apply min-h-[3rem] px-6 py-3 text-base leading-6; }
+    .btn-icon { @apply h-11 w-11 p-0 sm:h-10 sm:w-10; }
+    .btn-icon.btn-sm { @apply h-11 w-11 p-0 sm:h-8 sm:w-8 sm:min-h-0; }
+    .btn-icon.btn-lg { @apply h-12 w-12 p-0; }
+
+    .btn-primary { @apply bg-primary-500 text-white; }
+    .btn-primary:not(:disabled):not([aria-disabled='true']):hover, .btn-primary.is-hover { @apply bg-primary-600; }
+    .btn-primary:not(:disabled):not([aria-disabled='true']):active, .btn-primary.is-active { @apply bg-primary-800; }
+
+    .btn-secondary { @apply border-primary-500/20 bg-soft text-brand; }
+    .btn-secondary:not(:disabled):not([aria-disabled='true']):hover, .btn-secondary.is-hover { @apply bg-soft-2; }
+    .btn-secondary:not(:disabled):not([aria-disabled='true']):active, .btn-secondary.is-active { @apply border-primary-500/40 bg-soft-2; }
+
+    .btn-accent { @apply bg-accent-500 text-onaccent; }
+    .btn-accent:not(:disabled):not([aria-disabled='true']):hover, .btn-accent.is-hover { @apply bg-accent-600; }
+    .btn-accent:not(:disabled):not([aria-disabled='true']):active, .btn-accent.is-active { @apply bg-accent-700; }
+
+    .btn-outline { @apply border-primary-500 bg-transparent text-brand; }
+    .btn-outline:not(:disabled):not([aria-disabled='true']):hover, .btn-outline.is-hover { @apply bg-soft; }
+    .btn-outline:not(:disabled):not([aria-disabled='true']):active, .btn-outline.is-active { @apply bg-soft-2; }
+
+    .btn-ghost { @apply bg-transparent text-brand; }
+    .btn-ghost:not(:disabled):not([aria-disabled='true']):hover, .btn-ghost.is-hover { @apply bg-soft; }
+    .btn-ghost:not(:disabled):not([aria-disabled='true']):active, .btn-ghost.is-active { @apply bg-soft-2; }
+
+    .btn-success { @apply bg-success-700 text-white; }  /* success-700: 5.48:1 مع الأبيض (الدرجة 500 تفشل) */
+    .btn-success:not(:disabled):not([aria-disabled='true']):hover, .btn-success.is-hover { @apply bg-success-800; }
+    .btn-success:not(:disabled):not([aria-disabled='true']):active, .btn-success.is-active { @apply bg-success-800 ring-2 ring-inset ring-black/20; }
+
+    .btn-danger { @apply bg-error-600 text-white; }  /* error-600: 4.83:1 مع الأبيض */
+    .btn-danger:not(:disabled):not([aria-disabled='true']):hover, .btn-danger.is-hover { @apply bg-error-700; }
+    .btn-danger:not(:disabled):not([aria-disabled='true']):active, .btn-danger.is-active { @apply bg-error-800; }
+
+    /* ---------- Form ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block min-h-[2.75rem] w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover:not(:disabled), .field.is-hover { @apply border-primary-500; }
+    .field:focus, .field.is-focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid='true'] { @apply border-error-600 bg-error-500/5; }
+    .dark .field[aria-invalid='true'] { @apply border-danger; }
+    .field:disabled, .field[aria-disabled='true'] { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- قائمة الاختيار المخصصة (Select-only Combobox — v2) ---------- */
+    .combo-list { @apply absolute z-50 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex min-h-[2.75rem] w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2 text-start text-sm font-medium text-ink transition-colors hover:bg-soft sm:min-h-[2.5rem]; }
+    .combo-option.is-active   { @apply bg-soft; box-shadow: inset 0 0 0 2px rgb(var(--brand) / .5); }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- Checkbox / Radio ---------- */
+    .choice { @apply flex min-h-[2.75rem] cursor-pointer items-center gap-3 text-sm font-medium text-ink sm:min-h-[2.25rem]; }
+    .choice:has(:disabled) { @apply cursor-not-allowed text-muted; }
+    .check { @apply h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-line-strong bg-field transition-colors; }
+    .check:hover:not(:disabled) { @apply border-primary-500; }
+    .check:checked { @apply border-primary-500 bg-primary-500; background-size: 100% 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5L15 6.5'/%3E%3C/svg%3E"); }
+    .check:disabled { @apply cursor-not-allowed opacity-50; }
+    .check[aria-invalid='true'] { @apply border-2 border-error-600; }
+    .dark .check[aria-invalid='true'] { @apply border-danger; }
+    .radio { @apply rounded-full; }
+    .radio:checked { @apply border-[6px] border-primary-500 bg-field; background-image: none; }
+
+    /* ---------- Switch (role="switch") ---------- */
+    .switch { @apply inline-flex min-h-[2.75rem] cursor-pointer items-center gap-3 text-sm font-medium text-ink sm:min-h-[2.25rem]; }
+    .switch-track { @apply relative h-6 w-11 shrink-0 rounded-full bg-line-strong transition-colors; }
+    .switch-track::after { content: ''; @apply absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform; inset-inline-start: .125rem; }
+    .peer:checked ~ .switch-track { @apply bg-primary-500; }
+    .peer:checked ~ .switch-track::after { transform: translateX(1.25rem); }
+    [dir='rtl'] .peer:checked ~ .switch-track::after { transform: translateX(-1.25rem); }
+    .peer:focus-visible ~ .switch-track { box-shadow: var(--ring); }
+    .peer:disabled ~ .switch-track { @apply opacity-50; }
+    .switch:has(.peer:disabled) { @apply cursor-not-allowed text-muted; }
+
+    /* ---------- Badges (شفافية + نص دلالي ⇒ تعمل في الوضعين) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-warning { @apply bg-warning-500/15 text-warn; }
+    .badge-danger, .badge-error { @apply bg-error-500/15 text-danger; }
+    .badge-info    { @apply bg-info/15 text-info; }
+
+    /* ---------- Alerts ---------- */
+    .alert { @apply flex items-start gap-3 rounded-xl border border-s-4 p-4 text-sm text-ink; }
+    .alert .a-ic { @apply mt-0.5; }
+    .alert-success { @apply border-success-500/30 border-s-success-500 bg-success-500/10; } .alert-success .a-ic { @apply text-ok; }
+    .alert-warning { @apply border-warning-500/30 border-s-warning-500 bg-warning-500/10; } .alert-warning .a-ic { @apply text-warn; }
+    .alert-error   { @apply border-error-500/30 border-s-error-500 bg-error-500/10; }     .alert-error .a-ic   { @apply text-danger; }
+    .alert-info    { @apply border-info/30 border-s-info bg-info/10; }                     .alert-info .a-ic    { @apply text-info; }
+    .alert-accent  { @apply border-accent-500/50 border-s-accent-500 bg-accent-500/[.18] dark:bg-accent-500/[.12]; } .alert-accent .a-ic { @apply text-onaccent dark:text-accent-500; }
+
+    /* ---------- Cards ---------- */
+    .card { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card transition; }
+    .dark .card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .card-hover:hover, .card-hover.is-hover, .card-hover:focus-within { @apply border-primary-500 shadow-pop; }
+    .card-link::after { content: ''; @apply absolute inset-0 rounded-2xl; }
+    .card-link:focus-visible { box-shadow: none; }
+    .card-link:focus-visible::after { box-shadow: var(--ring); }
+    .skeleton { @apply animate-pulse rounded-md bg-line; }
+    .meter { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .meter > span { @apply block h-full rounded-full; }
+
+    /* ---------- Toasts ---------- */
+    .toast { @apply pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-xl border border-s-4 border-line bg-card p-4 text-sm text-ink shadow-pop; }
+    .toast-success { @apply border-s-success-500; } .toast-success .t-ic { @apply text-ok; }
+    .toast-error   { @apply border-s-error-500; }   .toast-error .t-ic   { @apply text-danger; }
+    .toast-warning { @apply border-s-warning-500; } .toast-warning .t-ic { @apply text-warn; }
+    .toast-info    { @apply border-s-info; }        .toast-info .t-ic    { @apply text-info; }
+    .toast-accent  { @apply border-s-accent-500; }  .toast-accent .t-ic  { @apply text-onaccent dark:text-accent-500; }
+    .toast-bar { @apply absolute inset-x-0 bottom-0 h-1 bg-current opacity-30; transform-origin: left; animation: toast-bar var(--toast-ms, 5000ms) linear forwards; }
+    [dir='rtl'] .toast-bar { transform-origin: right; }
+    .toast.is-paused .toast-bar { animation-play-state: paused; }
+    @keyframes toast-bar { to { transform: scaleX(0); } }
+    @media (prefers-reduced-motion: reduce) { .toast-bar { display: none; } }
+  }
+</style>
+
+<!-- ⑥ Alpine.js 3.14.8 + Focus (x-trap) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script>
+  /* ---------- بيانات العرض ---------- */
+  window.NAV = [
+    ['colors', 'الألوان'], ['type', 'الخطوط'], ['buttons', 'الأزرار'], ['forms', 'النماذج'],
+    ['badges', 'الشارات والتنبيهات'], ['cards', 'الكروت'], ['overlays', 'النوافذ والإشعارات'],
+  ];
+  window.V = [
+    { k: 'primary', l: 'رئيسي' }, { k: 'secondary', l: 'ثانوي' }, { k: 'accent', l: 'مميّز CTA' },
+    { k: 'outline', l: 'محدّد' }, { k: 'ghost', l: 'شفاف' }, { k: 'success', l: 'نجاح' }, { k: 'danger', l: 'خطر' },
+  ];
+  window.S = [
+    { n: 'Default', a: 'افتراضي', c: '' }, { n: 'Hover', a: 'تمرير', c: 'is-hover' },
+    { n: 'Active', a: 'ضغط', c: 'is-active' }, { n: 'Focus', a: 'تركيز', c: 'is-focus' },
+    { n: 'Disabled', a: 'معطّل', c: '', d: true }, { n: 'Loading', a: 'تحميل', c: 'is-loading' },
+  ];
+  window.TI = { success: 'check-circle', error: 'x-circle', warning: 'warning', info: 'info', accent: 'bell' };
+
+  /* [الاسم، متغيّر CSS (إن كان يتبع الثيم)، hex فاتح، hex داكن، الاستخدام] */
+  window.PALETTE = [
+    { g: 'الأسطح والنصوص — تتبع الثيم', i: [
+      ['page', '--page', '#F1EDE7', '#09141B', 'خلفية الصفحات (60%)'],
+      ['card', '--card', '#FBF9F6', '#0F1E28', 'سطح الكروت والنوافذ'],
+      ['field', '--field', '#FFFFFF', '#0A161E', 'خلفية الحقول'],
+      ['ink', '--ink', '#1E293B', '#E8F0F5', 'النص الأساسي'],
+      ['muted', '--muted', '#475569', '#9DB2C0', 'النص الثانوي'],
+      ['line', '--line', '#E2E8F0', '#223745', 'الحدود والفواصل ومسارات المقاييس'],
+      ['line-strong', '--line-strong', '#7F8FA6', '#647D8F', 'حدود الحقول ومسار المفتاح (≥ 3:1)'] ] },
+    { g: 'الهوية الدلالية — تتبع الثيم', i: [
+      ['brand', '--brand', '#0B6680', '#6ECDE4', 'الروابط، النص النشط، حلقة التركيز'],
+      ['soft', '--soft', '#E7F4F8', '#143442', 'خلفية Hover والعنصر النشط'],
+      ['soft-2', '--soft-2', '#C9E7EF', '#1B4455', 'Active للعناصر الثانوية'],
+      ['onaccent', null, '#1E293B', null, 'نص فوق Accent — ثابت في الوضعين'] ] },
+    { g: 'نصوص الحالة — تتبع الثيم', i: [
+      ['ok', '--ok', '#047857', '#6EE7B7', 'نجاح: نص الشارات والتنبيهات'],
+      ['warn', '--warn', '#92400E', '#FCD34D', 'تحذير: نص + تعبئة مقياس الاقتراب'],
+      ['danger', '--danger', '#B91C1C', '#FCA5A5', 'خطأ: رسائل الحقول والشارات'],
+      ['info', '--info', '#1D4ED8', '#93C5FD', 'معلومة'] ] },
+    { g: 'Primary — درجات ثابتة', i: [
+      ['primary-50', null, '#E7F4F8', null, 'رأس الجداول'], ['primary-100', null, '#C9E7EF', null, 'حدود اللوحات'],
+      ['primary-200', null, '#A3D5E2', null, 'زخرفة'], ['primary-500', null, '#0E80A1', null, 'الهيدر، الزر الرئيسي (4.54:1)'],
+      ['primary-600', null, '#0C6F8B', null, 'Hover للزر الرئيسي'], ['primary-700', null, '#0B6680', null, '= brand في الفاتح'],
+      ['primary-800', null, '#094F63', null, 'Active / Pressed'], ['primary-900', null, '#073C4C', null, 'تعتيم الخلفية (Backdrop)'] ] },
+    { g: 'Accent — درجات ثابتة (10%)', i: [
+      ['accent-100', null, '#FDF6CC', null, 'زخرفة'], ['accent-200', null, '#FBEE96', null, 'زخرفة'],
+      ['accent-500', null, '#F7D933', null, 'CTA، الشارات المميزة، هالة التركيز'], ['accent-600', null, '#E8C81F', null, 'Hover'], ['accent-700', null, '#CFAE12', null, 'Active'] ] },
+    { g: 'تعبئات الحالة — ثابتة', i: [
+      ['success-500', null, '#10B981', null, 'أشرطة وحدود فقط'], ['success-700', null, '#047857', null, 'زر النجاح (5.48:1)'],
+      ['warning-500', null, '#F59E0B', null, 'أشرطة وحدود فقط'], ['error-500', null, '#EF4444', null, 'أشرطة وحدود فقط'],
+      ['error-600', null, '#DC2626', null, 'زر الخطر (4.83:1)'] ] },
+  ];
+
+  /* نسب محسوبة (WCAG 2.x) — الشفافية محسوبة فوق سطح الكرت */
+  window.CONTRAST = [
+    ['النص الأساسي', 'ink / page', '12.54', '16.15', '4.5'],
+    ['النص الثانوي', 'muted / card', '7.21', '7.73', '4.5'],
+    ['الروابط', 'brand / card', '6.19', '9.31', '4.5'],
+    ['زر Primary', 'white / primary-500', '4.54', '4.54', '4.5'],
+    ['زر Accent', 'onaccent / accent-500', '10.40', '10.40', '4.5'],
+    ['زر الخطر', 'white / error-600', '4.83', '4.83', '4.5'],
+    ['شارة النجاح', 'ok / success-500·15%', '4.54', '8.71', '4.5'],
+    ['شارة التحذير', 'warn / warning-500·15%', '6.04', '9.10', '4.5'],
+    ['شارة الخطأ', 'danger / error-500·15%', '5.08', '7.80', '4.5'],
+    ['شارة Accent', 'onaccent·25% ⁄ accent-500·15%', '12.85', '8.41', '4.5'],
+    ['حدود الحقل (غير نصي)', 'line-strong / field', '3.29', '4.25', '3'],
+    ['حلقة التركيز (غير نصي)', 'brand / card', '6.19', '9.31', '3'],
+  ];
+
+  window.BADGES = [
+    ['DRAFT · مسودة', 'neutral'], ['PENDING · قيد المراجعة', 'accent'], ['PUBLISHED · منشور', 'success'], ['REJECTED · مرفوض', 'danger'],
+    ['active · نشط', 'success'], ['past_due · متأخر', 'warning'], ['in_progress · جارٍ', 'primary'], ['trialing · تجريبي', 'info'],
+  ];
+
+  /**
+   * مكوّن الاختيار المخصص (Select-only Combobox — نمط WAI-ARIA APG) — v2 الموحّد في كل الصفحات.
+   * ↓/↑ Home/End · Enter/Space اختيار · Tab اختيار وانتقال · Esc إغلاق (دون إغلاق النافذة/اللوحة الأم)
+   * · البحث بأول الأحرف · ينقلب للأعلى عند ضيق المساحة.
+   * الاستخدام: x-data="selectDropdown({ id, options: () => [...], get: () => val, set: v => val = v, placeholder, disabled })"
+   * ملاحظة: لا تُستخدم مع spread ({ ...selectDropdown() }) لأنه يفقد الـ getters فلا تتحدّث التسمية.
+   */
+  function selectDropdown({ id, options, get, set, disabled = () => false, placeholder = '' }) {
+    return {
+      open: false, active: -1, dropUp: false, _q: '', _qt: null,
+      get items() { return options(); },
+      get isDisabled() { return !!disabled(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get hasValue() { return !!this.selectedItem; },
+      get triggerLabel() { return this.selectedItem ? this.selectedItem.label : placeholder; },
+      get activeId() { return this.open && this.active > -1 && this.items[this.active] ? this.optId(this.items[this.active]) : null; },
+      optId(item) { return id + '-opt-' + item.value; },
+      isSelected(item) { return get() === item.value; },
+      openList() {
+        if (this.isDisabled || !this.items.length) return;
+        const r = this.$refs.btn.getBoundingClientRect();
+        const need = Math.min(224, this.items.length * 46 + 16);
+        this.dropUp = r.bottom + need > window.innerHeight - 8 && r.top > need;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item, refocus = true) { set(item.value); this.closeList(); if (refocus) this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() {
+        this.$nextTick(() => {
+          const list = this.$refs.list, el = list?.children[this.active];
+          if (!list || !el) return;
+          /* تمرير يدوي داخل القائمة فقط (scrollIntoView قد يحرّك الصفحة أو اللوحة) */
+          if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+          else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+        });
+      },
+      onKey(e) {
+        if (this.isDisabled) return;
+        const k = e.key;
+        if (k === 'ArrowDown') { e.preventDefault(); this.move(1); }
+        else if (k === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scrollActiveIntoView(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = this.items.length - 1; this.scrollActiveIntoView(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape' && this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); }
+        else if (k === 'Tab' && this.open) { if (this.active > -1) this.choose(this.items[this.active], false); else this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          this._q += k.toLowerCase(); clearTimeout(this._qt); this._qt = setTimeout(() => this._q = '', 600);
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this._q));
+          if (i > -1) { if (!this.open) this.openList(); this.active = i; this.scrollActiveIntoView(); }
+        }
+      },
+    };
+  }
+
+  /* ---------- حالة الواجهة (Modals / Toasts / Theme / Dir) ---------- */
+  function ui() {
+    const NF = new Intl.NumberFormat('ar-SA-u-nu-latn');
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    return {
+      modal: null, busy: false, toasts: [], n: 0, live: '', section: '',
+      dark: document.documentElement.classList.contains('dark'),
+      dir: document.documentElement.dir === 'ltr' ? 'ltr' : 'rtl',
+      s1: '', s2: '', s3: 'openai', role: 'teacher',
+      form: { name: '', code: '', active: true }, formErr: '',
+
+      init() {
+        if (!('IntersectionObserver' in window)) return;
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach(e => { if (e.isIntersecting) this.section = e.target.id; });
+        }, { rootMargin: '-35% 0px -60% 0px' });
+        NAV.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
+      },
+      fmt(n) { return NF.format(n); },
+      announce(msg) { this.live = ''; setTimeout(() => { this.live = msg; }, 60); },
+
+      /* النوافذ: x-trap يعيد التركيز تلقائيًا إلى زر الفتح عند الإغلاق */
+      open(m) {
+        if (m === 'form') { this.form = { name: '', code: '', active: true }; this.formErr = ''; }
+        this.modal = m;
+      },
+      close() { if (!this.busy) this.modal = null; },
+      submitForm() {
+        if (!this.form.name.trim()) {
+          this.formErr = 'اسم المادة مطلوب.';
+          this.$nextTick(() => document.getElementById('mf1')?.focus());
+          return;
+        }
+        this.formErr = '';
+        this.run('success', 'تمت الإضافة', 'تم إنشاء المادة الدراسية «' + this.form.name.trim() + '».');
+      },
+      async run(type, title, msg) {
+        if (this.busy) return;          // يمنع الإرسال المزدوج (Enter / نقرتان)
+        this.busy = true;
+        await sleep(1200);
+        this.busy = false;
+        this.modal = null;
+        this.toast(type, title, msg);
+      },
+
+      /* الإشعارات: مدة أطول للأخطاء + إيقاف مؤقت عند التمرير/التركيز (WCAG 2.2.1) */
+      get errorToasts() { return this.toasts.filter(t => t.type === 'error'); },
+      get politeToasts() { return this.toasts.filter(t => t.type !== 'error'); },
+      toast(type, title, msg) {
+        const ms = type === 'error' ? 8000 : 5000;
+        const id = ++this.n;
+        this.toasts.push({ id, type, title, msg, open: false, ms, left: ms, start: 0, timer: null, paused: false });
+        const alive = this.toasts.filter(x => !x.closing);
+        if (alive.length > 4) this.dismiss(alive[0].id);
+        this.$nextTick(() => {
+          const t = this.toasts.find(x => x.id === id); if (!t) return;
+          t.open = true; this.resumeToast(t);
+        });
+      },
+      pauseToast(t) {
+        if (t.paused || !t.timer) return;
+        clearTimeout(t.timer); t.timer = null;
+        t.left = Math.max(0, t.left - (Date.now() - t.start));
+        t.paused = true;
+      },
+      resumeToast(t) {
+        t.paused = false; t.start = Date.now();
+        clearTimeout(t.timer);
+        t.timer = setTimeout(() => this.dismiss(t.id), Math.max(t.left, 800));
+      },
+      dismiss(id) {
+        const t = this.toasts.find(x => x.id === id); if (!t) return;
+        clearTimeout(t.timer); t.closing = true; t.open = false;
+        setTimeout(() => { this.toasts = this.toasts.filter(x => x.id !== id); }, 250);
+      },
+
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.body.classList.add('theme-anim');
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+        setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+        this.announce(this.dark ? 'تم تفعيل الوضع الداكن' : 'تم تفعيل الوضع الفاتح');
+      },
+      /* معاينة الاتجاه فقط: يبقى المحتوى عربيًا (lang="ar") لاختبار الخصائص المنطقية بصريًا */
+      toggleDir() {
+        const h = document.documentElement;
+        this.dir = this.dir === 'rtl' ? 'ltr' : 'rtl';
+        h.dir = this.dir;
+        try { sessionStorage.setItem('firob-sg-dir', this.dir); } catch (e) {}
+        this.announce(this.dir === 'ltr' ? 'معاينة الاتجاه من اليسار إلى اليمين' : 'عودة إلى الاتجاه من اليمين إلى اليسار');
+      },
+      async copy(text) {
+        let ok = false;
+        try { await navigator.clipboard.writeText(text); ok = true; }
+        catch (e) {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+          } catch (e2) {}
+        }
+        ok ? this.toast('success', 'تم النسخ', 'نُسخت كتلة الرموز إلى الحافظة.')
+           : this.toast('error', 'تعذّر النسخ', 'حدّد النص وانسخه يدويًا (Ctrl+C).');
+      },
+    };
+  }
+</script>
+</head>
+
+<body x-data="ui()">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلان عامة لقارئ الشاشة -->
+<p class="sr-only" role="status" aria-live="polite" x-text="live"></p>
+
+<!-- ========== Icon Sprite ========== -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0112 0c0 6 2 7 2 7H4s2-1 2-7M10 20a2 2 0 004 0"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 5a3 3 0 010 6M18 14c2 .6 3 2.4 3 5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M7 19h12"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h8"/></symbol>
+  <symbol id="i-dir" viewBox="0 0 24 24"><path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/></symbol>
+</svg>
+
+<!-- ========== Topbar ========== -->
+<header class="sticky top-0 z-40 bg-primary-500 text-white shadow-md" style="padding-top: env(safe-area-inset-top, 0px)">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-2 pt-3 lg:flex-nowrap lg:pb-3">
+    <span class="grid h-9 shrink-0 place-items-center rounded-lg bg-white px-2">
+      <img src="asset/images/firob-logo.png" alt="FirOb" width="92" height="24" decoding="async" class="block h-6 w-auto object-contain">
+    </span>
+    <div class="min-w-0">
+      <p class="truncate text-base font-extrabold leading-tight en" lang="en" dir="ltr">Design System</p>
+      <p class="truncate text-xs">دليل نظام التصميم المعتمد · v1.1</p>
+    </div>
+
+    <!-- التحكم: يأتي بعد العنوان في الجوال، وفي النهاية على الشاشات الكبيرة -->
+    <div class="ms-auto flex shrink-0 items-center gap-2 lg:order-last lg:ms-0">
+      <button type="button" @click="toggleTheme()" :aria-pressed="dark.toString()" aria-label="الوضع الداكن"
+              class="grid h-11 w-11 place-items-center rounded-lg border border-white/60 hover:bg-white/15 sm:h-9 sm:w-9">
+        <svg class="ic" x-show="!dark" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="ic" x-show="dark" x-cloak aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <button type="button" @click="toggleDir()"
+              class="inline-flex min-h-[2.75rem] items-center gap-1.5 rounded-lg border border-white/60 px-3 text-xs font-bold hover:bg-white/15 sm:min-h-[2.25rem]">
+        <svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-dir"/></svg>
+        <span x-text="dir === 'rtl' ? 'معاينة LTR' : 'عودة إلى RTL'">معاينة LTR</span>
+      </button>
+    </div>
+
+    <!-- تنقّل الأقسام: صف أفقي قابل للتمرير في الجوال، مضمّن على lg -->
+    <nav class="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 [scrollbar-width:none] lg:order-none lg:mx-0 lg:ms-auto lg:w-auto lg:px-0" aria-label="أقسام الدليل">
+      <ul class="flex gap-1 whitespace-nowrap text-sm font-bold">
+        <template x-for="item in NAV" :key="item[0]">
+          <li>
+            <a :href="'#' + item[0]" class="block rounded-md px-3 py-2 hover:bg-white/15"
+               :class="section === item[0] && 'bg-white/20 underline decoration-accent-500 decoration-2 underline-offset-4'"
+               :aria-current="section === item[0] ? 'location' : null" x-text="item[1]"></a>
+          </li>
+        </template>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main" tabindex="-1" class="mx-auto max-w-6xl px-4 pb-24 focus:outline-none">
+
+  <!-- ========== Intro ========== -->
+  <section class="py-10" aria-labelledby="intro-t">
+    <h1 id="intro-t" class="text-3xl font-extrabold leading-tight text-brand sm:text-4xl">دليل نظام التصميم</h1>
+    <p class="mt-3 max-w-3xl text-base text-muted sm:text-lg">مرجع موحّد لكل مكونات واجهة FirOb: Tailwind CSS + Alpine.js، اتجاه <code class="code-inline" dir="ltr">dir="rtl"</code> افتراضيًا مع خصائص منطقية (<code class="code-inline" dir="ltr">ms-/me-/ps-/pe-/start/end/border-s</code>) لتعمل الواجهة بالاتجاهين. جرّب زر «معاينة LTR» وزر الوضع الداكن في الأعلى.</p>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <div class="card p-5">
+        <h2 class="text-lg font-bold">قاعدة التوزيع 60 / 30 / 10</h2>
+        <div class="mt-4 flex h-12 overflow-hidden rounded-xl border border-line-strong" role="img"
+             aria-label="توزيع الألوان: 60 بالمئة خلفيات محايدة، 30 بالمئة Primary، 10 بالمئة Accent">
+          <span class="grid w-[60%] place-items-center bg-page text-xs font-extrabold text-muted" aria-hidden="true">60%</span>
+          <span class="grid w-[30%] place-items-center border-s border-line-strong bg-primary-500 text-xs font-extrabold text-white" aria-hidden="true">30%</span>
+          <span class="grid w-[10%] place-items-center bg-accent-500 text-xs font-extrabold text-onaccent" aria-hidden="true">10%</span>
+        </div>
+        <dl class="mt-4 space-y-2 text-sm">
+          <div class="flex gap-2"><dt class="flex shrink-0 items-center gap-2 font-bold"><span class="h-3 w-3 rounded-sm border border-line-strong bg-page" aria-hidden="true"></span>60%</dt><dd class="text-muted">خلفيات وأسطح محايدة (page / card / field)</dd></div>
+          <div class="flex gap-2"><dt class="flex shrink-0 items-center gap-2 font-bold"><span class="h-3 w-3 rounded-sm bg-primary-500" aria-hidden="true"></span>30%</dt><dd class="text-muted">Primary: الهيدر، الأزرار، الحالات النشطة</dd></div>
+          <div class="flex gap-2"><dt class="flex shrink-0 items-center gap-2 font-bold"><span class="h-3 w-3 rounded-sm bg-accent-500" aria-hidden="true"></span>10%</dt><dd class="text-muted">Accent: CTA واحد لكل شاشة، شارات، تنبيهات حيوية</dd></div>
+        </dl>
+      </div>
+      <div class="card p-5">
+        <h2 class="text-lg font-bold">قرارات الاعتماد (إمكانية الوصول)</h2>
+        <ul class="mt-3 list-disc space-y-1.5 ps-5 text-sm text-muted marker:text-primary-500">
+          <li>النص فوق <b class="text-ink">Accent</b> داكن دائمًا عبر <code class="code-inline" dir="ltr">onaccent</code> الثابت — لا يتبع تبديل الثيم، ولا نص أبيض عليه.</li>
+          <li>Focus موحّد عبر <code class="code-inline" dir="ltr">:focus-visible</code> و<code class="code-inline" dir="ltr">--ring</code>: فاصل بلون السطح + <code class="code-inline" dir="ltr">brand</code> + هالة Accent؛ يتكيّف مع الداكن تلقائيًا.</li>
+          <li>نصوص الحالة بالرموز الدلالية <code class="code-inline" dir="ltr">ok / warn / danger / info</code>؛ الدرجة 500 للأشرطة والحدود فقط.</li>
+          <li>زر الخطر <code class="code-inline" dir="ltr">error-600</code> (4.83:1)؛ حدود الحقول <code class="code-inline" dir="ltr">line-strong</code> (≥ 3:1).</li>
+          <li>الحالة لا تُنقل باللون وحده: أيقونة + نص دائمًا.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 1) COLORS ========== -->
+  <section id="colors" class="sec" aria-labelledby="colors-t">
+    <h2 id="colors-t" class="sec-title">١ · الألوان (Design Tokens)</h2>
+    <p class="mt-2 text-muted">العيّنات حيّة من الرموز نفسها: بدّل الوضع الداكن لترى قيم الداكن. الرموز التي «تتبع الثيم» تُكتب كـ RGB triplets لتدعم الشفافية (<code class="code-inline" dir="ltr">bg-ok/15</code>).</p>
+
+    <div class="mt-6 space-y-8">
+      <template x-for="grp in PALETTE" :key="grp.g">
+        <div>
+          <h3 class="mb-3 text-lg font-bold" x-text="grp.g"></h3>
+          <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <template x-for="c in grp.i" :key="c[0]">
+              <li class="card overflow-hidden">
+                <div class="h-16 border-b border-line" :style="{ background: c[1] ? 'rgb(var(' + c[1] + '))' : c[2] }" aria-hidden="true"></div>
+                <div class="p-3">
+                  <p class="flex flex-wrap items-center gap-1.5 text-sm font-bold"><span dir="ltr" x-text="c[0]"></span>
+                    <span x-show="c[1]" class="badge badge-primary !px-2 !text-[10px]">يتبع الثيم</span></p>
+                  <p class="text-xs font-bold text-brand" dir="ltr" x-text="(c[1] && dark ? c[3] : c[2])"></p>
+                  <p x-show="c[1]" class="text-[11px] text-muted" dir="ltr" x-text="(dark ? 'light: ' + c[2] : 'dark: ' + c[3])"></p>
+                  <p class="mt-1 text-xs text-muted" x-text="c[4]"></p>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </div>
+
+    <!-- مصفوفة التباين -->
+    <h3 id="contrast-t" class="mb-3 mt-10 text-lg font-bold">مصفوفة التباين المعتمدة (WCAG AA)</h3>
+    <div class="card overflow-x-auto scroll-thin" role="region" aria-labelledby="contrast-t" tabindex="0">
+      <table class="w-full min-w-[640px] text-sm">
+        <caption class="sr-only">نسب التباين المحسوبة لكل زوج ألوان في الوضعين الفاتح والداكن</caption>
+        <thead>
+          <tr class="bg-soft text-brand">
+            <th scope="col" class="p-3 text-start font-bold">الاستخدام</th>
+            <th scope="col" class="p-3 text-start font-bold">الزوج</th>
+            <th scope="col" class="p-3 text-start font-bold">فاتح</th>
+            <th scope="col" class="p-3 text-start font-bold">داكن</th>
+            <th scope="col" class="p-3 text-start font-bold">الحد الأدنى</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          <template x-for="r in CONTRAST" :key="r[0]">
+            <tr>
+              <th scope="row" class="p-3 text-start font-bold" x-text="r[0]"></th>
+              <td class="p-3 text-xs text-muted" dir="ltr" x-text="r[1]"></td>
+              <td class="p-3"><span class="badge badge-success tabular-nums"><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-check"/></svg><span dir="ltr" x-text="r[2] + ':1'"></span></span></td>
+              <td class="p-3"><span class="badge badge-success tabular-nums"><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-check"/></svg><span dir="ltr" x-text="r[3] + ':1'"></span></span></td>
+              <td class="p-3 tabular-nums text-muted" dir="ltr" x-text="r[4] + ':1'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- كتلة Tailwind 4 -->
+    <div class="card mt-8 p-5">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h3 class="text-lg font-bold">Tailwind 4 — <code class="code-inline" dir="ltr">app.css</code> (الوضعان + <code class="code-inline" dir="ltr">@theme</code>)</h3>
+        <button type="button" class="btn btn-outline btn-sm" @click="copy($refs.themeCode.textContent)">
+          <svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-copy"/></svg>نسخ الكتلة
+        </button>
+      </div>
+      <pre dir="ltr" class="code-block scroll-thin" tabindex="0" aria-label="كتلة رموز Tailwind 4"><code x-ref="themeCode">/* resources/css/app.css — Tailwind CSS 4 */
+@import "tailwindcss";
+@custom-variant dark (&amp;:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+  --ink: 30 41 59;      --muted: 71 85 105;
+  --line: 226 232 240;  --line-strong: 127 143 166;
+  --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+  --ok: 4 120 87;       --warn: 146 64 14;    --danger: 185 28 28;   --info: 29 78 216;
+  --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgb(247 217 51 / .55);
+}
+.dark {
+  color-scheme: dark;
+  --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+  --ink: 232 240 245;   --muted: 157 178 192;
+  --line: 34 55 69;     --line-strong: 100 125 143;
+  --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+  --ok: 110 231 183;    --warn: 252 211 77;   --danger: 252 165 165; --info: 147 197 253;
+}
+
+@theme inline {
+  --font-sans: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  --color-page: rgb(var(--page));    --color-card: rgb(var(--card));    --color-field: rgb(var(--field));
+  --color-ink: rgb(var(--ink));      --color-muted: rgb(var(--muted));
+  --color-line: rgb(var(--line));    --color-line-strong: rgb(var(--line-strong));
+  --color-brand: rgb(var(--brand));  --color-soft: rgb(var(--soft));    --color-soft-2: rgb(var(--soft-2));
+  --color-ok: rgb(var(--ok));        --color-warn: rgb(var(--warn));
+  --color-danger: rgb(var(--danger)); --color-info: rgb(var(--info));
+  --color-onaccent: #1E293B;
+
+  --color-primary-50: #E7F4F8;  --color-primary-100: #C9E7EF; --color-primary-200: #A3D5E2;
+  --color-primary-500: #0E80A1; --color-primary-600: #0C6F8B; --color-primary-700: #0B6680;
+  --color-primary-800: #094F63; --color-primary-900: #073C4C;
+
+  --color-accent-100: #FDF6CC;  --color-accent-200: #FBEE96;  --color-accent-500: #F7D933;
+  --color-accent-600: #E8C81F;  --color-accent-700: #CFAE12;
+
+  --color-success-50: #ECFDF5;  --color-success-100: #D1FAE5; --color-success-500: #10B981;
+  --color-success-700: #047857; --color-success-800: #065F46;
+  --color-warning-50: #FFFBEB;  --color-warning-100: #FEF3C7; --color-warning-500: #F59E0B;
+  --color-warning-700: #B45309; --color-warning-800: #92400E;
+  --color-error-50: #FEF2F2;    --color-error-100: #FEE2E2;   --color-error-500: #EF4444;
+  --color-error-600: #DC2626;   --color-error-700: #B91C1C;   --color-error-800: #991B1B;
+
+  --shadow-card: 0 1px 2px rgb(30 41 59 / .06), 0 12px 32px -12px rgb(30 41 59 / .14);
+  --shadow-pop:  0 20px 50px -12px rgb(7 60 76 / .45);
+}
+
+@layer base {
+  :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- ========== 2) TYPOGRAPHY ========== -->
+  <section id="type" class="sec" aria-labelledby="type-t">
+    <h2 id="type-t" class="sec-title">٢ · نظام الخطوط والعناوين</h2>
+    <p class="mt-2 text-muted">الخط العربي <b class="text-ink">Tajawal</b> والإنجليزي <b class="text-ink en" lang="en">Manrope</b> (400 / 500 / 700 / 800)، مع ارتفاع سطر مريح للعربية (<code class="code-inline" dir="ltr">leading-relaxed</code>). العيّنات أدناه فقرات منسّقة عمدًا كي لا تكسر تسلسل عناوين هذه الصفحة؛ في الصفحات الفعلية استخدم <code class="code-inline" dir="ltr">h1–h4</code> بترتيب لا يقفز مستويات.</p>
+
+    <div class="card mt-6 divide-y divide-line">
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">h1 · text-3xl sm:text-4xl · extrabold · brand</p>
+        <p class="text-3xl font-extrabold leading-tight text-brand sm:text-4xl">لوحة تحكم المنظمة</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">h2 · text-2xl sm:text-3xl · extrabold · brand</p>
+        <p class="text-2xl font-extrabold text-brand sm:text-3xl">إدارة المواد والمفاهيم</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">h3 · text-xl · bold · ink</p>
+        <p class="text-xl font-bold text-ink">طابور المراجعة المعلّقة</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">h4 · text-base · bold · ink</p>
+        <p class="text-base font-bold text-ink">عنوان كرت: مفهوم الكسور العشرية</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">Body · text-base · ink</p>
+        <p class="max-w-2xl text-base text-ink">يُنشئ المعلّم المفهوم كمسودة، ثم يرسله للمراجعة؛ وبعد الاعتماد يظهر للطلاب في المادة الدراسية المرتبطة به.</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">Body EN · Manrope · lang="en"</p>
+        <p class="en max-w-2xl text-base text-ink" lang="en" dir="ltr">Teachers draft a concept, submit it for review, and once approved it becomes visible to students.</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">Muted · text-sm · muted</p>
+        <p class="text-sm text-muted">آخر تحديث قبل ٣ ساعات بواسطة أحمد الخطيب</p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">Caption · text-xs · muted</p>
+        <p class="text-xs text-muted">الحد الأقصى للملف ١٠ ميغابايت · الصيغ المسموحة: <bdi dir="ltr">PDF, PNG, WEBP</bdi></p>
+      </div>
+      <div class="grid gap-2 p-5 md:grid-cols-[220px_1fr] md:items-baseline">
+        <p class="text-xs font-bold text-muted" dir="ltr">Link · brand · underline</p>
+        <p class="text-base"><a href="#type" class="rounded font-bold text-brand underline underline-offset-4 hover:decoration-2">عرض سجل النشاط الكامل</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 3) BUTTONS ========== -->
+  <section id="buttons" class="sec" aria-labelledby="buttons-t">
+    <h2 id="buttons-t" class="sec-title">٣ · الأزرار (Buttons &amp; CTAs)</h2>
+    <p class="mt-2 text-muted">الحالات في المصفوفتين مُثبَّتة بأصناف <code class="code-inline" dir="ltr">is-hover / is-active / is-focus</code> للعرض فقط وهي <b class="text-ink">غير تفاعلية</b> (خارج تسلسل Tab)؛ في الإنتاج تعمل تلقائيًا بـ <code class="code-inline" dir="ltr">:hover / :active / :focus-visible</code>. الأزرار التفاعلية في الكروت أسفلها.</p>
+
+    <div class="alert alert-accent mt-4" role="note">
+      <svg class="ic a-ic" aria-hidden="true"><use href="#i-info"/></svg>
+      <p><b>قاعدة:</b> زر Accent (CTA) واحد كحد أقصى في الشاشة الواحدة، ولا يُستخدم للإجراءات المدمّرة. حالة التحميل تستخدم <code class="code-inline" dir="ltr">aria-disabled</code> (لا <code class="code-inline" dir="ltr">disabled</code>) كي لا يضيع التركيز من الزر.</p>
+    </div>
+
+    <!-- مصفوفة الأزرار النصية -->
+    <h3 id="btn-matrix-t" class="mb-3 mt-8 text-lg font-bold">أزرار نصية × الحالات</h3>
+    <div class="card overflow-x-auto scroll-thin" role="region" aria-labelledby="btn-matrix-t" tabindex="0">
+      <table class="w-full min-w-[900px] text-sm">
+        <caption class="sr-only">مصفوفة عرض ثابتة لأنواع الأزرار وحالاتها — الأزرار غير تفاعلية</caption>
+        <thead>
+          <tr class="bg-soft text-brand">
+            <th scope="col" class="p-3 text-start font-bold">النوع</th>
+            <template x-for="s in S" :key="s.n">
+              <th scope="col" class="p-3 text-start font-bold"><span dir="ltr" x-text="s.n"></span> <span class="block text-xs font-medium text-muted" x-text="s.a"></span></th>
+            </template>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          <template x-for="v in V" :key="v.k">
+            <tr>
+              <th scope="row" class="p-3 text-start font-bold" x-text="v.l"></th>
+              <template x-for="s in S" :key="s.n">
+                <td class="p-3">
+                  <button type="button" tabindex="-1" class="btn" :class="['btn-' + v.k, s.c]" :disabled="!!s.d"
+                          :aria-disabled="s.n === 'Loading' ? 'true' : null" @click.prevent>
+                    <svg x-show="s.n === 'Loading'" class="ic animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg>
+                    <span x-text="s.n === 'Loading' ? 'جارٍ الحفظ' : 'حفظ'"></span>
+                  </button>
+                </td>
+              </template>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- مصفوفة أزرار الأيقونات -->
+    <h3 id="icon-matrix-t" class="mb-3 mt-8 text-lg font-bold">أزرار الأيقونات (Icon Buttons) — تتطلب <code class="code-inline" dir="ltr">aria-label</code></h3>
+    <div class="card overflow-x-auto scroll-thin" role="region" aria-labelledby="icon-matrix-t" tabindex="0">
+      <table class="w-full min-w-[760px] text-sm">
+        <caption class="sr-only">مصفوفة عرض ثابتة لأزرار الأيقونات وحالاتها — الأزرار غير تفاعلية</caption>
+        <thead>
+          <tr class="bg-soft text-brand">
+            <th scope="col" class="p-3 text-start font-bold">النوع</th>
+            <template x-for="s in S" :key="s.n">
+              <th scope="col" class="p-3 text-start font-bold"><span dir="ltr" x-text="s.n"></span></th>
+            </template>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-line">
+          <template x-for="v in V" :key="v.k">
+            <tr>
+              <th scope="row" class="p-3 text-start font-bold" x-text="v.l"></th>
+              <template x-for="s in S" :key="s.n">
+                <td class="p-3">
+                  <button type="button" tabindex="-1" class="btn btn-icon" :class="['btn-' + v.k, s.c]" :disabled="!!s.d"
+                          :aria-disabled="s.n === 'Loading' ? 'true' : null" :aria-label="(v.k === 'danger' ? 'حذف' : 'إضافة') + ' — ' + v.l" @click.prevent>
+                    <svg class="ic" :class="s.n === 'Loading' && 'animate-spin'" aria-hidden="true"><use :href="s.n === 'Loading' ? '#i-spinner' : (v.k === 'danger' ? '#i-trash' : '#i-plus')"/></svg>
+                  </button>
+                </td>
+              </template>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- أحجام + أيقونات + عرض كامل + تحميل حقيقي -->
+    <div class="mt-8 grid gap-4 md:grid-cols-2">
+      <div class="card p-5">
+        <h3 class="mb-4 text-lg font-bold">الأحجام (تفاعلية)</h3>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="btn btn-primary btn-sm">صغير</button>
+          <button type="button" class="btn btn-primary">متوسط</button>
+          <button type="button" class="btn btn-primary btn-lg">كبير</button>
+          <button type="button" class="btn btn-secondary btn-icon btn-sm" aria-label="إضافة (صغير)"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          <button type="button" class="btn btn-secondary btn-icon" aria-label="إضافة (متوسط)"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          <button type="button" class="btn btn-secondary btn-icon btn-lg" aria-label="إضافة (كبير)"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+        </div>
+        <p class="hint">مساحة اللمس ≥ 44px على الجوال لكل الأحجام؛ الصغير يصبح 36px من <code class="code-inline" dir="ltr">sm</code>.</p>
+      </div>
+      <div class="card p-5" x-data="{ loading: false, msg: '' }">
+        <h3 class="mb-4 text-lg font-bold">مع أيقونة · تحميل · عرض كامل</h3>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="btn btn-primary"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>إضافة مفهوم</button>
+          <button type="button" class="btn btn-accent"><svg class="ic" aria-hidden="true"><use href="#i-sparkle"/></svg>توليد بالذكاء الاصطناعي</button>
+          <button type="button" class="btn btn-outline"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg>تعديل</button>
+        </div>
+        <button type="button" class="btn btn-primary mt-3 w-full" :class="loading && 'is-loading'" :aria-disabled="loading.toString()"
+                @click="if (loading) return; loading = true; msg = 'جارٍ الحفظ…'; setTimeout(() => { loading = false; msg = 'تم الحفظ.' }, 1500)">
+          <svg x-show="loading" x-cloak class="ic animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg>
+          <span x-text="loading ? 'جارٍ الحفظ' : 'جرّب حالة التحميل'">جرّب حالة التحميل</span>
+        </button>
+        <p class="sr-only" role="status" x-text="msg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 4) FORMS ========== -->
+  <section id="forms" class="sec" aria-labelledby="forms-t">
+    <h2 id="forms-t" class="sec-title">٤ · عناصر النماذج (Form Elements)</h2>
+    <p class="mt-2 text-muted">رسالة الخطأ تظهر تحت الحقل باللغة النشطة (<code class="code-inline" dir="ltr">wire:model.blur</code>) مع <code class="code-inline" dir="ltr">aria-invalid</code> و<code class="code-inline" dir="ltr">aria-describedby</code>. حقلا Hover/Focus عرض ثابت للقراءة فقط.</p>
+
+    <!-- Text inputs -->
+    <h3 class="mb-3 mt-6 text-lg font-bold">حقول النص (Text Inputs)</h3>
+    <div class="card grid gap-6 p-5 md:grid-cols-2 lg:grid-cols-3">
+      <div>
+        <label class="label" for="f1">الاسم <span class="text-danger" aria-hidden="true">*</span> — Default</label>
+        <input id="f1" type="text" class="field" placeholder="أدخل اسم المادة" required aria-required="true" aria-describedby="f1h" autocomplete="off">
+        <p id="f1h" class="hint">يظهر للطلاب في قائمة المواد.</p>
+      </div>
+      <div>
+        <label class="label" for="f2">Hover (عرض)</label>
+        <input id="f2" type="text" class="field is-hover" placeholder="حدّ بلون Primary" readonly tabindex="-1">
+      </div>
+      <div>
+        <label class="label" for="f3">Focus (عرض)</label>
+        <input id="f3" type="text" class="field is-focus" value="الرياضيات — الصف التاسع" readonly tabindex="-1">
+      </div>
+      <div>
+        <label class="label" for="f4">رمز المادة — Error</label>
+        <input id="f4" type="text" class="field" value="MATH 09" dir="ltr" aria-invalid="true" aria-describedby="f4e">
+        <p id="f4e" class="err"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg>هذا الرمز مستخدم مسبقًا في منظمتك.</p>
+      </div>
+      <div>
+        <label class="label" for="f5">المنظمة — Disabled</label>
+        <input id="f5" type="text" class="field" value="أكاديمية النور" disabled aria-describedby="f5h">
+        <p id="f5h" class="hint">لا يمكن تعديل هذا الحقل.</p>
+      </div>
+      <div>
+        <label class="label" for="f6">بحث مع أيقونة</label>
+        <div class="relative">
+          <svg class="ic pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="f6" type="search" class="field ps-10" placeholder="ابحث عن مفهوم…" autocomplete="off">
+        </div>
+      </div>
+      <div>
+        <label class="label" for="f7">Loading (تحقق فوري)</label>
+        <div class="relative">
+          <input id="f7" type="text" class="field pe-10" value="MATH-101" dir="ltr" aria-describedby="f7h">
+          <svg class="ic absolute end-3 top-1/2 -translate-y-1/2 animate-spin text-brand" aria-hidden="true"><use href="#i-spinner"/></svg>
+        </div>
+        <p id="f7h" class="hint">جارٍ التحقق من توفر الرمز…</p>
+      </div>
+    </div>
+
+    <!-- Select + Textarea -->
+    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+      <div class="card space-y-5 p-5">
+        <h3 class="text-lg font-bold">القوائم المنسدلة (Select-only Combobox)</h3>
+
+        <!-- s1: Default -->
+        <div x-data="selectDropdown({ id: 's1', placeholder: 'اختر المادة', get: () => s1, set: (v) => s1 = v,
+               options: () => [{ value: 'math', label: 'الرياضيات' }, { value: 'physics', label: 'الفيزياء' }, { value: 'chem', label: 'الكيمياء' },
+                               { value: 'bio', label: 'الأحياء' }, { value: 'arabic', label: 'اللغة العربية' }, { value: 'english', label: 'اللغة الإنجليزية' }] })"
+             @click.outside="closeList()">
+          <span id="s1-label" class="label" @click="$refs.btn.focus()">المادة الدراسية — Default</span>
+          <div class="relative">
+            <button type="button" id="s1" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="s1-label s1"
+                    :aria-expanded="open.toString()" aria-controls="s1-list" :aria-activedescendant="activeId"
+                    class="field flex w-full items-center justify-between gap-2 text-start" :class="hasValue ? 'font-bold' : 'text-muted'"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <svg class="ic text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="s1-list" role="listbox" aria-labelledby="s1-label" tabindex="-1"
+                x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <svg class="ic !h-4 !w-4 text-brand" x-show="isSelected(item)" aria-hidden="true"><use href="#i-check"/></svg>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <p class="hint">جرّب: ↓/↑، Home/End، كتابة أول حرف، Tab للاختيار والانتقال، Esc للإغلاق.</p>
+        </div>
+
+        <!-- s2: Error -->
+        <div x-data="selectDropdown({ id: 's2', placeholder: 'اختر الحالة', get: () => s2, set: (v) => s2 = v,
+               options: () => [{ value: 'late', label: 'متأخر' }, { value: 'ontime', label: 'في الوقت' }] })"
+             @click.outside="closeList()">
+          <span id="s2-label" class="label" @click="$refs.btn.focus()">الحالة — Error</span>
+          <div class="relative">
+            <button type="button" id="s2" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="s2-label s2"
+                    :aria-expanded="open.toString()" aria-controls="s2-list" :aria-activedescendant="activeId"
+                    :aria-invalid="(!s2).toString()" :aria-describedby="!s2 ? 's2e' : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start" :class="hasValue ? 'font-bold' : 'text-muted'"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <svg class="ic text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="s2-list" role="listbox" aria-labelledby="s2-label" tabindex="-1"
+                x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <svg class="ic !h-4 !w-4 text-brand" x-show="isSelected(item)" aria-hidden="true"><use href="#i-check"/></svg>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <p id="s2e" x-show="!s2" class="err"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg>يرجى اختيار قيمة.</p>
+        </div>
+
+        <!-- s3: Disabled -->
+        <div x-data="selectDropdown({ id: 's3', get: () => s3, set: (v) => s3 = v, disabled: () => true,
+               options: () => [{ value: 'openai', label: 'OpenAI' }] })">
+          <span id="s3-label" class="label">المزوّد — Disabled</span>
+          <div class="relative">
+            <button type="button" id="s3" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="s3-label s3" disabled
+                    aria-expanded="false" aria-controls="s3-list" aria-describedby="s3h"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold">
+              <span class="truncate" dir="ltr" x-text="triggerLabel"></span>
+              <svg class="ic text-muted" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+            <ul x-show="false" x-cloak id="s3-list" role="listbox" aria-labelledby="s3-label"></ul>
+          </div>
+          <p id="s3h" class="hint">يحدّده مسؤول المنصة على مستوى الخطة.</p>
+        </div>
+      </div>
+
+      <div class="card space-y-5 p-5">
+        <h3 class="text-lg font-bold">مناطق النص (Textarea)</h3>
+        <div x-data="{ txt: '', max: 300 }">
+          <label class="label" for="t1">الوصف — Default</label>
+          <textarea id="t1" rows="3" class="field resize-y" placeholder="اكتب وصفًا مختصرًا…" x-model="txt" :maxlength="max" aria-describedby="t1c"></textarea>
+          <p id="t1c" class="hint text-end tabular-nums" :class="max - txt.length <= 20 && '!text-warn font-bold'">
+            <span dir="ltr" x-text="txt.length + ' / ' + max">0 / 300</span><span class="sr-only"> حرفًا</span>
+          </p>
+          <p class="sr-only" aria-live="polite" x-text="max - txt.length <= 20 ? 'متبقٍّ ' + (max - txt.length) + ' حرفًا' : ''"></p>
+        </div>
+        <div>
+          <label class="label" for="t2">سبب الرفض <span class="text-danger" aria-hidden="true">*</span> — Error</label>
+          <textarea id="t2" rows="2" class="field resize-y" required aria-required="true" aria-invalid="true" aria-describedby="t2e"></textarea>
+          <p id="t2e" class="err"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg>سبب الرفض مطلوب.</p>
+        </div>
+        <div>
+          <label class="label" for="t3">ملاحظات — Disabled</label>
+          <textarea id="t3" rows="2" class="field" disabled>لا يمكن التعديل أثناء المراجعة.</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checkbox / Radio / Switch -->
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+      <div class="card p-5">
+        <h3 class="mb-3 text-lg font-bold">Checkbox</h3>
+        <fieldset>
+          <legend class="mb-2 text-sm font-bold text-muted">تفضيلات الإشعارات</legend>
+          <div class="text-sm">
+            <label class="choice"><input type="checkbox" class="check"> غير محدّد</label>
+            <label class="choice"><input type="checkbox" class="check" checked> محدّد</label>
+            <label class="choice"><input type="checkbox" class="check" disabled> معطّل</label>
+            <label class="choice"><input type="checkbox" class="check" checked disabled> معطّل ومحدّد</label>
+          </div>
+        </fieldset>
+        <div class="mt-2 border-t border-line pt-2">
+          <label class="choice"><input type="checkbox" class="check" required aria-required="true" aria-invalid="true" aria-describedby="cb-err"> أوافق على الشروط</label>
+          <p id="cb-err" class="err !mt-0"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg>الموافقة مطلوبة.</p>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="mb-3 text-lg font-bold">Radio</h3>
+        <fieldset>
+          <legend class="mb-2 text-sm font-bold text-muted">نوع المورد</legend>
+          <div class="text-sm">
+            <label class="choice"><input type="radio" name="r" value="text" class="check radio" checked> نص</label>
+            <label class="choice"><input type="radio" name="r" value="audio" class="check radio"> صوت</label>
+            <label class="choice"><input type="radio" name="r" value="image" class="check radio"> صورة</label>
+            <label class="choice"><input type="radio" name="r" value="slides" class="check radio" disabled> عرض تقديمي (معطّل)</label>
+          </div>
+        </fieldset>
+        <p class="hint">مجموعة أصلية: الأسهم تتنقّل وتختار، وTab يدخل المجموعة مرة واحدة.</p>
+      </div>
+      <div class="card p-5">
+        <h3 class="mb-3 text-lg font-bold">Switch</h3>
+        <fieldset>
+          <legend class="mb-2 text-sm font-bold text-muted">إعدادات الأمان</legend>
+          <div class="flex flex-col items-start">
+            <label class="switch"><input type="checkbox" role="switch" class="peer sr-only"><span class="switch-track" aria-hidden="true"></span>تسجيل الدخول بالرمز</label>
+            <label class="switch"><input type="checkbox" role="switch" class="peer sr-only" checked><span class="switch-track" aria-hidden="true"></span>إلزام المصادقة الثنائية</label>
+            <label class="switch"><input type="checkbox" role="switch" class="peer sr-only" disabled><span class="switch-track" aria-hidden="true"></span>تسجيل الدخول الموحّد (معطّل)</label>
+            <label class="switch"><input type="checkbox" role="switch" class="peer sr-only" checked disabled><span class="switch-track" aria-hidden="true"></span>تشفير البيانات (معطّل ومفعّل)</label>
+          </div>
+        </fieldset>
+        <p class="hint">يُعلَن «مفتاح، مفعّل/متوقف» عبر <code class="code-inline" dir="ltr">role="switch"</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 5) BADGES & ALERTS ========== -->
+  <section id="badges" class="sec" aria-labelledby="badges-t">
+    <h2 id="badges-t" class="sec-title">٥ · الشارات والتنبيهات</h2>
+
+    <h3 class="mb-3 mt-6 text-lg font-bold">شارات الحالة (Status Badges)</h3>
+    <ul class="card flex flex-wrap gap-3 p-5">
+      <template x-for="b in BADGES" :key="b[0]">
+        <li class="badge" :class="'badge-' + b[1]"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="b[0]"></span></li>
+      </template>
+    </ul>
+    <div class="card mt-4 flex flex-wrap items-center gap-3 p-5">
+      <span class="badge badge-accent"><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-sparkle"/></svg>جديد</span>
+      <span class="badge badge-primary">Primary</span>
+      <span class="badge badge-success">Success</span>
+      <span class="badge badge-warning">Warning</span>
+      <span class="badge badge-danger">Danger</span>
+      <span class="badge badge-info">Info</span>
+      <span class="badge badge-neutral">Neutral</span>
+      <span class="badge badge-muted">Muted</span>
+    </div>
+    <p class="hint">خلفية شفافة (15%) + نص دلالي ⇒ الشارة نفسها تعمل في الوضعين دون أصناف <code class="code-inline" dir="ltr">dark:</code> إضافية (عدا Accent).</p>
+
+    <h3 class="mb-3 mt-8 text-lg font-bold">صناديق التنبيه (Alert Boxes)</h3>
+    <p class="-mt-1 mb-3 text-sm text-muted">التنبيهات الثابتة بلا <code class="code-inline" dir="ltr">role</code>؛ يُضاف <code class="code-inline" dir="ltr">role="alert"</code> فقط عند إدراج تنبيه ديناميكي عاجل، و<code class="code-inline" dir="ltr">role="status"</code> للتحديثات غير العاجلة.</p>
+    <div class="grid gap-3 lg:grid-cols-2">
+      <div class="alert alert-success"><svg class="ic a-ic" aria-hidden="true"><use href="#i-check-circle"/></svg><div><p class="font-bold">تم النشر بنجاح</p><p>أصبح المفهوم متاحًا للطلاب في المادة.</p></div></div>
+      <div class="alert alert-warning"><svg class="ic a-ic" aria-hidden="true"><use href="#i-warning"/></svg><div><p class="font-bold">اقتربت من حد التخزين</p><p>استخدمت 82% من مساحة باقتك. <a href="#cards" class="rounded font-bold text-brand underline underline-offset-2">ترقية الباقة</a></p></div></div>
+      <div class="alert alert-error"><svg class="ic a-ic" aria-hidden="true"><use href="#i-x-circle"/></svg><div><p class="font-bold">فشل توليد المورد</p><p>تعذّر الاتصال بالمزوّد. أعد المحاولة لاحقًا.</p></div></div>
+      <div class="alert alert-info"><svg class="ic a-ic" aria-hidden="true"><use href="#i-info"/></svg><div><p class="font-bold">معلومة</p><p>تُحفظ المسودات تلقائيًا كل 30 ثانية.</p></div></div>
+    </div>
+
+    <div x-data="{ show: true }" class="mt-3">
+      <div x-show="show" x-transition class="alert alert-accent">
+        <svg class="ic a-ic" aria-hidden="true"><use href="#i-bell"/></svg>
+        <div class="flex-1"><p class="font-bold">٣ مفاهيم بانتظار المراجعة</p><p>تنبيه حيوي (Accent) قابل للإغلاق — يعود التركيز إلى زر الإظهار بعد الإغلاق.</p></div>
+        <button type="button" x-ref="closeBtn" class="btn btn-ghost btn-icon btn-sm !text-ink hover:!bg-accent-500/25" aria-label="إغلاق التنبيه"
+                @click="show = false; $nextTick(() => $refs.restore.focus())"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </div>
+      <button x-show="!show" x-cloak x-ref="restore" type="button" class="btn btn-secondary btn-sm"
+              @click="show = true; $nextTick(() => $refs.closeBtn.focus())">إعادة إظهار التنبيه</button>
+    </div>
+  </section>
+
+  <!-- ========== 6) CARDS ========== -->
+  <section id="cards" class="sec" aria-labelledby="cards-t">
+    <h2 id="cards-t" class="sec-title">٦ · الكروت والحاويات</h2>
+
+    <h3 class="mb-3 mt-6 text-lg font-bold">Standard Card</h3>
+    <div class="grid gap-4 lg:grid-cols-3">
+      <article class="card flex flex-col">
+        <header class="flex items-center justify-between gap-3 border-b border-line p-5">
+          <h4 class="text-base font-bold">مفهوم: الكسور العشرية</h4>
+          <span class="badge badge-accent shrink-0"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>PENDING</span>
+        </header>
+        <div class="flex-1 p-5 text-sm text-muted">يشرح الفرق بين الكسور العادية والعشرية مع أمثلة تطبيقية وتمارين قصيرة.</div>
+        <footer class="flex items-center justify-between gap-2 border-t border-line p-4">
+          <span class="text-xs text-muted">أحمد الخطيب · منذ ساعتين</span>
+          <div class="flex gap-1">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="تعديل مفهوم الكسور العشرية"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg></button>
+            <button type="button" class="btn btn-primary btn-sm">مراجعة</button>
+          </div>
+        </footer>
+      </article>
+
+      <!-- كرت قابل للنقر: رابط ممتد يغطي الكرت ويستقبل التركيز -->
+      <article class="card card-hover relative p-5">
+        <span class="grid h-11 w-11 place-items-center rounded-xl bg-soft text-brand" aria-hidden="true"><svg class="ic"><use href="#i-book"/></svg></span>
+        <h4 class="mt-4 text-base font-bold"><a href="#cards" class="card-link focus:outline-none">كرت تفاعلي (Hover / Focus)</a></h4>
+        <p class="mt-1 text-sm text-muted">رابط ممتد (<code class="code-inline" dir="ltr">::after inset-0</code>) يجعل الكرت كله قابلًا للنقر وللوصول بـ Tab.</p>
+      </article>
+
+      <article class="card border-primary-500/20 bg-soft p-5 shadow-none">
+        <h4 class="text-base font-bold text-brand">لوحة معلومات (Panel)</h4>
+        <p class="mt-1 text-sm text-ink">حاوية مسطّحة بلا ظل للتجميع البصري داخل الصفحات.</p>
+        <button type="button" class="btn btn-outline btn-sm mt-4 bg-card">إجراء</button>
+      </article>
+    </div>
+
+    <h3 class="mb-3 mt-8 text-lg font-bold">KPI Stats Cards</h3>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <article class="card p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div><h4 class="text-sm font-medium text-muted">المستخدمون</h4><p class="mt-2 text-3xl font-extrabold tabular-nums" x-text="fmt(1284)">1,284</p></div>
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-brand" aria-hidden="true"><svg class="ic"><use href="#i-users"/></svg></span>
+        </div>
+        <p class="mt-4 flex flex-wrap items-center gap-2 text-sm"><span class="badge badge-success"><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-arrow-up"/></svg><span class="sr-only">ارتفاع</span>12%</span><span class="text-muted">عن الشهر الماضي</span></p>
+      </article>
+
+      <article class="card p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div><h4 class="text-sm font-medium text-muted">المفاهيم المنشورة</h4><p class="mt-2 text-3xl font-extrabold tabular-nums" x-text="fmt(342)">342</p></div>
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-soft text-brand" aria-hidden="true"><svg class="ic"><use href="#i-book"/></svg></span>
+        </div>
+        <p class="mt-4 flex flex-wrap items-center gap-2 text-sm"><span class="badge badge-danger"><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-arrow-down"/></svg><span class="sr-only">انخفاض</span>3%</span><span class="text-muted">عن الشهر الماضي</span></p>
+      </article>
+
+      <article class="card border-accent-500 p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div><h4 class="text-sm font-medium text-muted">بانتظار المراجعة</h4><p class="mt-2 text-3xl font-extrabold tabular-nums">7</p></div>
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-500 text-onaccent" aria-hidden="true"><svg class="ic"><use href="#i-bell"/></svg></span>
+        </div>
+        <button type="button" class="btn btn-accent btn-sm mt-4">فتح الطابور</button>
+      </article>
+
+      <article class="card p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div><h4 id="kpi-storage" class="text-sm font-medium text-muted">حصة التخزين</h4><p class="mt-2 text-3xl font-extrabold tabular-nums">82%</p></div>
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-warning-500/15 text-warn" aria-hidden="true"><svg class="ic"><use href="#i-chart"/></svg></span>
+        </div>
+        <div class="meter mt-4" role="progressbar" aria-labelledby="kpi-storage" aria-valuenow="82" aria-valuemin="0" aria-valuemax="100" aria-valuetext="8.2 من 10 غيغابايت (82%)"><span class="w-[82%] bg-warn"></span></div>
+        <p class="mt-2 flex items-center gap-1.5 text-xs font-bold text-warn"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-warning"/></svg><span dir="ltr">8.2 / 10 GB</span> — اقتربت من الحد</p>
+      </article>
+    </div>
+
+    <h3 class="mb-3 mt-8 text-lg font-bold">حالات KPI: Hover · Loading · Empty · Quota</h3>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <article class="card card-hover is-hover p-5">
+        <h4 class="text-sm font-medium text-muted">Hover (عرض ثابت)</h4><p class="mt-2 text-3xl font-extrabold tabular-nums">96</p>
+        <p class="mt-3 text-xs font-bold text-brand">عرض التفاصيل <span class="inline-block ltr:rotate-180" aria-hidden="true">←</span></p>
+      </article>
+      <article class="card p-5" aria-busy="true">
+        <h4 class="sr-only">جارٍ تحميل المؤشر</h4>
+        <div aria-hidden="true"><div class="skeleton h-4 w-24"></div><div class="skeleton mt-3 h-8 w-32"></div><div class="skeleton mt-5 h-4 w-40"></div></div>
+      </article>
+      <article class="card p-5">
+        <h4 class="text-sm font-medium text-muted">Empty</h4><p class="mt-2 text-3xl font-extrabold text-muted"><span aria-hidden="true">—</span><span class="sr-only">لا توجد قيمة</span></p>
+        <p class="mt-3 text-xs text-muted">لا توجد بيانات بعد</p>
+      </article>
+      <article class="card p-5">
+        <h4 id="kpi-ai" class="text-sm font-medium text-muted">حصة الذكاء الاصطناعي</h4><p class="mt-2 text-3xl font-extrabold tabular-nums">100%</p>
+        <div class="meter mt-3" role="progressbar" aria-labelledby="kpi-ai" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-valuetext="تم استهلاك الحصة بالكامل (100%)"><span class="w-full bg-danger"></span></div>
+        <p class="mt-2 flex items-center gap-1.5 text-xs font-bold text-danger"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg>تم تجاوز الحصة الشهرية</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ========== 7) MODALS & TOASTS ========== -->
+  <section id="overlays" class="sec" aria-labelledby="overlays-t">
+    <h2 id="overlays-t" class="sec-title">٧ · النوافذ المنبثقة والإشعارات</h2>
+    <p class="mt-2 text-muted">تفاعلية بـ Alpine.js: إغلاق بـ <kbd class="rounded border border-line-strong bg-field px-1.5 text-xs" dir="ltr">Esc</kbd> أو النقر على الخلفية، وحصر التركيز مع عزل الخلفية (<code class="code-inline" dir="ltr">x-trap.noscroll.inert</code>)، وعودة التركيز إلى زر الفتح. أثناء التحميل يُعطَّل الإغلاق ويُمنع الإرسال المزدوج. Esc داخل القائمة المنسدلة يغلق القائمة فقط.</p>
+
+    <h3 class="mb-3 mt-6 text-lg font-bold">فتح النوافذ</h3>
+    <div class="card flex flex-wrap gap-3 p-5">
+      <button type="button" class="btn btn-primary" aria-haspopup="dialog" @click="open('form')">نافذة نموذج (Modal)</button>
+      <button type="button" class="btn btn-danger" aria-haspopup="dialog" @click="open('confirm')">تأكيد حذف (Confirm)</button>
+      <button type="button" class="btn btn-outline" aria-haspopup="dialog" @click="open('slide')">لوحة جانبية (Slide-over)</button>
+    </div>
+
+    <h3 class="mb-3 mt-8 text-lg font-bold">الإشعارات (Toasts) — انقر للتجربة</h3>
+    <div class="card flex flex-wrap gap-3 p-5">
+      <button type="button" class="btn btn-secondary" @click="toast('success','تم الحفظ','تم حفظ التغييرات بنجاح.')">Success</button>
+      <button type="button" class="btn btn-secondary" @click="toast('error','حدث خطأ','تعذّر إكمال العملية.')">Error</button>
+      <button type="button" class="btn btn-secondary" @click="toast('warning','تنبيه','اقتربت من حد الحصة الشهرية.')">Warning</button>
+      <button type="button" class="btn btn-secondary" @click="toast('info','معلومة','تم إرسال الدعوة إلى البريد.')">Info</button>
+      <button type="button" class="btn btn-accent" @click="toast('accent','مراجعة جديدة','٣ مفاهيم بانتظار اعتمادك.')">Accent</button>
+    </div>
+    <p class="hint">النجاح/المعلومة 5 ثوانٍ في منطقة <code class="code-inline" dir="ltr">status</code>؛ الخطأ 8 ثوانٍ في منطقة <code class="code-inline" dir="ltr">alert</code>. يتوقف المؤقت عند التمرير أو التركيز. حدّ أقصى 4 إشعارات.</p>
+
+    <h3 class="mb-3 mt-8 text-lg font-bold">هيكل الإشعار (عرض ثابت)</h3>
+    <!-- inert: عيّنة بصرية فقط — خارج تسلسل Tab وشجرة الوصول -->
+    <div class="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3" inert>
+      <template x-for="t in [['success','تم الحفظ','تم حفظ التغييرات بنجاح.'],['error','حدث خطأ','تعذّر إكمال العملية.'],['warning','تنبيه','اقتربت من حد الحصة.'],['info','معلومة','تم إرسال الدعوة.'],['accent','مراجعة جديدة','٣ مفاهيم بانتظار اعتمادك.']]" :key="t[0]">
+        <div class="toast" :class="'toast-' + t[0]">
+          <svg class="ic t-ic mt-0.5" aria-hidden="true"><use :href="'#i-' + TI[t[0]]"/></svg>
+          <div class="min-w-0 flex-1"><p class="font-bold" x-text="t[1]"></p><p class="text-muted" x-text="t[2]"></p></div>
+          <span class="btn btn-ghost btn-icon btn-sm !h-7 !w-7 !min-h-0 !text-ink" aria-hidden="true"><svg class="ic !h-4 !w-4"><use href="#i-x"/></svg></span>
+        </div>
+      </template>
+    </div>
+  </section>
+</main>
+
+<footer class="border-t border-line bg-card py-6 text-center text-sm text-muted">
+  <p>FirOb Design System · v1.1 — <bdi dir="ltr">Laravel 12 · Livewire · Alpine.js · Tailwind CSS</bdi></p>
+</footer>
+
+<!-- ========== Toast Container: منطقتان حيّتان منفصلتان (لا تداخل) ========== -->
+<div class="pointer-events-none fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+7.5rem)] z-[70] flex flex-col gap-3 sm:inset-x-auto sm:end-4 sm:w-96 lg:top-[calc(env(safe-area-inset-top,0px)+5rem)]">
+  <div role="alert" class="flex flex-col gap-3">
+    <template x-for="t in errorToasts" :key="t.id">
+      <div x-show="t.open"
+           x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+           x-transition:leave="transition duration-200 ease-in" x-transition:leave-end="opacity-0"
+           class="toast" :class="{ ['toast-' + t.type]: true, 'is-paused': t.paused }" :style="'--toast-ms:' + t.ms + 'ms'"
+           @mouseenter="pauseToast(t)" @mouseleave="resumeToast(t)" @focusin="pauseToast(t)" @focusout="resumeToast(t)">
+        <svg class="ic t-ic mt-0.5" aria-hidden="true"><use :href="'#i-' + TI[t.type]"/></svg>
+        <div class="min-w-0 flex-1"><p class="font-bold" x-text="t.title"></p><p class="text-muted" x-text="t.msg"></p></div>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm !h-9 !w-9 !min-h-0 !text-ink" aria-label="إغلاق الإشعار" @click="dismiss(t.id)"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x"/></svg></button>
+        <span class="toast-bar" aria-hidden="true"></span>
+      </div>
+    </template>
+  </div>
+  <div role="status" aria-live="polite" class="flex flex-col gap-3">
+    <template x-for="t in politeToasts" :key="t.id">
+      <div x-show="t.open"
+           x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+           x-transition:leave="transition duration-200 ease-in" x-transition:leave-end="opacity-0"
+           class="toast" :class="{ ['toast-' + t.type]: true, 'is-paused': t.paused }" :style="'--toast-ms:' + t.ms + 'ms'"
+           @mouseenter="pauseToast(t)" @mouseleave="resumeToast(t)" @focusin="pauseToast(t)" @focusout="resumeToast(t)">
+        <svg class="ic t-ic mt-0.5" aria-hidden="true"><use :href="'#i-' + TI[t.type]"/></svg>
+        <div class="min-w-0 flex-1"><p class="font-bold" x-text="t.title"></p><p class="text-muted" x-text="t.msg"></p></div>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm !h-9 !w-9 !min-h-0 !text-ink" aria-label="إغلاق الإشعار" @click="dismiss(t.id)"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x"/></svg></button>
+        <span class="toast-bar" aria-hidden="true"></span>
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- ========== Modal: Form ========== -->
+<div x-show="modal === 'form'" x-cloak x-transition.opacity class="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="close()"></div>
+  <form x-show="modal === 'form'" x-trap.noscroll.inert="modal === 'form'" novalidate
+        role="dialog" aria-modal="true" aria-labelledby="mf-t" aria-describedby="mf-d"
+        @keydown.escape.prevent.stop="close()" @submit.prevent="submitForm()"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+        class="relative w-full max-w-lg overflow-hidden rounded-2xl border border-line bg-card shadow-pop">
+    <header class="flex items-start justify-between gap-3 border-b border-line p-5">
+      <div>
+        <h2 id="mf-t" class="text-xl font-bold text-brand">إضافة مادة دراسية</h2>
+        <p id="mf-d" class="mt-0.5 text-sm text-muted">الحقول المعلّمة بـ * إلزامية.</p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="إغلاق" :disabled="busy" @click="close()"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </header>
+    <div class="space-y-4 p-5">
+      <div>
+        <label class="label" for="mf1">اسم المادة <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="mf1" type="text" class="field" placeholder="مثال: الرياضيات" autofocus required aria-required="true" autocomplete="off"
+               x-model="form.name" @input="formErr && form.name.trim() && (formErr = '')"
+               :aria-invalid="(!!formErr).toString()" :aria-describedby="formErr ? 'mf1e' : null">
+        <p id="mf1e" x-show="formErr" class="err"><svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="formErr"></span></p>
+      </div>
+      <div>
+        <label class="label" for="mf2">الرمز</label>
+        <input id="mf2" type="text" class="field" placeholder="MATH-101" dir="ltr" autocomplete="off" x-model="form.code">
+      </div>
+      <label class="switch"><input type="checkbox" role="switch" class="peer sr-only" x-model="form.active"><span class="switch-track" aria-hidden="true"></span>مادة نشطة</label>
+    </div>
+    <footer class="flex flex-col-reverse gap-3 border-t border-line bg-page/60 p-4 sm:flex-row sm:justify-end" style="padding-bottom: max(1rem, env(safe-area-inset-bottom))">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="close()">إلغاء</button>
+      <button type="submit" class="btn btn-primary" :class="busy && 'is-loading'" :aria-disabled="busy.toString()">
+        <svg x-show="busy" x-cloak class="ic animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg><span x-text="busy ? 'جارٍ الحفظ' : 'حفظ'">حفظ</span>
+      </button>
+    </footer>
+    <p class="sr-only" role="status" x-text="busy && modal === 'form' ? 'جارٍ حفظ المادة…' : ''"></p>
+  </form>
+</div>
+
+<!-- ========== Modal: Confirm (alertdialog) ========== -->
+<div x-show="modal === 'confirm'" x-cloak x-transition.opacity class="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="close()"></div>
+  <div x-show="modal === 'confirm'" x-trap.noscroll.inert="modal === 'confirm'"
+       role="alertdialog" aria-modal="true" aria-labelledby="mc-t" aria-describedby="mc-d"
+       @keydown.escape.prevent.stop="close()"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-500/15 text-danger" aria-hidden="true"><svg class="ic !h-7 !w-7"><use href="#i-trash"/></svg></span>
+    <h2 id="mc-t" class="mt-4 text-xl font-bold">حذف المفهوم؟</h2>
+    <p id="mc-d" class="mt-2 text-sm text-muted">سيُحذف المفهوم «الكسور العشرية» وكل موارده المرتبطة. لا يمكن التراجع عن هذا الإجراء.</p>
+    <div class="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+      <!-- «إلغاء» أولًا في DOM ⇒ يستقبل التركيز الأولي (الخيار الآمن) -->
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="close()">إلغاء</button>
+      <button type="button" class="btn btn-danger" :class="busy && 'is-loading'" :aria-disabled="busy.toString()" @click="run('success','تم الحذف','حُذف المفهوم بنجاح.')">
+        <svg x-show="busy" x-cloak class="ic animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg><span x-text="busy ? 'جارٍ الحذف' : 'نعم، احذف'">نعم، احذف</span>
+      </button>
+    </div>
+    <p class="sr-only" role="status" x-text="busy && modal === 'confirm' ? 'جارٍ حذف المفهوم…' : ''"></p>
+  </div>
+</div>
+
+<!-- ========== Slide-over ========== -->
+<div x-show="modal === 'slide'" x-cloak x-transition.opacity class="fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="close()"></div>
+  <aside x-show="modal === 'slide'" x-trap.noscroll.inert="modal === 'slide'"
+         role="dialog" aria-modal="true" aria-labelledby="ms-t"
+         @keydown.escape.prevent.stop="close()"
+         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full rtl:-translate-x-full"
+         class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+    <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="run('success','تم التحديث','حُفظت بيانات المستخدم.')">
+      <header class="flex items-center justify-between gap-3 border-b border-line bg-soft p-5" style="padding-top: max(1.25rem, env(safe-area-inset-top))">
+        <h2 id="ms-t" class="text-xl font-bold text-brand">تفاصيل المستخدم</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="إغلاق" :disabled="busy" @click="close()"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </header>
+      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+        <div><label class="label" for="ms1">الاسم الكامل</label><input id="ms1" type="text" class="field" value="سارة العلي" autofocus autocomplete="name"></div>
+        <div><label class="label" for="ms2">البريد الإلكتروني</label><input id="ms2" type="email" class="field" dir="ltr" value="sara@example.com" autocomplete="email"></div>
+
+        <div x-data="selectDropdown({ id: 'ms3', get: () => role, set: (v) => role = v,
+               options: () => [{ value: 'teacher', label: 'معلّم / محرّر' }, { value: 'reviewer', label: 'مراجع محتوى' }, { value: 'admin', label: 'مدير منظمة' }] })"
+             @click.outside="closeList()">
+          <span id="ms3-label" class="label" @click="$refs.btn.focus()">الدور</span>
+          <div class="relative">
+            <button type="button" id="ms3" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="ms3-label ms3"
+                    :aria-expanded="open.toString()" aria-controls="ms3-list" :aria-activedescendant="activeId" aria-describedby="ms3h"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <svg class="ic text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="ms3-list" role="listbox" aria-labelledby="ms3-label" tabindex="-1"
+                x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <svg class="ic !h-4 !w-4 text-brand" x-show="isSelected(item)" aria-hidden="true"><use href="#i-check"/></svg>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <p id="ms3h" class="hint">Esc هنا يغلق القائمة فقط، لا اللوحة.</p>
+        </div>
+
+        <div class="alert alert-info"><svg class="ic a-ic" aria-hidden="true"><use href="#i-info"/></svg><p>تغيير الدور يسري فورًا على صلاحيات المستخدم.</p></div>
+      </div>
+      <footer class="flex justify-end gap-3 border-t border-line p-4" style="padding-bottom: max(1rem, env(safe-area-inset-bottom))">
+        <button type="button" class="btn btn-outline" :disabled="busy" @click="close()">إلغاء</button>
+        <button type="submit" class="btn btn-primary" :class="busy && 'is-loading'" :aria-disabled="busy.toString()">
+          <svg x-show="busy" x-cloak class="ic animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg><span x-text="busy ? 'جارٍ الحفظ' : 'حفظ التغييرات'">حفظ التغييرات</span>
+        </button>
+      </footer>
+    </form>
+    <p class="sr-only" role="status" x-text="busy && modal === 'slide' ? 'جارٍ حفظ بيانات المستخدم…' : ''"></p>
+  </aside>
+</div>
+
+</body>
+</html>

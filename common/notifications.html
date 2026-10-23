@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>مركز الإشعارات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 90 104 125;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- التبويبات (Tabs) ---------- */
+    .tab-btn { @apply inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .tab-btn[aria-selected="true"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-500 hover:text-white; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+
+    /* ---------- [SA shell fixes] ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .combo-option.is-active.is-selected { @apply ring-1 ring-inset ring-brand/40; }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    }
+
+    /* ---------- [layout: full-height sidebar + bottom footer] ---------- */
+    html, body { min-height: 100%; }
+    body { margin: 0; }
+    .app-col { min-height: 100vh; min-height: 100dvh; }
+    @media (min-width: 1024px) {
+      #sidebar { height: 100vh; height: 100dvh; }
+      .app-col { margin-inline-start: 18rem; transition: margin-inline-start .3s ease; }
+      .app-col.is-collapsed { margin-inline-start: 5rem; }
+      .save-bar { inset-inline-start: 18rem; transition: inset-inline-start .3s ease; }
+      .save-bar.is-collapsed { inset-inline-start: 5rem; }
+    }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="notifOpen = false; profileOpen = false" @resize.window="notifOpen = false; profileOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="locale === 'ar' ? 'التنقل الرئيسي' : 'Main navigation'">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? t('sep') + navCountLabel(item) : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full text-xs" aria-hidden="true"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="navCount(item)"></span>
+                  <span class="sr-only" x-show="navCount(item) && expanded" x-text="navCountLabel(item)"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'fa-angles-right rtl:-scale-x-100' : 'fa-angles-left rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="app-col flex min-w-0 flex-1 flex-col" :class="collapsed && 'is-collapsed'">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex"><bdi dir="ltr">Ctrl K</bdi></kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- جرس الإشعارات: يقرأ من مصدر الحقيقة الوحيد inbox -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" x-ref="bellBtn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="bellLabel">
+              <i class="fa-solid fa-bell" aria-hidden="true"></i>
+              <span x-show="unreadCount" class="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-error-600 px-1 text-[10px] font-extrabold leading-none text-white ring-2 ring-card" aria-hidden="true" x-text="unreadCount"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="rounded text-xs font-bold text-brand hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
+                        :disabled="!unreadCount" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in latest" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="toneClass(n)" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('nf.unread') + ': '"></span>
+                        <span x-text="title(n)"></span>
+                      </p>
+                      <time class="text-xs text-muted" :datetime="n.at" :title="absTime(n.at)" x-text="relTime(n.at)"></time>
+                    </div>
+                  </li>
+                </template>
+                <li x-show="!latest.length" class="px-4 py-6 text-center text-sm text-muted" x-text="t('nf.emptyTitle')"></li>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="notifications.html" class="menu-item justify-center text-brand" aria-current="page" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAll')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- قائمة الحساب (نمط إفصاح: روابط عادية) -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    x-ref="profileBtn" @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="t('user.initials')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('user.name')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('pf.roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="region" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <ul role="list">
+                <li><a href="profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="profile.html?tab=notifications" class="menu-item"><i class="fa-solid fa-sliders w-4 text-muted" aria-hidden="true"></i> <span x-text="t('nf.settingsLink')"></span></a></li>
+                <li><a href="errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="locale === 'ar' ? 'مسار التنقل' : 'Breadcrumb'">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="../index.html" class="hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" aria-current="page" x-text="t('nf.title')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — COM-03: مركز الإشعارات ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1000px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + الإجراءات الرئيسية -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('nf.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('nf.subtitle')"></p>
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <button type="button" class="btn btn-outline btn-sm" :disabled="!unreadCount" @click="markAllRead()">
+            <i class="fa-solid fa-check-double" aria-hidden="true"></i>
+            <span x-text="t('nf.markAllRead')"></span>
+          </button>
+          <a href="profile.html?tab=notifications" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+            <span x-text="t('nf.settingsLink')"></span>
+          </a>
+        </div>
+      </section>
+
+      <!-- ================= تبويبات الفلترة + البحث ================= -->
+      <section class="panel flex flex-col gap-3 p-3 sm:p-4" :aria-label="t('nf.filtersLabel')">
+        <!-- تبويبات — قائمة منسدلة على الجوال (متزامنة مع activeTab) -->
+        <div class="relative sm:hidden">
+          <label for="nf-tab-select" class="sr-only" x-text="t('nf.tabsLabel')"></label>
+          <select id="nf-tab-select" x-model="activeTab" aria-controls="nf-panel" class="field w-full appearance-none pe-9 font-bold">
+            <template x-for="tb in tabs" :key="tb.key">
+              <option :value="tb.key" :selected="tb.key === activeTab" x-text="t('nf.tab.' + tb.key) + (tabUnread(tb.key) ? ' (' + tabUnread(tb.key) + ')' : '')"></option>
+            </template>
+          </select>
+          <i class="fa-solid fa-chevron-down pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-xs text-muted" aria-hidden="true"></i>
+        </div>
+        <!-- تبويبات — سطح المكتب (نمط Tabs كامل) -->
+        <div role="tablist" class="hidden items-center gap-1 overflow-x-auto scroll-thin sm:flex" :aria-label="t('nf.tabsLabel')">
+          <template x-for="(tb, idx) in tabs" :key="tb.key">
+            <button type="button" role="tab" class="tab-btn" :id="'nf-tab-' + tb.key" aria-controls="nf-panel"
+                    :aria-selected="(activeTab === tb.key).toString()" :tabindex="activeTab === tb.key ? 0 : -1"
+                    @click="setTab(tb.key)" @keydown="onTabKey($event, idx)">
+              <i :class="tb.icon" aria-hidden="true"></i>
+              <span x-text="t('nf.tab.' + tb.key)"></span>
+              <span x-show="tabUnread(tb.key)" class="shrink-0 rounded-full bg-accent-500 px-1.5 text-[11px] font-extrabold text-onaccent" aria-hidden="true" x-text="tabUnread(tb.key)"></span>
+              <span class="sr-only" x-show="tabUnread(tb.key)" x-text="t('sep') + tf('nf.unreadInTab', { n: tabUnread(tb.key) })"></span>
+            </button>
+          </template>
+        </div>
+
+        <!-- بحث فعلي (العنوان + النص باللغة الحالية، مع تطبيع عربي) -->
+        <form role="search" class="relative min-w-0" @submit.prevent>
+          <label for="nf-search" class="sr-only" x-text="t('nf.searchLabel')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="nf-search" x-ref="nfSearch" type="search" x-model.debounce.200ms="q" :placeholder="t('nf.searchPlaceholder')" aria-controls="nf-panel"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line bg-field pe-12 ps-10 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 [&::-webkit-search-cancel-button]:hidden">
+          <button type="button" x-show="q" x-cloak class="group absolute end-1.5 top-1/2 inline-grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="clearSearch()" :aria-label="t('nf.clearSearch')">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            <span class="tooltip-bubble" aria-hidden="true" x-text="t('nf.clearSearch')"></span>
+            <span class="tooltip-arrow" aria-hidden="true"></span>
+          </button>
+        </form>
+      </section>
+
+      <!-- ================= قائمة الإشعارات (tabpanel واحد يتبع التبويب النشط) ================= -->
+      <section id="nf-panel" role="tabpanel" tabindex="-1" :aria-labelledby="'nf-tab-' + activeTab" class="panel overflow-hidden focus:outline-none">
+        <h2 class="sr-only" x-text="t('nf.tab.' + activeTab) + ' — ' + tf('nf.liveResults', { n: visibleCount })"></h2>
+
+        <template x-for="g in groups" :key="g.key">
+          <div class="border-line [&:not(:first-of-type)]:border-t">
+            <h3 :id="'nf-g-' + g.key" class="bg-page/60 px-4 py-2 text-xs font-extrabold tracking-wide text-muted sm:px-5" x-text="t('nf.groups.' + g.key)"></h3>
+            <ul class="divide-y divide-line border-t border-line" role="list" :aria-labelledby="'nf-g-' + g.key">
+              <template x-for="n in g.items" :key="n.id">
+                <li class="flex gap-3 p-4 transition sm:gap-4 sm:p-5" :class="n.read ? '' : 'bg-soft/60'">
+                  <span class="relative mt-0.5 shrink-0" aria-hidden="true">
+                    <span class="grid h-11 w-11 place-items-center rounded-xl" :class="toneClass(n)"><i :class="n.icon"></i></span>
+                    <span x-show="!n.read" class="absolute -start-1 -top-1 h-3 w-3 rounded-full bg-error-500 ring-2 ring-card"></span>
+                  </span>
+
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <p class="font-extrabold leading-6 text-ink">
+                          <span class="sr-only" x-show="!n.read" x-text="t('nf.unread') + ': '"></span>
+                          <span x-text="title(n)"></span>
+                        </p>
+                        <p class="mt-1 text-sm leading-6 text-muted" x-text="body(n)"></p>
+                      </div>
+                      <div class="flex shrink-0 items-center gap-1">
+                        <button type="button" class="act group relative h-8 w-8" @click="toggleRead(n)"
+                                :aria-label="tf(n.read ? 'nf.markUnreadFor' : 'nf.markReadFor', { title: title(n) })">
+                          <i class="fa-solid text-xs" :class="n.read ? 'fa-envelope' : 'fa-envelope-open'" aria-hidden="true"></i>
+                          <span class="tooltip-bubble" aria-hidden="true" x-text="n.read ? t('nf.markUnread') : t('nf.markRead')"></span>
+                          <span class="tooltip-arrow" aria-hidden="true"></span>
+                        </button>
+                        <button type="button" class="act group relative h-8 w-8 hover:!border-error-600 hover:!bg-error-500/10 hover:!text-error-600" @click="dismiss(n)"
+                                :aria-label="tf('nf.dismissFor', { title: title(n) })">
+                          <i class="fa-solid fa-trash text-xs" aria-hidden="true"></i>
+                          <span class="tooltip-bubble" aria-hidden="true" x-text="t('nf.dismiss')"></span>
+                          <span class="tooltip-arrow" aria-hidden="true"></span>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="mt-2.5 flex flex-wrap items-center gap-2.5">
+                      <span class="badge" :class="catBadge(n)" x-text="t('nf.cat.' + n.category)"></span>
+                      <span class="inline-flex items-center gap-1 text-xs font-bold text-muted"><i class="fa-regular fa-clock" aria-hidden="true"></i> <time :datetime="n.at" :title="absTime(n.at)" x-text="relTime(n.at)"></time></span>
+                      <a x-show="n.actionHref" :href="n.actionHref || '#'" class="rounded text-xs font-bold text-brand hover:underline" @click="markRead(n)"
+                         :aria-label="tf('nf.actionFor', { action: t('nfItems.' + n.key + '.action'), title: title(n) })"
+                         x-text="t('nfItems.' + n.key + '.action')"></a>
+                    </div>
+                  </div>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </template>
+
+        <!-- حالة فارغة: لا نتائج للبحث -->
+        <div x-show="visibleCount === 0 && q.trim()" x-cloak class="px-5 py-16 text-center">
+          <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true">
+            <i class="fa-solid fa-magnifying-glass text-xl"></i>
+          </span>
+          <p class="font-extrabold text-ink" x-text="tf('nf.emptySearchTitle', { q: q.trim() })"></p>
+          <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('nf.emptySearchSubtitle')"></p>
+          <button type="button" @click="clearSearch()" class="btn btn-outline mt-4">
+            <i class="fa-solid fa-xmark text-muted" aria-hidden="true"></i> <span x-text="t('nf.clearSearch')"></span>
+          </button>
+        </div>
+
+        <!-- حالة فارغة: تصنيف بلا إشعارات -->
+        <div x-show="visibleCount === 0 && !q.trim()" x-cloak class="px-5 py-16 text-center">
+          <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true">
+            <i class="fa-regular fa-bell-slash text-xl"></i>
+          </span>
+          <p class="font-extrabold text-ink" x-text="t('nf.emptyTitle')"></p>
+          <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="activeTab === 'unread' ? t('nf.emptyUnread') : t('nf.emptySubtitle')"></p>
+          <button type="button" x-show="activeTab !== 'all'" @click="setTab('all')" class="btn btn-outline mt-4">
+            <i class="fa-solid fa-arrow-rotate-left text-muted" aria-hidden="true"></i> <span x-text="t('nf.showAll')"></span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="locale === 'ar' ? 'روابط التذييل' : 'Footer links'" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.map')"></span></a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-muted" x-text="t('footer.help')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-muted" x-text="t('footer.docs')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-muted" x-text="t('footer.privacy')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-muted" x-text="t('footer.terms')"></span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.status')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ================= شريط التراجع (6 ثوانٍ، يتوقف المؤقت أثناء التركيز/المرور) ================= -->
+<div x-cloak x-show="undo" x-transition.opacity
+     class="fixed inset-x-3 bottom-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-card shadow-pop"
+     style="margin-bottom: env(safe-area-inset-bottom, 0px);"
+     @mouseenter="pauseUndo()" @mouseleave="resumeUndo()" @focusin="pauseUndo()" @focusout="resumeUndo()">
+  <p class="min-w-0 truncate" x-text="undo ? undo.label : ''"></p>
+  <button type="button" x-ref="undoBtn" class="btn btn-sm btn-accent shrink-0" @click="undoLast()">
+    <i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i> <span x-text="t('nf.undo')"></span>
+  </button>
+</div>
+
+<!-- منطقة الإعلانات لقارئات الشاشة -->
+<p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+
+<script>
+  /**
+   * حالة واجهة شاشة «مركز الإشعارات» (COM-03) — سجلّ مُحاكى محليًا.
+   * مصدر حقيقة واحد: المصفوفة inbox تغذّي الجرس (آخر 5) وعدّاد الشريط الجانبي ووسم الجرس والصفحة.
+   * البحث والتبويبات والتجميع حسب التاريخ تعمل فعليًا على العميل؛ تُستبدل لاحقًا بـ Livewire + Eloquent.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const MIN = 60000;
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', sep: '، ',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', bellLabel: 'الإشعارات، غير المقروءة: {n}', markAllRead: 'تعليم الكل كمقروء', viewAll: 'عرض جميع الإشعارات',
+        profile: 'الملف الشخصي والإعدادات', systemStatus: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+        user: { name: 'هبة ناصر الفرا', initials: 'هف' },
+        unreadN: 'غير المقروءة: {n}', pendingN: 'بانتظار المراجعة: {n}',
+        breadcrumb: { home: 'الرئيسية' },
+        footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', map: 'خريطة الشاشات', help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', status: 'الأنظمة تعمل' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+
+        pf: { roleTenantAdmin: 'مدير المؤسسة' },
+
+        nf: {
+          title: 'مركز الإشعارات', subtitle: 'تابع كل التنبيهات والتحديثات المتعلقة بحسابك ومؤسستك في مكان واحد.',
+          markAllRead: 'تحديد الكل كمقروء', settingsLink: 'إعدادات الإشعارات',
+          filtersLabel: 'تصفية الإشعارات والبحث', tabsLabel: 'تصنيفات الإشعارات',
+          tab: { all: 'الكل', unread: 'غير مقروءة', system: 'تنبيهات النظام', review: 'المراجعة والتصحيح', security: 'الأمان', billing: 'الاشتراك والفوترة' },
+          cat: { system: 'النظام', review: 'المراجعة والتصحيح', security: 'الأمان', billing: 'الاشتراك والفوترة' },
+          unreadInTab: 'غير المقروءة: {n}', unread: 'غير مقروء',
+          searchLabel: 'البحث في الإشعارات', searchPlaceholder: 'ابحث في عنوان الإشعار أو نصّه…', clearSearch: 'مسح البحث',
+          markRead: 'تحديد كمقروء', markUnread: 'تحديد كغير مقروء', dismiss: 'حذف',
+          markReadFor: 'تحديد كمقروء: {title}', markUnreadFor: 'تحديد كغير مقروء: {title}', dismissFor: 'حذف الإشعار: {title}',
+          actionFor: '{action}: {title}',
+          groups: { today: 'اليوم', yesterday: 'أمس', earlier: 'أقدم' },
+          emptyTitle: 'لا توجد إشعارات', emptySubtitle: 'لا توجد إشعارات ضمن هذا التصنيف حاليًا.', emptyUnread: 'أحسنت! قرأت جميع الإشعارات.',
+          emptySearchTitle: 'لا نتائج لـ «{q}»', emptySearchSubtitle: 'جرّب كلمة أخرى أو امسح البحث لعرض كل الإشعارات في هذا التصنيف.',
+          showAll: 'عرض كل الإشعارات',
+          undo: 'تراجع', undoDeleted: 'تم حذف «{title}»', undoAllRead: 'تم تحديد {n} كمقروءة',
+          liveDeleted: 'تم الحذف: {title}. التراجع متاح', liveRestored: 'تمت استعادة: {title}',
+          liveAllRead: 'تم تحديد جميع الإشعارات كمقروءة ({n}). التراجع متاح', liveAllReadUndone: 'تمت استعادة حالة القراءة السابقة ({n})',
+          liveMarkedRead: 'تم التحديد كمقروء: {title}', liveMarkedUnread: 'تم التحديد كغير مقروء: {title}',
+          liveResults: 'عدد النتائج: {n}',
+        },
+        nfItems: {
+          reviewSubmission: { title: 'طلب جديد في طابور المراجعة', body: 'قدّم المعلّم محمد خالد مفهوم «الكسور العشرية» للمراجعة والاعتماد.', action: 'مراجعة الطلب' },
+          quizGrading: { title: 'محاولة اختبار بحاجة لتصحيح يدوي', body: 'أنهت الطالبة سارة أحمد اختبار «الهندسة - الوحدة 3»، وتحتوي على سؤال مقالي بحاجة لتصحيحك.', action: 'عرض المحاولة' },
+          seatQuota: { title: 'اقتربت حصة المقاعد من الحد الأقصى', body: 'استخدمت المؤسسة 83% من حصة المقاعد المتاحة (124 من 150). يُفضَّل ترقية الباقة لتفادي أي انقطاع.', action: 'إدارة الاشتراك' },
+          backupDone: { title: 'اكتملت النسخة الاحتياطية اليومية', body: 'تم إنشاء نسخة احتياطية كاملة لبيانات المؤسسة بنجاح دون أي أخطاء.', action: '' },
+          newDevice: { title: 'تسجيل دخول من جهاز جديد', body: 'تم تسجيل الدخول إلى حسابك من متصفح Chrome على Windows 11 في غزة، فلسطين. إذا لم تكن أنت، راجع إعدادات الأمان فورًا.', action: 'مراجعة الجلسات' },
+          subscriptionRenewed: { title: 'تم تجديد الاشتراك بنجاح', body: 'تم تجديد باقة «المؤسسي المتقدم» بنجاح، وسيستمر العمل بكل الميزات دون انقطاع.', action: 'عرض الفاتورة' },
+          inviteAccepted: { title: 'تم قبول دعوة مستخدم جديد', body: 'قبل المستخدم يوسف إبراهيم النجار دعوتك للانضمام إلى المؤسسة بصلاحية «طالب».', action: 'عرض المستخدمين' },
+          aiQuotaWarning: { title: 'اقترب استهلاك الذكاء الاصطناعي من الحد الشهري', body: 'استُهلك 90% من رصيد التوكنز الشهري لأدوات الذكاء الاصطناعي. سيُعاد الرصيد في بداية الشهر القادم.', action: 'عرض التحليلات' },
+          passwordChanged: { title: 'تم تغيير كلمة المرور بنجاح', body: 'تم تحديث كلمة مرور حسابك بنجاح. إذا لم تقم بهذا الإجراء، تواصل مع الدعم فورًا.', action: 'إعدادات الأمان' },
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', sep: ', ',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', bellLabel: 'Notifications, {n} unread', markAllRead: 'Mark all as read', viewAll: 'View all notifications',
+        profile: 'Profile & Settings', systemStatus: 'System Status & Errors', logout: 'Log out',
+        user: { name: 'Heba Nasser Al-Farra', initials: 'HF' },
+        unreadN: '{n} unread', pendingN: '{n} pending review',
+        breadcrumb: { home: 'Home' },
+        footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', map: 'Screen map', help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', status: 'All systems operational' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+
+        pf: { roleTenantAdmin: 'Tenant Admin' },
+
+        nf: {
+          title: 'Notification Center', subtitle: 'Track every alert and update about your account and organization in one place.',
+          markAllRead: 'Mark All as Read', settingsLink: 'Notification Settings',
+          filtersLabel: 'Filter and search notifications', tabsLabel: 'Notification categories',
+          tab: { all: 'All', unread: 'Unread', system: 'System Alerts', review: 'Review & Grading', security: 'Security', billing: 'Subscription & Billing' },
+          cat: { system: 'System', review: 'Review & Grading', security: 'Security', billing: 'Subscription & Billing' },
+          unreadInTab: '{n} unread', unread: 'Unread',
+          searchLabel: 'Search notifications', searchPlaceholder: 'Search notification titles and text…', clearSearch: 'Clear search',
+          markRead: 'Mark as read', markUnread: 'Mark as unread', dismiss: 'Delete',
+          markReadFor: 'Mark as read: {title}', markUnreadFor: 'Mark as unread: {title}', dismissFor: 'Delete notification: {title}',
+          actionFor: '{action}: {title}',
+          groups: { today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier' },
+          emptyTitle: 'No notifications', emptySubtitle: 'There are no notifications in this category right now.', emptyUnread: 'All caught up! You have read every notification.',
+          emptySearchTitle: 'No results for “{q}”', emptySearchSubtitle: 'Try another keyword, or clear the search to see every notification in this category.',
+          showAll: 'Show all notifications',
+          undo: 'Undo', undoDeleted: 'Deleted “{title}”', undoAllRead: '{n} marked as read',
+          liveDeleted: 'Deleted: {title}. Undo available', liveRestored: 'Restored: {title}',
+          liveAllRead: 'All notifications marked as read ({n}). Undo available', liveAllReadUndone: 'Previous read states restored ({n})',
+          liveMarkedRead: 'Marked as read: {title}', liveMarkedUnread: 'Marked as unread: {title}',
+          liveResults: '{n} results',
+        },
+        nfItems: {
+          reviewSubmission: { title: 'New submission in the review queue', body: 'Teacher Mohammed Khaled submitted the concept "Decimal Fractions" for review and approval.', action: 'Review submission' },
+          quizGrading: { title: 'A quiz attempt needs manual grading', body: 'Student Sara Ahmed finished the "Geometry - Unit 3" quiz, which includes an essay question that needs your grading.', action: 'View attempt' },
+          seatQuota: { title: 'Seat quota is nearing its limit', body: 'The organization has used 83% of its available seat quota (124 of 150). Consider upgrading your plan to avoid interruption.', action: 'Manage subscription' },
+          backupDone: { title: 'Daily backup completed', body: 'A full backup of the organization\'s data was created successfully with no errors.', action: '' },
+          newDevice: { title: 'Sign-in from a new device', body: 'Your account was signed in from Chrome on Windows 11 in Gaza, Palestine. If this wasn\'t you, review your security settings immediately.', action: 'Review sessions' },
+          subscriptionRenewed: { title: 'Subscription renewed successfully', body: 'The "Advanced Institutional" plan was renewed successfully, and all features will continue without interruption.', action: 'View invoice' },
+          inviteAccepted: { title: 'A new user invitation was accepted', body: 'User Yousef Ibrahim Al-Najjar accepted your invitation to join the organization with the "Student" role.', action: 'View users' },
+          aiQuotaWarning: { title: 'AI usage is nearing its monthly limit', body: '90% of the monthly AI token allowance has been consumed. The balance will reset at the start of next month.', action: 'View analytics' },
+          passwordChanged: { title: 'Password changed successfully', body: 'Your account password was updated successfully. If you did not make this change, contact support immediately.', action: 'Security settings' },
+        },
+      },
+    };
+
+    /* بذرة السجلّ: ago = دقائق مضت (تُحوَّل إلى طوابع ISO نسبةً إلى الآن) */
+    const SEED = [
+      { id: 1, key: 'reviewSubmission',    category: 'review',   severity: 'warning',  ago: 10,        read: false, icon: 'fa-solid fa-clipboard-check',      actionHref: 'tenant-admin/ReviewQueue.html' },
+      { id: 2, key: 'quizGrading',         category: 'review',   severity: 'warning',  ago: 32,        read: false, icon: 'fa-solid fa-pen-to-square',        actionHref: 'tenant-admin/quiz-grading.html' },
+      { id: 3, key: 'seatQuota',           category: 'billing',  severity: 'warning',  ago: 120,       read: false, icon: 'fa-solid fa-triangle-exclamation', actionHref: 'tenant-admin/SubscriptionsAndInvoices.html' },
+      { id: 4, key: 'backupDone',          category: 'system',   severity: 'success',  ago: 300,       read: true,  icon: 'fa-solid fa-server',               actionHref: '' },
+      { id: 5, key: 'newDevice',           category: 'security', severity: 'critical', ago: 26 * 60,   read: false, icon: 'fa-solid fa-shield-halved',        actionHref: 'profile.html?tab=security' },
+      { id: 6, key: 'subscriptionRenewed', category: 'billing',  severity: 'success',  ago: 2 * 1440,  read: true,  icon: 'fa-solid fa-circle-check',         actionHref: 'tenant-admin/SubscriptionsAndInvoices.html' },
+      { id: 7, key: 'inviteAccepted',      category: 'system',   severity: 'info',     ago: 3 * 1440,  read: true,  icon: 'fa-solid fa-user-plus',            actionHref: 'tenant-admin/users.html' },
+      { id: 8, key: 'aiQuotaWarning',      category: 'billing',  severity: 'warning',  ago: 4 * 1440,  read: true,  icon: 'fa-solid fa-robot',                actionHref: 'tenant-admin/AIUsageAnalytics.html' },
+      { id: 9, key: 'passwordChanged',     category: 'security', severity: 'info',     ago: 7 * 1440,  read: true,  icon: 'fa-solid fa-key',                  actionHref: 'profile.html?tab=security' },
+    ];
+
+    /* لون الشارة = التصنيف؛ لون الأيقونة = الخطورة (مستقلّان) */
+    const CAT_BADGE = { system: 'badge-info', review: 'badge-accent', security: 'badge-danger', billing: 'badge-primary' };
+    const SEVERITY_TONE = {
+      info:     'bg-primary-500/15 text-brand',
+      success:  'bg-success-500/15 text-success-700 dark:text-success-500',
+      warning:  'bg-warning-500/15 text-warning-700 dark:text-warning-500',
+      critical: 'bg-error-500/15 text-error-700 dark:text-red-300',
+    };
+    const TABS = [
+      { key: 'all',      icon: 'fa-solid fa-layer-group' },
+      { key: 'unread',   icon: 'fa-solid fa-envelope' },
+      { key: 'system',   icon: 'fa-solid fa-server' },
+      { key: 'review',   icon: 'fa-solid fa-clipboard-check' },
+      { key: 'security', icon: 'fa-solid fa-shield-halved' },
+      { key: 'billing',  icon: 'fa-solid fa-file-invoice-dollar' },
+    ];
+    const TAB_KEYS = TABS.map(x => x.key);
+
+    /* تطبيع عربي للبحث: حذف التشكيل والتطويل، توحيد الألف والتاء المربوطة والألف المقصورة */
+    const normalize = (s) => String(s || '').toLowerCase()
+      .replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, '')
+      .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+      .replace(/\s+/g, ' ').trim();
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'notificationCenter',
+      liveMsg: '',
+      now: Date.now(),
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        return String(this.t(path)).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined ? vars[k] : m));
+      },
+      get intlLocale() { return this.locale === 'ar' ? 'ar-u-nu-latn' : 'en'; },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+        this.syncTitle();
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      syncTitle() { document.title = this.t('nf.title') + ' — FirOb'; },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'tenant-admin/TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'tenant-admin/users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'tenant-admin/UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'tenant-admin/RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'tenant-admin/ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'tenant-admin/AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'tenant-admin/CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'tenant-admin/concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'tenant-admin/learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'tenant-admin/ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'tenant-admin/ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'tenant-admin/AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'tenant-admin/SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'tenant-admin/TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: 'notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) { return item.key === 'notificationCenter' ? this.unreadCount : (item.count || 0); },
+      navCountLabel(item) {
+        const n = this.navCount(item);
+        return this.tf(item.key === 'notificationCenter' ? 'unreadN' : 'pendingN', { n });
+      },
+
+      /* ---------- مصدر الحقيقة الوحيد ---------- */
+      inbox: SEED.map(({ ago, ...n }) => ({ ...n, dismissed: false, at: new Date(Date.now() - ago * MIN).toISOString() })),
+      get live() { return this.inbox.filter(n => !n.dismissed); },
+      get unreadCount() { return this.live.filter(n => !n.read).length; },
+      get latest() { return [...this.live].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 5); },
+      get bellLabel() { return this.unreadCount ? this.tf('bellLabel', { n: this.unreadCount }) : this.t('notifications'); },
+      title(n) { return this.t('nfItems.' + n.key + '.title'); },
+      body(n) { return this.t('nfItems.' + n.key + '.body'); },
+      catBadge(n) { return CAT_BADGE[n.category] || 'badge-muted'; },
+      toneClass(n) { return SEVERITY_TONE[n.severity] || SEVERITY_TONE.info; },
+
+      /* ---------- التاريخ والوقت (Intl) ---------- */
+      relTime(iso) {
+        const diff = Math.min(0, Date.parse(iso) - this.now) / 1000; // لا مستقبل
+        const rtf = new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto' });
+        const abs = Math.abs(diff);
+        if (abs < 60) return rtf.format(0, 'second');
+        if (abs < 3600) return rtf.format(Math.round(diff / 60), 'minute');
+        if (abs < 86400) return rtf.format(Math.round(diff / 3600), 'hour');
+        if (abs < 7 * 86400) return rtf.format(Math.round(diff / 86400), 'day');
+        if (abs < 30 * 86400) return rtf.format(Math.round(diff / (7 * 86400)), 'week');
+        return rtf.format(Math.round(diff / (30 * 86400)), 'month');
+      },
+      absTime(iso) {
+        return new Intl.DateTimeFormat(this.intlLocale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+      },
+      bucket(iso) {
+        const d0 = new Date(this.now); d0.setHours(0, 0, 0, 0);
+        const today = d0.getTime();
+        const d1 = new Date(today); d1.setDate(d1.getDate() - 1);
+        const ts = Date.parse(iso);
+        if (ts >= today) return 'today';
+        if (ts >= d1.getTime()) return 'yesterday';
+        return 'earlier';
+      },
+
+      /* ---------- التبويبات + البحث ---------- */
+      tabs: TABS,
+      activeTab: 'all',
+      q: '',
+      inTab(n, tab) {
+        if (n.dismissed) return false;
+        if (tab === 'all') return true;
+        if (tab === 'unread') return !n.read;
+        return n.category === tab;
+      },
+      tabUnread(tab) { return this.live.filter(n => !n.read && this.inTab(n, tab)).length; },
+      matchesSearch(n) {
+        const needle = normalize(this.q);
+        if (!needle) return true;
+        return normalize(this.title(n) + ' ' + this.body(n)).includes(needle);
+      },
+      get visible() {
+        return this.inbox.filter(n => this.inTab(n, this.activeTab) && this.matchesSearch(n))
+          .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+      },
+      get visibleCount() { return this.visible.length; },
+      get groups() {
+        const order = ['today', 'yesterday', 'earlier'];
+        const map = { today: [], yesterday: [], earlier: [] };
+        this.visible.forEach(n => map[this.bucket(n.at)].push(n));
+        return order.filter(k => map[k].length).map(k => ({ key: k, items: map[k] }));
+      },
+      setTab(key) { if (TAB_KEYS.includes(key)) this.activeTab = key; },
+      onTabKey(e, idx) {
+        const last = TAB_KEYS.length - 1;
+        const rtl = this.locale === 'ar';
+        let i;
+        switch (e.key) {
+          case 'ArrowRight': i = rtl ? idx - 1 : idx + 1; break;
+          case 'ArrowLeft':  i = rtl ? idx + 1 : idx - 1; break;
+          case 'Home': i = 0; break;
+          case 'End': i = last; break;
+          default: return;
+        }
+        e.preventDefault();
+        if (i < 0) i = last; if (i > last) i = 0;
+        const key = TAB_KEYS[i];
+        this.setTab(key);
+        this.$nextTick(() => document.getElementById('nf-tab-' + key)?.focus());
+      },
+      clearSearch() {
+        this.q = '';
+        this.$nextTick(() => this.$refs.nfSearch?.focus());
+      },
+      readUrl() {
+        try {
+          const p = new URLSearchParams(location.search);
+          const tab = p.get('tab');
+          if (tab && TAB_KEYS.includes(tab)) this.activeTab = tab;
+          this.q = p.get('q') || '';
+        } catch (e) {}
+      },
+      syncUrl() {
+        try {
+          const p = new URLSearchParams(location.search);
+          if (this.activeTab !== 'all') p.set('tab', this.activeTab); else p.delete('tab');
+          if (this.q.trim()) p.set('q', this.q.trim()); else p.delete('q');
+          const qs = p.toString();
+          history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + (location.hash || ''));
+        } catch (e) {}
+      },
+
+      /* ---------- الإجراءات ---------- */
+      announce(msg) { this.liveMsg = msg + (this.liveMsg === msg ? ' ' : ''); },
+      markRead(n) { n.read = true; },
+      toggleRead(n) {
+        n.read = !n.read;
+        this.announce(this.tf(n.read ? 'nf.liveMarkedRead' : 'nf.liveMarkedUnread', { title: this.title(n) }));
+      },
+      dismiss(n) {
+        n.dismissed = true;
+        const title = this.title(n);
+        this.offerUndo({ type: 'dismiss', ids: [n.id], label: this.tf('nf.undoDeleted', { title }) });
+        this.announce(this.tf('nf.liveDeleted', { title }));
+      },
+      markAllRead() {
+        const ids = this.live.filter(n => !n.read).map(n => n.id);
+        if (!ids.length) return;
+        this.inbox.forEach(n => { if (ids.includes(n.id)) n.read = true; });
+        this.offerUndo({ type: 'markAll', ids, label: this.tf('nf.undoAllRead', { n: ids.length }) });
+        this.announce(this.tf('nf.liveAllRead', { n: ids.length }));
+      },
+
+      /* ---------- التراجع (6 ثوانٍ) ---------- */
+      undo: null, undoTimer: null, undoPaused: false,
+      offerUndo(u) {
+        this.undo = u;
+        this.undoPaused = false;
+        this.startUndoTimer();
+        this.$nextTick(() => this.$refs.undoBtn?.focus());
+      },
+      startUndoTimer() {
+        clearTimeout(this.undoTimer);
+        this.undoTimer = setTimeout(() => { this.undo = null; this.undoTimer = null; }, 6000);
+      },
+      pauseUndo() { if (!this.undo) return; this.undoPaused = true; clearTimeout(this.undoTimer); },
+      resumeUndo() { if (!this.undo || !this.undoPaused) return; this.undoPaused = false; this.startUndoTimer(); },
+      undoLast() {
+        const u = this.undo;
+        if (!u) return;
+        clearTimeout(this.undoTimer);
+        this.undo = null;
+        const items = this.inbox.filter(n => u.ids.includes(n.id));
+        if (u.type === 'dismiss') {
+          items.forEach(n => { n.dismissed = false; });
+          this.announce(this.tf('nf.liveRestored', { title: items.map(n => this.title(n)).join(this.t('sep')) }));
+        } else {
+          items.forEach(n => { n.read = false; });
+          this.announce(this.tf('nf.liveAllReadUndone', { n: items.length }));
+        }
+        this.$nextTick(() => document.getElementById('nf-panel')?.focus());
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        this.readUrl();
+        this.syncTitle();
+        this.$watch('activeTab', () => this.syncUrl());
+        this.$watch('q', () => {
+          this.syncUrl();
+          if (this.q.trim()) this.announce(this.tf('nf.liveResults', { n: this.visibleCount }));
+        });
+        setInterval(() => { this.now = Date.now(); }, 60000);
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        if (this.notifOpen) this.$refs.bellBtn?.focus();
+        else if (this.profileOpen) this.$refs.profileBtn?.focus();
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

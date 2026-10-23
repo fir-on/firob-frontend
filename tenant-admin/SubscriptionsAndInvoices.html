@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<!-- لوحة تحكم محمية خلف تسجيل الدخول: لا فهرسة ولا وصف تسويقي ولا OG -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>الاشتراك والفوترة — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج اللغة والاتجاه قبل الرسم (يمنع قفزة RTL ↔ LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || null;
+    if (!l) { try { l = localStorage.getItem('firob-locale'); } catch (e) {} }
+    l = l === 'en' ? 'en' : 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② اتصالات مبكرة -->
+<link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ③ الخطوط: Tajawal (عربي) + Manrope (إنجليزي) — display=swap -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ④ الأيقونات: تحميل غير حاجب للرسم (المساحة محجوزة مسبقًا في CSS لمنع القفز) -->
+<link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin referrerpolicy="no-referrer" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer"></noscript>
+
+<!-- ⑤ Tailwind (إصدار مثبّت) + التوكنز المعتمدة (Style Guide v1.0). في الإنتاج: CSS مبني مسبقًا عبر Vite. -->
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'),
+        danger: v('danger'), ok: v('ok'), warn: v('warn'), info: v('info'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑥ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      /* ألوان الحالة النصية — كلها ≥ 4.5:1 على البطاقة والشارات الشفافة */
+      --danger: 185 28 28;  --ok: 4 120 87;       --warn: 146 64 14;   --info: 29 78 216;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --warn: 252 211 77;  --info: 147 197 253;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي — clip لا يكسر position: sticky */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    i[class*='fa-'] { display: inline-block; min-width: 1em; text-align: center; font-style: normal; }
+    :focus-visible { outline: 2px solid transparent; outline-offset: 2px; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .dark .panel { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+    .icon-btn { @apply relative inline-grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-soft hover:text-brand disabled:opacity-50 sm:h-10 sm:w-10; }
+    .nav-link { @apply flex min-h-[2.75rem] items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line-strong/60 text-sm text-muted transition-colors hover:bg-soft hover:text-brand disabled:pointer-events-none disabled:opacity-40 sm:h-9 sm:w-9; }
+    .act[aria-current="page"] { @apply border-transparent bg-primary-500 text-white hover:bg-primary-600 hover:text-white; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-ok; }
+    .badge-accent  { @apply bg-accent-500/25 text-onaccent dark:bg-accent-500/15 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info/15 text-info; }
+    .badge-danger  { @apply bg-error-500/15 text-danger; }
+    .badge-neutral { @apply bg-line text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block min-h-[2.75rem] w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-ink transition-colors placeholder:text-muted/80; font-size: max(16px, .875rem); }
+    .field:hover:not(:disabled) { @apply border-primary-500; }
+    .field:focus { @apply border-brand outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled, .field[aria-disabled="true"] { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار (حلقة التركيز من :focus-visible الموحّد) ---------- */
+    .btn { @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition-colors disabled:pointer-events-none disabled:opacity-50; touch-action: manipulation; }
+    .btn-sm { @apply px-3 py-1.5 text-xs sm:min-h-[2.25rem]; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line-strong/60 bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex min-h-[2.75rem] w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition-colors hover:bg-soft focus:bg-soft focus:outline-none disabled:cursor-not-allowed disabled:opacity-40; }
+    .menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgb(var(--brand)); }
+
+    /* ---------- قائمة الاختيار المخصصة (Select-only Combobox) ---------- */
+    .combo-list { @apply absolute z-50 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex min-h-[2.75rem] w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2 text-start text-sm font-medium text-ink transition-colors hover:bg-soft sm:min-h-[2.5rem]; }
+    .combo-option.is-active   { @apply bg-soft; box-shadow: inset 0 0 0 2px rgb(var(--brand) / .5); }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- SweetAlert2 ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; border: 1px solid rgb(var(--line)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; font-size: .9375rem !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-timer-progress-bar { background: rgb(var(--brand) / .5) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- شارة التحذير ---------- */
+    .badge-warning { @apply bg-warning-500/15 text-warn; }
+
+    /* ---------- التبويبات (Section Tabs) ---------- */
+    .tab-btn { @apply inline-flex min-h-[2.75rem] shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-muted transition-colors hover:bg-soft hover:text-brand; }
+    .tab-btn[aria-selected="true"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-500 hover:text-white; }
+    .tab-btn .count { @apply rounded-full bg-line px-1.5 text-xs tabular-nums text-ink; }
+    .tab-btn[aria-selected="true"] .count { @apply bg-white/25 text-white; }
+
+    /* ---------- مقطع أزرار (radiogroup) ---------- */
+    .seg { @apply inline-flex items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex min-h-[2.5rem] items-center gap-1.5 rounded-lg px-4 text-sm font-bold text-muted transition-colors hover:text-ink; }
+    .seg-btn[aria-checked="true"] { @apply bg-primary-500 text-white shadow hover:text-white; }
+
+    /* ---------- بطاقة الباقة ---------- */
+    .plan-card { @apply relative flex h-full flex-col rounded-2xl border border-line bg-card p-5 transition-colors; }
+    .plan-card.is-current { @apply border-primary-500 ring-2 ring-primary-500/20; }
+
+    /* ---------- التنبيهات الشريطية ---------- */
+    .alert-bar { @apply flex flex-col gap-3 rounded-2xl border border-s-4 p-4 sm:flex-row sm:items-center; }
+    .alert-warn   { @apply border-warning-500/30 border-s-warning-500 bg-warning-500/10; } .alert-warn .a-ic   { @apply text-warn; }
+    .alert-danger { @apply border-error-500/30 border-s-error-500 bg-error-500/10; }     .alert-danger .a-ic { @apply text-danger; }
+    .alert-info   { @apply border-info/30 border-s-info bg-info/10; }                     .alert-info .a-ic   { @apply text-info; }
+
+    /* ---------- مفتاح (role="switch") — مساحة لمس ≥ 44px ---------- */
+    .sw { @apply relative inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-line-strong transition-colors; }
+    .sw::before { content: ''; position: absolute; inset: -.5rem; }
+    .sw[aria-checked="true"] { @apply bg-primary-500; }
+    .sw-knob { @apply inline-block h-5 w-5 rounded-full bg-white shadow transition-transform; margin-inline-start: .25rem; }
+    .sw[aria-checked="true"] .sw-knob { transform: translateX(1.25rem); }
+    [dir="rtl"] .sw[aria-checked="true"] .sw-knob { transform: translateX(-1.25rem); }
+
+    /* ---------- حاوية Stripe Element (معاينة) ---------- */
+    .stripe-el { @apply rounded-xl border border-dashed border-line-strong bg-field p-3.5; }
+
+    /* ---------- النافذة ---------- */
+    .modal-panel { @apply relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- مقياس الحصة ---------- */
+    .quota-track { @apply h-2 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-700; }
+
+    .print-only { display: none; }
+  }
+</style>
+
+
+<!-- ⑥-ب طباعة الفاتورة: تُفعَّل بـ html.print-invoice (زر الطباعة) — ألوان فاتحة إجبارية + فك قيود التمرير -->
+<style>
+  @media print {
+    html, html.dark {
+      color-scheme: light;
+      --page: 255 255 255 !important; --card: 255 255 255 !important; --field: 255 255 255 !important;
+      --ink: 17 24 39 !important;     --muted: 71 85 105 !important;
+      --line: 203 213 225 !important; --line-strong: 148 163 184 !important;
+      --brand: 11 102 128 !important; --soft: 241 245 249 !important; --soft-2: 226 232 240 !important;
+      --ok: 4 120 87 !important; --warn: 146 64 14 !important; --danger: 185 28 28 !important; --info: 29 78 216 !important;
+    }
+    html.print-invoice, html.print-invoice body { overflow: visible !important; height: auto !important; background: #fff !important; }
+    html.print-invoice body > *:not(#invoice-overlay) { display: none !important; }
+    html.print-invoice #invoice-overlay,
+    html.print-invoice #invoice-overlay .print-reset {
+      position: static !important; inset: auto !important; display: block !important; overflow: visible !important;
+      max-height: none !important; height: auto !important; width: auto !important; max-width: none !important;
+      transform: none !important; opacity: 1 !important; box-shadow: none !important; border: 0 !important; background: #fff !important;
+    }
+    html.print-invoice .no-print { display: none !important; }
+    html.print-invoice .print-only { display: block !important; }
+    html.print-invoice #invoice-print-area { padding: 0 !important; }
+    .badge { border: 1px solid currentColor; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { size: A4; margin: 12mm; }
+  }
+</style>
+
+<!-- ⑦ Alpine.js 3.14.8 + Focus -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.8/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+<!-- ⑧ SweetAlert2 (إصدار مثبّت، مؤجَّل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5/dist/sweetalert2.all.min.js"></script>
+</head>
+
+<body x-data="shell()"
+      @keydown.escape.window="closeAll()"
+      @keydown.window.ctrl.k.prevent="focusSearch()" @keydown.window.meta.k.prevent="focusSearch()"
+      @scroll.window.passive="openMenuId !== null && closeMenu()" @resize.window="openMenuId !== null && closeMenu()"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')">تخطَّ إلى المحتوى</a>
+
+<!-- منطقة إعلانات قارئ الشاشة -->
+<p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="live"></p>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav) ? 'true' : null" :inert="mobile && !mobileNav">
+
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <img x-show="expanded" src="../asset/images/firob-logo.png" alt="FirOb" width="124" height="32" decoding="async"
+             class="block h-8 w-auto max-w-[8.5rem] shrink-0 object-contain dark:brightness-125">
+        <img x-show="!expanded" x-cloak src="../asset/images/firob-favicon.png" alt="FirOb" width="36" height="36" decoding="async"
+             class="block h-9 w-9 shrink-0 object-contain">
+        <span class="min-w-0 flex-1 border-s border-line ps-3" x-show="expanded">
+          <span class="block truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></span>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="closeMobileNav()" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)" :id="'ng-' + group.group"></p>
+          <div class="mx-auto mb-2 h-px w-8 bg-line" x-show="!expanded" aria-hidden="true"></div>
+          <ul class="space-y-1" role="list" :aria-labelledby="expanded ? 'ng-' + group.group : null">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href" class="nav-link relative"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key) + (navCount(item) ? ' (' + navCount(item) + ')' : '')"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="navCount(item) && expanded"
+                        class="shrink-0 rounded-full px-2 py-0.5 text-xs font-extrabold"
+                        :class="active === item.key ? 'bg-white/20 text-white' : (item.tone === 'primary' ? 'bg-primary-500/15 text-brand' : 'bg-accent-500 text-onaccent')"
+                        x-text="navCount(item)"></span>
+                  <span x-show="navCount(item) && !expanded" x-cloak class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full ring-2 ring-card"
+                        :class="item.tone === 'primary' ? 'bg-primary-500' : 'bg-accent-500'" aria-hidden="true"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()"
+              aria-controls="sidebar" :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+        <i class="fa-solid fa-angles-left transition-transform" :class="collapsed ? 'ltr:-scale-x-100' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 ps-[max(.5rem,env(safe-area-inset-left))] pe-[max(.5rem,env(safe-area-inset-right))] sm:gap-2 sm:ps-6 sm:pe-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" x-ref="navToggle" class="icon-btn lg:hidden" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="mobileNav.toString()" :aria-label="mobileNav ? t('closeMenu') : t('openMenu')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="icon-btn hidden lg:inline-grid" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(!collapsed).toString()" :aria-label="collapsed ? t('expandSidebar') : t('collapseSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')" aria-keyshortcuts="Control+K Meta+K"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line-strong/60 bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong/60 bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted lg:inline-flex" x-text="isMac ? '⌘ K' : 'Ctrl K'">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <button type="button" class="icon-btn md:hidden" @click="toggleMobileSearch()" aria-controls="mobile-search"
+                  :aria-expanded="searchOpen.toString()" :aria-label="t('openSearch')">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          </button>
+
+          <button type="button"
+                  class="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition-colors hover:bg-soft hover:text-brand sm:h-10"
+                  @click="toggleLocale()" :aria-label="t('switchLang')" :title="t('switchLang')">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" aria-hidden="true" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="t('darkMode')" :title="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" x-ref="notifBtn" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="dialog" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications') + (unread ? ' — ' + tf('notifUnread', { n: unread }) : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="dialog" aria-labelledby="notif-title">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <h2 id="notif-title" class="font-extrabold" x-text="t('notifications')"></h2>
+                <button type="button" class="min-h-[2.25rem] rounded-lg px-2 text-xs font-bold text-brand hover:underline disabled:opacity-50 disabled:no-underline"
+                        :disabled="!unread" @click="markAllRead()" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="break-words text-sm font-bold leading-6">
+                        <span class="sr-only" x-show="!n.read" x-text="t('unreadSr') + ': '"></span>
+                        <span x-text="tf('notif.' + n.key, notifVars)"></span>
+                      </p>
+                      <p class="text-xs text-muted"><time :datetime="isoAgo(n.mins)" x-text="ago(n.mins)"></time></p>
+                    </div>
+                    <span x-show="!n.read" class="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary-500" aria-hidden="true"></span>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center rounded-xl text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i><span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- الحساب -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" x-ref="profileBtn" class="flex min-h-[2.75rem] max-w-[14rem] items-center gap-2 rounded-xl p-1 transition-colors hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    :aria-expanded="profileOpen.toString()" aria-controls="profile-menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials(me.name)"></span>
+              <span class="sr-only md:hidden" x-text="t('accountMenu')"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="me.name"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTenantAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted transition-transform md:block" :class="profileOpen && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <nav id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-60" :aria-label="t('accountMenu')">
+              <ul role="list" class="py-1">
+                <li><a href="../common/profile.html" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a></li>
+                <li><a href="TenantSettingsForm.html" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('navItems.orgSettings')"></span></a></li>
+                <li><a href="../common/errors.html" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('statusErrors')"></span></a></li>
+                <li class="border-t border-line"><a href="../auth/login.html" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4 rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('logout')"></span></a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <form id="mobile-search" role="search" x-cloak x-show="searchOpen" x-transition.opacity class="border-t border-line px-3 py-2 md:hidden" @submit.prevent>
+        <label for="q-m" class="sr-only" x-text="t('searchPlaceholder')"></label>
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q-m" x-ref="mobileSearch" type="search" enterkeyhint="search" :placeholder="t('searchPlaceholder')"
+                 class="h-11 w-full rounded-xl border border-line-strong/60 bg-field pe-3 ps-10 text-base text-ink placeholder:text-muted/80 focus:border-brand focus:outline-none focus:shadow-[var(--ring)]">
+        </div>
+      </form>
+
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right text-[10px] rtl:-scale-x-100"></i></li>
+            <li><span class="text-ink" aria-current="page" x-text="t('navItems.subscription')"></span></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-07: الاشتراك والفوترة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + الإجراءات الرئيسية (CTA Accent واحد فقط) -->
+      <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('sub.title')">الاشتراك والفوترة</h1>
+          <p class="mt-1 max-w-3xl text-sm text-muted sm:text-base" x-text="t('sub.subtitle')"></p>
+        </div>
+        <div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:flex-wrap sm:items-center">
+          <button type="button" class="btn btn-outline" @click="openModal('payment', $el)">
+            <i class="fa-solid fa-credit-card" aria-hidden="true"></i><span x-text="t('sub.ctaUpdatePayment')"></span>
+          </button>
+          <button type="button" class="btn btn-accent" aria-haspopup="dialog" @click="openUpgrade($el)">
+            <i class="fa-solid fa-arrow-trend-up" aria-hidden="true"></i><span x-text="t('sub.ctaUpgrade')"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= تنبيهات الحساب (مشتقة من الحالة) ================= -->
+      <section x-show="alerts.length" :aria-label="t('sub.alerts.title')" class="space-y-2">
+        <template x-for="a in alerts" :key="a.key">
+          <div class="alert-bar" :class="'alert-' + a.tone">
+            <div class="flex min-w-0 flex-1 items-start gap-3">
+              <i class="fa-solid a-ic mt-0.5 shrink-0" :class="a.icon" aria-hidden="true"></i>
+              <p class="min-w-0 text-sm font-bold leading-6 text-ink" x-text="a.text"></p>
+            </div>
+            <div class="flex shrink-0 flex-wrap gap-2 ps-7 sm:ps-0">
+              <template x-for="act in a.actions" :key="act.label">
+                <button type="button" class="btn btn-sm" :class="act.primary ? 'btn-primary' : 'btn-outline'" @click="act.run($el)" x-text="act.label"></button>
+              </template>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- ================= بطاقة الاشتراك النشط ================= -->
+      <section class="panel p-4 sm:p-6" aria-labelledby="plan-name">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+
+          <!-- تفاصيل الباقة -->
+          <div class="min-w-0 lg:max-w-md">
+            <p class="text-xs font-extrabold text-muted" x-text="t('sub.planLabel')"></p>
+            <div class="mt-1 flex flex-wrap items-center gap-2.5">
+              <h2 id="plan-name" class="text-xl font-extrabold text-ink sm:text-2xl" x-text="t('sub.plans.' + sub.plan + '.name')"></h2>
+              <span class="badge" :class="stateMeta.badge"><i class="fa-solid text-[10px]" :class="stateMeta.icon" aria-hidden="true"></i><span x-text="stateLabel"></span></span>
+            </div>
+            <p class="mt-3 flex flex-wrap items-baseline gap-1.5">
+              <span class="text-3xl font-extrabold tabular-nums text-ink" x-text="fmtMoney(price)"></span>
+              <span class="text-sm font-bold text-muted" x-text="'/ ' + t('sub.per.' + sub.cycle)"></span>
+            </p>
+            <p class="mt-1 text-xs text-muted">
+              <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+              <span x-text="t('sub.cycle.' + sub.cycle)"></span> · <span x-text="tf('sub.taxNote', { rate: fmt(TAX_RATE * 100) })"></span>
+            </p>
+            <p x-show="hasSchedule && !sub.cancelAtPeriodEnd" x-cloak class="mt-2 flex items-start gap-1.5 text-xs font-bold text-info">
+              <i class="fa-solid fa-calendar-days mt-0.5" aria-hidden="true"></i><span x-text="scheduleText"></span>
+            </p>
+
+            <div class="mt-5 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm" aria-haspopup="dialog" :disabled="sub.cancelAtPeriodEnd" @click="openCycle($el)">
+                <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i><span x-text="t('sub.changeCycle')"></span>
+              </button>
+              <button x-show="!sub.cancelAtPeriodEnd" type="button" class="btn btn-outline btn-sm !text-danger hover:!bg-error-500/10" aria-haspopup="dialog" @click="openModal('cancel', $el)">
+                <i class="fa-solid fa-ban" aria-hidden="true"></i><span x-text="t('sub.cancelSub')"></span>
+              </button>
+              <button x-show="sub.cancelAtPeriodEnd" x-cloak type="button" class="btn btn-primary btn-sm" @click="resume()">
+                <i class="fa-solid fa-play" aria-hidden="true"></i><span x-text="t('sub.resumeSub')"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- التجديد + المقاعد + التجديد التلقائي -->
+          <div class="grid w-full min-w-0 gap-4 sm:grid-cols-2 lg:w-auto lg:min-w-[24rem] lg:max-w-md lg:grid-cols-1">
+
+            <div class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-xs font-bold text-muted" x-text="sub.cancelAtPeriodEnd ? t('sub.endsLabel') : t('sub.renewalLabel')"></p>
+                <i class="fa-solid" :class="sub.cancelAtPeriodEnd ? 'fa-hourglass-half text-warn' : 'fa-calendar-check text-brand'" aria-hidden="true"></i>
+              </div>
+              <p class="mt-1.5 text-lg font-extrabold text-ink"><time :datetime="iso(sub.periodEnd)" x-text="fmtDateLong(sub.periodEnd)"></time></p>
+              <p class="mt-0.5 text-xs font-bold" :class="sub.cancelAtPeriodEnd ? 'text-warn' : 'text-brand'" x-text="relDays(sub.periodEnd)"></p>
+              <p class="hint" x-text="renewalHint"></p>
+            </div>
+
+            <div class="min-w-0 rounded-xl border border-line p-4">
+              <div class="flex items-center justify-between gap-2">
+                <p id="seats-label" class="text-xs font-bold text-muted" x-text="t('sub.seatsLabel')"></p>
+                <span class="text-xs font-extrabold tabular-nums" :class="seatTone.text" x-text="seatsUnlimited ? t('sub.upgrade.unlimited') : fmt(seatsPct) + '%'" aria-hidden="true"></span>
+              </div>
+              <div class="quota-track mt-2" role="progressbar" aria-labelledby="seats-label" aria-valuemin="0" aria-valuemax="100"
+                   :aria-valuenow="seatsUnlimited ? null : seatsPct" :aria-valuetext="seatsText">
+                <div class="quota-fill" :class="seatTone.fill" :style="'width:' + (seatsUnlimited ? 100 : Math.min(100, seatsPct)) + '%'"></div>
+              </div>
+              <p class="mt-1.5 text-xs font-bold text-muted" x-text="seatsText"></p>
+              <p x-show="seatTone.warn" class="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-bold text-warn">
+                <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <span x-text="tf('sub.seatsLeft', { n: fmt(seatsLeft) })"></span>
+                <button type="button" class="min-h-[2.25rem] rounded text-brand underline-offset-2 hover:underline" aria-haspopup="dialog" @click="openUpgrade($el)" x-text="t('sub.seatsAction')"></button>
+              </p>
+            </div>
+
+            <div class="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-line p-4 sm:col-span-2 lg:col-span-1">
+              <div class="min-w-0">
+                <p id="ar-label" class="font-bold text-ink" x-text="t('sub.autoRenewLabel')"></p>
+                <p id="ar-hint" class="hint" x-text="sub.cancelAtPeriodEnd ? tf('sub.autoRenewOffHint', { date: fmtDate(sub.periodEnd) }) : t('sub.autoRenewOnHint')"></p>
+              </div>
+              <!-- إيقاف التجديد = إلغاء في نهاية الدورة ⇒ يمر عبر نافذة التأكيد نفسها -->
+              <button type="button" role="switch" class="sw" :aria-checked="(!sub.cancelAtPeriodEnd).toString()"
+                      aria-labelledby="ar-label" aria-describedby="ar-hint" @click="toggleAutoRenew($el)">
+                <span class="sw-knob" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= التبويبات (WAI-ARIA Tabs: أسهم + Home/End) ================= -->
+      <div class="panel p-1.5">
+        <div role="tablist" class="flex items-center gap-1 overflow-x-auto scroll-thin" :aria-label="t('sub.tabsLabel')" @keydown="tabKey($event)">
+          <template x-for="tb in TABS" :key="tb.key">
+            <button type="button" role="tab" class="tab-btn" :id="'tab-' + tb.key" :aria-controls="'panel-' + tb.key"
+                    :aria-selected="(activeTab === tb.key).toString()" :tabindex="activeTab === tb.key ? 0 : -1" @click="setTab(tb.key)">
+              <i class="fa-solid" :class="tb.icon" aria-hidden="true"></i>
+              <span x-text="tb.key === 'invoices' ? t('sub.tabInvoices') : t('sub.tabPayments')"></span>
+              <span class="count" x-text="fmt(tb.key === 'invoices' ? allInvoices.length : payments.length)"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <!-- ================= التبويب ١: سجل الفواتير ================= -->
+      <section id="panel-invoices" role="tabpanel" aria-labelledby="tab-invoices" tabindex="0" x-show="activeTab === 'invoices'" class="space-y-4 focus:outline-none sm:space-y-6">
+
+        <!-- الفلاتر -->
+        <div class="panel p-4 sm:p-5">
+          <h2 class="sr-only" x-text="t('sub.inv.filtersTitle')"></h2>
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_13rem_auto_auto] lg:items-end">
+            <div class="min-w-0 sm:col-span-2 lg:col-span-1">
+              <label for="inv-q" class="label !text-xs" x-text="t('sub.inv.searchLabel')"></label>
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+                <input id="inv-q" type="search" class="field ps-10" dir="auto" autocomplete="off" enterkeyhint="search" x-model.debounce.250ms="filters.q" :placeholder="t('sub.inv.searchPh')">
+              </div>
+            </div>
+
+            <!-- الحالة: Select-only Combobox v2 -->
+            <div class="min-w-0" x-data="selectDropdown({ id: 'inv-status', options: () => statusOptions, get: () => filters.status, set: (v) => filters.status = v })" @click.outside="closeList()">
+              <span id="inv-status-label" class="label !text-xs" x-text="t('sub.inv.statusLabel')"></span>
+              <div class="relative">
+                <button type="button" id="inv-status" x-ref="btn" role="combobox" aria-haspopup="listbox" aria-labelledby="inv-status-label inv-status"
+                        :aria-expanded="open.toString()" aria-controls="inv-status-list" :aria-activedescendant="activeId"
+                        class="field flex w-full items-center justify-between gap-2 text-start font-bold" :class="filters.status !== 'all' && '!border-brand'"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="inv-status-list" role="listbox" aria-labelledby="inv-status-label" tabindex="-1"
+                    x-transition.opacity.duration.150ms class="combo-list scroll-thin" :class="dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+
+            <!-- الفترة -->
+            <fieldset class="min-w-0">
+              <legend class="label !text-xs" x-text="t('sub.inv.periodLabel')"></legend>
+              <div class="grid grid-cols-2 gap-2">
+                <label for="inv-from" class="sr-only" x-text="t('sub.inv.dateFrom')"></label>
+                <input id="inv-from" type="date" class="field min-w-0 lg:w-40" x-model="filters.from" :max="filters.to || null"
+                       :aria-invalid="rangeError.toString()" :aria-describedby="rangeError ? 'range-err' : null">
+                <label for="inv-to" class="sr-only" x-text="t('sub.inv.dateTo')"></label>
+                <input id="inv-to" type="date" class="field min-w-0 lg:w-40" x-model="filters.to" :min="filters.from || null"
+                       :aria-invalid="rangeError.toString()" :aria-describedby="rangeError ? 'range-err' : null">
+              </div>
+            </fieldset>
+
+            <button type="button" class="btn btn-outline sm:col-span-2 lg:col-span-1" :disabled="!filtersActive" @click="resetFilters()">
+              <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('sub.inv.reset')"></span>
+            </button>
+          </div>
+          <p id="range-err" x-show="rangeError" x-cloak class="err" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="t('sub.inv.rangeError')"></span></p>
+        </div>
+
+        <!-- القائمة -->
+        <div class="panel overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+            <h2 id="inv-list-title" tabindex="-1" class="text-base font-extrabold text-ink focus:outline-none" x-text="t('sub.tabInvoices')"></h2>
+            <p class="text-xs font-bold text-muted" x-text="tf('sub.inv.results', { n: fmt(filtered.length) })"></p>
+          </div>
+
+          <!-- الحالة الفارغة (فعلية) -->
+          <div x-show="!filtered.length" x-cloak class="px-5 py-14 text-center">
+            <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-file-circle-question text-xl"></i></span>
+            <p class="font-extrabold text-ink" x-text="t('sub.inv.emptyTitle')"></p>
+            <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('sub.inv.emptySubtitle')"></p>
+            <button type="button" class="btn btn-outline mt-4" @click="resetFilters()"><i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('sub.inv.reset')"></span></button>
+          </div>
+
+          <!-- (أ) بطاقات — الجوال والتابلت -->
+          <ul x-show="filtered.length" class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list" aria-labelledby="inv-list-title">
+            <template x-for="inv in paged" :key="inv.id">
+              <li class="min-w-0 rounded-xl border border-line p-4" :class="inv.upcoming && 'border-dashed border-line-strong'">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="truncate font-extrabold leading-6"><bdi :dir="inv.upcoming ? null : 'ltr'" x-text="invNo(inv)"></bdi></p>
+                    <p class="mt-1 text-xs text-muted">
+                      <time :datetime="iso(inv.issued)" x-text="fmtDate(inv.issued)"></time> ·
+                      <span x-text="t('sub.inv.dueShort')"></span> <time :datetime="iso(inv.due)" x-text="fmtDate(inv.due)"></time>
+                    </p>
+                  </div>
+                  <span class="badge shrink-0" :class="invStatus(inv).badge"><i class="fa-solid text-[10px]" :class="invStatus(inv).icon" aria-hidden="true"></i><span x-text="t('sub.inv.status.' + inv.status)"></span></span>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+                  <p class="text-lg font-extrabold tabular-nums" :class="inv.status === 'void' ? 'text-muted line-through' : 'text-ink'" x-text="fmtMoney(inv.t.total)"></p>
+                  <div class="flex items-center gap-2">
+                    <button x-show="payable(inv)" type="button" class="btn btn-primary btn-sm" aria-haspopup="dialog" @click="openPay(inv, $el)">
+                      <i class="fa-solid fa-credit-card" aria-hidden="true"></i><span x-text="t('sub.inv.payNow')"></span>
+                    </button>
+                    <button type="button" class="act" :disabled="!canDownload(inv)" :aria-busy="(downloading === inv.id).toString()" @click="downloadPdf(inv)"
+                            :aria-label="t('sub.inv.download') + ': ' + invNo(inv)" :title="canDownload(inv) ? t('sub.inv.download') : t('sub.inv.noPdf')">
+                      <i class="fa-solid" :class="downloading === inv.id ? 'fa-circle-notch animate-spin' : 'fa-download'" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="act" aria-haspopup="dialog" @click="openInvoice(inv)" :aria-label="t('sub.inv.view') + ': ' + invNo(inv)" :title="t('sub.inv.view')">
+                      <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ul>
+
+          <!-- (ب) جدول — سطح المكتب -->
+          <div x-show="filtered.length" class="hidden overflow-x-auto xl:block">
+            <table class="w-full text-sm">
+              <caption class="sr-only" x-text="t('sub.tabInvoices') + ' — ' + rangeText"></caption>
+              <thead class="border-b border-line bg-soft/60 text-xs font-extrabold text-muted">
+                <tr>
+                  <th scope="col" class="px-5 py-3 text-start" x-text="t('sub.inv.cols.number')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.inv.cols.issued')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.inv.cols.due')"></th>
+                  <th scope="col" class="px-4 py-3 text-end" x-text="t('sub.inv.cols.amount')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.inv.cols.status')"></th>
+                  <th scope="col" class="px-5 py-3 text-end" x-text="t('sub.inv.cols.actions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="inv in paged" :key="inv.id">
+                  <tr class="transition-colors hover:bg-soft/40">
+                    <th scope="row" class="px-5 py-3.5 text-start font-extrabold" :class="inv.status === 'void' ? 'text-muted' : 'text-ink'"><bdi :dir="inv.upcoming ? null : 'ltr'" x-text="invNo(inv)"></bdi></th>
+                    <td class="whitespace-nowrap px-4 py-3.5 text-muted"><time :datetime="iso(inv.issued)" x-text="fmtDate(inv.issued)"></time></td>
+                    <td class="whitespace-nowrap px-4 py-3.5 text-muted"><time :datetime="iso(inv.due)" x-text="fmtDate(inv.due)"></time></td>
+                    <td class="whitespace-nowrap px-4 py-3.5 text-end font-bold tabular-nums" :class="inv.status === 'void' ? 'text-muted line-through' : 'text-ink'" x-text="fmtMoney(inv.t.total)"></td>
+                    <td class="px-4 py-3.5"><span class="badge" :class="invStatus(inv).badge"><i class="fa-solid text-[10px]" :class="invStatus(inv).icon" aria-hidden="true"></i><span x-text="t('sub.inv.status.' + inv.status)"></span></span></td>
+                    <td class="px-5 py-3.5">
+                      <div class="flex items-center justify-end gap-2">
+                        <button x-show="payable(inv)" type="button" class="btn btn-primary btn-sm" aria-haspopup="dialog" @click="openPay(inv, $el)"
+                                :aria-label="t('sub.inv.payNow') + ': ' + inv.number">
+                          <i class="fa-solid fa-credit-card" aria-hidden="true"></i><span x-text="t('sub.inv.payNow')"></span>
+                        </button>
+                        <button type="button" class="act" :disabled="!canDownload(inv)" :aria-busy="(downloading === inv.id).toString()" @click="downloadPdf(inv)"
+                                :aria-label="t('sub.inv.download') + ': ' + invNo(inv)" :title="canDownload(inv) ? t('sub.inv.download') : t('sub.inv.noPdf')">
+                          <i class="fa-solid" :class="downloading === inv.id ? 'fa-circle-notch animate-spin' : 'fa-download'" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="act" aria-haspopup="dialog" @click="openInvoice(inv)" :aria-label="t('sub.inv.view') + ': ' + invNo(inv)" :title="t('sub.inv.view')">
+                          <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- الترقيم (فعلي) -->
+          <div x-show="filtered.length" class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <p class="text-xs font-bold text-muted" x-text="rangeText"></p>
+            <nav x-show="pages > 1" :aria-label="t('sub.inv.pagination')">
+              <ul class="flex flex-wrap items-center gap-1.5" role="list">
+                <li><button type="button" class="act" :disabled="page === 1" @click="goPage(page - 1)" :aria-label="t('sub.inv.prev')"><i class="fa-solid fa-chevron-right text-xs ltr:-scale-x-100" aria-hidden="true"></i></button></li>
+                <template x-for="p in pages" :key="p">
+                  <li><button type="button" class="act font-bold" :aria-current="p === page ? 'page' : null" :aria-label="tf('sub.inv.pageN', { n: p })" @click="goPage(p)" x-text="fmt(p)"></button></li>
+                </template>
+                <li><button type="button" class="act" :disabled="page === pages" @click="goPage(page + 1)" :aria-label="t('sub.inv.next')"><i class="fa-solid fa-chevron-left text-xs ltr:-scale-x-100" aria-hidden="true"></i></button></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= التبويب ٢: وسائل الدفع والسجل ================= -->
+      <section id="panel-payments" role="tabpanel" aria-labelledby="tab-payments" tabindex="0" x-show="activeTab === 'payments'" x-cloak class="space-y-4 focus:outline-none sm:space-y-6">
+
+        <div class="grid gap-4 lg:grid-cols-2 sm:gap-6">
+          <!-- وسيلة الدفع الأساسية -->
+          <div class="panel p-4 sm:p-6">
+            <h2 class="mb-4 text-base font-extrabold text-ink" x-text="t('sub.pay.methodTitle')"></h2>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex min-w-0 items-center gap-4">
+                <span class="grid h-12 w-16 shrink-0 place-items-center rounded-lg bg-soft text-brand" aria-hidden="true"><i class="fa-brands text-3xl" :class="brandIcon(card.brand)"></i></span>
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-extrabold text-ink"><bdi dir="ltr" x-text="cardLabel(card)"></bdi></p>
+                    <span class="badge badge-primary" x-text="t('sub.pay.default')"></span>
+                    <span x-show="cardExpiring" class="badge badge-warning"><i class="fa-solid fa-clock text-[10px]" aria-hidden="true"></i><span x-text="t('sub.pay.expiringSoon')"></span></span>
+                    <span x-show="cardExpired" x-cloak class="badge badge-danger"><i class="fa-solid fa-xmark text-[10px]" aria-hidden="true"></i><span x-text="t('sub.pay.expired')"></span></span>
+                  </div>
+                  <p class="mt-1 text-xs text-muted"><span x-text="tf('sub.pay.expires', { exp: '' })"></span><bdi dir="ltr" x-text="fmtExp(card)"></bdi></p>
+                  <p class="truncate text-xs text-muted" x-text="card.holder"></p>
+                </div>
+              </div>
+
+              <!-- إجراءات البطاقة: قائمة إفصاح (Disclosure) بالكيبورد -->
+              <div class="relative shrink-0 sm:relative" @click.outside="cardMenu = false"
+                   @keydown.escape="if (cardMenu) { $event.stopPropagation(); cardMenu = false; $refs.cardMenuBtn.focus(); }">
+                <button type="button" x-ref="cardMenuBtn" class="act" @click="cardMenu = !cardMenu; cardMenu && $nextTick(() => $focus.within($refs.cardMenuList).first())"
+                        :aria-expanded="cardMenu.toString()" aria-controls="card-menu" :aria-label="t('sub.pay.actions')">
+                  <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                </button>
+                <ul id="card-menu" x-ref="cardMenuList" x-show="cardMenu" x-cloak x-transition.opacity.scale.95 class="menu py-1 sm:w-56" role="list"
+                    @keydown.arrow-down.prevent="$focus.within($el).wrap().next()" @keydown.arrow-up.prevent="$focus.within($el).wrap().previous()"
+                    @keydown.home.prevent="$focus.within($el).first()" @keydown.end.prevent="$focus.within($el).last()">
+                  <li><button type="button" class="menu-item" @click="cardMenu = false; openModal('payment', $refs.cardMenuBtn)">
+                    <i class="fa-solid fa-arrows-rotate w-4 text-muted" aria-hidden="true"></i><span x-text="t('sub.pay.edit')"></span></button></li>
+                  <li class="border-t border-line"><button type="button" class="menu-item !text-danger" @click="cardMenu = false; openModal('removeCard', $refs.cardMenuBtn)">
+                    <i class="fa-solid fa-trash w-4" aria-hidden="true"></i><span x-text="t('sub.pay.remove')"></span></button></li>
+                </ul>
+              </div>
+            </div>
+            <p class="mt-4 flex items-center gap-1.5 border-t border-line pt-3 text-xs text-muted"><i class="fa-solid fa-lock" aria-hidden="true"></i><span x-text="t('sub.pm.secure')"></span></p>
+          </div>
+
+          <!-- جهة الفوترة -->
+          <div class="panel p-4 sm:p-6">
+            <h2 class="mb-4 text-base font-extrabold text-ink" x-text="t('sub.pay.contactTitle')"></h2>
+            <dl class="space-y-3 text-sm">
+              <div><dt class="sr-only" x-text="t('sub.inv.panel.billTo')"></dt><dd class="font-extrabold text-ink" x-text="L(ORG.name)"></dd><dd class="text-muted" x-text="L(ORG.city)"></dd></div>
+              <div><dt class="text-xs font-bold text-muted" x-text="t('sub.pay.billingEmail')"></dt><dd class="mt-0.5 font-bold text-ink"><bdi dir="ltr" x-text="ORG.email"></bdi></dd></div>
+              <div><dt class="text-xs font-bold text-muted" x-text="t('sub.inv.panel.taxId')"></dt><dd class="mt-0.5 font-bold text-ink"><bdi dir="ltr" x-text="ORG.taxId"></bdi></dd></div>
+            </dl>
+            <a href="TenantSettingsForm.html" class="mt-4 inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-xs font-bold text-brand hover:underline">
+              <i class="fa-solid fa-pen" aria-hidden="true"></i><span x-text="t('sub.pay.editContact')"></span>
+            </a>
+          </div>
+        </div>
+
+        <!-- سجل المدفوعات (مشتق من الفواتير) -->
+        <div class="panel overflow-hidden">
+          <div class="border-b border-line p-4 sm:px-5">
+            <h2 id="log-title" class="text-base font-extrabold text-ink" x-text="t('sub.pay.logTitle')"></h2>
+            <p class="mt-0.5 text-xs text-muted" x-text="t('sub.pay.logHint')"></p>
+          </div>
+
+          <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list" aria-labelledby="log-title">
+            <template x-for="p in paymentsShown" :key="p.id">
+              <li class="min-w-0 rounded-xl border border-line p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <p class="truncate font-extrabold leading-6"><bdi dir="ltr" x-text="p.id"></bdi></p>
+                  <span class="badge shrink-0" :class="payMeta(p.kind).badge"><i class="fa-solid text-[10px]" :class="payMeta(p.kind).icon" aria-hidden="true"></i><span x-text="t('sub.pay.status.' + p.kind)"></span></span>
+                </div>
+                <p class="mt-1 text-xs text-muted"><time :datetime="iso(p.at)" x-text="fmtDateTime(p.at)"></time> · <bdi dir="ltr" x-text="cardLabel(p.card)"></bdi></p>
+                <p x-show="p.code || p.reason" class="mt-1 text-xs font-bold" :class="p.kind === 'failed' ? 'text-danger' : 'text-info'"
+                   x-text="p.code ? t('sub.pay.codes.' + p.code) : t('sub.pay.refundReasons.' + p.reason)"></p>
+                <div class="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
+                  <button type="button" class="min-h-[2.25rem] rounded text-xs font-bold text-brand hover:underline" @click="openInvoice(p.inv)" :aria-label="tf('sub.pay.openInvoice', { n: p.inv.number })"><bdi dir="ltr" x-text="p.inv.number"></bdi></button>
+                  <p class="text-lg font-extrabold tabular-nums" :class="p.kind === 'failed' ? 'text-muted line-through' : 'text-ink'" x-text="fmtMoney(p.amount)"></p>
+                </div>
+              </li>
+            </template>
+          </ul>
+
+          <div class="hidden overflow-x-auto xl:block">
+            <table class="w-full text-sm">
+              <caption class="sr-only" x-text="t('sub.pay.logTitle')"></caption>
+              <thead class="border-b border-line bg-soft/60 text-xs font-extrabold text-muted">
+                <tr>
+                  <th scope="col" class="px-5 py-3 text-start" x-text="t('sub.pay.cols.txn')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.pay.cols.date')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.pay.cols.invoice')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.pay.cols.method')"></th>
+                  <th scope="col" class="px-4 py-3 text-start" x-text="t('sub.pay.cols.ref')"></th>
+                  <th scope="col" class="px-4 py-3 text-end" x-text="t('sub.pay.cols.amount')"></th>
+                  <th scope="col" class="px-5 py-3 text-start" x-text="t('sub.pay.cols.status')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="p in paymentsShown" :key="p.id">
+                  <tr class="transition-colors hover:bg-soft/40">
+                    <th scope="row" class="px-5 py-3.5 text-start font-extrabold text-ink"><bdi dir="ltr" x-text="p.id"></bdi></th>
+                    <td class="whitespace-nowrap px-4 py-3.5 text-muted"><time :datetime="iso(p.at)" x-text="fmtDateTime(p.at)"></time></td>
+                    <td class="px-4 py-3.5"><button type="button" class="rounded font-bold text-brand hover:underline" @click="openInvoice(p.inv)" :aria-label="tf('sub.pay.openInvoice', { n: p.inv.number })"><bdi dir="ltr" x-text="p.inv.number"></bdi></button></td>
+                    <td class="whitespace-nowrap px-4 py-3.5 text-muted"><bdi dir="ltr" x-text="cardLabel(p.card)"></bdi></td>
+                    <td class="max-w-[12rem] truncate px-4 py-3.5 font-mono text-xs text-muted"><bdi dir="ltr" x-text="p.ref"></bdi></td>
+                    <td class="whitespace-nowrap px-4 py-3.5 text-end font-bold tabular-nums" :class="p.kind === 'failed' ? 'text-muted line-through' : 'text-ink'" x-text="fmtMoney(p.amount)"></td>
+                    <td class="px-5 py-3.5">
+                      <span class="badge" :class="payMeta(p.kind).badge"><i class="fa-solid text-[10px]" :class="payMeta(p.kind).icon" aria-hidden="true"></i><span x-text="t('sub.pay.status.' + p.kind)"></span></span>
+                      <span x-show="p.code || p.reason" class="mt-1 block text-xs font-bold" :class="p.kind === 'failed' ? 'text-danger' : 'text-info'"
+                            x-text="p.code ? t('sub.pay.codes.' + p.code) : t('sub.pay.refundReasons.' + p.reason)"></span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <div x-show="payments.length > 8" class="border-t border-line p-3 text-center">
+            <button type="button" class="btn btn-outline btn-sm" :aria-expanded="(logLimit >= payments.length).toString()" @click="toggleLog()"
+                    x-text="logLimit < payments.length ? tf('sub.pay.showMore', { n: fmt(payments.length - logLimit) }) : t('sub.pay.showLess')"></button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60" style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" loading="lazy" decoding="async" class="block h-7 w-auto shrink-0 object-contain dark:brightness-125">
+          <p class="min-w-0 text-sm text-muted">
+            <span x-text="t('footer.tagline')"></span>
+            <span class="block text-xs sm:inline sm:text-sm">
+              <span class="hidden sm:inline" aria-hidden="true">·</span>
+              © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+            </span>
+          </p>
+        </div>
+        <nav :aria-label="t('footer.nav')" class="min-w-0">
+          <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+            <li><a href="../index.html" class="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded text-muted underline-offset-4 transition-colors hover:text-brand hover:underline"><i class="fa-solid fa-sitemap text-xs" aria-hidden="true"></i><span x-text="t('footer.screens')"></span></a></li>
+            <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+              <li><span class="inline-flex cursor-not-allowed items-center text-muted/70" aria-disabled="true"><span x-text="t('footer.' + k)"></span><span class="sr-only" x-text="' (' + t('footer.soon') + ')'"></span></span></li>
+            </template>
+          </ul>
+        </nav>
+        <p class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span class="badge badge-muted" dir="ltr" x-text="version"></span>
+        </p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+
+<!-- ==========================================================================
+     اللوحة الجانبية — تفاصيل الفاتورة (قابلة للطباعة)
+     ابن مباشر لـ body: تُطبع وحدها عبر html.print-invoice
+     ========================================================================== -->
+<div id="invoice-overlay" x-show="invoiceOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]">
+  <div class="no-print absolute inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeInvoice()"></div>
+  <aside x-show="invoiceOpen" x-trap.noscroll.inert="invoiceOpen" role="dialog" aria-modal="true" aria-labelledby="inv-panel-title"
+         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full rtl:-translate-x-full"
+         class="print-reset absolute inset-y-0 end-0 flex w-full max-w-xl flex-col border-s border-line bg-card shadow-pop">
+    <template x-if="sel">
+      <div class="print-reset flex min-h-0 flex-1 flex-col">
+        <header class="no-print flex shrink-0 items-start justify-between gap-3 border-b border-line bg-soft p-4 sm:p-5" style="padding-top: max(1rem, env(safe-area-inset-top))">
+          <div class="min-w-0">
+            <p class="text-xs font-extrabold text-muted" x-text="t('sub.inv.panel.subtitle')"></p>
+            <h2 id="inv-panel-title" class="mt-0.5 truncate text-lg font-extrabold text-ink"><bdi :dir="sel.upcoming ? null : 'ltr'" x-text="invNo(sel)"></bdi></h2>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <button type="button" class="icon-btn" :disabled="sel.upcoming" @click="printInvoice()" :aria-label="t('sub.inv.panel.print')" :title="t('sub.inv.panel.print')"><i class="fa-solid fa-print" aria-hidden="true"></i></button>
+            <button type="button" class="icon-btn" @click="closeInvoice()" :aria-label="t('sub.inv.panel.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          </div>
+        </header>
+
+        <div id="invoice-print-area" class="print-reset min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+          <!-- ترويسة الطباعة -->
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <img src="../asset/images/firob-logo.png" alt="FirOb" width="108" height="28" class="block h-7 w-auto object-contain dark:brightness-125 print:brightness-100">
+              <p class="print-only mt-2 text-lg font-extrabold text-ink"><bdi :dir="sel.upcoming ? null : 'ltr'" x-text="invNo(sel)"></bdi></p>
+            </div>
+            <span class="badge shrink-0" :class="invStatus(sel).badge"><i class="fa-solid text-[10px]" :class="invStatus(sel).icon" aria-hidden="true"></i><span x-text="t('sub.inv.status.' + sel.status)"></span></span>
+          </div>
+
+          <!-- ملاحظات الحالة -->
+          <p x-show="sel.status === 'void'" class="alert-bar alert-info !p-3 text-sm font-bold text-ink" x-text="tf('sub.inv.panel.voidNote', { reason: t('sub.voidReasons.' + (sel.voidReason || 'duplicate')) })"></p>
+          <p x-show="sel.status === 'draft'" class="alert-bar alert-info !p-3 text-sm font-bold text-ink" x-text="t('sub.inv.panel.draftNote')"></p>
+          <p x-show="sel.status === 'uncollectible'" class="alert-bar alert-danger !p-3 text-sm font-bold text-ink" x-text="tf('sub.inv.panel.uncollectibleNote', { n: fmt(sel.attempts.length) })"></p>
+
+          <!-- الأطراف -->
+          <div class="grid grid-cols-1 gap-4 rounded-xl border border-line p-4 text-sm min-[440px]:grid-cols-2">
+            <div class="min-w-0">
+              <p class="text-xs font-extrabold text-muted" x-text="t('sub.inv.panel.seller')"></p>
+              <p class="mt-1 font-bold text-ink" x-text="L(SELLER.name)"></p>
+              <p class="text-muted" x-text="L(SELLER.city)"></p>
+              <p class="text-muted"><bdi dir="ltr" x-text="SELLER.email"></bdi></p>
+              <p class="text-xs text-muted"><span x-text="t('sub.inv.panel.taxId') + ': '"></span><bdi dir="ltr" x-text="SELLER.taxId"></bdi></p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-extrabold text-muted" x-text="t('sub.inv.panel.billTo')"></p>
+              <p class="mt-1 font-bold text-ink" x-text="L(ORG.name)"></p>
+              <p class="text-muted" x-text="L(ORG.city)"></p>
+              <p class="text-muted"><bdi dir="ltr" x-text="ORG.email"></bdi></p>
+              <p class="text-xs text-muted"><span x-text="t('sub.inv.panel.taxId') + ': '"></span><bdi dir="ltr" x-text="ORG.taxId"></bdi></p>
+            </div>
+          </div>
+
+          <!-- التواريخ -->
+          <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+            <div><dt class="text-xs font-bold text-muted" x-text="t('sub.inv.panel.issued')"></dt><dd class="mt-0.5 font-bold text-ink"><time :datetime="iso(sel.issued)" x-text="fmtDate(sel.issued)"></time></dd></div>
+            <div><dt class="text-xs font-bold text-muted" x-text="t('sub.inv.panel.due')"></dt><dd class="mt-0.5 font-bold text-ink"><time :datetime="iso(sel.due)" x-text="fmtDate(sel.due)"></time></dd></div>
+            <div x-show="paidAt(sel)"><dt class="text-xs font-bold text-muted" x-text="t('sub.inv.panel.paidAt')"></dt><dd class="mt-0.5 font-bold text-ok"><time :datetime="paidAt(sel) ? iso(paidAt(sel)) : null" x-text="paidAt(sel) ? fmtDate(paidAt(sel)) : ''"></time></dd></div>
+          </dl>
+
+          <!-- البنود -->
+          <div class="overflow-x-auto rounded-xl border border-line">
+            <table class="w-full text-sm">
+              <caption class="sr-only" x-text="t('sub.inv.panel.lineItems')"></caption>
+              <thead class="border-b border-line bg-soft/60 text-xs font-extrabold text-muted">
+                <tr>
+                  <th scope="col" class="px-3 py-2.5 text-start" x-text="t('sub.inv.panel.desc')"></th>
+                  <th scope="col" class="px-2 py-2.5 text-center" x-text="t('sub.inv.panel.qty')"></th>
+                  <th scope="col" class="px-2 py-2.5 text-end" x-text="t('sub.inv.panel.unit')"></th>
+                  <th scope="col" class="px-3 py-2.5 text-end" x-text="t('sub.inv.panel.total')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="(l, idx) in sel.lines" :key="idx">
+                  <tr>
+                    <td class="px-3 py-2.5 align-top">
+                      <span class="block font-bold text-ink" x-text="lineDesc(l)"></span>
+                      <span x-show="l.from" class="block text-xs text-muted" x-text="l.from ? t('sub.inv.panel.period') + ': ' + fmtDate(l.from) + ' – ' + fmtDate(l.to) : ''"></span>
+                    </td>
+                    <td class="px-2 py-2.5 text-center align-top tabular-nums text-muted" x-text="fmt(l.qty)"></td>
+                    <td class="whitespace-nowrap px-2 py-2.5 text-end align-top tabular-nums text-muted" x-text="fmtMoney(l.unit)"></td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-end align-top font-bold tabular-nums text-ink" x-text="fmtMoney(l.qty * l.unit)"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- الإجماليات (مشتقة من البنود) -->
+          <dl class="space-y-1.5 rounded-xl border border-line p-4 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="t('sub.inv.panel.subtotal')"></dt><dd class="font-bold tabular-nums text-ink" x-text="fmtMoney(sel.t.sub)"></dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="tf('sub.inv.panel.tax', { rate: fmt(TAX_RATE * 100) })"></dt><dd class="font-bold tabular-nums text-ink" x-text="fmtMoney(sel.t.tax)"></dd></div>
+            <div class="flex items-center justify-between gap-3 border-t border-line pt-2 text-base"><dt class="font-extrabold text-ink" x-text="t('sub.inv.panel.grand')"></dt><dd class="font-extrabold tabular-nums text-brand" x-text="fmtMoney(sel.t.total)"></dd></div>
+            <div x-show="sel.t.paid" class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="t('sub.inv.panel.paid')"></dt><dd class="font-bold tabular-nums text-ok" x-text="fmtMoney(-sel.t.paid)"></dd></div>
+            <div x-show="sel.t.refunded" class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="t('sub.inv.panel.refunded')"></dt><dd class="font-bold tabular-nums text-info" x-text="fmtMoney(sel.t.refunded)"></dd></div>
+            <div class="flex items-center justify-between gap-3 border-t border-line pt-2"><dt class="font-extrabold text-ink" x-text="t('sub.inv.panel.amountDue')"></dt><dd class="font-extrabold tabular-nums" :class="sel.t.due ? 'text-danger' : 'text-ink'" x-text="fmtMoney(sel.t.due)"></dd></div>
+          </dl>
+
+          <p x-show="paidCard(sel)" class="text-xs text-muted">
+            <span x-text="t('sub.inv.panel.method') + ': '"></span><bdi dir="ltr" x-text="paidCard(sel) ? cardLabel(paidCard(sel)) : ''"></bdi>
+          </p>
+          <p class="no-print text-[11px] text-muted" x-text="t('sub.inv.panel.sellerNote')"></p>
+        </div>
+
+        <footer class="no-print flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line p-3 sm:p-4" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
+          <button type="button" class="btn btn-outline" @click="closeInvoice()" x-text="t('sub.inv.panel.close')"></button>
+          <button x-show="payable(sel)" type="button" class="btn btn-primary" aria-haspopup="dialog" @click="openPay(sel, $el)">
+            <i class="fa-solid fa-credit-card" aria-hidden="true"></i><span x-text="t('sub.inv.payNow')"></span>
+          </button>
+          <button type="button" class="btn btn-outline" :disabled="!canDownload(sel)" :aria-busy="(downloading === sel.id).toString()" @click="downloadPdf(sel)" :title="canDownload(sel) ? null : t('sub.inv.noPdf')">
+            <i class="fa-solid" :class="downloading === sel.id ? 'fa-circle-notch animate-spin' : 'fa-download'" aria-hidden="true"></i><span x-text="t('sub.inv.download')"></span>
+          </button>
+        </footer>
+      </div>
+    </template>
+  </aside>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تغيير الباقة (اختيار ← مراجعة التكلفة ← تأكيد)
+     ========================================================================== -->
+<div x-show="modal === 'upgrade'" x-cloak x-transition.opacity class="fixed inset-0 z-[70] overflow-y-auto p-3 sm:p-6">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeModal()"></div>
+  <div class="relative mx-auto flex min-h-full max-w-5xl items-center">
+    <div x-show="modal === 'upgrade'" x-trap.noscroll.inert="modal === 'upgrade'" role="dialog" aria-modal="true" aria-labelledby="upgrade-title" aria-describedby="upgrade-desc"
+         x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+         class="modal-panel max-w-5xl">
+
+      <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line bg-soft p-4 sm:p-5">
+        <div class="min-w-0">
+          <h2 id="upgrade-title" class="text-lg font-extrabold text-ink" x-text="t('sub.upgrade.title')"></h2>
+          <p id="upgrade-desc" class="mt-0.5 text-sm text-muted" x-text="t('sub.upgrade.subtitle')"></p>
+        </div>
+        <button type="button" class="icon-btn shrink-0" :disabled="busy" @click="closeModal()" :aria-label="t('sub.upgrade.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </header>
+
+      <!-- الخطوة ١: اختيار الباقة -->
+      <div x-show="upgrade.step === 'pick'" class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div class="mb-6 flex flex-wrap items-center justify-center gap-3">
+          <div class="seg" role="radiogroup" :aria-label="t('sub.upgrade.cycleLabel')" @keydown="cycleKey($event)">
+            <template x-for="c in CYCLES" :key="c">
+              <button type="button" role="radio" class="seg-btn" :id="'upc-' + c" :aria-checked="(upgrade.cycle === c).toString()"
+                      :tabindex="upgrade.cycle === c ? 0 : -1" @click="upgrade.cycle = c" x-text="t('sub.cycle.' + c)"></button>
+            </template>
+          </div>
+          <span class="badge badge-accent"><i class="fa-solid fa-gift text-[10px]" aria-hidden="true"></i><span x-text="t('sub.upgrade.annualBadge')"></span></span>
+        </div>
+
+        <ul class="grid grid-cols-1 gap-5 md:grid-cols-3" role="list">
+          <template x-for="k in PLAN_KEYS" :key="k">
+            <li class="plan-card" :class="k === sub.plan && 'is-current'">
+              <span x-show="k === sub.plan" class="absolute -top-3 start-5 rounded-full bg-primary-500 px-3 py-1 text-xs font-extrabold text-white shadow" x-text="t('sub.upgrade.currentBadge')"></span>
+              <h3 class="text-sm font-extrabold" :class="k === sub.plan ? 'text-brand' : 'text-muted'" x-text="t('sub.plans.' + k + '.name')"></h3>
+              <p class="mt-2 flex flex-wrap items-baseline gap-1.5">
+                <span class="text-3xl font-extrabold tabular-nums text-ink" x-text="fmtMoney(PLANS[k][upgrade.cycle], 0)"></span>
+                <span class="text-sm font-bold text-muted" x-text="'/ ' + t('sub.per.' + upgrade.cycle)"></span>
+              </p>
+              <p class="mt-1 min-h-[1.25rem] text-xs font-bold text-ok"
+                 x-text="upgrade.cycle === 'annual' ? tf('sub.upgrade.save', { amount: fmtMoney(annualSaving(k), 0) }) : tf('sub.upgrade.annualEq', { amount: fmtMoney(PLANS[k].annual, 0) })"></p>
+              <ul class="mt-4 flex-1 space-y-2.5 text-sm" role="list">
+                <template x-for="f in t('sub.plans.' + k + '.features')" :key="f">
+                  <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1 shrink-0 text-ok" aria-hidden="true"></i><span x-text="f"></span></li>
+                </template>
+              </ul>
+              <p x-show="planAction(k) === 'blocked'" :id="'blk-' + k" class="err !mt-4"><i class="fa-solid fa-lock" aria-hidden="true"></i>
+                <span x-text="tf('sub.upgrade.blocked', { used: fmt(sub.seatsUsed), limit: fmt(PLANS[k].seats) })"></span></p>
+              <button type="button" class="btn mt-5 w-full" :id="'plan-btn-' + k" :class="planBtnClass(k)"
+                      :disabled="['current', 'scheduled', 'blocked'].includes(planAction(k))"
+                      :aria-describedby="planAction(k) === 'blocked' ? 'blk-' + k : null" @click="choosePlan(k)">
+                <i class="fa-solid" :class="{ current: 'fa-check', scheduled: 'fa-calendar-check', upgrade: 'fa-arrow-trend-up', downgrade: 'fa-arrow-trend-down', blocked: 'fa-lock', cycle: 'fa-arrows-rotate' }[planAction(k)]" aria-hidden="true"></i>
+                <span x-text="planActionLabel(k)"></span>
+              </button>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <!-- الخطوة ٢: مراجعة التكلفة -->
+      <template x-if="upgrade.step === 'review' && quote">
+        <div class="flex min-h-0 flex-1 flex-col">
+          <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+            <h3 id="review-title" tabindex="-1" class="text-base font-extrabold text-ink focus:outline-none" x-text="t('sub.upgrade.reviewTitle')"></h3>
+
+            <div class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-[1fr_auto_1fr]">
+              <div class="rounded-xl border border-line p-4">
+                <p class="text-xs font-bold text-muted" x-text="t('sub.upgrade.from')"></p>
+                <p class="mt-1 font-extrabold text-ink" x-text="t('sub.plans.' + sub.plan + '.name')"></p>
+                <p class="text-sm text-muted"><span class="tabular-nums" x-text="fmtMoney(price)"></span> / <span x-text="t('sub.per.' + sub.cycle)"></span></p>
+              </div>
+              <span class="grid place-items-center text-brand" aria-hidden="true"><i class="fa-solid fa-arrow-left rotate-[-90deg] sm:rotate-0 sm:ltr:-scale-x-100"></i></span>
+              <div class="rounded-xl border-2 border-primary-500 p-4">
+                <p class="text-xs font-bold text-brand" x-text="t('sub.upgrade.to')"></p>
+                <p class="mt-1 font-extrabold text-ink" x-text="t('sub.plans.' + upgrade.target + '.name')"></p>
+                <p class="text-sm text-muted"><span class="tabular-nums" x-text="fmtMoney(quote.newPrice)"></span> / <span x-text="t('sub.per.' + upgrade.cycle)"></span></p>
+              </div>
+            </div>
+
+            <dl x-show="quote.immediate" class="space-y-2 rounded-xl border border-line p-4 text-sm">
+              <div class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="quote.sameCycle ? t('sub.upgrade.charge') : t('sub.upgrade.chargeFull')"></dt><dd class="font-bold tabular-nums text-ink" x-text="fmtMoney(quote.charge || 0)"></dd></div>
+              <div class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="tf('sub.upgrade.credit', { n: fmt(quote.daysLeft || 0) })"></dt><dd class="font-bold tabular-nums text-ok" x-text="fmtMoney(-(quote.credit || 0))"></dd></div>
+              <div class="flex items-center justify-between gap-3"><dt class="text-muted" x-text="tf('sub.upgrade.tax', { rate: fmt(TAX_RATE * 100) })"></dt><dd class="font-bold tabular-nums text-ink" x-text="fmtMoney(quote.tax || 0)"></dd></div>
+              <div class="flex items-center justify-between gap-3 border-t border-line pt-2 text-base"><dt class="font-extrabold text-ink" x-text="t('sub.upgrade.dueNow')"></dt><dd class="font-extrabold tabular-nums text-brand" x-text="fmtMoney(quote.dueNow || 0)"></dd></div>
+            </dl>
+
+            <div class="alert-bar alert-info">
+              <div class="flex min-w-0 flex-1 items-start gap-3">
+                <i class="fa-solid fa-circle-info a-ic mt-0.5 shrink-0" aria-hidden="true"></i>
+                <p class="text-sm font-bold leading-6 text-ink"
+                   x-text="quote.immediate ? tf('sub.upgrade.effectiveNow', { card: cardLabel(card), date: fmtDate(quote.renewal), amount: fmtMoney(quote.nextTotal) })
+                                           : tf('sub.upgrade.effectiveLater', { date: fmtDateLong(quote.effective), amount: fmtMoney(quote.nextTotal) })"></p>
+              </div>
+            </div>
+            <p x-show="quote.immediate" class="hint" x-text="t('sub.upgrade.estimate')"></p>
+            <p class="sr-only" role="status" x-text="busy ? t('sub.upgrade.processing') : ''"></p>
+          </div>
+          <footer class="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-page/40 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <button type="button" class="btn btn-outline" :disabled="busy" @click="backToPlans()">
+              <i class="fa-solid fa-arrow-right text-xs ltr:-scale-x-100" aria-hidden="true"></i><span x-text="t('sub.upgrade.back')"></span>
+            </button>
+            <button type="button" class="btn" :class="[quote.immediate ? 'btn-accent' : 'btn-primary', busy ? 'pointer-events-none opacity-80' : '']" :aria-disabled="busy.toString()" @click="confirmPlan()">
+              <i class="fa-solid" :class="busy ? 'fa-circle-notch animate-spin' : (quote.immediate ? 'fa-lock' : 'fa-calendar-check')" aria-hidden="true"></i>
+              <span x-text="busy ? t('sub.upgrade.processing') : (quote.immediate ? tf('sub.upgrade.confirmUpgrade', { amount: fmtMoney(quote.dueNow) }) : t('sub.upgrade.confirmSchedule'))"></span>
+            </button>
+          </footer>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تحديث وسيلة الدفع (نمط Stripe Payment Element)
+     ========================================================================== -->
+<div x-show="modal === 'payment'" x-cloak x-transition.opacity class="fixed inset-0 z-[70] grid place-items-center overflow-y-auto p-3 sm:p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeModal()"></div>
+  <form x-show="modal === 'payment'" x-trap.noscroll.inert="modal === 'payment'" role="dialog" aria-modal="true" aria-labelledby="pm-title" novalidate
+        @submit.prevent="savePaymentMethod()"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel max-w-lg">
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-4 sm:p-5">
+      <h2 id="pm-title" class="text-lg font-extrabold text-ink" x-text="t('sub.pm.title')"></h2>
+      <button type="button" class="icon-btn" :disabled="busy" @click="closeModal()" :aria-label="t('sub.pm.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
+      <p class="flex items-center gap-2 text-sm text-muted">
+        <i class="fa-brands text-xl text-brand" :class="brandIcon(card.brand)" aria-hidden="true"></i>
+        <span x-text="t('sub.pm.current') + ':'"></span> <bdi dir="ltr" class="font-bold text-ink" x-text="cardLabel(card) + ' · ' + fmtExp(card)"></bdi>
+      </p>
+
+      <div>
+        <label for="pm-holder" class="label" x-text="t('sub.pm.holder')"></label>
+        <input id="pm-holder" type="text" class="field" autocomplete="cc-name" required aria-required="true" autofocus x-model="pm.holder" :placeholder="t('sub.pm.holderPh')"
+               :aria-invalid="(!!pm.holderErr).toString()" :aria-describedby="pm.holderErr ? 'pm-holder-err' : null" @input="pm.holderErr && pm.holder.trim() && (pm.holderErr = '')">
+        <p id="pm-holder-err" x-show="pm.holderErr" class="err"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="pm.holderErr"></span></p>
+      </div>
+
+      <!-- في الإنتاج: <div id="payment-element"></div> + stripe.elements().create('payment').mount(...) — لا حقول بطاقة خام هنا -->
+      <div>
+        <p id="pm-el-label" class="label" x-text="t('sub.pm.element')"></p>
+        <div class="stripe-el" role="group" aria-labelledby="pm-el-label" aria-describedby="pm-el-note">
+          <p class="mb-3 flex items-center gap-2 text-xs font-extrabold text-muted"><i class="fa-brands fa-stripe text-2xl text-brand" aria-hidden="true"></i><span x-text="t('sub.pm.elementMock')"></span></p>
+          <div class="grid grid-cols-2 gap-2" aria-hidden="true">
+            <template x-for="(lbl, i) in t('sub.pm.elementFields')" :key="i">
+              <div class="rounded-md border border-line bg-page/50 px-3 py-2.5 text-xs text-muted" :class="i === 0 && 'col-span-2'" x-text="lbl"></div>
+            </template>
+          </div>
+        </div>
+        <p id="pm-el-note" class="hint flex items-start gap-1.5"><i class="fa-solid fa-lock mt-0.5" aria-hidden="true"></i><span x-text="t('sub.pm.elementNote')"></span></p>
+      </div>
+
+      <fieldset class="rounded-xl border border-dashed border-line-strong/70 p-3">
+        <legend class="px-1 text-xs font-extrabold text-muted" x-text="t('sub.pm.scenario')"></legend>
+        <div class="flex flex-wrap gap-x-5">
+          <template x-for="s in ['success', 'declined']" :key="s">
+            <label class="flex min-h-[2.75rem] cursor-pointer items-center gap-2 text-sm font-bold text-ink">
+              <input type="radio" name="pm-scenario" class="h-4 w-4 accent-[rgb(var(--brand))]" :value="s" x-model="pm.scenario"><span x-text="t('sub.pm.scenarios.' + s)"></span>
+            </label>
+          </template>
+        </div>
+      </fieldset>
+
+      <div id="pm-error" x-show="pm.error" tabindex="-1" role="alert" class="alert-bar alert-danger focus:outline-none">
+        <div class="flex min-w-0 flex-1 items-start gap-3"><i class="fa-solid fa-circle-exclamation a-ic mt-0.5" aria-hidden="true"></i><p class="text-sm font-bold text-ink" x-text="pm.error"></p></div>
+      </div>
+      <p class="sr-only" role="status" x-text="busy && modal === 'payment' ? t('sub.pm.saving') : ''"></p>
+    </div>
+
+    <footer class="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-page/40 p-3 sm:flex-row sm:justify-end sm:p-4" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sub.pm.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :aria-disabled="busy.toString()" :class="busy && 'pointer-events-none opacity-80'">
+        <i class="fa-solid" :class="busy ? 'fa-circle-notch animate-spin' : 'fa-lock'" aria-hidden="true"></i><span x-text="busy ? t('sub.pm.saving') : t('sub.pm.save')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تغيير دورة الفوترة (تُجدول لنهاية الدورة)
+     ========================================================================== -->
+<div x-show="modal === 'cycle'" x-cloak x-transition.opacity class="fixed inset-0 z-[70] grid place-items-center overflow-y-auto p-3 sm:p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeModal()"></div>
+  <form x-show="modal === 'cycle'" x-trap.noscroll.inert="modal === 'cycle'" role="dialog" aria-modal="true" aria-labelledby="bc-title" aria-describedby="bc-desc"
+        @submit.prevent="saveCycle()"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel max-w-md">
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-4 sm:p-5">
+      <h2 id="bc-title" class="text-lg font-extrabold text-ink" x-text="t('sub.bc.title')"></h2>
+      <button type="button" class="icon-btn" :disabled="busy" @click="closeModal()" :aria-label="t('sub.bc.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+    <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+      <p id="bc-desc" class="text-sm text-muted" x-text="tf('sub.bc.subtitle', { date: fmtDateLong(sub.periodEnd) })"></p>
+      <fieldset class="space-y-3">
+        <legend class="sr-only" x-text="t('sub.bc.legend')"></legend>
+        <template x-for="c in CYCLES" :key="c">
+          <label class="flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-4 transition-colors hover:border-primary-500 has-[:focus-visible]:[box-shadow:var(--ring)]"
+                 :class="cycleChoice === c ? 'border-brand bg-soft' : 'border-line-strong/60'">
+            <span class="flex items-center gap-3">
+              <input type="radio" name="bc-cycle" class="h-4 w-4 accent-[rgb(var(--brand))] focus:outline-none" :value="c" x-model="cycleChoice">
+              <span>
+                <span class="block font-bold text-ink" x-text="t('sub.cycle.' + c)"></span>
+                <span class="block text-xs text-muted"><span class="tabular-nums" x-text="fmtMoney(PLANS[sub.plan][c])"></span> / <span x-text="t('sub.per.' + c)"></span>
+                  <span x-show="c === 'annual'" x-text="' · ' + tf('sub.bc.perMonthEq', { amount: fmtMoney(PLANS[sub.plan].annual / 12) })"></span></span>
+              </span>
+            </span>
+            <span class="flex shrink-0 flex-col items-end gap-1">
+              <span x-show="c === sub.cycle" class="badge badge-primary" x-text="t('sub.bc.currentTag')"></span>
+              <span x-show="c === sub.scheduledCycle" class="badge badge-info" x-text="t('sub.bc.scheduledTag')"></span>
+              <span x-show="c === 'annual'" class="badge badge-success" x-text="tf('sub.bc.saveAmt', { amount: fmtMoney(annualSaving(sub.plan), 0) })"></span>
+            </span>
+          </label>
+        </template>
+      </fieldset>
+      <p class="sr-only" role="status" x-text="busy && modal === 'cycle' ? t('sub.bc.saving') : ''"></p>
+    </div>
+    <footer class="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-page/40 p-3 sm:flex-row sm:justify-end sm:p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sub.bc.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="cycleChoice === nextCycle" :aria-disabled="busy.toString()" :class="busy && 'pointer-events-none opacity-80'">
+        <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('sub.bc.saving') : (sub.scheduledCycle && cycleChoice === sub.cycle ? t('sub.bc.revert') : t('sub.bc.save'))"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد الإلغاء (alertdialog) — إلغاء في نهاية الدورة
+     ========================================================================== -->
+<div x-show="modal === 'cancel'" x-cloak x-transition.opacity class="fixed inset-0 z-[70] grid place-items-center overflow-y-auto p-3 sm:p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeModal()"></div>
+  <div x-show="modal === 'cancel'" x-trap.noscroll.inert="modal === 'cancel'" role="alertdialog" aria-modal="true" aria-labelledby="cs-title" aria-describedby="cs-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-md">
+    <div class="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+      <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-500/15 text-danger" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation text-xl"></i></span>
+      <h2 id="cs-title" class="mt-4 text-center text-lg font-extrabold text-ink" x-text="t('sub.cs.title')"></h2>
+      <div id="cs-desc" class="mt-2 text-sm text-muted">
+        <p class="text-center" x-text="tf('sub.cs.text', { date: fmtDateLong(sub.periodEnd) })"></p>
+        <ul class="mt-3 space-y-1.5 rounded-xl border border-line p-3" role="list">
+          <template x-for="(l, i) in t('sub.cs.lose')" :key="i">
+            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-minus mt-1 text-danger" aria-hidden="true"></i><span x-text="l.split('{seats}').join(fmt(sub.seatsUsed))"></span></li>
+          </template>
+        </ul>
+      </div>
+      <fieldset class="mt-4">
+        <legend class="label !text-xs" x-text="t('sub.cs.reasonLegend')"></legend>
+        <div class="grid grid-cols-2 gap-x-3">
+          <template x-for="r in ['price', 'features', 'temporary', 'other']" :key="r">
+            <label class="flex min-h-[2.75rem] cursor-pointer items-center gap-2 text-sm font-bold text-ink">
+              <input type="radio" name="cs-reason" class="h-4 w-4 accent-[rgb(var(--brand))]" :value="r" x-model="cancelReason"><span x-text="t('sub.cs.reasons.' + r)"></span>
+            </label>
+          </template>
+        </div>
+      </fieldset>
+      <p class="sr-only" role="status" x-text="busy && modal === 'cancel' ? t('sub.cs.processing') : ''"></p>
+    </div>
+    <footer class="flex shrink-0 flex-col-reverse gap-2 border-t border-line p-3 sm:flex-row sm:justify-center sm:p-4">
+      <!-- «الاحتفاظ» أولًا في DOM ⇒ التركيز الأولي على الخيار الآمن -->
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sub.cs.keep')"></button>
+      <button type="button" class="btn btn-danger" :aria-disabled="busy.toString()" :class="busy && 'pointer-events-none opacity-80'" @click="confirmCancel()">
+        <i class="fa-solid fa-circle-notch animate-spin" x-show="busy" aria-hidden="true"></i><span x-text="busy ? t('sub.cs.processing') : t('sub.cs.confirm')"></span>
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — حارس إزالة البطاقة الوحيدة (alertdialog)
+     ========================================================================== -->
+<div x-show="modal === 'removeCard'" x-cloak x-transition.opacity class="fixed inset-0 z-[70] grid place-items-center p-3 sm:p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeModal()"></div>
+  <div x-show="modal === 'removeCard'" x-trap.noscroll.inert="modal === 'removeCard'" role="alertdialog" aria-modal="true" aria-labelledby="rcb-title" aria-describedby="rcb-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-sm p-6 text-center">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-warning-500/15 text-warn" aria-hidden="true"><i class="fa-solid fa-lock text-xl"></i></span>
+    <h2 id="rcb-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('sub.rcb.title')"></h2>
+    <p id="rcb-desc" class="mt-2 text-sm text-muted" x-text="t('sub.rcb.text')"></p>
+    <div class="mt-6 flex flex-col-reverse justify-center gap-2 sm:flex-row">
+      <button type="button" class="btn btn-outline" @click="closeModal()" x-text="t('sub.rcb.close')"></button>
+      <button type="button" class="btn btn-primary" @click="switchModal('payment')" x-text="t('sub.rcb.updateInstead')"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — سداد فاتورة (alertdialog: تحصيل مالي)
+     ========================================================================== -->
+<div x-show="modal === 'pay'" x-cloak x-transition.opacity class="fixed inset-0 z-[70] grid place-items-center p-3 sm:p-4">
+  <div class="fixed inset-0 bg-primary-900/60 backdrop-blur-sm" aria-hidden="true" @click="closeModal()"></div>
+  <div x-show="modal === 'pay'" x-trap.noscroll.inert="modal === 'pay'" role="alertdialog" aria-modal="true" aria-labelledby="pi-title" aria-describedby="pi-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-sm p-6 text-center">
+    <template x-if="payTarget">
+      <div>
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-file-invoice-dollar text-xl"></i></span>
+        <h2 id="pi-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('sub.payInv.title')"></h2>
+        <p id="pi-desc" class="mt-2 text-sm text-muted" x-text="tf('sub.payInv.text', { amount: fmtMoney(payTarget.t.total), card: cardLabel(card), n: payTarget.number })"></p>
+        <p x-show="cardExpired" class="err justify-center" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span x-text="t('sub.payInv.expiredWarn')"></span></p>
+        <p class="sr-only" role="status" x-text="busy && modal === 'pay' ? t('sub.payInv.processing') : ''"></p>
+        <div class="mt-6 flex flex-col-reverse justify-center gap-2 sm:flex-row">
+          <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sub.payInv.cancel')"></button>
+          <button type="button" class="btn btn-primary" :disabled="cardExpired" :aria-disabled="busy.toString()" :class="busy && 'pointer-events-none opacity-80'" @click="confirmPay()">
+            <i class="fa-solid" :class="busy ? 'fa-circle-notch animate-spin' : 'fa-lock'" aria-hidden="true"></i>
+            <span x-text="busy ? t('sub.payInv.processing') : tf('sub.payInv.confirm', { amount: fmtMoney(payTarget.t.total) })"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن الاختيار المخصص (Select-only Combobox — نمط WAI-ARIA APG).
+   * ↓/↑ Home/End · Enter/Space اختيار · Tab اختيار وانتقال · Esc إغلاق (دون إغلاق اللوحة الأم)
+   * · البحث بأول الأحرف · ينقلب للأعلى عند ضيق المساحة.
+   */
+  function selectDropdown({ id, options, get, set, disabled = () => false }) {
+    return {
+      open: false, active: -1, dropUp: false, _q: '', _qt: null,
+      get items() { return options(); },
+      get isDisabled() { return !!disabled(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { return this.selectedItem ? this.selectedItem.label : ''; },
+      get activeId() { return this.open && this.active > -1 && this.items[this.active] ? this.optId(this.items[this.active]) : null; },
+      optId(item) { return id + '-opt-' + item.value; },
+      isSelected(item) { return get() === item.value; },
+      openList() {
+        if (this.isDisabled || !this.items.length) return;
+        const r = this.$refs.btn.getBoundingClientRect();
+        const need = Math.min(224, this.items.length * 46 + 16);
+        this.dropUp = r.bottom + need > window.innerHeight - 8 && r.top > need;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item, refocus = true) { set(item.value); this.closeList(); if (refocus) this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() {
+        this.$nextTick(() => {
+          const list = this.$refs.list, el = list?.children[this.active];
+          if (!list || !el) return;
+          /* تمرير يدوي داخل القائمة فقط (scrollIntoView قد يحرّك الصفحة أو اللوحة) */
+          if (el.offsetTop < list.scrollTop) list.scrollTop = el.offsetTop - 6;
+          else if (el.offsetTop + el.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = el.offsetTop + el.offsetHeight - list.clientHeight + 6;
+        });
+      },
+      onKey(e) {
+        if (this.isDisabled) return;
+        const k = e.key;
+        if (k === 'ArrowDown') { e.preventDefault(); this.move(1); }
+        else if (k === 'ArrowUp') { e.preventDefault(); this.move(-1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.active = 0; this.scrollActiveIntoView(); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.active = this.items.length - 1; this.scrollActiveIntoView(); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); this.open && this.active > -1 ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape' && this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); }
+        else if (k === 'Tab' && this.open) { if (this.active > -1) this.choose(this.items[this.active], false); else this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          this._q += k.toLowerCase(); clearTimeout(this._qt); this._qt = setTimeout(() => this._q = '', 600);
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this._q));
+          if (i > -1) { if (!this.open) this.openList(); this.active = i; this.scrollActiveIntoView(); }
+        }
+      },
+    };
+  }
+
+  /* ---------- النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json ---------- */
+  const I18N = {
+    ar: {
+      skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+      mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي',
+      openMenu: 'فتح القائمة', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة', expandSidebar: 'توسيع القائمة',
+      searchPlaceholder: 'ابحث في النظام…', openSearch: 'فتح البحث',
+      switchLang: 'تغيير اللغة إلى English', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+      notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', notifUnread: '{n} غير مقروءة', unreadSr: 'غير مقروء',
+      allMarked: 'تم تعليم جميع الإشعارات كمقروءة.', viewAllNotif: 'عرض جميع الإشعارات',
+      accountMenu: 'قائمة الحساب', roleTenantAdmin: 'مسؤول المؤسسة (Tenant Admin)',
+      profile: 'الملف الشخصي', statusErrors: 'حالات النظام والأخطاء', logout: 'تسجيل الخروج',
+      breadcrumbLabel: 'مسار التنقل', breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+      navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+      navItems: {
+        orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+        academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+        concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+        aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+        subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+      },
+      footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', nav: 'روابط التذييل', screens: 'خريطة الشاشات',
+                help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', soon: 'قريبًا' },
+      notif: { invoiceOpen: 'فاتورة جديدة مستحقة: {n}', cardExpiry: 'بطاقة الدفع الافتراضية تنتهي في {exp}', renewed: 'تم تجديد الاشتراك بنجاح لدورة جديدة' },
+
+      sub: {
+        title: 'الاشتراك والفوترة',
+        subtitle: 'تابع باقتك الحالية وسجل الفواتير ووسائل الدفع المرتبطة بمنظمتك من مكان واحد.',
+        ctaUpgrade: 'تغيير الباقة', ctaUpdatePayment: 'تحديث وسيلة الدفع',
+        state: { active: 'الحساب نشط', due: 'فاتورة مستحقة', attention: 'يتطلب انتباهًا', cancelling: 'يُلغى في {date}' },
+        planLabel: 'الباقة الحالية',
+        per: { monthly: 'شهريًا', annual: 'سنويًا' },
+        cycle: { monthly: 'دورة شهرية', annual: 'دورة سنوية' },
+        cycleWord: { monthly: 'الشهرية', annual: 'السنوية' },
+        taxNote: 'لا يشمل ضريبة القيمة المضافة ({rate}%)',
+        renewalLabel: 'التجديد القادم', endsLabel: 'ينتهي الاشتراك في',
+        nextCharge: 'سيُحصَّل {amount} من {card}.', noCharge: 'لن يُحصَّل أي مبلغ — الاشتراك لن يتجدد.',
+        scheduledNote: 'ابتداءً من {date}: {plan} · {cycle}.',
+        seatsLabel: 'استخدام المقاعد', seatsUsed: '{used} من {total} مقعدًا مستخدمًا', seatsUnlimited: '{used} مقعدًا مستخدمًا — مقاعد غير محدودة',
+        seatsLeft: 'متبقٍ {n} مقاعد فقط', seatsAction: 'زيادة المقاعد',
+        autoRenewLabel: 'التجديد التلقائي', autoRenewOnHint: 'يتجدد الاشتراك تلقائيًا في نهاية كل دورة.', autoRenewOffHint: 'سينتهي الاشتراك في {date} دون تجديد.',
+        changeCycle: 'تغيير دورة الفوترة', cancelSub: 'إلغاء الاشتراك', resumeSub: 'استئناف الاشتراك',
+        tabsLabel: 'أقسام الفوترة', tabInvoices: 'سجل الفواتير', tabPayments: 'وسائل الدفع والسجل',
+
+        alerts: {
+          title: 'تنبيهات الحساب',
+          cancelling: 'سيتوقف اشتراكك في {date} وتفقد منظمتك الوصول إلى الميزات المدفوعة.',
+          unpaidOne: 'الفاتورة {n} بمبلغ {amount} غير مسددة — {when}.', unpaidMany: 'لديك {n} فواتير غير مسددة بإجمالي {amount}.',
+          dueOn: 'تستحق {date}', overdue: 'متأخرة منذ {date}',
+          payNow: 'ادفع الآن', viewUnpaid: 'عرض الفواتير',
+          cardExpiring: 'تنتهي بطاقة {card} في {exp}. حدّثها لتجنّب فشل التجديد القادم.', cardExpired: 'انتهت صلاحية بطاقة {card}. أضف بطاقة صالحة قبل التجديد.',
+          updateCard: 'تحديث البطاقة',
+          scheduled: 'ستنتقل إلى {plan} · {cycle} في {date} بمبلغ {amount}.', undo: 'تراجع عن التغيير', resume: 'استئناف',
+        },
+
+        plans: {
+          starter:    { name: 'باقة الانطلاق', features: ['حتى 50 مقعدًا', '10 GB سعة تخزين', 'دعم عبر البريد الإلكتروني', 'تحليلات أساسية'] },
+          pro:        { name: 'باقة المؤسسات المتقدمة', features: ['حتى 150 مقعدًا', '100 GB سعة تخزين', 'دعم ذو أولوية', 'تحليلات متقدمة', 'مولّد أسئلة AI (200/شهريًا)'] },
+          enterprise: { name: 'باقة المؤسسات الكبرى', features: ['مقاعد غير محدودة', '1 TB سعة تخزين', 'مدير نجاح عملاء مخصص', 'اتفاقية مستوى خدمة 99.9%', 'تكاملات مخصصة'] },
+        },
+
+        upgrade: {
+          title: 'تغيير الباقة', subtitle: 'قارن الباقات واختر الأنسب لمنظمتك. تُعرض لك مراجعة بالتكلفة قبل أي تحصيل.',
+          cycleLabel: 'دورة الفوترة', annualBadge: 'السنوية = شهران مجانًا',
+          save: 'وفّر {amount} سنويًا', annualEq: 'أو {amount} سنويًا',
+          currentBadge: 'باقتك الحالية', current: 'باقتك الحالية', upgrade: 'الترقية إلى هذه الباقة', downgrade: 'التخفيض إلى هذه الباقة',
+          switchCycle: 'التبديل إلى الدورة {cycle}', scheduledBtn: 'مجدولة',
+          blocked: 'تستخدم منظمتك {used} مقعدًا وحد هذه الباقة {limit}. قلّل المستخدمين أولًا.',
+          close: 'إغلاق', reviewTitle: 'مراجعة التغيير', back: 'رجوع إلى الباقات', from: 'الحالي', to: 'الجديد',
+          credit: 'رصيد الأيام غير المستخدمة ({n} يومًا)', charge: 'رسوم الباقة الجديدة لبقية الدورة', chargeFull: 'رسوم الباقة الجديدة (دورة كاملة)',
+          tax: 'ضريبة القيمة المضافة ({rate}%)', dueNow: 'المستحق الآن',
+          effectiveNow: 'يسري فورًا ويُحصَّل المبلغ من {card}. التجديد التالي في {date} بمبلغ {amount}.',
+          effectiveLater: 'يسري في {date} دون أي رسوم الآن، وتبقى ميزات باقتك الحالية حتى ذلك التاريخ. أول تحصيل بعد التغيير: {amount}.',
+          estimate: 'تقدير — يُحتسب المبلغ النهائي على الخادم (Stripe Proration) وقد يختلف ببضعة سنتات.',
+          confirmUpgrade: 'تأكيد الترقية ودفع {amount}', confirmSchedule: 'تأكيد الجدولة', processing: 'جارٍ المعالجة…',
+          toastUpgraded: 'تمت الترقية إلى «{plan}» وحُصِّل {amount}.', toastScheduled: 'جُدول التغيير إلى «{plan}» في {date}.',
+          unlimited: 'غير محدود',
+        },
+
+        pm: {
+          title: 'تحديث وسيلة الدفع', current: 'البطاقة الحالية',
+          holder: 'اسم حامل البطاقة', holderPh: 'كما يظهر على البطاقة', holderReq: 'اسم حامل البطاقة مطلوب.',
+          element: 'بيانات البطاقة', elementMock: 'يُركَّب هنا Stripe Payment Element',
+          elementFields: ['رقم البطاقة', 'تاريخ الانتهاء', 'رمز CVC'],
+          elementNote: 'تُدخل بيانات البطاقة داخل حقل Stripe الآمن (iframe) وتُعالج لديها مباشرة، ولا تمر بخوادم FirOb إطلاقًا.',
+          scenario: 'سيناريو المعاينة', scenarios: { success: 'بطاقة مقبولة', declined: 'بطاقة مرفوضة' },
+          declined: 'رفض المصرف المُصدر البطاقة (card_declined). جرّب بطاقة أخرى أو تواصل مع مصرفك.',
+          cancel: 'إلغاء', save: 'حفظ البطاقة', saving: 'جارٍ التحقق من البطاقة…',
+          toastSaved: 'أصبحت {card} وسيلة الدفع الافتراضية.', secure: 'اتصال مشفّر · متوافق مع PCI-DSS',
+        },
+
+        bc: {
+          title: 'تغيير دورة الفوترة', subtitle: 'يسري التغيير في بداية الدورة القادمة ({date})، ولا تُحصَّل أي رسوم الآن.',
+          legend: 'اختر دورة الفوترة', perMonthEq: '≈ {amount} شهريًا', saveAmt: 'وفّر {amount} سنويًا',
+          currentTag: 'الحالية', scheduledTag: 'مجدولة',
+          cancel: 'إلغاء', save: 'حفظ التغيير', revert: 'إلغاء التغيير المجدول', saving: 'جارٍ الحفظ…',
+          toastScheduled: 'ستنتقل إلى الدورة {cycle} في {date}.', toastReverted: 'أُلغي تغيير الدورة المجدول.',
+        },
+
+        cs: {
+          title: 'إلغاء الاشتراك؟', text: 'يتوقف التجديد التلقائي ويبقى وصول منظمتك كاملًا حتى {date}. بعد ذلك:',
+          lose: ['يفقد {seats} مستخدمًا الوصول إلى المنصة', 'يتوقف مولّد الأسئلة والتحليلات المتقدمة', 'تُحفظ بياناتك 30 يومًا ثم تُحذف نهائيًا'],
+          reasonLegend: 'سبب الإلغاء (اختياري)', reasons: { price: 'السعر مرتفع', features: 'ميزات ناقصة', temporary: 'إيقاف مؤقت', other: 'سبب آخر' },
+          keep: 'الاحتفاظ بالاشتراك', confirm: 'إلغاء في نهاية الدورة', processing: 'جارٍ الإلغاء…',
+          toastCancelled: 'سيُلغى الاشتراك في {date}. يمكنك استئنافه قبل ذلك.', toastResumed: 'تم استئناف الاشتراك وسيتجدد تلقائيًا.',
+        },
+
+        rcb: {
+          title: 'لا يمكن إزالة وسيلة الدفع هذه', text: 'هذه وسيلة الدفع الوحيدة المرتبطة باشتراك نشط. استبدلها ببطاقة جديدة بدلًا من إزالتها.',
+          close: 'إغلاق', updateInstead: 'استبدالها الآن',
+        },
+
+        payInv: {
+          title: 'سداد الفاتورة', text: 'سيُحصَّل {amount} من {card} لسداد الفاتورة {n}.', expiredWarn: 'بطاقتك منتهية الصلاحية — حدّثها أولًا.',
+          cancel: 'إلغاء', confirm: 'ادفع {amount}', processing: 'جارٍ الدفع…', toastPaid: 'سُددت الفاتورة {n} بنجاح.',
+        },
+
+        inv: {
+          filtersTitle: 'البحث والتصفية', searchLabel: 'رقم الفاتورة', searchPh: 'مثال: INV-2026-0050',
+          statusLabel: 'الحالة', periodLabel: 'تاريخ الإصدار', dateFrom: 'من تاريخ', dateTo: 'إلى تاريخ',
+          status: { all: 'كل الحالات', unpaid: 'غير مسددة', paid: 'مدفوعة', open: 'مستحقة', draft: 'قادمة (مسودة)', void: 'ملغاة', uncollectible: 'غير محصّلة' },
+          rangeError: 'تاريخ البداية يقع بعد تاريخ النهاية.', reset: 'مسح الفلاتر', cleared: 'تم مسح الفلاتر.',
+          results: '{n} فاتورة', resultsAnnounce: 'تعرض القائمة {n} فاتورة.',
+          cols: { number: 'رقم الفاتورة', issued: 'تاريخ الإصدار', due: 'تاريخ الاستحقاق', amount: 'المبلغ', status: 'الحالة', actions: 'إجراءات' },
+          dueShort: 'استحقاق', upcomingNo: 'الفاتورة القادمة',
+          view: 'عرض التفاصيل', download: 'تنزيل PDF', noPdf: 'لا يتوفر PDF لهذه الحالة', payNow: 'ادفع الآن',
+          emptyTitle: 'لا توجد فواتير مطابقة', emptySubtitle: 'جرّب تعديل البحث أو الفلاتر، أو امسحها للعودة إلى القائمة الكاملة.',
+          showing: 'عرض {from}–{to} من {total}', pagination: 'ترقيم صفحات الفواتير', prev: 'الصفحة السابقة', next: 'الصفحة التالية', pageN: 'الصفحة {n}',
+          toastPdf: 'جُهّز ملف {n} للتنزيل (معاينة).',
+          panel: {
+            subtitle: 'تفاصيل الفاتورة', seller: 'المُصدِر', billTo: 'الفاتورة موجّهة إلى', taxId: 'الرقم الضريبي',
+            issued: 'تاريخ الإصدار', due: 'تاريخ الاستحقاق', paidAt: 'تاريخ السداد', period: 'فترة الخدمة',
+            lineItems: 'بنود الفاتورة', desc: 'البند', qty: 'الكمية', unit: 'سعر الوحدة', total: 'الإجمالي',
+            subtotal: 'المجموع الفرعي', tax: 'ضريبة القيمة المضافة ({rate}%)', grand: 'الإجمالي', paid: 'المدفوع', refunded: 'المسترد', amountDue: 'المبلغ المستحق',
+            method: 'وسيلة الدفع', print: 'طباعة الفاتورة', close: 'إغلاق',
+            voidNote: 'أُلغيت هذه الفاتورة ({reason}) ولا يُطالب بأي مبلغ.', draftNote: 'معاينة الفاتورة القادمة — قد تتغير حتى تاريخ الإصدار.',
+            uncollectibleNote: 'تعذّر تحصيل هذه الفاتورة بعد {n} محاولات. سدّدها يدويًا لإغلاقها.',
+            sellerNote: 'بيانات المُصدِر تُحمَّل من إعدادات المنصة.',
+          },
+        },
+
+        lines: { plan: '{plan} — {cycle}', aiPack: 'حزمة توكنز ذكاء اصطناعي إضافية', credit: 'رصيد الأيام غير المستخدمة — {plan}', charge: '{plan} — {cycle} (تناسبي)' },
+        voidReasons: { duplicate: 'مكررة' },
+
+        pay: {
+          methodTitle: 'وسيلة الدفع الأساسية', default: 'افتراضية', expires: 'تنتهي {exp}', expiringSoon: 'تنتهي قريبًا', expired: 'منتهية',
+          actions: 'إجراءات وسيلة الدفع', edit: 'استبدال البطاقة', remove: 'إزالة البطاقة',
+          contactTitle: 'جهة الفوترة', billingEmail: 'بريد الفوترة', editContact: 'تعديل في إعدادات المؤسسة',
+          logTitle: 'سجل المدفوعات', logHint: 'كل محاولة تحصيل أو استرداد مرتبطة بفاتورتها.',
+          cols: { txn: 'رقم العملية', date: 'التاريخ', invoice: 'الفاتورة', method: 'الوسيلة', ref: 'مرجع البوابة', amount: 'المبلغ', status: 'الحالة' },
+          status: { success: 'ناجحة', failed: 'فاشلة', refunded: 'مستردة' },
+          codes: { card_declined: 'رُفضت البطاقة', insufficient_funds: 'رصيد غير كافٍ', expired_card: 'بطاقة منتهية' },
+          refundReasons: { serviceCredit: 'رصيد خدمة' },
+          showMore: 'عرض المزيد ({n})', showLess: 'عرض أقل', openInvoice: 'فتح الفاتورة {n}',
+        },
+        relToday: 'اليوم',
+      },
+    },
+
+    en: {
+      skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+      mainMenu: 'Main menu', mainNav: 'Main navigation',
+      openMenu: 'Open menu', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar', expandSidebar: 'Expand sidebar',
+      searchPlaceholder: 'Search the system…', openSearch: 'Open search',
+      switchLang: 'Change language to العربية', lightMode: 'Light mode', darkMode: 'Dark mode',
+      notifications: 'Notifications', markAllRead: 'Mark all as read', notifUnread: '{n} unread', unreadSr: 'Unread',
+      allMarked: 'All notifications marked as read.', viewAllNotif: 'View all notifications',
+      accountMenu: 'Account menu', roleTenantAdmin: 'Tenant Admin',
+      profile: 'Profile', statusErrors: 'System Status & Errors', logout: 'Log out',
+      breadcrumbLabel: 'Breadcrumb', breadcrumb: { home: 'Home', org: 'Organization Management' },
+      navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+      navItems: {
+        orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+        academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+        concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+        aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+        subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+      },
+      footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', nav: 'Footer links', screens: 'Screen map',
+                help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', soon: 'coming soon' },
+      notif: { invoiceOpen: 'A new invoice is due: {n}', cardExpiry: 'Your default payment card expires {exp}', renewed: 'Your subscription renewed successfully' },
+
+      sub: {
+        title: 'Subscription & Billing',
+        subtitle: 'Track your current plan, invoice history and the payment methods linked to your organization — all in one place.',
+        ctaUpgrade: 'Change plan', ctaUpdatePayment: 'Update payment method',
+        state: { active: 'Account active', due: 'Invoice due', attention: 'Needs attention', cancelling: 'Cancels on {date}' },
+        planLabel: 'Current plan',
+        per: { monthly: 'month', annual: 'year' },
+        cycle: { monthly: 'Monthly billing', annual: 'Annual billing' },
+        cycleWord: { monthly: 'monthly', annual: 'annual' },
+        taxNote: 'Excludes VAT ({rate}%)',
+        renewalLabel: 'Next renewal', endsLabel: 'Subscription ends on',
+        nextCharge: '{amount} will be charged to {card}.', noCharge: 'Nothing will be charged — the subscription will not renew.',
+        scheduledNote: 'From {date}: {plan} · {cycle}.',
+        seatsLabel: 'Seat usage', seatsUsed: '{used} of {total} seats used', seatsUnlimited: '{used} seats used — unlimited seats',
+        seatsLeft: 'Only {n} seats left', seatsAction: 'Add seats',
+        autoRenewLabel: 'Auto-renew', autoRenewOnHint: 'Your subscription renews automatically at the end of each cycle.', autoRenewOffHint: 'Your subscription ends on {date} without renewing.',
+        changeCycle: 'Change billing cycle', cancelSub: 'Cancel subscription', resumeSub: 'Resume subscription',
+        tabsLabel: 'Billing sections', tabInvoices: 'Invoice history', tabPayments: 'Payment methods & log',
+
+        alerts: {
+          title: 'Account alerts',
+          cancelling: 'Your subscription stops on {date} and your organization will lose access to paid features.',
+          unpaidOne: 'Invoice {n} for {amount} is unpaid — {when}.', unpaidMany: 'You have {n} unpaid invoices totalling {amount}.',
+          dueOn: 'due {date}', overdue: 'overdue since {date}',
+          payNow: 'Pay now', viewUnpaid: 'View invoices',
+          cardExpiring: 'Your {card} expires {exp}. Update it to avoid a failed renewal.', cardExpired: 'Your {card} has expired. Add a valid card before renewal.',
+          updateCard: 'Update card',
+          scheduled: 'You will switch to {plan} · {cycle} on {date} for {amount}.', undo: 'Undo change', resume: 'Resume',
+        },
+
+        plans: {
+          starter:    { name: 'Starter Plan', features: ['Up to 50 seats', '10 GB storage', 'Email support', 'Basic analytics'] },
+          pro:        { name: 'Pro Institutional Plan', features: ['Up to 150 seats', '100 GB storage', 'Priority support', 'Advanced analytics', 'AI question generator (200/mo)'] },
+          enterprise: { name: 'Enterprise Plan', features: ['Unlimited seats', '1 TB storage', 'Dedicated success manager', '99.9% SLA', 'Custom integrations'] },
+        },
+
+        upgrade: {
+          title: 'Change plan', subtitle: 'Compare plans and pick the right one. You will review the cost before anything is charged.',
+          cycleLabel: 'Billing cycle', annualBadge: 'Annual = 2 months free',
+          save: 'Save {amount} a year', annualEq: 'or {amount} a year',
+          currentBadge: 'Your current plan', current: 'Your current plan', upgrade: 'Upgrade to this plan', downgrade: 'Downgrade to this plan',
+          switchCycle: 'Switch to {cycle} billing', scheduledBtn: 'Scheduled',
+          blocked: 'Your organization uses {used} seats and this plan allows {limit}. Reduce users first.',
+          close: 'Close', reviewTitle: 'Review change', back: 'Back to plans', from: 'Current', to: 'New',
+          credit: 'Credit for unused time ({n} days)', charge: 'New plan for the rest of the cycle', chargeFull: 'New plan (full cycle)',
+          tax: 'VAT ({rate}%)', dueNow: 'Due now',
+          effectiveNow: 'Takes effect immediately and is charged to {card}. Next renewal on {date} for {amount}.',
+          effectiveLater: 'Takes effect on {date} with nothing charged now; your current features remain until then. First charge after the change: {amount}.',
+          estimate: 'Estimate — the final amount is calculated server-side (Stripe proration) and may differ by a few cents.',
+          confirmUpgrade: 'Confirm upgrade and pay {amount}', confirmSchedule: 'Confirm schedule', processing: 'Processing…',
+          toastUpgraded: 'Upgraded to “{plan}” and charged {amount}.', toastScheduled: 'Change to “{plan}” scheduled for {date}.',
+          unlimited: 'Unlimited',
+        },
+
+        pm: {
+          title: 'Update payment method', current: 'Current card',
+          holder: 'Cardholder name', holderPh: 'As shown on the card', holderReq: 'Cardholder name is required.',
+          element: 'Card details', elementMock: 'Stripe Payment Element mounts here',
+          elementFields: ['Card number', 'Expiry', 'CVC'],
+          elementNote: 'Card details are entered inside Stripe’s secure field (iframe) and processed by Stripe directly — they never touch FirOb servers.',
+          scenario: 'Preview scenario', scenarios: { success: 'Card accepted', declined: 'Card declined' },
+          declined: 'The issuing bank declined the card (card_declined). Try another card or contact your bank.',
+          cancel: 'Cancel', save: 'Save card', saving: 'Verifying card…',
+          toastSaved: '{card} is now your default payment method.', secure: 'Encrypted connection · PCI-DSS compliant',
+        },
+
+        bc: {
+          title: 'Change billing cycle', subtitle: 'The change takes effect at the start of your next cycle ({date}); nothing is charged now.',
+          legend: 'Choose a billing cycle', perMonthEq: '≈ {amount} per month', saveAmt: 'Save {amount} a year',
+          currentTag: 'Current', scheduledTag: 'Scheduled',
+          cancel: 'Cancel', save: 'Save change', revert: 'Cancel scheduled change', saving: 'Saving…',
+          toastScheduled: 'You will switch to {cycle} billing on {date}.', toastReverted: 'The scheduled cycle change was cancelled.',
+        },
+
+        cs: {
+          title: 'Cancel subscription?', text: 'Auto-renew stops and your organization keeps full access until {date}. After that:',
+          lose: ['{seats} users lose access to the platform', 'The question generator and advanced analytics stop', 'Your data is kept for 30 days, then permanently deleted'],
+          reasonLegend: 'Reason for cancelling (optional)', reasons: { price: 'Too expensive', features: 'Missing features', temporary: 'Temporary pause', other: 'Other' },
+          keep: 'Keep subscription', confirm: 'Cancel at period end', processing: 'Cancelling…',
+          toastCancelled: 'Your subscription will end on {date}. You can resume it before then.', toastResumed: 'Subscription resumed — it will renew automatically.',
+        },
+
+        rcb: {
+          title: 'This payment method can’t be removed', text: 'It is the only payment method on an active subscription. Replace it with a new card instead of removing it.',
+          close: 'Close', updateInstead: 'Replace it now',
+        },
+
+        payInv: {
+          title: 'Pay invoice', text: '{amount} will be charged to {card} to pay invoice {n}.', expiredWarn: 'Your card has expired — update it first.',
+          cancel: 'Cancel', confirm: 'Pay {amount}', processing: 'Processing payment…', toastPaid: 'Invoice {n} paid successfully.',
+        },
+
+        inv: {
+          filtersTitle: 'Search & filters', searchLabel: 'Invoice number', searchPh: 'e.g. INV-2026-0050',
+          statusLabel: 'Status', periodLabel: 'Issue date', dateFrom: 'From date', dateTo: 'To date',
+          status: { all: 'All statuses', unpaid: 'Unpaid', paid: 'Paid', open: 'Open', draft: 'Upcoming (draft)', void: 'Void', uncollectible: 'Uncollectible' },
+          rangeError: 'The start date is after the end date.', reset: 'Reset filters', cleared: 'Filters cleared.',
+          results: '{n} invoices', resultsAnnounce: 'Showing {n} invoices.',
+          cols: { number: 'Invoice #', issued: 'Issued', due: 'Due', amount: 'Amount', status: 'Status', actions: 'Actions' },
+          dueShort: 'Due', upcomingNo: 'Upcoming invoice',
+          view: 'View details', download: 'Download PDF', noPdf: 'No PDF for this status', payNow: 'Pay now',
+          emptyTitle: 'No matching invoices', emptySubtitle: 'Try adjusting your search or filters, or reset them to see the full list.',
+          showing: 'Showing {from}–{to} of {total}', pagination: 'Invoice pagination', prev: 'Previous page', next: 'Next page', pageN: 'Page {n}',
+          toastPdf: '{n} is ready to download (preview).',
+          panel: {
+            subtitle: 'Invoice details', seller: 'Issued by', billTo: 'Billed to', taxId: 'Tax ID',
+            issued: 'Issue date', due: 'Due date', paidAt: 'Paid on', period: 'Service period',
+            lineItems: 'Invoice line items', desc: 'Item', qty: 'Qty', unit: 'Unit price', total: 'Total',
+            subtotal: 'Subtotal', tax: 'VAT ({rate}%)', grand: 'Total', paid: 'Paid', refunded: 'Refunded', amountDue: 'Amount due',
+            method: 'Payment method', print: 'Print invoice', close: 'Close',
+            voidNote: 'This invoice was voided ({reason}); nothing is owed.', draftNote: 'Preview of your upcoming invoice — it may change until it is issued.',
+            uncollectibleNote: 'This invoice could not be collected after {n} attempts. Pay it manually to close it.',
+            sellerNote: 'Issuer details are loaded from platform settings.',
+          },
+        },
+
+        lines: { plan: '{plan} — {cycle}', aiPack: 'Additional AI token pack', credit: 'Unused time credit — {plan}', charge: '{plan} — {cycle} (prorated)' },
+        voidReasons: { duplicate: 'duplicate' },
+
+        pay: {
+          methodTitle: 'Primary payment method', default: 'Default', expires: 'Expires {exp}', expiringSoon: 'Expires soon', expired: 'Expired',
+          actions: 'Payment method actions', edit: 'Replace card', remove: 'Remove card',
+          contactTitle: 'Billing contact', billingEmail: 'Billing email', editContact: 'Edit in organization settings',
+          logTitle: 'Payments log', logHint: 'Every charge attempt or refund, linked to its invoice.',
+          cols: { txn: 'Transaction', date: 'Date', invoice: 'Invoice', method: 'Method', ref: 'Gateway ref', amount: 'Amount', status: 'Status' },
+          status: { success: 'Succeeded', failed: 'Failed', refunded: 'Refunded' },
+          codes: { card_declined: 'Card declined', insufficient_funds: 'Insufficient funds', expired_card: 'Expired card' },
+          refundReasons: { serviceCredit: 'Service credit' },
+          showMore: 'Show more ({n})', showLess: 'Show less', openInvoice: 'Open invoice {n}',
+        },
+        relToday: 'today',
+      },
+    },
+  };
+
+  /* =======================================================================
+     بيانات النموذج الأولي — في Laravel: Cashier/Stripe (subscriptions, invoices,
+     payment_methods, charges) عبر مكوّن Livewire. التواريخ نسبية لـ "الآن" فلا تتقادم.
+     ======================================================================= */
+  const DAY = 864e5, HOUR = 36e5;
+  const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const addMonths = (ts, n) => {
+    const d = new Date(ts), day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + n);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+    return d.getTime();
+  };
+  const isoDate = (ts) => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  /* الأسعار والحدود — تُحمَّل من الخادم (config/plans.php ↔ Stripe Prices) */
+  const PLANS = Object.freeze({
+    starter:    Object.freeze({ rank: 1, seats: 50,       monthly: 199,  annual: 1990 }),
+    pro:        Object.freeze({ rank: 2, seats: 150,      monthly: 499,  annual: 4990 }),
+    enterprise: Object.freeze({ rank: 3, seats: Infinity, monthly: 1299, annual: 12990 }),
+  });
+  const PLAN_KEYS = ['starter', 'pro', 'enterprise'];
+  const CYCLES = ['monthly', 'annual'];
+  const TAX_RATE = 0.05;        /* ضريبة القيمة المضافة — من إعدادات الضريبة للمستأجر */
+  const AI_PACK = 49;
+
+  const ORG = Object.freeze({
+    name: { ar: 'مجمع الأقصى التعليمي', en: 'Al-Aqsa Educational Complex' },
+    city: { ar: 'غزة، فلسطين', en: 'Gaza, Palestine' },
+    email: 'billing@alaqsa.edu.ps', taxId: 'PS-562 118 904',
+  });
+  const SELLER = Object.freeze({
+    name: { ar: 'فيروب للتقنيات التعليمية', en: 'FirOb EdTech Ltd.' },
+    city: { ar: 'رام الله، فلسطين', en: 'Ramallah, Palestine' },
+    email: 'billing@firob.app', taxId: 'PS-400 771 205',
+  });
+  const ME = Object.freeze({ name: 'سارة أحمد المصري' });
+  const SEATS_USED = 142;
+
+  const INV_STATUS = {
+    paid:          { badge: 'badge-success', icon: 'fa-circle-check' },
+    open:          { badge: 'badge-warning', icon: 'fa-clock' },
+    draft:         { badge: 'badge-neutral', icon: 'fa-file-pen' },
+    void:          { badge: 'badge-muted',   icon: 'fa-ban' },
+    uncollectible: { badge: 'badge-danger',  icon: 'fa-circle-exclamation' },
+  };
+  const PAY_STATUS = {
+    success:  { badge: 'badge-success', icon: 'fa-check' },
+    failed:   { badge: 'badge-danger',  icon: 'fa-xmark' },
+    refunded: { badge: 'badge-info',    icon: 'fa-rotate-left' },
+  };
+
+  function rng(seed) { let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+  const UP = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', MIX = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  const code = (r, n, chars) => Array.from({ length: n }, () => chars[Math.floor(r() * chars.length)]).join('');
+
+  function invoiceTotals(inv) {
+    const sub = round2(inv.lines.reduce((s, l) => s + l.qty * l.unit, 0));
+    const tax = round2(Math.max(0, sub) * TAX_RATE);
+    const total = round2(sub + tax);
+    const paid = inv.attempts.some(a => a.ok) ? total : 0;
+    const refunded = round2(inv.refunds.reduce((s, f) => s + f.amount, 0));
+    const due = (inv.status === 'open' || inv.status === 'uncollectible') ? total : 0;
+    return { sub, tax, total, paid, refunded, due };
+  }
+
+  /* يبني 15 فاتورة متسقة مع سجل المدفوعات: كل دفعة مشتقة من محاولة تحصيل على فاتورة */
+  function buildBilling(NOW) {
+    const r = rng(20261019);
+    const today = startOfDay(NOW);
+    const periodEnd = today + 9 * DAY + 9 * HOUR;
+    const periodStart = addMonths(periodEnd, -1);
+    const CARD = { brand: 'visa', last4: '4242' }, OLD = { brand: 'mastercard', last4: '4444' };
+    const planLine = (from) => ({ kind: 'plan', plan: 'pro', cycle: 'monthly', qty: 1, unit: PLANS.pro.monthly, from, to: addMonths(from, 1) });
+    const list = [];
+
+    for (let k = 0; k <= 11; k++) {
+      const issued = addMonths(periodStart, -k);
+      const card = k >= 6 ? OLD : CARD;
+      const inv = { issued, due: issued + 7 * DAY, status: 'paid', lines: [planLine(issued)], attempts: [], refunds: [] };
+      if (k === 8) {
+        inv.status = 'uncollectible';
+        inv.attempts = [0, 3, 7].map(d => ({ at: issued + d * DAY + HOUR, ok: false, code: d === 7 ? 'expired_card' : 'insufficient_funds', card }));
+      } else if (k === 1) {
+        inv.attempts = [{ at: issued + HOUR, ok: false, code: 'card_declined', card }, { at: issued + DAY + 2 * HOUR, ok: true, card }];
+      } else {
+        inv.attempts = [{ at: issued + HOUR, ok: true, card }];
+      }
+      if (k === 3) inv.refunds = [{ at: issued + 12 * DAY, amount: 50, reason: 'serviceCredit', card }];
+      list.push(inv);
+    }
+    const pack = (qty) => ({ kind: 'aiPack', qty, unit: AI_PACK });
+    const p1 = addMonths(periodStart, -2) + 10 * DAY;
+    list.push({ issued: p1, due: p1 + 7 * DAY, status: 'paid', lines: [pack(1)], attempts: [{ at: p1 + HOUR, ok: true, card: CARD }], refunds: [] });
+    const p2 = addMonths(periodStart, -5) + 4 * DAY;
+    list.push({ issued: p2, due: p2 + 7 * DAY, status: 'void', voidReason: 'duplicate', lines: [pack(1)], attempts: [], refunds: [] });
+    const p3 = today - 3 * DAY + 10 * HOUR;
+    list.push({ issued: p3, due: today + 4 * DAY + 10 * HOUR, status: 'open', lines: [pack(2)], attempts: [], refunds: [] });
+
+    list.sort((a, b) => a.issued - b.issued);
+    list.forEach((inv, i) => {
+      inv.number = 'INV-' + new Date(inv.issued).getFullYear() + '-' + String(41 + i).padStart(4, '0');
+      inv.id = inv.number;
+      inv.attempts.forEach(a => { a.txn = 'TXN-' + code(r, 7, UP); a.ref = 'pi_' + code(r, 14, MIX); });
+      inv.refunds.forEach(f => { f.txn = 'TXN-' + code(r, 7, UP); f.ref = 're_' + code(r, 14, MIX); });
+      inv.t = invoiceTotals(inv);
+    });
+
+    /* البطاقة الحالية تنتهي نهاية الشهر بعد ~40 يومًا ⇒ تنبيه "تنتهي قريبًا" حقيقي */
+    const exp = new Date(today + 40 * DAY);
+    const card = { ...CARD, expMonth: exp.getMonth() + 1, expYear: exp.getFullYear(), holder: ORG.name.ar };
+    return { periodStart, periodEnd, invoices: list.reverse(), card };
+  }
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const mdMQ = window.matchMedia('(min-width: 768px)');
+    const NOW = Date.now();
+    const B = buildBilling(NOW);
+    const DEFAULTS = { q: '', status: 'all', from: '', to: '' };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      isMac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+      mobileNav: false, collapsed: false, searchOpen: false,
+      notifOpen: false, profileOpen: false, openMenuId: null,
+      active: 'subscription', live: '',
+      year: new Date().getFullYear(), version: 'v1.0.0',
+      get expanded() { return this.mobile || !this.collapsed; },
+      me: ME, PLANS, PLAN_KEYS, CYCLES, TAX_RATE, ORG, SELLER,
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const get = (d) => path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), d);
+        const s = get(I18N[this.locale]);
+        return s !== undefined ? s : (get(I18N.ar) ?? path);
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      L(o) { return o[this.locale] || o.ar; },
+      intl() { return this.locale === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intl(), { maximumFractionDigits: 1 }).format(n); },
+      fmtMoney(v, d = 2) { return new Intl.NumberFormat(this.intl(), { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(v); },
+      fmtDate(ts) { return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(ts)); },
+      fmtDateLong(ts) { return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(ts)); },
+      fmtDateTime(ts) { return new Intl.DateTimeFormat(this.intl(), { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(ts)); },
+      fmtExp(c) { return String(c.expMonth).padStart(2, '0') + '/' + String(c.expYear).slice(-2); },
+      relDays(ts) {
+        const n = Math.round((startOfDay(ts) - startOfDay(Date.now())) / DAY);
+        return new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' }).format(n, 'day');
+      },
+      iso(ts) { return new Date(ts).toISOString(); },
+      ago(mins) { const rtf = new Intl.RelativeTimeFormat(this.intl(), { numeric: 'auto' }); return mins < 60 ? rtf.format(-mins, 'minute') : mins < 1440 ? rtf.format(-Math.round(mins / 60), 'hour') : rtf.format(-Math.round(mins / 1440), 'day'); },
+      isoAgo(mins) { return new Date(Date.now() - mins * 60000).toISOString(); },
+      initials(name) {
+        const p = String(name).trim().split(/\s+/);
+        return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        const h = document.documentElement;
+        h.lang = loc; h.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(loc);
+        else { try { localStorage.setItem('firob-locale', loc); } catch (e) {} }
+        document.title = this.t('sub.title') + ' — FirOb';
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.live = ''; this.$nextTick(() => { this.live = msg; }); },
+
+      /* ---------- التنقل ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+      navCount(item) { return item.key === 'notificationCenter' ? this.unread : (item.count || 0); },
+      notifications: [
+        { id: 1, key: 'invoiceOpen', mins: 3 * 1440, read: false, icon: 'fa-solid fa-file-invoice-dollar', tone: 'bg-warning-500/15 text-warn' },
+        { id: 2, key: 'cardExpiry',  mins: 1440,     read: false, icon: 'fa-solid fa-credit-card', tone: 'bg-primary-500/15 text-brand' },
+        { id: 3, key: 'renewed',     mins: 21 * 1440, read: true, icon: 'fa-solid fa-rotate', tone: 'bg-success-500/15 text-ok' },
+      ],
+      get notifVars() {
+        const open = this.invoices.find(i => i.status === 'open');
+        return { n: open ? open.number : '—', exp: this.fmtExp(this.card), pct: this.fmt(this.seatsPct) };
+      },
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      markAllRead() { this.notifications.forEach(n => n.read = true); this.announce(this.t('allMarked')); },
+
+      /* =====================================================================
+         الاشتراك — مصدر حقيقة واحد؛ كل ما يُعرض مشتق منه
+         ===================================================================== */
+      sub: { plan: 'pro', cycle: 'monthly', cancelAtPeriodEnd: false, scheduledPlan: null, scheduledCycle: null,
+             periodStart: B.periodStart, periodEnd: B.periodEnd, seatsUsed: SEATS_USED },
+      invoices: B.invoices,
+      card: B.card,
+      get price() { return PLANS[this.sub.plan][this.sub.cycle]; },
+      get nextPlan() { return this.sub.scheduledPlan || this.sub.plan; },
+      get nextCycle() { return this.sub.scheduledCycle || this.sub.cycle; },
+      get hasSchedule() { return !!(this.sub.scheduledPlan || this.sub.scheduledCycle); },
+      get seatsTotal() { return PLANS[this.sub.plan].seats; },
+      get seatsUnlimited() { return this.seatsTotal === Infinity; },
+      get seatsPct() { return this.seatsUnlimited ? 0 : Math.round(this.sub.seatsUsed / this.seatsTotal * 100); },
+      get seatsLeft() { return this.seatsUnlimited ? Infinity : Math.max(0, this.seatsTotal - this.sub.seatsUsed); },
+      get seatTone() {
+        if (this.seatsUnlimited) return { fill: 'bg-ok', text: 'text-ok', warn: false };
+        if (this.seatsPct >= 100) return { fill: 'bg-danger', text: 'text-danger', warn: true };
+        if (this.seatsPct >= 90) return { fill: 'bg-warn', text: 'text-warn', warn: true };
+        return { fill: 'bg-brand', text: 'text-ink', warn: false };
+      },
+      get seatsText() {
+        return this.seatsUnlimited ? this.tf('sub.seatsUnlimited', { used: this.fmt(this.sub.seatsUsed) })
+          : this.tf('sub.seatsUsed', { used: this.fmt(this.sub.seatsUsed), total: this.fmt(this.seatsTotal) }) + ' (' + this.fmt(this.seatsPct) + '%)';
+      },
+      get unpaid() { return this.invoices.filter(i => i.status === 'open' || i.status === 'uncollectible').sort((a, b) => a.due - b.due); },
+      get cardDaysLeft() { return Math.ceil((new Date(this.card.expYear, this.card.expMonth, 1).getTime() - Date.now()) / DAY); },
+      get cardExpired() { return this.cardDaysLeft <= 0; },
+      get cardExpiring() { return !this.cardExpired && this.cardDaysLeft <= 60; },
+      cardLabel(c) { return ({ visa: 'Visa', mastercard: 'Mastercard' }[c.brand] || c.brand) + ' •••• ' + c.last4; },
+      brandIcon(b) { return ({ visa: 'fa-cc-visa', mastercard: 'fa-cc-mastercard' }[b] || 'fa-credit-card'); },
+
+      get accountState() {
+        if (this.sub.cancelAtPeriodEnd) return 'cancelling';
+        if (this.unpaid.some(i => i.status === 'uncollectible' || i.due < Date.now())) return 'attention';
+        if (this.unpaid.length) return 'due';
+        return 'active';
+      },
+      get stateMeta() {
+        return { active: { badge: 'badge-success', icon: 'fa-circle-check' }, due: { badge: 'badge-warning', icon: 'fa-file-invoice-dollar' },
+                 attention: { badge: 'badge-danger', icon: 'fa-triangle-exclamation' }, cancelling: { badge: 'badge-warning', icon: 'fa-hourglass-half' } }[this.accountState];
+      },
+      get stateLabel() { return this.tf('sub.state.' + this.accountState, { date: this.fmtDate(this.sub.periodEnd) }); },
+      get renewalHint() {
+        if (this.sub.cancelAtPeriodEnd) return this.t('sub.noCharge');
+        const u = this.upcoming;
+        return this.tf('sub.nextCharge', { amount: this.fmtMoney(u ? u.t.total : 0), card: this.cardLabel(this.card) });
+      },
+      get scheduleText() {
+        return this.hasSchedule ? this.tf('sub.scheduledNote', { date: this.fmtDate(this.sub.periodEnd), plan: this.t('sub.plans.' + this.nextPlan + '.name'), cycle: this.t('sub.cycle.' + this.nextCycle) }) : '';
+      },
+
+      /* الفاتورة القادمة (مسودة) — مشتقة، تختفي عند الإلغاء */
+      get upcoming() {
+        if (this.sub.cancelAtPeriodEnd) return null;
+        const plan = this.nextPlan, cycle = this.nextCycle, from = this.sub.periodEnd;
+        const inv = { id: 'upcoming', upcoming: true, number: 'UPCOMING', status: 'draft', issued: from, due: from + 7 * DAY,
+                      lines: [{ kind: 'plan', plan, cycle, qty: 1, unit: PLANS[plan][cycle], from, to: addMonths(from, cycle === 'annual' ? 12 : 1) }],
+                      attempts: [], refunds: [] };
+        inv.t = invoiceTotals(inv);
+        return inv;
+      },
+      get allInvoices() { return this.upcoming ? [this.upcoming, ...this.invoices] : this.invoices; },
+      invNo(inv) { return inv.upcoming ? this.t('sub.inv.upcomingNo') : inv.number; },
+      invStatus(inv) { return INV_STATUS[inv.status]; },
+      payable(inv) { return inv.status === 'open' || inv.status === 'uncollectible'; },
+      canDownload(inv) { return !inv.upcoming && inv.status !== 'draft' && inv.status !== 'void'; },
+      lineDesc(l) {
+        const plan = l.plan ? this.t('sub.plans.' + l.plan + '.name') : '', cycle = l.cycle ? this.t('sub.cycle.' + l.cycle) : '';
+        return this.tf('sub.lines.' + l.kind, { plan, cycle });
+      },
+      paidAt(inv) { const a = inv.attempts.find(x => x.ok); return a ? a.at : null; },
+      paidCard(inv) { const a = inv.attempts.find(x => x.ok) || inv.attempts[inv.attempts.length - 1]; return a ? a.card : null; },
+
+      /* ---------- التنبيهات (مشتقة) ---------- */
+      get alerts() {
+        const out = [];
+        if (this.sub.cancelAtPeriodEnd) out.push({ key: 'cancel', tone: 'warn', icon: 'fa-hourglass-half',
+          text: this.tf('sub.alerts.cancelling', { date: this.fmtDateLong(this.sub.periodEnd) }),
+          actions: [{ label: this.t('sub.alerts.resume'), primary: true, run: () => this.resume() }] });
+        const u = this.unpaid;
+        if (u.length === 1) {
+          const i = u[0], late = i.due < Date.now();
+          out.push({ key: 'unpaid', tone: late ? 'danger' : 'warn', icon: late ? 'fa-circle-exclamation' : 'fa-file-invoice-dollar',
+            text: this.tf('sub.alerts.unpaidOne', { n: i.number, amount: this.fmtMoney(i.t.total), when: this.tf(late ? 'sub.alerts.overdue' : 'sub.alerts.dueOn', { date: this.fmtDate(i.due) }) }),
+            actions: [{ label: this.t('sub.alerts.payNow'), primary: true, run: (el) => this.openPay(i, el) }] });
+        } else if (u.length > 1) {
+          out.push({ key: 'unpaid', tone: 'danger', icon: 'fa-circle-exclamation',
+            text: this.tf('sub.alerts.unpaidMany', { n: this.fmt(u.length), amount: this.fmtMoney(u.reduce((s, i) => s + i.t.total, 0)) }),
+            actions: [{ label: this.t('sub.alerts.payNow'), primary: true, run: (el) => this.openPay(u[0], el) },
+                      { label: this.t('sub.alerts.viewUnpaid'), run: () => this.showUnpaid() }] });
+        }
+        if (this.cardExpired || this.cardExpiring) out.push({ key: 'card', tone: this.cardExpired ? 'danger' : 'info', icon: 'fa-credit-card',
+          text: this.tf(this.cardExpired ? 'sub.alerts.cardExpired' : 'sub.alerts.cardExpiring', { card: this.cardLabel(this.card), exp: this.fmtExp(this.card) }),
+          actions: [{ label: this.t('sub.alerts.updateCard'), run: (el) => this.openModal('payment', el) }] });
+        if (this.hasSchedule && !this.sub.cancelAtPeriodEnd) out.push({ key: 'sched', tone: 'info', icon: 'fa-calendar-days',
+          text: this.tf('sub.alerts.scheduled', { plan: this.t('sub.plans.' + this.nextPlan + '.name'), cycle: this.t('sub.cycle.' + this.nextCycle), date: this.fmtDate(this.sub.periodEnd), amount: this.fmtMoney(this.upcoming ? this.upcoming.t.total : 0) }),
+          actions: [{ label: this.t('sub.alerts.undo'), run: () => this.clearSchedule() }] });
+        return out;
+      },
+      showUnpaid() { this.setTab('invoices'); this.filters.status = 'unpaid'; this.$nextTick(() => document.getElementById('inv-list-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); },
+
+      /* ---------- التبويبات (نمط APG: أسهم/Home/End + تفعيل تلقائي) ---------- */
+      TABS: [{ key: 'invoices', icon: 'fa-file-invoice' }, { key: 'payments', icon: 'fa-wallet' }],
+      activeTab: 'invoices',
+      setTab(key, focus = false) {
+        this.activeTab = key;
+        try { history.replaceState(null, '', '#' + key); } catch (e) {}
+        if (focus) this.$nextTick(() => document.getElementById('tab-' + key)?.focus());
+      },
+      tabKey(e) {
+        const keys = this.TABS.map(x => x.key), i = keys.indexOf(this.activeTab), rtl = document.documentElement.dir === 'rtl';
+        const map = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, Home: 'first', End: 'last' };
+        const d = map[e.key]; if (d === undefined) return;
+        e.preventDefault();
+        const n = d === 'first' ? 0 : d === 'last' ? keys.length - 1 : (i + d + keys.length) % keys.length;
+        this.setTab(keys[n], true);
+      },
+
+      /* ---------- فلاتر الفواتير (حقيقية — في Livewire: wire:model.live + Query Scope) ---------- */
+      filters: { ...DEFAULTS }, page: 1, PER_PAGE: 6,
+      get statusOptions() { return ['all', 'unpaid', 'paid', 'open', 'draft', 'void', 'uncollectible'].map(v => ({ value: v, label: this.t('sub.inv.status.' + v) })); },
+      get rangeError() { return !!(this.filters.from && this.filters.to && this.filters.from > this.filters.to); },
+      get filtersActive() { return JSON.stringify(this.filters) !== JSON.stringify(DEFAULTS); },
+      get filtered() {
+        const f = this.filters, q = f.q.trim().toLowerCase();
+        if (this.rangeError) return [];
+        return this.allInvoices.filter(i =>
+          (!q || i.number.toLowerCase().includes(q) || this.invNo(i).toLowerCase().includes(q)) &&
+          (f.status === 'all' || (f.status === 'unpaid' ? this.payable(i) : i.status === f.status)) &&
+          (!f.from || isoDate(i.issued) >= f.from) && (!f.to || isoDate(i.issued) <= f.to));
+      },
+      get pages() { return Math.max(1, Math.ceil(this.filtered.length / this.PER_PAGE)); },
+      get paged() { const s = (this.page - 1) * this.PER_PAGE; return this.filtered.slice(s, s + this.PER_PAGE); },
+      get rangeText() {
+        const n = this.filtered.length, from = n ? (this.page - 1) * this.PER_PAGE + 1 : 0, to = Math.min(n, this.page * this.PER_PAGE);
+        return this.tf('sub.inv.showing', { from: this.fmt(from), to: this.fmt(to), total: this.fmt(n) });
+      },
+      goPage(p) {
+        this.page = Math.min(Math.max(1, p), this.pages);
+        this.$nextTick(() => document.getElementById('inv-list-title')?.focus());
+      },
+      resetFilters() { this.filters = { ...DEFAULTS }; this.announce(this.t('sub.inv.cleared')); this.$nextTick(() => document.getElementById('inv-q')?.focus()); },
+
+      /* ---------- سجل المدفوعات (مشتق من محاولات التحصيل والاسترداد) ---------- */
+      logLimit: 8,
+      get payments() {
+        const out = [];
+        this.invoices.forEach(inv => {
+          inv.attempts.forEach(a => out.push({ id: a.txn, at: a.at, inv, kind: a.ok ? 'success' : 'failed', code: a.code, amount: inv.t.total, card: a.card, ref: a.ref }));
+          inv.refunds.forEach(f => out.push({ id: f.txn, at: f.at, inv, kind: 'refunded', reason: f.reason, amount: -f.amount, card: f.card, ref: f.ref }));
+        });
+        return out.sort((a, b) => b.at - a.at);
+      },
+      get paymentsShown() { return this.payments.slice(0, this.logLimit); },
+      payMeta(k) { return PAY_STATUS[k]; },
+      toggleLog() {
+        const more = this.logLimit < this.payments.length;
+        this.logLimit = more ? this.payments.length : 8;
+      },
+
+      /* =====================================================================
+         النوافذ — طبقة واحدة في كل مرة + إعادة التركيز إلى زر الفتح
+         ===================================================================== */
+      modal: null, busy: false, _trigger: null,
+      openModal(name, trigger) {
+        this._trigger = trigger || document.activeElement;
+        if (name === 'payment') this.pm = { holder: '', scenario: 'success', error: '', holderErr: '' };
+        if (name === 'cycle') this.cycleChoice = this.nextCycle;
+        if (name === 'cancel') this.cancelReason = '';
+        this.modal = name;
+      },
+      closeModal(force = false) {
+        if (this.busy && !force) return;
+        this.modal = null;
+        this.restoreFocus();
+      },
+      restoreFocus() {
+        const tr = this._trigger;
+        setTimeout(() => {
+          const a = document.activeElement;
+          if (a && a !== document.body && a.offsetParent !== null) return;     /* x-trap أعاد التركيز بنجاح */
+          if (tr && tr.isConnected && tr.offsetParent !== null) tr.focus();
+          else document.getElementById('main')?.focus();
+        }, 240);
+      },
+      switchModal(name) { const tr = this._trigger; this.modal = null; setTimeout(() => this.openModal(name, tr), 220); },
+
+      /* ---------- تغيير الباقة: اختيار ← مراجعة ← تأكيد ---------- */
+      upgrade: { step: 'pick', cycle: 'monthly', target: null },
+      openUpgrade(trigger) { this.upgrade = { step: 'pick', cycle: this.sub.cycle, target: null }; this.openModal('upgrade', trigger); },
+      annualSaving(k) { return PLANS[k].monthly * 12 - PLANS[k].annual; },
+      planAction(k, cycle = this.upgrade.cycle) {
+        if (k === this.sub.plan && cycle === this.sub.cycle) return 'current';
+        if (k === this.nextPlan && cycle === this.nextCycle && this.hasSchedule) return 'scheduled';
+        if (k === this.sub.plan) return 'cycle';
+        if (PLANS[k].rank > PLANS[this.sub.plan].rank) return 'upgrade';
+        return this.sub.seatsUsed > PLANS[k].seats ? 'blocked' : 'downgrade';
+      },
+      planActionLabel(k) {
+        const a = this.planAction(k);
+        return { current: this.t('sub.upgrade.current'), scheduled: this.t('sub.upgrade.scheduledBtn'), cycle: this.tf('sub.upgrade.switchCycle', { cycle: this.t('sub.cycleWord.' + this.upgrade.cycle) }),
+                 upgrade: this.t('sub.upgrade.upgrade'), downgrade: this.t('sub.upgrade.downgrade'), blocked: this.t('sub.upgrade.downgrade') }[a];
+      },
+      planBtnClass(k) { const a = this.planAction(k); return a === 'upgrade' ? 'btn-accent' : (a === 'current' || a === 'scheduled' || a === 'blocked') ? 'btn-outline' : 'btn-primary'; },
+      choosePlan(k) {
+        const a = this.planAction(k);
+        if (a === 'current' || a === 'scheduled' || a === 'blocked' || this.busy) return;
+        this.upgrade.target = k; this.upgrade.step = 'review';
+        this.$nextTick(() => document.getElementById('review-title')?.focus());
+      },
+      backToPlans() { const k = this.upgrade.target; this.upgrade.step = 'pick'; this.$nextTick(() => document.getElementById('plan-btn-' + k)?.focus()); },
+      get quote() {
+        const k = this.upgrade.target; if (!k) return null;
+        const c = this.upgrade.cycle, action = this.planAction(k), newPrice = PLANS[k][c];
+        if (action !== 'upgrade') {
+          return { action, immediate: false, newPrice, effective: this.sub.periodEnd, nextTotal: round2(newPrice * (1 + TAX_RATE)) };
+        }
+        const span = this.sub.periodEnd - this.sub.periodStart, left = Math.max(0, this.sub.periodEnd - Date.now());
+        const frac = span ? left / span : 0, sameCycle = c === this.sub.cycle;
+        const credit = round2(this.price * frac);
+        const charge = round2(sameCycle ? newPrice * frac : newPrice);
+        const subtotal = round2(Math.max(0, charge - credit)), tax = round2(subtotal * TAX_RATE);
+        const renewal = sameCycle ? this.sub.periodEnd : addMonths(Date.now(), c === 'annual' ? 12 : 1);
+        return { action, immediate: true, sameCycle, newPrice, credit, charge, subtotal, tax, dueNow: round2(subtotal + tax),
+                 daysLeft: Math.ceil(left / DAY), renewal, nextTotal: round2(newPrice * (1 + TAX_RATE)) };
+      },
+      async confirmPlan() {
+        const q = this.quote; if (!q || this.busy) return;
+        const k = this.upgrade.target, c = this.upgrade.cycle, oldPlan = this.sub.plan;
+        this.busy = true;
+        await sleep(900);
+        if (q.immediate) {
+          const now = Date.now();
+          const inv = { issued: now, due: now, status: 'paid', attempts: [{ at: now, ok: true, card: { ...this.card }, txn: 'TXN-' + Math.random().toString(36).slice(2, 9).toUpperCase(), ref: 'pi_' + Math.random().toString(36).slice(2, 16) }], refunds: [],
+                        lines: [{ kind: 'credit', plan: oldPlan, cycle: this.sub.cycle, qty: 1, unit: -q.credit }, { kind: 'charge', plan: k, cycle: c, qty: 1, unit: q.charge }] };
+          inv.number = inv.id = 'INV-' + new Date(now).getFullYear() + '-' + String(41 + this.invoices.length).padStart(4, '0');
+          inv.t = invoiceTotals(inv);
+          this.invoices.unshift(inv);
+          this.sub.plan = k; this.sub.cycle = c; this.sub.scheduledPlan = null; this.sub.scheduledCycle = null;
+          if (!q.sameCycle) { this.sub.periodStart = now; this.sub.periodEnd = q.renewal; }
+          this.toast('success', this.tf('sub.upgrade.toastUpgraded', { plan: this.t('sub.plans.' + k + '.name'), amount: this.fmtMoney(q.dueNow) }));
+        } else {
+          this.sub.scheduledPlan = k === this.sub.plan ? null : k;
+          this.sub.scheduledCycle = c === this.sub.cycle ? null : c;
+          this.toast('success', this.tf('sub.upgrade.toastScheduled', { plan: this.t('sub.plans.' + k + '.name'), date: this.fmtDate(this.sub.periodEnd) }));
+        }
+        this.busy = false;
+        this.closeModal(true);
+      },
+      clearSchedule() {
+        this.sub.scheduledPlan = null; this.sub.scheduledCycle = null;
+        this.toast('success', this.t('sub.bc.toastReverted'));
+      },
+
+      /* ---------- دورة الفوترة (تُجدول لنهاية الدورة) ---------- */
+      cycleChoice: 'monthly',
+      openCycle(trigger) { this.openModal('cycle', trigger); },
+      cycleKey(e, prop) {
+        const rtl = document.documentElement.dir === 'rtl';
+        const d = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1, ArrowDown: 1, ArrowUp: -1, Home: -9, End: 9 }[e.key];
+        if (d === undefined) return;
+        e.preventDefault();
+        const i = Math.min(Math.max(CYCLES.indexOf(this.upgrade.cycle) + d, 0), CYCLES.length - 1);
+        this.upgrade.cycle = CYCLES[i];
+        this.$nextTick(() => document.getElementById('upc-' + CYCLES[i])?.focus());
+      },
+      async saveCycle() {
+        if (this.busy || this.cycleChoice === this.nextCycle) return;
+        this.busy = true; await sleep(500);
+        this.sub.scheduledCycle = this.cycleChoice === this.sub.cycle ? null : this.cycleChoice;
+        this.busy = false;
+        this.toast('success', this.sub.scheduledCycle
+          ? this.tf('sub.bc.toastScheduled', { cycle: this.t('sub.cycleWord.' + this.cycleChoice), date: this.fmtDate(this.sub.periodEnd) })
+          : this.t('sub.bc.toastReverted'));
+        this.closeModal(true);
+      },
+
+      /* ---------- الإلغاء / الاستئناف (cancel_at_period_end) ---------- */
+      cancelReason: '',
+      toggleAutoRenew(el) { this.sub.cancelAtPeriodEnd ? this.resume() : this.openModal('cancel', el); },
+      async confirmCancel() {
+        if (this.busy) return;
+        this.busy = true; await sleep(700);
+        this.sub.cancelAtPeriodEnd = true; this.sub.scheduledPlan = null; this.sub.scheduledCycle = null;
+        this.busy = false;
+        this.toast('success', this.tf('sub.cs.toastCancelled', { date: this.fmtDate(this.sub.periodEnd) }));
+        this.closeModal(true);
+      },
+      resume() {
+        this.sub.cancelAtPeriodEnd = false;
+        this.toast('success', this.t('sub.cs.toastResumed'));
+      },
+
+      /* ---------- وسيلة الدفع (نمط Stripe Elements: لا بيانات بطاقة خام في DOM) ---------- */
+      cardMenu: false,
+      pm: { holder: '', scenario: 'success', error: '', holderErr: '' },
+      async savePaymentMethod() {
+        if (this.busy) return;
+        this.pm.error = '';
+        if (!this.pm.holder.trim()) { this.pm.holderErr = this.t('sub.pm.holderReq'); this.$nextTick(() => document.getElementById('pm-holder')?.focus()); return; }
+        this.pm.holderErr = '';
+        this.busy = true; await sleep(900); this.busy = false;
+        /* في الإنتاج: stripe.confirmSetup({ elements }) ثم Livewire يحفظ payment_method_id فقط */
+        if (this.pm.scenario === 'declined') { this.pm.error = this.t('sub.pm.declined'); this.$nextTick(() => document.getElementById('pm-error')?.focus()); return; }
+        const exp = new Date(Date.now() + 3 * 365 * DAY);
+        this.card = { brand: 'mastercard', last4: '5454', expMonth: exp.getMonth() + 1, expYear: exp.getFullYear(), holder: this.pm.holder.trim() };
+        this.toast('success', this.tf('sub.pm.toastSaved', { card: this.cardLabel(this.card) }));
+        this.closeModal(true);
+      },
+
+      /* ---------- سداد فاتورة ---------- */
+      payTarget: null,
+      openPay(inv, trigger) { this.payTarget = inv; this.openModal('pay', trigger); },
+      async confirmPay() {
+        const inv = this.payTarget; if (!inv || this.busy || this.cardExpired) return;
+        this.busy = true; await sleep(900);
+        inv.attempts.push({ at: Date.now(), ok: true, card: { ...this.card }, txn: 'TXN-' + Math.random().toString(36).slice(2, 9).toUpperCase(), ref: 'pi_' + Math.random().toString(36).slice(2, 16) });
+        inv.status = 'paid';
+        inv.t = invoiceTotals(inv);
+        this.busy = false;
+        this.toast('success', this.tf('sub.payInv.toastPaid', { n: inv.number }));
+        this.closeModal(true);
+      },
+
+      /* ---------- لوحة تفاصيل الفاتورة + الطباعة ---------- */
+      invoiceOpen: false, sel: null,
+      openInvoice(inv) { this.sel = inv; this.invoiceOpen = true; },
+      closeInvoice() { this.invoiceOpen = false; },
+      printInvoice() {
+        document.documentElement.classList.add('print-invoice');
+        window.print();
+      },
+      downloading: null,
+      async downloadPdf(inv) {
+        if (!this.canDownload(inv) || this.downloading) return;
+        this.downloading = inv.id;
+        await sleep(600);      /* في Laravel: $invoice->downloadPDF() عبر Cashier */
+        this.downloading = null;
+        this.toast('success', this.tf('sub.inv.toastPdf', { n: inv.number }));
+      },
+
+      /* ---------- Toast ---------- */
+      toast(icon, msg) {
+        this.announce(msg);
+        if (!window.Swal) return;
+        Swal.fire({ toast: true, position: 'top-end', icon, title: msg, showConfirmButton: false, timer: 3500, timerProgressBar: true,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (t) => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); } });
+      },
+
+      /* ---------- البحث العام ---------- */
+      focusSearch() {
+        if (this.modal || this.invoiceOpen) return;
+        if (mdMQ.matches) { this.$refs.globalSearch?.focus(); this.$refs.globalSearch?.select(); return; }
+        this.searchOpen = true; this.$nextTick(() => this.$refs.mobileSearch?.focus());
+      },
+      toggleMobileSearch() { this.searchOpen = !this.searchOpen; if (this.searchOpen) this.$nextTick(() => this.$refs.mobileSearch?.focus()); },
+      closeMenu() { this.cardMenu = false; },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        mdMQ.addEventListener('change', (m) => { if (m.matches) this.searchOpen = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('sub.title') + ' — FirOb';
+        const h = (location.hash || '').slice(1);
+        if (this.TABS.some(x => x.key === h)) this.activeTab = h;
+        /* تغيير الفلاتر: العودة للصفحة الأولى + إعلان عدد النتائج (مؤجَّل) */
+        this.$watch('filters', () => {
+          this.page = 1;
+          clearTimeout(this._annT);
+          this._annT = setTimeout(() => this.announce(this.tf('sub.inv.resultsAnnounce', { n: this.fmt(this.filtered.length) })), 450);
+        }, { deep: true });
+        this.$watch('cardMenu', (v) => { this.openMenuId = v ? 'card' : null; });
+        window.addEventListener('afterprint', () => document.documentElement.classList.remove('print-invoice'));
+        try {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.applyTheme(e.matches);
+          });
+        } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      closeMobileNav() { this.mobileNav = false; this.$nextTick(() => this.$refs.navToggle?.focus()); },
+      applyTheme(isDark) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        document.getElementById('theme-color')?.setAttribute('content', isDark ? '#09141B' : '#F1EDE7');
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() {
+        this.applyTheme(!this.dark);
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      /* Esc: يغلق الطبقة العليا فقط */
+      closeAll() {
+        if (this.modal)       { this.closeModal(); return; }
+        if (this.invoiceOpen) { this.closeInvoice(); return; }
+        if (this.cardMenu)    { this.cardMenu = false; this.$refs.cardMenuBtn?.focus(); return; }
+        if (this.notifOpen)   { this.notifOpen = false;   this.$refs.notifBtn?.focus(); return; }
+        if (this.profileOpen) { this.profileOpen = false; this.$refs.profileBtn?.focus(); return; }
+        if (this.searchOpen)  { this.searchOpen = false; return; }
+        if (this.mobileNav)   { this.closeMobileNav(); }
+      },
+    };
+  }
+</script>
+</body>
+</html>

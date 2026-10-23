@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>قائمة الاختبارات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" — تتعارض مع أيقونة البحث وزر التفريغ المخصص، وتسوء في RTL */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-white/10 bg-slate-900/90 px-2.5 py-1 text-xs font-medium tracking-wide text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 ease-out;
+      @apply dark:border-slate-800/20 dark:bg-slate-100 dark:text-slate-900;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-slate-900/90 opacity-0 transition-all duration-200 ease-out;
+      @apply dark:border-t-slate-100;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-accent-700 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة / شريط التقدّم (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- مفتاح التبديل (Settings Switch) ---------- */
+    .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-line-strong/30 bg-line transition-colors duration-200; }
+    .switch-track[aria-checked="true"] { @apply border-transparent bg-primary-500; }
+    .switch-track:disabled, .switch-track[aria-disabled="true"] { @apply cursor-not-allowed opacity-50; }
+    .switch-knob { @apply inline-block h-5 w-5 translate-x-0.5 rounded-full bg-card shadow transition-transform duration-200 ltr:translate-x-0.5 rtl:-translate-x-0.5; }
+    .switch-track[aria-checked="true"] .switch-knob { @apply ltr:translate-x-5 rtl:-translate-x-5; }
+
+    /* ---------- بطاقة المقرر / الاختبار (Icon Chip) ---------- */
+    .course-icon { @apply grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="quizzesManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }
+                       else if ($event.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { $event.preventDefault(); $refs.quizSearch?.focus(); }"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || isDeleteModalOpen || previewOpen || aiModalOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li><a href="CoursesManagement.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.coursesManagement')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.quizzes')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — قائمة الاختبارات ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + الإجراءات الأساسية -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('qz.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qz.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button type="button" class="btn btn-ai" @click="openAiModal()">
+            <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+            <span x-text="t('qz.aiGenerate')"></span>
+          </button>
+          <a href="quiz-builder.html" class="btn btn-accent">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            <span x-text="t('qz.createQuiz')"></span>
+          </a>
+        </div>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPI) ================= -->
+      <section aria-label="KPIs" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qz.kpiTotal')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-list-check"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">42</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qz.kpiPublished')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">27</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qz.kpiDrafts')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-pen-to-square"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">11</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qz.kpiQuestions')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-circle-question"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">586</p>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر ================= -->
+      <section class="panel flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3">
+        <div class="relative min-w-0 w-full flex-1 lg:w-auto lg:min-w-[14rem] lg:basis-56">
+          <label for="quiz-search" class="sr-only" x-text="t('qz.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong transition-colors duration-200" aria-hidden="true"></i>
+          <input id="quiz-search" x-ref="quizSearch" type="search" x-model="searchQuery" :placeholder="t('qz.searchPlaceholder')"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line bg-field ps-10 pe-10 text-sm text-ink placeholder:text-line-strong transition-all duration-200 focus:border-brand focus:bg-page focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <button type="button" x-show="searchQuery" x-cloak x-transition.opacity.duration.150ms
+                  @click="searchQuery = ''; $refs.quizSearch.focus()" :aria-label="t('qz.clearSearch')"
+                  class="absolute end-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-line-strong transition-colors duration-150 hover:bg-soft hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <i class="fa-solid fa-circle-xmark text-sm" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- فلتر المقرر -->
+        <div class="relative w-full shrink-0 lg:w-44"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qz.filterCourseAll') },
+                 { value: 'math-g7', label: 'الرياضيات - الصف السابع' },
+                 { value: 'sci-g8', label: 'العلوم العامة - الصف الثامن' },
+                 { value: 'arab-g9', label: 'اللغة العربية - الصف التاسع' },
+               ],
+               get: () => selectedCourse,
+               set: (v) => selectedCourse = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="course-filter" class="sr-only" x-text="t('qz.filterCourseLabel')"></label>
+          <button type="button" id="course-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="course-filter-list"
+                  :aria-activedescendant="active > -1 ? 'course-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="course-filter-list" role="listbox" aria-labelledby="course-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'course-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر الوحدة -->
+        <div class="relative w-full shrink-0 lg:w-48"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qz.filterUnitAll') },
+                 { value: 'u101', label: 'الوحدة الأولى: الأعداد الصحيحة' },
+                 { value: 'u201', label: 'الوحدة الأولى: الخلية ومكوناتها' },
+                 { value: 'u202', label: 'الوحدة الثانية: التفاعلات الكيميائية' },
+                 { value: 'u301', label: 'الوحدة الأولى: النصوص الأدبية' },
+               ],
+               get: () => selectedUnit,
+               set: (v) => selectedUnit = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="unit-filter" class="sr-only" x-text="t('qz.filterUnitLabel')"></label>
+          <button type="button" id="unit-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="unit-filter-list"
+                  :aria-activedescendant="active > -1 ? 'unit-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="unit-filter-list" role="listbox" aria-labelledby="unit-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'unit-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر الدرس -->
+        <div class="relative w-full shrink-0 lg:w-48"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qz.filterLessonAll') },
+                 { value: 'l1011', label: 'جمع الأعداد الصحيحة وطرحها' },
+                 { value: 'l1012', label: 'ضرب الأعداد الصحيحة وقسمتها' },
+                 { value: 'l2012', label: 'تركيب الخلية النباتية والحيوانية' },
+                 { value: 'l3012', label: 'عناصر القصة القصيرة' },
+               ],
+               get: () => selectedLesson,
+               set: (v) => selectedLesson = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="lesson-filter" class="sr-only" x-text="t('qz.filterLessonLabel')"></label>
+          <button type="button" id="lesson-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="lesson-filter-list"
+                  :aria-activedescendant="active > -1 ? 'lesson-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="lesson-filter-list" role="listbox" aria-labelledby="lesson-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'lesson-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر نوع الاختبار -->
+        <div class="relative w-full shrink-0 lg:w-40"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qz.filterTypeAll') },
+                 { value: 'formative', label: t('qz.typeFormative') },
+                 { value: 'summative', label: t('qz.typeSummative') },
+                 { value: 'diagnostic', label: t('qz.typeDiagnostic') },
+               ],
+               get: () => selectedType,
+               set: (v) => selectedType = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="type-filter" class="sr-only" x-text="t('qz.filterTypeLabel')"></label>
+          <button type="button" id="type-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="type-filter-list"
+                  :aria-activedescendant="active > -1 ? 'type-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="type-filter-list" role="listbox" aria-labelledby="type-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'type-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر الحالة -->
+        <div class="relative w-full shrink-0 lg:w-40"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qz.filterStatusAll') },
+                 { value: 'published', label: t('qz.statusPublished') },
+                 { value: 'draft', label: t('qz.statusDraft') },
+                 { value: 'archived', label: t('qz.statusInactive') },
+               ],
+               get: () => selectedStatus,
+               set: (v) => selectedStatus = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="status-filter" class="sr-only" x-text="t('qz.filterStatusLabel')"></label>
+          <button type="button" id="status-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="status-filter-list"
+                  :aria-activedescendant="active > -1 ? 'status-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="status-filter-list" role="listbox" aria-labelledby="status-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'status-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <button type="button" class="btn btn-outline shrink-0" @click="resetFilters()">
+          <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i>
+          <span x-text="t('qz.resetFilters')"></span>
+        </button>
+      </section>
+
+      <!-- ================= جدول الاختبارات ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="quizzes-table-title">
+        <h2 id="quizzes-table-title" class="sr-only" x-text="t('qz.title')"></h2>
+
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[1180px] border-collapse text-sm">
+            <caption class="sr-only" x-text="t('qz.title')"></caption>
+            <thead>
+              <tr class="bg-soft text-ink">
+                <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('qz.colQuiz')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qz.colPath')"></th>
+                <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qz.colQuestions')"></th>
+                <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qz.colDuration')"></th>
+                <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qz.colMarks')"></th>
+                <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qz.colStatus')"></th>
+                <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('qz.colActions')"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+
+              <!-- صف 1: اختبار تشخيصي — رياضيات — منشور -->
+              <tr class="transition hover:bg-soft/40">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <span class="course-icon h-11 w-11 bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-square-root-variable"></i></span>
+                    <div class="min-w-0">
+                      <div class="mb-1 flex items-center gap-1.5">
+                        <span class="badge badge-muted font-mono">QZ-MATH-101</span>
+                        <span class="badge badge-info" x-text="t('qz.typeDiagnostic')"></span>
+                      </div>
+                      <p class="truncate font-extrabold leading-6">اختبار تشخيصي: الأعداد الصحيحة</p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">Diagnostic Quiz: Integers</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 align-middle">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="font-bold text-ink">الرياضيات - الصف السابع</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">الوحدة الأولى: الأعداد الصحيحة</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">جمع الأعداد الصحيحة وطرحها</span>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">15</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">20</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">15</td>
+                <td class="px-4 py-4 align-middle">
+                  <span class="badge badge-success"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qz.statusPublished')"></span></span>
+                </td>
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex justify-end gap-1.5">
+                    <button type="button" class="act group relative" @click="openPreview({ code: 'QZ-MATH-101', nameAr: 'اختبار تشخيصي: الأعداد الصحيحة', nameEn: 'Diagnostic Quiz: Integers', path: 'الرياضيات - الصف السابع  ›  الوحدة الأولى: الأعداد الصحيحة  ›  جمع الأعداد الصحيحة وطرحها', type: 'diagnostic', status: 'published', questions: 15, duration: 20, marks: 15 })" :aria-label="t('qz.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <a href="quiz-builder.html?code=QZ-MATH-101&amp;mode=edit" class="act group relative" :aria-label="t('qz.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <a href="quiz-results.html?code=QZ-MATH-101" class="act group relative" :aria-label="t('qz.actResults')"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actResults')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <button type="button" class="act group relative" @click="duplicateQuiz('اختبار تشخيصي: الأعداد الصحيحة')" :aria-label="t('qz.actDuplicate')"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ nameAr: 'اختبار تشخيصي: الأعداد الصحيحة' })" :aria-label="t('qz.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- صف 2: اختبار تكويني — رياضيات — منشور -->
+              <tr class="transition hover:bg-soft/40">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <span class="course-icon h-11 w-11 bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-square-root-variable"></i></span>
+                    <div class="min-w-0">
+                      <div class="mb-1 flex items-center gap-1.5">
+                        <span class="badge badge-muted font-mono">QZ-MATH-102</span>
+                        <span class="badge badge-primary" x-text="t('qz.typeFormative')"></span>
+                      </div>
+                      <p class="truncate font-extrabold leading-6">اختبار تكويني: خصائص الضرب</p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">Formative Quiz: Multiplication Properties</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 align-middle">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="font-bold text-ink">الرياضيات - الصف السابع</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">الوحدة الأولى: الأعداد الصحيحة</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">ضرب الأعداد الصحيحة وقسمتها</span>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">10</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">15</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">10</td>
+                <td class="px-4 py-4 align-middle">
+                  <span class="badge badge-success"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qz.statusPublished')"></span></span>
+                </td>
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex justify-end gap-1.5">
+                    <button type="button" class="act group relative" @click="openPreview({ code: 'QZ-MATH-102', nameAr: 'اختبار تكويني: خصائص الضرب', nameEn: 'Formative Quiz: Multiplication Properties', path: 'الرياضيات - الصف السابع  ›  الوحدة الأولى: الأعداد الصحيحة  ›  ضرب الأعداد الصحيحة وقسمتها', type: 'formative', status: 'published', questions: 10, duration: 15, marks: 10 })" :aria-label="t('qz.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <a href="quiz-builder.html?code=QZ-MATH-102&amp;mode=edit" class="act group relative" :aria-label="t('qz.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <a href="quiz-results.html?code=QZ-MATH-102" class="act group relative" :aria-label="t('qz.actResults')"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actResults')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <button type="button" class="act group relative" @click="duplicateQuiz('اختبار تكويني: خصائص الضرب')" :aria-label="t('qz.actDuplicate')"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ nameAr: 'اختبار تكويني: خصائص الضرب' })" :aria-label="t('qz.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- صف 3: اختبار ختامي — علوم — مسودة -->
+              <tr class="bg-warning-500/5 transition hover:bg-warning-500/10">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <span class="course-icon h-11 w-11 bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-flask"></i></span>
+                    <div class="min-w-0">
+                      <div class="mb-1 flex items-center gap-1.5">
+                        <span class="badge badge-muted font-mono">QZ-SCI-201</span>
+                        <span class="badge badge-accent" x-text="t('qz.typeSummative')"></span>
+                      </div>
+                      <p class="truncate font-extrabold leading-6">اختبار ختامي: تركيب الخلية</p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">Summative Quiz: Cell Structure</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 align-middle">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="font-bold text-ink">العلوم العامة - الصف الثامن</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">الوحدة الأولى: الخلية ومكوناتها</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">تركيب الخلية النباتية والحيوانية</span>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">25</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">40</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">50</td>
+                <td class="px-4 py-4 align-middle">
+                  <span class="badge badge-warning"><i class="fa-solid fa-pen text-[10px]" aria-hidden="true"></i> <span x-text="t('qz.statusDraft')"></span></span>
+                </td>
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex justify-end gap-1.5">
+                    <button type="button" class="act group relative" @click="openPreview({ code: 'QZ-SCI-201', nameAr: 'اختبار ختامي: تركيب الخلية', nameEn: 'Summative Quiz: Cell Structure', path: 'العلوم العامة - الصف الثامن  ›  الوحدة الأولى: الخلية ومكوناتها  ›  تركيب الخلية النباتية والحيوانية', type: 'summative', status: 'draft', questions: 25, duration: 40, marks: 50 })" :aria-label="t('qz.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <a href="quiz-builder.html?code=QZ-SCI-201&amp;mode=edit" class="act group relative" :aria-label="t('qz.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <a href="quiz-results.html?code=QZ-SCI-201" class="act group relative" :aria-label="t('qz.actResults')"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actResults')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <button type="button" class="act group relative" @click="duplicateQuiz('اختبار ختامي: تركيب الخلية')" :aria-label="t('qz.actDuplicate')"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ nameAr: 'اختبار ختامي: تركيب الخلية' })" :aria-label="t('qz.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- صف 4: اختبار تشخيصي — علوم — مسودة -->
+              <tr class="bg-warning-500/5 transition hover:bg-warning-500/10">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <span class="course-icon h-11 w-11 bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-flask"></i></span>
+                    <div class="min-w-0">
+                      <div class="mb-1 flex items-center gap-1.5">
+                        <span class="badge badge-muted font-mono">QZ-SCI-202</span>
+                        <span class="badge badge-info" x-text="t('qz.typeDiagnostic')"></span>
+                      </div>
+                      <p class="truncate font-extrabold leading-6">اختبار تشخيصي: التفاعلات الكيميائية</p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">Diagnostic Quiz: Chemical Reactions</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 align-middle">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="font-bold text-ink">العلوم العامة - الصف الثامن</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">الوحدة الثانية: التفاعلات الكيميائية</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">موازنة المعادلة الكيميائية</span>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">12</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">20</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">12</td>
+                <td class="px-4 py-4 align-middle">
+                  <span class="badge badge-warning"><i class="fa-solid fa-pen text-[10px]" aria-hidden="true"></i> <span x-text="t('qz.statusDraft')"></span></span>
+                </td>
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex justify-end gap-1.5">
+                    <button type="button" class="act group relative" @click="openPreview({ code: 'QZ-SCI-202', nameAr: 'اختبار تشخيصي: التفاعلات الكيميائية', nameEn: 'Diagnostic Quiz: Chemical Reactions', path: 'العلوم العامة - الصف الثامن  ›  الوحدة الثانية: التفاعلات الكيميائية  ›  موازنة المعادلة الكيميائية', type: 'diagnostic', status: 'draft', questions: 12, duration: 20, marks: 12 })" :aria-label="t('qz.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <a href="quiz-builder.html?code=QZ-SCI-202&amp;mode=edit" class="act group relative" :aria-label="t('qz.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <a href="quiz-results.html?code=QZ-SCI-202" class="act group relative" :aria-label="t('qz.actResults')"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actResults')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <button type="button" class="act group relative" @click="duplicateQuiz('اختبار تشخيصي: التفاعلات الكيميائية')" :aria-label="t('qz.actDuplicate')"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ nameAr: 'اختبار تشخيصي: التفاعلات الكيميائية' })" :aria-label="t('qz.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- صف 5: اختبار تكويني — لغة عربية — منشور -->
+              <tr class="transition hover:bg-soft/40">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <span class="course-icon h-11 w-11 bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-book-open"></i></span>
+                    <div class="min-w-0">
+                      <div class="mb-1 flex items-center gap-1.5">
+                        <span class="badge badge-muted font-mono">QZ-ARAB-301</span>
+                        <span class="badge badge-primary" x-text="t('qz.typeFormative')"></span>
+                      </div>
+                      <p class="truncate font-extrabold leading-6">اختبار تكويني: عناصر القصة القصيرة</p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">Formative Quiz: Elements of the Short Story</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 align-middle">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="font-bold text-ink">اللغة العربية - الصف التاسع</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">الوحدة الأولى: النصوص الأدبية</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">عناصر القصة القصيرة</span>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">8</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">10</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">8</td>
+                <td class="px-4 py-4 align-middle">
+                  <span class="badge badge-success"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qz.statusPublished')"></span></span>
+                </td>
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex justify-end gap-1.5">
+                    <button type="button" class="act group relative" @click="openPreview({ code: 'QZ-ARAB-301', nameAr: 'اختبار تكويني: عناصر القصة القصيرة', nameEn: 'Formative Quiz: Elements of the Short Story', path: 'اللغة العربية - الصف التاسع  ›  الوحدة الأولى: النصوص الأدبية  ›  عناصر القصة القصيرة', type: 'formative', status: 'published', questions: 8, duration: 10, marks: 8 })" :aria-label="t('qz.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <a href="quiz-builder.html?code=QZ-ARAB-301&amp;mode=edit" class="act group relative" :aria-label="t('qz.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <a href="quiz-results.html?code=QZ-ARAB-301" class="act group relative" :aria-label="t('qz.actResults')"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actResults')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <button type="button" class="act group relative" @click="duplicateQuiz('اختبار تكويني: عناصر القصة القصيرة')" :aria-label="t('qz.actDuplicate')"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ nameAr: 'اختبار تكويني: عناصر القصة القصيرة' })" :aria-label="t('qz.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- صف 6: اختبار ختامي — لغة عربية — غير مُفعّل (مؤرشف) -->
+              <tr class="opacity-70 transition hover:bg-soft/40 hover:opacity-100">
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex items-center gap-3">
+                    <span class="course-icon h-11 w-11 bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-book-open"></i></span>
+                    <div class="min-w-0">
+                      <div class="mb-1 flex items-center gap-1.5">
+                        <span class="badge badge-muted font-mono">QZ-ARAB-302</span>
+                        <span class="badge badge-accent" x-text="t('qz.typeSummative')"></span>
+                      </div>
+                      <p class="truncate font-extrabold leading-6">اختبار ختامي: الوحدة الأولى — النصوص الأدبية</p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">Summative Quiz: Unit 1 — Literary Texts</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 align-middle">
+                  <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="font-bold text-ink">اللغة العربية - الصف التاسع</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="text-muted">الوحدة الأولى: النصوص الأدبية</span>
+                    <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[9px] text-line-strong" aria-hidden="true"></i>
+                    <span class="badge badge-muted">—</span>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">30</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">45</td>
+                <td class="px-4 py-4 text-center align-middle font-bold tabular-nums">60</td>
+                <td class="px-4 py-4 align-middle">
+                  <span class="badge badge-muted"><i class="fa-solid fa-circle-minus text-[10px]" aria-hidden="true"></i> <span x-text="t('qz.statusInactive')"></span></span>
+                </td>
+                <td class="px-5 py-4 align-middle">
+                  <div class="flex justify-end gap-1.5">
+                    <button type="button" class="act group relative" @click="openPreview({ code: 'QZ-ARAB-302', nameAr: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية', nameEn: 'Summative Quiz: Unit 1 — Literary Texts', path: 'اللغة العربية - الصف التاسع  ›  الوحدة الأولى: النصوص الأدبية', type: 'summative', status: 'archived', questions: 30, duration: 45, marks: 60 })" :aria-label="t('qz.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <a href="quiz-builder.html?code=QZ-ARAB-302&amp;mode=edit" class="act group relative" :aria-label="t('qz.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <a href="quiz-results.html?code=QZ-ARAB-302" class="act group relative" :aria-label="t('qz.actResults')"><i class="fa-solid fa-chart-simple" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actResults')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                    <button type="button" class="act group relative" @click="duplicateQuiz('اختبار ختامي: الوحدة الأولى — النصوص الأدبية')" :aria-label="t('qz.actDuplicate')"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ nameAr: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية' })" :aria-label="t('qz.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qz.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ================= تذييل الصفحات (Pagination — ثابت) ================= -->
+        <div class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p class="text-xs font-bold text-muted">
+            <span x-text="t('qz.showing')"></span> <span class="text-ink">1–6</span> <span x-text="t('qz.of')"></span> <span class="text-ink">42</span> <span x-text="t('qz.quizzesWord')"></span>
+          </p>
+          <nav class="flex items-center gap-1.5" :aria-label="t('qz.pagination')">
+            <button type="button" disabled class="act opacity-40" :aria-label="t('qz.prev')">
+              <i class="fa-solid ltr:fa-chevron-left rtl:fa-chevron-right text-xs" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="act font-bold border-transparent bg-primary-500 text-white" aria-current="page">1</button>
+            <button type="button" class="act font-bold">2</button>
+            <button type="button" class="act font-bold">3</button>
+            <span aria-hidden="true" class="inline-grid h-9 w-9 shrink-0 place-items-center text-sm font-bold text-muted">&hellip;</span>
+            <button type="button" class="act font-bold">7</button>
+            <button type="button" class="act" :aria-label="t('qz.next')">
+              <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-xs" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — معاينة سريعة للاختبار
+     ========================================================================== -->
+<div x-cloak x-show="previewOpen" x-transition.opacity class="fixed inset-0 z-[60]"
+     role="dialog" aria-modal="true" aria-labelledby="preview-title" @keydown.escape.window="closePreview()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePreview()"></div>
+
+  <div x-show="previewOpen" x-trap.noscroll="previewOpen"
+       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="preview-title" class="text-lg font-extrabold text-ink" x-text="t('qz.previewTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closePreview()" :aria-label="t('qz.previewClose')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5" x-show="previewTarget">
+      <div>
+        <div class="mb-1.5 flex items-center gap-1.5">
+          <span class="badge badge-muted font-mono" x-text="previewTarget && previewTarget.code"></span>
+          <span class="badge" :class="previewTarget && previewTarget.type === 'formative' ? 'badge-primary' : (previewTarget && previewTarget.type === 'summative' ? 'badge-accent' : 'badge-info')"
+                x-text="previewTarget && t('qz.type' + previewTarget.type.charAt(0).toUpperCase() + previewTarget.type.slice(1))"></span>
+        </div>
+        <p class="text-lg font-extrabold leading-7 text-ink" x-text="previewTarget && previewTarget.nameAr"></p>
+        <p class="text-sm text-muted" dir="ltr" style="text-align:right" x-text="previewTarget && previewTarget.nameEn"></p>
+      </div>
+
+      <div class="rounded-xl border border-line bg-soft/60 p-3.5">
+        <p class="mb-1.5 text-xs font-extrabold text-muted" x-text="t('qz.previewPath')"></p>
+        <p class="text-sm font-bold leading-6 text-ink" x-text="previewTarget && previewTarget.path"></p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="rounded-xl border border-line p-3">
+          <p class="text-xl font-extrabold tabular-nums text-brand" x-text="previewTarget && previewTarget.questions"></p>
+          <p class="mt-1 text-xs font-bold text-muted" x-text="t('qz.previewQuestions')"></p>
+        </div>
+        <div class="rounded-xl border border-line p-3">
+          <p class="text-xl font-extrabold tabular-nums text-brand" x-text="previewTarget && previewTarget.duration"></p>
+          <p class="mt-1 text-xs font-bold text-muted" x-text="t('qz.previewDuration')"></p>
+        </div>
+        <div class="rounded-xl border border-line p-3">
+          <p class="text-xl font-extrabold tabular-nums text-brand" x-text="previewTarget && previewTarget.marks"></p>
+          <p class="mt-1 text-xs font-bold text-muted" x-text="t('qz.previewMarks')"></p>
+        </div>
+      </div>
+
+      <div>
+        <p class="mb-1.5 text-xs font-extrabold text-muted" x-text="t('qz.previewStatus')"></p>
+        <span class="badge" :class="previewTarget && previewTarget.status === 'published' ? 'badge-success' : (previewTarget && previewTarget.status === 'draft' ? 'badge-warning' : 'badge-muted')"
+              x-text="previewTarget && t('qz.status' + (previewTarget.status === 'published' ? 'Published' : previewTarget.status === 'draft' ? 'Draft' : 'Inactive'))"></span>
+      </div>
+
+      <p class="rounded-xl border border-dashed border-line-strong/50 bg-page/50 p-3.5 text-xs leading-6 text-muted">
+        <i class="fa-solid fa-circle-info ms-1" aria-hidden="true"></i>
+        معاينة سريعة لعرض بيانات الاختبار فقط — سيتم ربط مُشغّل المعاينة الكامل للأسئلة لاحقًا عبر Livewire.
+      </p>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" @click="closePreview()" x-text="t('qz.previewClose')"></button>
+      <a :href="previewTarget ? 'quiz-builder.html?code=' + previewTarget.code + '&mode=edit' : '#'" class="btn btn-primary">
+        <i class="fa-solid fa-pen" aria-hidden="true"></i> <span x-text="t('qz.previewEdit')"></span>
+      </a>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — توليد اختبار بالذكاء الاصطناعي
+     ========================================================================== -->
+<div x-cloak x-show="aiModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="ai-title" @keydown.escape.window="closeAiModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeAiModal()"></div>
+
+  <form @submit.prevent="generateWithAI()" x-show="aiModalOpen" x-trap.noscroll="aiModalOpen"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="ai-title" class="flex items-center gap-2.5 text-lg font-extrabold text-ink">
+        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+        <span x-text="t('qz.aiModalTitle')"></span>
+      </h2>
+      <button type="button" class="icon-btn" :disabled="aiBusy" @click="closeAiModal()" :aria-label="t('qz.aiCancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+      <p class="text-sm leading-6 text-muted" x-text="t('qz.aiModalSubtitle')"></p>
+
+      <div>
+        <label for="ai-title-field" class="label" x-text="t('qz.aiFieldTitle')"></label>
+        <input id="ai-title-field" x-model.trim="aiForm.title" type="text" class="field" :placeholder="t('qz.aiFieldTitlePlaceholder')">
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <!-- اختيار المقرر -->
+        <div class="relative"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'math-g7', label: 'الرياضيات - الصف السابع' },
+                 { value: 'sci-g8', label: 'العلوم العامة - الصف الثامن' },
+                 { value: 'arab-g9', label: 'اللغة العربية - الصف التاسع' },
+               ],
+               get: () => aiForm.course,
+               set: (v) => aiForm.course = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="ai-course" class="label" x-text="t('qz.aiFieldCourse')"></label>
+          <button type="button" id="ai-course" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="ai-course-list"
+                  :aria-activedescendant="active > -1 ? 'ai-course-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="ai-course-list" role="listbox" aria-labelledby="ai-course"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'ai-course-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- اختيار نوع الاختبار -->
+        <div class="relative"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'formative', label: t('qz.typeFormative') },
+                 { value: 'summative', label: t('qz.typeSummative') },
+                 { value: 'diagnostic', label: t('qz.typeDiagnostic') },
+               ],
+               get: () => aiForm.type,
+               set: (v) => aiForm.type = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="ai-type" class="label" x-text="t('qz.aiFieldType')"></label>
+          <button type="button" id="ai-type" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="ai-type-list"
+                  :aria-activedescendant="active > -1 ? 'ai-type-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="ai-type-list" role="listbox" aria-labelledby="ai-type"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'ai-type-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <label for="ai-count" class="label"><span x-text="t('qz.aiFieldCount')"></span> <span class="font-mono text-brand" x-text="aiForm.count"></span></label>
+        <input id="ai-count" x-model.number="aiForm.count" type="range" min="5" max="40" step="5" class="h-2 w-full cursor-pointer appearance-none rounded-full bg-line accent-primary-500">
+      </div>
+
+      <!-- مستوى الصعوبة -->
+      <fieldset>
+        <legend class="label" x-text="t('qz.aiFieldDifficulty')"></legend>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm font-bold transition hover:border-primary-500"
+                 :class="aiForm.difficulty === 'easy' && 'border-primary-700 bg-soft text-brand'">
+            <input type="radio" name="ai-difficulty" value="easy" x-model="aiForm.difficulty" class="sr-only">
+            <span x-text="t('qz.aiDifficultyEasy')"></span>
+          </label>
+          <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm font-bold transition hover:border-primary-500"
+                 :class="aiForm.difficulty === 'medium' && 'border-primary-700 bg-soft text-brand'">
+            <input type="radio" name="ai-difficulty" value="medium" x-model="aiForm.difficulty" class="sr-only">
+            <span x-text="t('qz.aiDifficultyMedium')"></span>
+          </label>
+          <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm font-bold transition hover:border-primary-500"
+                 :class="aiForm.difficulty === 'hard' && 'border-primary-700 bg-soft text-brand'">
+            <input type="radio" name="ai-difficulty" value="hard" x-model="aiForm.difficulty" class="sr-only">
+            <span x-text="t('qz.aiDifficultyHard')"></span>
+          </label>
+        </div>
+      </fieldset>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="aiBusy" @click="closeAiModal()" x-text="t('qz.aiCancel')"></button>
+      <button type="submit" class="btn btn-accent" :disabled="aiBusy" :aria-busy="aiBusy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="aiBusy" aria-hidden="true"></i>
+        <i class="fa-solid fa-wand-magic-sparkles" x-show="!aiBusy" aria-hidden="true"></i>
+        <span x-text="aiBusy ? t('qz.aiGenerating') : t('qz.aiSubmit')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — حذف اختبار نهائيًا
+     ========================================================================== -->
+<div x-cloak x-show="isDeleteModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="alertdialog" aria-modal="true" aria-labelledby="del-title" aria-describedby="del-desc" @keydown.escape.window="closeDeleteModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDeleteModal()"></div>
+  <div x-show="isDeleteModalOpen" x-trap.noscroll="isDeleteModalOpen"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700"><i class="fa-solid fa-trash text-xl" aria-hidden="true"></i></span>
+    <h3 id="del-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('qz.deleteTitle')"></h3>
+    <p id="del-desc" class="mt-2 text-sm text-muted">
+      <span x-text="t('qz.deleteText')"></span> <span class="font-bold text-ink" x-text="deleteTarget && deleteTarget.nameAr"></span>.
+    </p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeDeleteModal()" x-text="t('qz.deleteCancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="deleteConfirmed()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('qz.deleteConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة قائمة الاختبارات — مبنية على نفس هيكل "Dashboard Shell" المعتمد
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد (مطابقة concepts.html / CoursesManagement.html).
+   * قائمة الاختبارات أدناه ثابتة (Static Mock Rows) — عمليات البحث/الفلترة/الحفظ/الحذف/النسخ/التوليد بالذكاء الاصطناعي
+   * الفعلية ستُنفَّذ لاحقًا عبر Livewire + Eloquent + مزوّد AI خارجي.
+   */
+  function quizzesManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'لوحة التحكم' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { published: 'تم نشر اختبار جديد: «اختبار تكويني: خصائص الضرب»', draft: 'لديك 11 اختبارًا بحالة مسودة بانتظار المراجعة', aiReady: 'اكتمل توليد مسودة اختبار بالذكاء الاصطناعي بنجاح' },
+
+        qz: {
+          title: 'قائمة الاختبارات', subtitle: 'استعرض جميع الاختبارات المرتبطة بالمقررات والوحدات والدروس، تابع عدد الأسئلة والمدة والعلامات، وأنشئ اختبارات جديدة يدويًا أو بالذكاء الاصطناعي.',
+          createQuiz: 'إنشاء اختبار جديد', aiGenerate: 'توليد بالذكاء الاصطناعي',
+          kpiTotal: 'إجمالي الاختبارات', kpiPublished: 'المنشورة', kpiDrafts: 'المسودات', kpiQuestions: 'إجمالي الأسئلة',
+          searchPlaceholder: 'ابحث باسم الاختبار أو رمزه…', clearSearch: 'مسح البحث',
+          filterCourseLabel: 'المقرر', filterCourseAll: 'كل المقررات',
+          filterUnitLabel: 'الوحدة', filterUnitAll: 'كل الوحدات',
+          filterLessonLabel: 'الدرس', filterLessonAll: 'كل الدروس',
+          filterTypeLabel: 'نوع الاختبار', filterTypeAll: 'كل الأنواع',
+          typeFormative: 'تكويني', typeSummative: 'ختامي', typeDiagnostic: 'تشخيصي',
+          filterStatusLabel: 'الحالة', filterStatusAll: 'كل الحالات',
+          statusPublished: 'منشور', statusDraft: 'مسودة', statusInactive: 'غير مُفعّل',
+          resetFilters: 'مسح الفلاتر',
+          colQuiz: 'الاختبار والرمز', colPath: 'المسار الأكاديمي', colQuestions: 'عدد الأسئلة', colDuration: 'المدة (دقيقة)', colMarks: 'العلامة الكلية', colStatus: 'الحالة', colActions: 'إجراءات',
+          actPreview: 'معاينة', actEdit: 'تعديل', actResults: 'النتائج والمحاولات', actDuplicate: 'نسخ', actDelete: 'حذف',
+          showing: 'عرض', of: 'من', quizzesWord: 'اختبارًا', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية',
+          previewTitle: 'معاينة سريعة', previewPath: 'المسار الأكاديمي', previewQuestions: 'سؤال', previewDuration: 'دقيقة', previewMarks: 'علامة',
+          previewStatus: 'الحالة', previewClose: 'إغلاق', previewEdit: 'تعديل الاختبار',
+          aiModalTitle: 'توليد اختبار بالذكاء الاصطناعي', aiModalSubtitle: 'حدّد المقرر ونوع الاختبار وعدد الأسئلة المطلوب، وسيقترح الذكاء الاصطناعي مسودة أسئلة جاهزة للمراجعة.',
+          aiFieldTitle: 'عنوان الاختبار (اختياري)', aiFieldTitlePlaceholder: 'سيُقترح عنوان تلقائيًا إن تُرك فارغًا…',
+          aiFieldCourse: 'المقرر', aiFieldUnit: 'الوحدة', aiFieldLesson: 'الدرس', aiFieldType: 'نوع الاختبار', aiFieldCount: 'عدد الأسئلة المطلوب',
+          aiFieldDifficulty: 'مستوى الصعوبة', aiDifficultyEasy: 'سهل', aiDifficultyMedium: 'متوسط', aiDifficultyHard: 'صعب',
+          aiCancel: 'إلغاء', aiSubmit: 'توليد الاختبار', aiGenerating: 'جارِ التوليد…',
+          deleteTitle: 'حذف الاختبار نهائيًا؟', deleteText: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بيانات', deleteCancel: 'إلغاء', deleteConfirm: 'نعم، احذف نهائيًا',
+          toastDuplicate: 'تم نسخ الاختبار «{name}» بنجاح (معاينة فقط)', toastDelete: 'تم حذف الاختبار «{name}» نهائيًا (معاينة فقط)',
+          toastAiGenerate: 'تم إنشاء مسودة اختبار جديدة بالذكاء الاصطناعي بنجاح (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Dashboard' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { published: 'A new quiz was published: "Formative Quiz: Multiplication Properties"', draft: 'You have 11 draft quizzes awaiting review', aiReady: 'AI quiz draft generation completed successfully' },
+
+        qz: {
+          title: 'Quizzes List', subtitle: 'Browse all quizzes linked to courses, units, and lessons, track question count, duration, and marks, and create new quizzes manually or with AI.',
+          createQuiz: 'Create New Quiz', aiGenerate: 'Generate with AI',
+          kpiTotal: 'Total Quizzes', kpiPublished: 'Published', kpiDrafts: 'Drafts', kpiQuestions: 'Total Questions',
+          searchPlaceholder: 'Search by quiz title or code…', clearSearch: 'Clear search',
+          filterCourseLabel: 'Course', filterCourseAll: 'All Courses',
+          filterUnitLabel: 'Unit', filterUnitAll: 'All Units',
+          filterLessonLabel: 'Lesson', filterLessonAll: 'All Lessons',
+          filterTypeLabel: 'Quiz Type', filterTypeAll: 'All Types',
+          typeFormative: 'Formative', typeSummative: 'Summative', typeDiagnostic: 'Diagnostic',
+          filterStatusLabel: 'Status', filterStatusAll: 'All Statuses',
+          statusPublished: 'Published', statusDraft: 'Draft', statusInactive: 'Inactive',
+          resetFilters: 'Reset Filters',
+          colQuiz: 'Quiz & Code', colPath: 'Academic Path', colQuestions: 'Questions', colDuration: 'Duration (min)', colMarks: 'Total Marks', colStatus: 'Status', colActions: 'Actions',
+          actPreview: 'Preview', actEdit: 'Edit', actResults: 'Results & Attempts', actDuplicate: 'Duplicate', actDelete: 'Delete',
+          showing: 'Showing', of: 'of', quizzesWord: 'quizzes', pagination: 'Pagination', prev: 'Previous page', next: 'Next page',
+          previewTitle: 'Quick Preview', previewPath: 'Academic Path', previewQuestions: 'Questions', previewDuration: 'Minutes', previewMarks: 'Marks',
+          previewStatus: 'Status', previewClose: 'Close', previewEdit: 'Edit Quiz',
+          aiModalTitle: 'Generate Quiz with AI', aiModalSubtitle: 'Choose the course, quiz type, and number of questions — AI will suggest a ready-to-review question draft.',
+          aiFieldTitle: 'Quiz Title (optional)', aiFieldTitlePlaceholder: 'A title will be suggested automatically if left empty…',
+          aiFieldCourse: 'Course', aiFieldUnit: 'Unit', aiFieldLesson: 'Lesson', aiFieldType: 'Quiz Type', aiFieldCount: 'Number of Questions',
+          aiFieldDifficulty: 'Difficulty Level', aiDifficultyEasy: 'Easy', aiDifficultyMedium: 'Medium', aiDifficultyHard: 'Hard',
+          aiCancel: 'Cancel', aiSubmit: 'Generate Quiz', aiGenerating: 'Generating…',
+          deleteTitle: 'Delete this quiz permanently?', deleteText: 'This action cannot be undone. All data for', deleteCancel: 'Cancel', deleteConfirm: 'Yes, delete permanently',
+          toastDuplicate: 'Quiz "{name}" was duplicated successfully (preview only)', toastDelete: 'Quiz "{name}" was permanently deleted (preview only)',
+          toastAiGenerate: 'A new quiz draft was generated with AI successfully (preview only)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'quizzes',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'published', time: '15m', read: false, icon: 'fa-solid fa-circle-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'draft', time: '3h', read: false, icon: 'fa-solid fa-pen-to-square', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'aiReady', time: '1d', read: true, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-accent-700 dark:text-accent-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- شريط البحث والفلاتر (عرض فقط — بلا منطق فلترة فعلي؛ سيُنفَّذ عبر Livewire) ---------- */
+      searchQuery: '', selectedCourse: 'all', selectedUnit: 'all', selectedLesson: 'all', selectedType: 'all', selectedStatus: 'all',
+      resetFilters() {
+        this.searchQuery = ''; this.selectedCourse = 'all'; this.selectedUnit = 'all';
+        this.selectedLesson = 'all'; this.selectedType = 'all'; this.selectedStatus = 'all';
+      },
+
+      /* ---------- النسخ (إجراء معاينة فقط) ---------- */
+      duplicateQuiz(name) { this.toastSuccess(this.tf('qz.toastDuplicate', { name })); },
+
+      /* ---------- اللوحة الجانبية: معاينة سريعة ---------- */
+      previewOpen: false, previewTarget: null,
+      openPreview(quiz) { this.previewTarget = quiz; this.previewOpen = true; },
+      closePreview() { this.previewOpen = false; this.previewTarget = null; },
+
+      /* ---------- نافذة توليد الاختبار بالذكاء الاصطناعي ---------- */
+      aiModalOpen: false, aiBusy: false,
+      aiForm: { title: '', course: 'math-g7', type: 'formative', count: 10, difficulty: 'medium' },
+      openAiModal() { this.aiModalOpen = true; },
+      closeAiModal() { if (!this.aiBusy) { this.aiModalOpen = false; } },
+      async generateWithAI() {
+        this.aiBusy = true;
+        await new Promise(r => setTimeout(r, 900));
+        this.aiBusy = false;
+        this.aiModalOpen = false;
+        this.toastSuccess(this.t('qz.toastAiGenerate'));
+        this.aiForm = { title: '', course: 'math-g7', type: 'formative', count: 10, difficulty: 'medium' };
+      },
+
+      /* ---------- نافذة الحذف ---------- */
+      busy: false, isDeleteModalOpen: false, deleteTarget: null,
+      confirmDelete(quiz) {
+        this.deleteTarget = quiz;
+        this.isDeleteModalOpen = true;
+      },
+      closeDeleteModal() { if (!this.busy) { this.isDeleteModalOpen = false; this.deleteTarget = null; } },
+      async deleteConfirmed() {
+        if (!this.deleteTarget) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 400));
+        this.busy = false;
+        this.toastSuccess(this.tf('qz.toastDelete', { name: this.deleteTarget.nameAr }));
+        this.isDeleteModalOpen = false;
+        this.deleteTarget = null;
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        if (!this.busy) { this.isDeleteModalOpen = false; }
+        if (!this.aiBusy) { this.aiModalOpen = false; }
+        this.previewOpen = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

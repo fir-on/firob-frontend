@@ -1,0 +1,2555 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>إدارة الاشتراكات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 90 104 125;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  { @apply bg-accent-500/25 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة (Modal) ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- مقطع أزرار (Segmented control) ---------- */
+    .seg { @apply inline-flex items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-muted transition; }
+    .seg-btn[aria-pressed="true"] { @apply bg-primary-500 text-white shadow; }
+
+    /* ---------- تبويبات الحالة (Status Tabs) ---------- */
+    .status-tab { @apply relative inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-line bg-card px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-soft hover:text-ink; }
+    .status-tab[aria-pressed="true"] { @apply border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .status-tab .tab-count { @apply grid h-5 min-w-5 place-items-center rounded-full bg-line px-1 text-[11px] font-extrabold text-ink; }
+    .status-tab[aria-pressed="true"] .tab-count { @apply bg-white/25 text-white; }
+
+    /* ---------- بطاقة اختيار (SelectCard) ---------- */
+    .pick-card { @apply relative flex cursor-pointer flex-col gap-1 rounded-xl border-2 border-line bg-page/50 p-3.5 text-start transition hover:border-primary-500; }
+    .pick-card[data-checked="true"] { @apply border-primary-500 bg-primary-500/10; }
+    .pick-card[data-disabled="true"] { @apply pointer-events-none cursor-not-allowed opacity-45; }
+  }
+
+    /* ---------- [SA shell fixes] ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .combo-option.is-active.is-selected { @apply ring-1 ring-inset ring-brand/40; }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- ⑧ Flatpickr — تقويم موحّد لحقول التاريخ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+<link rel="stylesheet" href="../asset/css/firob-datepicker.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ar.js"></script>
+<script src="../asset/js/firob-datepicker.js"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || modal || slideOverOpen || confirmDlg.open }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="overview.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:ring-2" :class="!expanded && 'lg:flex-none lg:justify-center'" :aria-label="t('appTitle')">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="locale === 'ar' ? 'التنقل الرئيسي' : 'Main navigation'">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="item.count && expanded"
+                        class="shrink-0 rounded-full bg-accent-500 px-2 text-xs font-extrabold text-onaccent" x-text="item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'fa-angles-right rtl:-scale-x-100' : 'fa-angles-left rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">S</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('superAdmin')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="system-settings.html" role="menuitem" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></a>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="locale === 'ar' ? 'مسار التنقل' : 'Breadcrumb'">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('appTitle')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.' + active)"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — LND-05: إدارة الاشتراكات ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- منطقة الإعلانات الحية لقارئ الشاشة -->
+      <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="liveMsg"></p>
+
+      <!-- العنوان + إجراء الإضافة -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('sb.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('sb.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-primary" @click="openNewModal()">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+          <span x-text="t('sb.addSubscription')"></span>
+        </button>
+      </section>
+
+      <!-- ================= بطاقات المؤشرات (KPIs) — محسوبة من الحالة الحالية ================= -->
+      <section :aria-label="t('sb.kpiRegion')" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <button type="button" class="panel p-4 text-start transition hover:border-success-500 sm:p-5" :class="statusFilter === 'active' && 'ring-2 ring-success-500'"
+                @click="setStatusFilter('active')" :aria-pressed="(statusFilter === 'active').toString()">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('sb.kpiActive')"></p>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums text-success-700 dark:text-success-500 sm:text-3xl" x-text="fmtNum(kpis.active)"></p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span>
+          </div>
+        </button>
+        <button type="button" class="panel p-4 text-start transition hover:border-info-500 sm:p-5" :class="statusFilter === 'trialing' && 'ring-2 ring-info-500'"
+                @click="setStatusFilter('trialing')" :aria-pressed="(statusFilter === 'trialing').toString()">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('sb.kpiTrialing')"></p>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums text-info-700 dark:text-blue-300 sm:text-3xl" x-text="fmtNum(kpis.trialing)"></p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-blue-300" aria-hidden="true"><i class="fa-solid fa-hourglass-half"></i></span>
+          </div>
+        </button>
+        <button type="button" class="panel p-4 text-start transition hover:border-warning-500 sm:p-5" :class="statusFilter === 'expiring' && 'ring-2 ring-warning-500'"
+                @click="setStatusFilter('expiring')" :aria-pressed="(statusFilter === 'expiring').toString()">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('sb.kpiExpiring')"></p>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums text-warning-700 dark:text-warning-500 sm:text-3xl" x-text="fmtNum(kpis.expiring)"></p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+          </div>
+        </button>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('sb.kpiMrr')"></p>
+              <p class="mt-2 truncate text-2xl font-extrabold tabular-nums text-brand sm:text-3xl" x-text="money(kpis.mrr)"></p>
+              <p class="mt-1 truncate text-xs text-muted" x-text="tf('sb.kpiMrrHint', { n: fmtNum(kpis.billable) })"></p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-sack-dollar"></i></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والتبويبات والفلاتر ================= -->
+      <section class="panel flex flex-col gap-4 p-4 sm:p-5">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div class="relative min-w-0 flex-1">
+            <label for="sub-search" class="sr-only" x-text="t('sb.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+            <input id="sub-search" type="search" x-model.debounce.250ms="search" :placeholder="t('sb.searchPlaceholder')"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line bg-field ps-10 pe-3 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          </div>
+
+          <div class="relative w-full shrink-0 lg:w-56"
+               x-data="selectDropdown({
+                 id: 'plan-filter',
+                 options: () => [{ value: 'all', label: t('sb.planFilterAll') }, ...plans.map(p => ({ value: p.code, label: planName(p) }))],
+                 get: () => planFilter,
+                 set: (v) => planFilter = v,
+               })"
+               @click.outside="closeList()">
+            <span id="plan-filter-lbl" class="sr-only" x-text="t('sb.planFilterLabel')"></span>
+
+            <button type="button" id="plan-filter-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="plan-filter-list" aria-labelledby="plan-filter-lbl plan-filter-btn"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+
+            <ul x-show="open" x-cloak x-ref="list" id="plan-filter-list" role="listbox" aria-labelledby="plan-filter-lbl"
+                x-transition.origin.top.duration.150ms
+                class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="resetFilters()" :disabled="!hasFilters">
+            <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i>
+            <span x-text="t('sb.resetFilters')"></span>
+          </button>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="exportCsv()" :disabled="!filteredSubs.length">
+            <i class="fa-solid fa-file-csv text-muted" aria-hidden="true"></i>
+            <span x-text="t('sb.exportCsv')"></span>
+          </button>
+        </div>
+
+        <!-- تبويبات الحالة (tablist بتنقّل لوحة المفاتيح، تتحكم في لوحة الجدول) -->
+        <div class="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1" role="tablist" :aria-label="t('sb.statusTabsLabel')" @keydown="onTabsKey($event)">
+          <template x-for="tab in statusTabs" :key="tab.key">
+            <button type="button" class="status-tab snap-start" role="tab" :id="'st-tab-' + tab.key"
+                    aria-controls="subs-panel" :aria-selected="(statusFilter === tab.key).toString()" :aria-pressed="(statusFilter === tab.key).toString()"
+                    :tabindex="statusFilter === tab.key || (!statusTabs.some(x => x.key === statusFilter) && tab.key === 'all') ? 0 : -1"
+                    @click="setStatusFilter(tab.key)">
+              <span class="h-1.5 w-1.5 rounded-full bg-current" :class="tab.key !== 'all' ? statusDotClass(tab.key) : ''" aria-hidden="true"></span>
+              <span x-text="tab.label"></span>
+              <span class="tab-count" x-text="fmtNum(tab.count)"></span>
+            </button>
+          </template>
+        </div>
+      </section>
+
+      <!-- ================= جدول / بطاقات الاشتراكات (عرض واحد عبر x-if) ================= -->
+      <section id="subs-panel" class="panel overflow-hidden" role="tabpanel" :aria-labelledby="'st-tab-' + (statusTabs.some(x => x.key === statusFilter) ? statusFilter : 'all')">
+        <h2 id="subs-table-title" class="sr-only" x-text="t('sb.title')"></h2>
+
+        <!-- سطح المكتب: جدول -->
+        <template x-if="wide">
+          <div class="table-scroll overflow-x-auto">
+            <table class="w-full min-w-[1100px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('sb.tableCaption') + ' — ' + sortSummary"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <template x-for="col in sortCols" :key="col.key">
+                    <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" :aria-sort="ariaSort(col.key)">
+                      <button type="button" class="inline-flex items-center gap-1.5 rounded font-extrabold hover:text-brand focus-visible:ring-2" @click="sortBy(col.key)">
+                        <span x-text="t(col.label)"></span>
+                        <i class="fa-solid text-[10px] text-muted" :class="sortKey === col.key ? (sortDir === 'asc' ? 'fa-arrow-up-short-wide' : 'fa-arrow-down-wide-short') : 'fa-sort'" aria-hidden="true"></i>
+                      </button>
+                    </th>
+                  </template>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('sb.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="s in pagedSubs" :key="s.id">
+                  <tr class="transition hover:bg-soft/50">
+                    <!-- المؤسسة -->
+                    <td class="px-4 py-3.5 align-middle">
+                      <div class="flex items-center gap-3">
+                        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-extrabold text-white" :style="'background:' + s.tenant.color" aria-hidden="true" x-text="initials(s.tenant)"></span>
+                        <div class="min-w-0">
+                          <div class="flex items-center gap-1.5">
+                            <p class="truncate font-bold leading-5 text-ink" x-text="tenantName(s.tenant)"></p>
+                            <span x-show="isCurrent(s)" class="shrink-0 text-[10px]" :title="t('sb.current')"><i class="fa-solid fa-star text-accent-500" aria-hidden="true"></i><span class="sr-only" x-text="t('sb.current')"></span></span>
+                          </div>
+                          <a :href="'https://' + s.tenant.domain" target="_blank" rel="noopener noreferrer"
+                             class="mt-0.5 block truncate text-xs font-medium text-brand hover:underline" dir="ltr" x-text="s.tenant.domain"></a>
+                        </div>
+                      </div>
+                    </td>
+
+                    <!-- الباقة والسعر -->
+                    <td class="px-4 py-3.5 align-middle">
+                      <p class="font-bold leading-5 text-ink" x-text="planName(planById(s.plan_id))"></p>
+                      <p class="mt-0.5 text-xs text-muted tabular-nums" x-text="planPriceLabel(planById(s.plan_id)) + ' · ' + t('sb.cycle.' + s.billing_cycle)"></p>
+                      <p x-show="s.scheduledPlanId" class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-yellow-900 dark:text-accent-500">
+                        <i class="fa-solid fa-arrow-turn-up rtl:-scale-x-100" aria-hidden="true"></i>
+                        <span x-text="tf('sb.scheduledChange', { plan: s.scheduledPlanId ? planName(planById(s.scheduledPlanId)) : '' })"></span>
+                      </p>
+                    </td>
+
+                    <!-- الحالة + التجديد التلقائي -->
+                    <td class="px-4 py-3.5 align-middle">
+                      <span class="badge" :class="statusClass(s.status)">
+                        <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                        <span x-text="statusLabel(s.status)"></span>
+                      </span>
+                      <div class="mt-1.5 flex items-center gap-2 text-[11px] font-bold" :class="s.auto_renew ? 'text-success-700 dark:text-success-500' : 'text-muted'">
+                        <button type="button" role="switch" :aria-checked="s.auto_renew.toString()" :aria-label="autoRenewLabel(s)"
+                                :aria-disabled="(!canToggleAutoRenew(s)).toString()" @click="toggleAutoRenew(s)"
+                                class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition focus-visible:ring-2"
+                                :class="[s.auto_renew ? 'bg-primary-500' : 'bg-line-strong/40', !canToggleAutoRenew(s) && 'cursor-not-allowed opacity-50']">
+                          <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition" :class="s.auto_renew ? 'ltr:translate-x-[1.1rem] rtl:-translate-x-[1.1rem]' : 'ltr:translate-x-0.5 rtl:-translate-x-0.5'" aria-hidden="true"></span>
+                        </button>
+                        <span aria-hidden="true" x-text="t('sb.autoRenew') + ': ' + (s.auto_renew ? t('sb.autoRenewOn') : t('sb.autoRenewOff'))"></span>
+                      </div>
+                    </td>
+
+                    <!-- تاريخ البدء -->
+                    <td class="whitespace-nowrap px-4 py-3.5 align-middle text-sm text-muted tabular-nums" x-text="fmtDate(s.starts_at)"></td>
+
+                    <!-- تاريخ الانتهاء + العد التنازلي -->
+                    <td class="whitespace-nowrap px-4 py-3.5 align-middle">
+                      <p class="text-sm font-bold text-ink tabular-nums" x-text="fmtDate(s.ends_at)"></p>
+                      <p class="mt-0.5 text-xs font-bold" :class="daysRemainingClass(s)" x-text="daysRemainingLabel(s)"></p>
+                    </td>
+
+                    <!-- إجراءات (أيقونات + تلميحات) -->
+                    <td class="px-4 py-3.5 align-middle">
+                      <div class="flex items-center gap-1.5">
+                        <template x-for="a in rowActions(s)" :key="a.key">
+                          <button type="button" class="act group relative" :class="[a.danger && 'text-danger hover:!bg-error-500/10', a.disabled && 'cursor-not-allowed opacity-40']"
+                                  :aria-label="a.label + ' — ' + tenantName(s.tenant)" :aria-disabled="a.disabled.toString()"
+                                  @click="runAction(a.key, s)">
+                            <i :class="a.icon" aria-hidden="true"></i>
+                            <span class="tooltip-bubble" aria-hidden="true" x-text="a.label"></span>
+                            <span class="tooltip-arrow" aria-hidden="true"></span>
+                          </button>
+                        </template>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <!-- الجوال/الأجهزة اللوحية: بطاقات -->
+        <template x-if="!wide">
+          <ul class="divide-y divide-line" role="list" :aria-label="t('sb.tableCaption')">
+            <template x-for="s in pagedSubs" :key="s.id">
+              <li class="space-y-3 p-4">
+                <div class="flex items-start gap-3">
+                  <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-extrabold text-white" :style="'background:' + s.tenant.color" aria-hidden="true" x-text="initials(s.tenant)"></span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate font-bold leading-5 text-ink" x-text="tenantName(s.tenant)"></h3>
+                    <p class="mt-0.5 truncate text-xs text-muted" x-text="planName(planById(s.plan_id)) + ' · ' + planPriceLabel(planById(s.plan_id))"></p>
+                  </div>
+                  <span class="badge shrink-0" :class="statusClass(s.status)">
+                    <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                    <span x-text="statusLabel(s.status)"></span>
+                  </span>
+                </div>
+                <dl class="grid grid-cols-2 gap-2 text-xs">
+                  <div><dt class="text-muted" x-text="t('sb.colStart')"></dt><dd class="font-bold tabular-nums" x-text="fmtDate(s.starts_at)"></dd></div>
+                  <div><dt class="text-muted" x-text="t('sb.colEnd')"></dt><dd class="font-bold tabular-nums" x-text="fmtDate(s.ends_at)"></dd><dd class="font-bold" :class="daysRemainingClass(s)" x-text="daysRemainingLabel(s)"></dd></div>
+                </dl>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 text-xs font-bold" :class="s.auto_renew ? 'text-success-700 dark:text-success-500' : 'text-muted'">
+                    <button type="button" role="switch" :aria-checked="s.auto_renew.toString()" :aria-label="autoRenewLabel(s)"
+                            :aria-disabled="(!canToggleAutoRenew(s)).toString()" @click="toggleAutoRenew(s)"
+                            class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition focus-visible:ring-2"
+                            :class="[s.auto_renew ? 'bg-primary-500' : 'bg-line-strong/40', !canToggleAutoRenew(s) && 'cursor-not-allowed opacity-50']">
+                      <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition" :class="s.auto_renew ? 'ltr:translate-x-[1.1rem] rtl:-translate-x-[1.1rem]' : 'ltr:translate-x-0.5 rtl:-translate-x-0.5'" aria-hidden="true"></span>
+                    </button>
+                    <span aria-hidden="true" x-text="t('sb.autoRenew') + ': ' + (s.auto_renew ? t('sb.autoRenewOn') : t('sb.autoRenewOff'))"></span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <template x-for="a in rowActions(s)" :key="a.key">
+                      <button type="button" class="act group relative" :class="[a.danger && 'text-danger', a.disabled && 'cursor-not-allowed opacity-40']"
+                              :aria-label="a.label + ' — ' + tenantName(s.tenant)" :aria-disabled="a.disabled.toString()"
+                              @click="runAction(a.key, s)">
+                        <i :class="a.icon" aria-hidden="true"></i>
+                        <span class="tooltip-bubble" aria-hidden="true" x-text="a.label"></span>
+                        <span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                    </template>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </template>
+
+        <!-- ================= حالة عدم وجود نتائج (Empty State) ================= -->
+        <div x-show="filteredSubs.length === 0" class="px-4 py-16 text-center">
+          <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true">
+            <i class="fa-solid fa-file-circle-xmark text-xl"></i>
+          </span>
+          <p class="font-extrabold text-ink" x-text="t('sb.emptyTitle')"></p>
+          <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('sb.emptySubtitle')"></p>
+          <button type="button" @click="resetFilters()" class="btn btn-outline mt-4">
+            <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i> <span x-text="t('sb.resetFilters')"></span>
+          </button>
+        </div>
+
+        <!-- العدّاد + الترقيم -->
+        <div class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p class="text-xs font-bold text-muted" x-text="tf('sb.showingRange', { from: fmtNum(pageFrom), to: fmtNum(pageTo), total: fmtNum(filteredSubs.length), all: fmtNum(subscriptions.length) })"></p>
+          <nav class="flex items-center gap-1.5" :aria-label="t('sb.pagination')" x-show="pageCount > 1">
+            <button type="button" class="act" @click="goPage(page - 1)" :disabled="page <= 1" :aria-label="t('sb.prevPage')">
+              <i class="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i>
+            </button>
+            <template x-for="n in pageCount" :key="n">
+              <button type="button" class="act text-xs font-extrabold" :class="n === page && 'border-primary-500 bg-primary-500 text-white hover:!bg-primary-600'"
+                      @click="goPage(n)" :aria-current="n === page ? 'page' : null" :aria-label="tf('sb.pageN', { n: fmtNum(n) })" x-text="fmtNum(n)"></button>
+            </template>
+            <button type="button" class="act" @click="goPage(page + 1)" :disabled="page >= pageCount" :aria-label="t('sb.nextPage')">
+              <i class="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <!-- الهوية وحقوق النشر -->
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <!-- روابط سريعة -->
+      <nav :aria-label="locale === 'ar' ? 'روابط التذييل' : 'Footer links'" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; <span x-text="t('footer.screenMap')"></span></a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.help')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.docs')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.privacy')"></span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.terms')"></span></li>
+        </ul>
+      </nav>
+
+      <!-- حالة النظام -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     Slide-over — تفاصيل الاشتراك (role=dialog على اللوحة نفسها)
+     ========================================================================== -->
+<div x-show="slideOverOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDetails()" aria-hidden="true"></div>
+
+  <aside x-show="slideOverOpen" x-trap.noscroll="slideOverOpen" x-cloak
+         role="dialog" aria-modal="true" aria-labelledby="so-title" @keydown.escape.stop="closeDetails()"
+         x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+         class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <template x-if="selected">
+      <div class="flex h-full flex-col">
+        <!-- رأس اللوحة -->
+        <header class="flex items-start justify-between gap-3 border-b border-line bg-soft p-5">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-base font-extrabold text-white" :style="'background:' + selected.tenant.color" aria-hidden="true" x-text="initials(selected.tenant)"></span>
+            <div class="min-w-0">
+              <h2 id="so-title" class="truncate text-lg font-extrabold text-ink" x-text="tenantName(selected.tenant)"></h2>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                <span class="badge" :class="statusClass(selected.status)">
+                  <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                  <span x-text="statusLabel(selected.status)"></span>
+                </span>
+                <span class="badge" :class="selected.auto_renew ? 'badge-success' : 'badge-muted'">
+                  <i class="fa-solid text-[10px]" :class="selected.auto_renew ? 'fa-rotate' : 'fa-rotate-left'" aria-hidden="true"></i>
+                  <span x-text="t('sb.autoRenew') + ': ' + (selected.auto_renew ? t('sb.autoRenewOn') : t('sb.autoRenewOff'))"></span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <button type="button" @click="closeDetails()" :aria-label="t('sb.soClose')" class="icon-btn">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        <!-- تبويبات اللوحة -->
+        <div class="flex gap-2 border-b border-line px-5 pt-3" role="tablist" :aria-label="t('sb.soTabsLabel')" @keydown="onSoTabsKey($event)">
+          <template x-for="tb in ['overview', 'invoices']" :key="tb">
+            <button type="button" role="tab" :id="'so-tab-' + tb" :aria-controls="'so-panel-' + tb"
+                    :aria-selected="(soTab === tb).toString()" :tabindex="soTab === tb ? 0 : -1" @click="soTab = tb"
+                    class="-mb-px inline-flex items-center gap-2 border-b-2 px-3 pb-2.5 text-sm font-bold transition focus-visible:ring-2"
+                    :class="soTab === tb ? 'border-primary-500 text-brand' : 'border-transparent text-muted hover:text-ink'">
+              <span x-text="t('sb.soTab.' + tb)"></span>
+              <span x-show="tb === 'invoices'" class="tab-count grid h-5 min-w-5 place-items-center rounded-full bg-line px-1 text-[11px] font-extrabold text-ink" x-text="fmtNum(invoicesFor(selected).length)"></span>
+            </button>
+          </template>
+        </div>
+
+        <!-- المحتوى -->
+        <div class="flex-1 overflow-y-auto p-5">
+          <div id="so-panel-overview" role="tabpanel" aria-labelledby="so-tab-overview" tabindex="0" x-show="soTab === 'overview'" class="space-y-6 focus:outline-none">
+
+            <!-- بيانات المستأجر والاشتراك -->
+            <div>
+              <h3 class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.soTenantInfo')"></h3>
+              <div class="space-y-2.5 rounded-xl border border-line bg-page/50 p-4 text-sm">
+                <a :href="'https://' + selected.tenant.domain" target="_blank" rel="noopener noreferrer"
+                   class="flex items-center gap-2.5 font-bold text-brand hover:underline"><i class="fa-solid fa-globe w-4 text-muted" aria-hidden="true"></i><span dir="ltr" x-text="selected.tenant.domain"></span></a>
+                <div class="flex items-center gap-2.5"><i class="fa-regular fa-calendar w-4 text-muted" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.soStarted') + ':'"></span> <span class="font-bold text-ink" x-text="fmtDate(selected.starts_at)"></span></div>
+                <div class="flex items-center gap-2.5"><i class="fa-regular fa-calendar-check w-4 text-muted" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.soEnds') + ':'"></span> <span class="font-bold text-ink" x-text="fmtDate(selected.ends_at)"></span></div>
+                <div class="flex items-center gap-2.5"><i class="fa-solid fa-repeat w-4 text-muted" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.fCycle') + ':'"></span> <span class="font-bold text-ink" x-text="t('sb.cycle.' + selected.billing_cycle)"></span></div>
+                <div class="flex items-center gap-2.5" x-show="selected.credit_minor > 0"><i class="fa-solid fa-coins w-4 text-muted" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.soCredit') + ':'"></span> <span class="font-bold text-ink" x-text="money(selected.credit_minor)"></span></div>
+                <div class="flex items-center gap-2.5" x-show="selected.cancelled_at"><i class="fa-solid fa-ban w-4 text-danger" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.soCancelledOn') + ':'"></span> <span class="font-bold text-ink" x-text="fmtDate(selected.cancelled_at)"></span></div>
+                <div class="flex items-start gap-2.5" x-show="selected.cancel_reason"><i class="fa-regular fa-comment-dots mt-0.5 w-4 text-muted" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.soReason') + ':'"></span> <span class="font-bold text-ink" x-text="cancelReasonLabel(selected.cancel_reason)"></span></div>
+                <div class="flex items-center justify-between gap-2.5 border-t border-line pt-2.5">
+                  <span class="flex items-center gap-2.5"><i class="fa-solid fa-rotate w-4 text-muted" aria-hidden="true"></i><span class="text-muted" x-text="t('sb.autoRenew')"></span></span>
+                  <button type="button" role="switch" :aria-checked="selected.auto_renew.toString()" :aria-label="autoRenewLabel(selected)"
+                          :aria-disabled="(!canToggleAutoRenew(selected)).toString()" @click="toggleAutoRenew(selected)"
+                          class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition focus-visible:ring-2"
+                          :class="[selected.auto_renew ? 'bg-primary-500' : 'bg-line-strong/40', !canToggleAutoRenew(selected) && 'cursor-not-allowed opacity-50']">
+                    <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition" :class="selected.auto_renew ? 'ltr:translate-x-6 rtl:-translate-x-6' : 'ltr:translate-x-1 rtl:-translate-x-1'" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- الباقة الحالية -->
+            <div>
+              <h3 class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.soCurrentPlan')"></h3>
+              <div class="flex items-center justify-between rounded-xl border border-line bg-page/50 p-4">
+                <span class="badge badge-primary" x-text="planName(planById(selected.plan_id))"></span>
+                <span class="text-sm font-extrabold tabular-nums text-ink" x-text="planPriceLabel(planById(selected.plan_id))"></span>
+              </div>
+            </div>
+
+            <!-- الحصص مقابل الاستهلاك -->
+            <div>
+              <h3 class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.soPlanConsumption')"></h3>
+              <div class="space-y-4 rounded-xl border border-line bg-page/50 p-4">
+                <template x-for="q in quotaRows(selected)" :key="q.key">
+                  <div>
+                    <div class="mb-1.5 flex items-center justify-between text-xs font-bold text-muted">
+                      <span :id="'so-q-' + q.key" x-text="t(q.label)"></span>
+                      <span :class="quotaTextClass(q.pct)" x-text="q.text"></span>
+                    </div>
+                    <div class="quota-track !h-2" role="progressbar" :aria-labelledby="'so-q-' + q.key" :aria-valuenow="q.pct" aria-valuemin="0" aria-valuemax="100" :aria-valuetext="q.text">
+                      <div class="quota-fill" :class="quotaBarClass(q.pct)" :style="'width:' + q.pct + '%'"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- سجل الفواتير (مشتق من الفواتير المشتركة للمؤسسة) -->
+          <div id="so-panel-invoices" role="tabpanel" aria-labelledby="so-tab-invoices" tabindex="0" x-show="soTab === 'invoices'" class="focus:outline-none">
+            <h3 class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.soInvoices')"></h3>
+            <ul class="divide-y divide-line rounded-xl border border-line bg-page/50" role="list" x-show="invoicesFor(selected).length">
+              <template x-for="inv in invoicesFor(selected)" :key="inv.id">
+                <li class="flex items-center justify-between gap-3 p-3.5 text-sm">
+                  <div class="min-w-0">
+                    <p class="truncate font-bold text-ink" dir="ltr" x-text="inv.invoice_number"></p>
+                    <p class="truncate text-xs text-muted" x-text="invoiceLineLabel(inv)"></p>
+                    <p class="text-xs text-muted tabular-nums" x-text="t('sb.invIssued') + ' ' + fmtDate(inv.issue_date) + ' · ' + t('sb.invDue') + ' ' + fmtDate(inv.due_date)"></p>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-1">
+                    <span class="text-sm font-extrabold tabular-nums text-ink" x-text="money(invState(inv).total)"></span>
+                    <span class="badge" :class="invStatusClass(invState(inv).status)" x-text="invStatusLabel(invState(inv).status)"></span>
+                  </div>
+                </li>
+              </template>
+            </ul>
+            <p x-show="!invoicesFor(selected).length" class="rounded-xl border border-dashed border-line bg-page/50 p-4 text-center text-xs font-bold text-muted" x-text="t('sb.soNoInvoices')"></p>
+          </div>
+        </div>
+
+        <!-- إجراءات سريعة -->
+        <footer class="grid shrink-0 grid-cols-2 gap-2 border-t border-line bg-page/40 p-4">
+          <button type="button" class="btn btn-outline btn-sm" :disabled="!canUpgrade(selected)" @click="openUpgradeModal(selected)">
+            <i class="fa-solid fa-arrow-right-arrow-left" aria-hidden="true"></i> <span x-text="t('sb.menuUpgrade')"></span>
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="!canRenew(selected)" @click="openRenewModal(selected)">
+            <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+            <span x-text="isReactivation(selected) ? t('sb.menuReactivate') : t('sb.menuRenew')"></span>
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" :disabled="!canPause(selected) && !canResume(selected)"
+                  @click="selected.status === 'paused' ? menuResume(selected) : menuPause(selected)">
+            <i class="fa-solid" :class="selected.status === 'paused' ? 'fa-play' : 'fa-pause'" aria-hidden="true"></i>
+            <span x-text="selected.status === 'paused' ? t('sb.menuResume') : t('sb.menuPause')"></span>
+          </button>
+          <button type="button" class="btn btn-danger btn-sm" :disabled="!canCancel(selected)" @click="openCancelModal(selected)">
+            <i class="fa-solid fa-ban" aria-hidden="true"></i> <span x-text="t('sb.menuCancel')"></span>
+          </button>
+        </footer>
+      </div>
+    </template>
+  </aside>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تعيين اشتراك جديد / تعديل اشتراك (تاريخ الانتهاء محسوب)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'form'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+
+  <template x-if="modal === 'form'">
+    <form @submit.prevent="saveSubscription()" novalidate x-trap.noscroll="modal === 'form'"
+          role="dialog" aria-modal="true" aria-labelledby="nm-title" @keydown.escape.stop="closeModal()"
+          class="modal-panel max-w-lg">
+      <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line p-5">
+        <div class="min-w-0">
+          <h2 id="nm-title" class="text-lg font-extrabold text-brand" x-text="subForm.mode === 'edit' ? t('sb.modalEditTitle') : t('sb.modalNewTitle')"></h2>
+          <p class="truncate text-sm text-muted" x-show="subForm.mode === 'edit'" x-text="subForm.mode === 'edit' ? tenantName(tenantById(subForm.tenant_id)) : ''"></p>
+        </div>
+        <button type="button" class="icon-btn" @click="closeModal()" :disabled="busy" :aria-label="t('sb.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </header>
+
+      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+
+        <!-- 1. المؤسسة (عند الإنشاء فقط) -->
+        <div x-show="subForm.mode === 'new'" class="relative space-y-1.5"
+             x-data="selectDropdown({
+               id: 'nf-tenant',
+               options: () => availableTenants().map(tn => ({ value: tn.id, label: tenantName(tn) })),
+               get: () => subForm.tenant_id,
+               set: (v) => { subForm.tenant_id = v; formErrors.tenant = ''; },
+               placeholder: () => t('sb.fTenantPlaceholder'),
+             })"
+             @click.outside="closeList()">
+          <p class="label"><span id="nf-tenant-lbl" x-text="t('sb.fTenant')"></span> <span class="text-danger" aria-hidden="true">*</span></p>
+          <div class="relative">
+            <button type="button" id="nf-tenant-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="nf-tenant-list" aria-labelledby="nf-tenant-lbl nf-tenant-btn" aria-required="true"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    :aria-invalid="(!!formErrors.tenant).toString()" :aria-describedby="formErrors.tenant ? 'nf-tenant-err' : 'nf-tenant-hint'"
+                    :disabled="!items.length"
+                    class="field flex w-full items-center justify-between gap-2 text-start"
+                    :class="selectedItem ? 'font-bold' : 'font-normal text-muted'"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="nf-tenant-list" role="listbox" aria-labelledby="nf-tenant-lbl"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <p id="nf-tenant-hint" class="hint" x-show="items.length && !formErrors.tenant" x-text="t('sb.fTenantHint')"></p>
+          <p id="nf-tenant-err" class="err" x-show="formErrors.tenant"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="formErrors.tenant"></span></p>
+          <p class="err" x-show="!items.length"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('sb.noTenantsAvailable')"></span></p>
+        </div>
+
+        <!-- 2. الباقة -->
+        <div class="relative space-y-1.5"
+             x-data="selectDropdown({
+               id: 'nf-plan',
+               options: () => plans.filter(p => p.is_active).map(p => ({ value: p.id, label: planName(p) + ' — ' + planPriceLabel(p) })),
+               get: () => subForm.plan_id,
+               set: (v) => { subForm.plan_id = v; formErrors.plan = ''; },
+             })"
+             @click.outside="closeList()">
+          <p class="label"><span id="nf-plan-lbl" x-text="t('sb.fPlan')"></span> <span class="text-danger" aria-hidden="true">*</span></p>
+          <div class="relative">
+            <button type="button" id="nf-plan-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="nf-plan-list" aria-labelledby="nf-plan-lbl nf-plan-btn" aria-required="true"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    :aria-invalid="(!!formErrors.plan).toString()" :aria-describedby="formErrors.plan ? 'nf-plan-err' : (subForm.mode === 'edit' ? 'nf-plan-hint' : null)"
+                    :disabled="subForm.mode === 'edit'"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="nf-plan-list" role="listbox" aria-labelledby="nf-plan-lbl"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <p id="nf-plan-hint" class="hint" x-show="subForm.mode === 'edit'" x-text="t('sb.fPlanEditHint')"></p>
+          <p id="nf-plan-err" class="err" x-show="formErrors.plan"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="formErrors.plan"></span></p>
+        </div>
+
+        <!-- 3. حالة الاشتراك (عند الإنشاء) -->
+        <fieldset class="space-y-1.5" x-show="subForm.mode === 'new'">
+          <legend class="label" x-text="t('sb.fStatus')"></legend>
+          <div class="seg w-full">
+            <button type="button" class="seg-btn flex-1 justify-center" :aria-pressed="(subForm.status === 'trialing').toString()" @click="subForm.status = 'trialing'" x-text="t('sb.statusTrialingOpt')"></button>
+            <button type="button" class="seg-btn flex-1 justify-center" :aria-pressed="(subForm.status === 'active').toString()" @click="subForm.status = 'active'" x-text="t('sb.statusActiveOpt')"></button>
+          </div>
+        </fieldset>
+
+        <!-- 4. دورة الفوترة -->
+        <fieldset class="space-y-1.5" x-show="subForm.status !== 'trialing'">
+          <legend class="label" x-text="t('sb.fCycle')"></legend>
+          <div class="seg w-full">
+            <template x-for="c in ['monthly', 'yearly']" :key="c">
+              <button type="button" class="seg-btn flex-1 justify-center" :aria-pressed="(subForm.billing_cycle === c).toString()" @click="subForm.billing_cycle = c" x-text="t('sb.cycle.' + c)"></button>
+            </template>
+          </div>
+        </fieldset>
+
+        <!-- 5. تاريخ البدء + الانتهاء المحسوب -->
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="space-y-1.5">
+            <label for="nf-start" class="label"><span x-text="t('sb.fStartDate')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="nf-start" type="date" x-model="subForm.starts_at" @input="formErrors.starts_at = ''" required class="field tabular-nums" dir="ltr"
+                   :aria-invalid="(!!formErrors.starts_at).toString()" :aria-describedby="formErrors.starts_at ? 'nf-start-err' : null">
+            <p id="nf-start-err" class="err" x-show="formErrors.starts_at"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="formErrors.starts_at"></span></p>
+          </div>
+          <div class="space-y-1.5">
+            <p class="label" id="nf-end-lbl" x-text="t('sb.fEndDateComputed')"></p>
+            <output class="field block bg-soft font-bold tabular-nums" aria-labelledby="nf-end-lbl" aria-live="polite" x-text="formEndDate ? fmtDate(formEndDate) : '—'"></output>
+            <p class="hint" x-text="subForm.status === 'trialing' ? tf('sb.endHintTrial', { n: fmtNum(trialDaysFor(subForm.plan_id)) }) : t('sb.endHintCycle')"></p>
+          </div>
+        </div>
+
+        <!-- معاينة الفاتورة الأولى -->
+        <div x-show="subForm.mode === 'new' && formInvoicePreview" class="rounded-xl border border-line bg-page/50 p-3.5 text-sm">
+          <p class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.firstInvoice')"></p>
+          <template x-if="formInvoicePreview">
+            <dl class="space-y-1.5">
+              <div class="flex justify-between"><dt class="text-muted" x-text="t('sb.subtotal')"></dt><dd class="font-bold tabular-nums" x-text="money(formInvoicePreview.subtotal)"></dd></div>
+              <div class="flex justify-between"><dt class="text-muted" x-text="t('sb.vat')"></dt><dd class="font-bold tabular-nums" x-text="money(formInvoicePreview.vat)"></dd></div>
+              <div class="flex justify-between border-t border-line pt-1.5"><dt class="font-bold" x-text="t('sb.total')"></dt><dd class="font-extrabold tabular-nums" x-text="money(formInvoicePreview.total)"></dd></div>
+            </dl>
+          </template>
+        </div>
+      </div>
+
+      <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sb.close')"></button>
+        <button type="submit" class="btn btn-primary" :disabled="busy || (subForm.mode === 'new' && !availableTenants().length)" :aria-busy="busy.toString()">
+          <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+          <span x-text="subForm.mode === 'edit' ? t('sb.saveChanges') : t('sb.addSubscription')"></span>
+        </button>
+      </footer>
+    </form>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     نافذة — ترقية / تخفيض الباقة (radiogroup + حجب التخفيض + احتساب تناسبي)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'upgrade'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+
+  <template x-if="modal === 'upgrade' && activeSub">
+    <form @submit.prevent="applyUpgrade()" x-trap.noscroll="modal === 'upgrade'"
+          role="dialog" aria-modal="true" aria-labelledby="um-title" aria-describedby="um-sub" @keydown.escape.stop="closeModal()"
+          class="modal-panel max-w-xl">
+      <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line p-5">
+        <div class="min-w-0">
+          <h2 id="um-title" class="truncate text-lg font-extrabold text-brand" x-text="t('sb.modalUpgradeTitle')"></h2>
+          <p id="um-sub" class="truncate text-sm text-muted" x-text="tenantName(activeSub.tenant)"></p>
+        </div>
+        <button type="button" class="icon-btn shrink-0" @click="closeModal()" :disabled="busy" :aria-label="t('sb.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </header>
+
+      <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+        <div>
+          <p class="label" x-text="t('sb.currentPlanLbl')"></p>
+          <div class="flex items-center justify-between rounded-xl border border-line bg-page/50 p-3.5">
+            <span class="badge badge-muted" x-text="planName(planById(activeSub.plan_id))"></span>
+            <span class="text-sm font-extrabold tabular-nums text-ink" x-text="planPriceLabel(planById(activeSub.plan_id))"></span>
+          </div>
+        </div>
+
+        <div>
+          <p class="label" id="um-newplan-lbl" x-text="t('sb.newPlanLbl')"></p>
+          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2" role="radiogroup" aria-labelledby="um-newplan-lbl" aria-required="true" @keydown="onPlanKey($event)">
+            <template x-for="(p, i) in planChoices" :key="p.id">
+              <div class="pick-card" :id="'um-plan-' + p.id" role="radio" :data-checked="(upgradeForm.new_plan_id === p.id).toString()"
+                   :aria-checked="(upgradeForm.new_plan_id === p.id).toString()" :tabindex="planTabIndex(p, i)"
+                   :aria-describedby="limitIssues(activeSub, p).length ? 'um-plan-warn-' + p.id : null"
+                   @click="pickPlan(p.id)" @keydown.space.prevent="pickPlan(p.id)" @keydown.enter.prevent="pickPlan(p.id)">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-bold text-ink" x-text="planName(p)"></span>
+                  <i class="fa-solid fa-circle-check text-brand" x-show="upgradeForm.new_plan_id === p.id" aria-hidden="true"></i>
+                </div>
+                <span class="text-xs font-bold tabular-nums text-muted" x-text="planPriceLabel(p)"></span>
+                <span :id="'um-plan-warn-' + p.id" x-show="limitIssues(activeSub, p).length" class="inline-flex items-center gap-1 text-[11px] font-bold text-danger">
+                  <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span x-text="t('sb.exceedsUsage')"></span>
+                </span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- حجب التخفيض بسبب الاستهلاك -->
+        <div x-show="upgradeForm.new_plan_id && upgradeIssues.length" role="alert"
+             class="rounded-xl border border-error-600/30 bg-error-500/10 p-3.5 text-xs font-bold text-error-700 dark:text-red-300">
+          <p class="mb-1.5 flex items-center gap-1.5"><i class="fa-solid fa-ban" aria-hidden="true"></i><span x-text="t('sb.downgradeBlocked')"></span></p>
+          <ul class="list-disc space-y-0.5 ps-5" role="list">
+            <template x-for="iss in upgradeIssues" :key="iss.key">
+              <li x-text="issueText(iss)"></li>
+            </template>
+          </ul>
+        </div>
+
+        <template x-if="upgradeForm.new_plan_id">
+          <div>
+            <p class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.previewChanges')"></p>
+            <div class="space-y-2.5 rounded-xl border border-line bg-page/50 p-3.5 text-sm">
+              <template x-for="row in comparisonRows(activeSub, upgradeForm.new_plan_id)" :key="row.key">
+                <div class="flex items-center justify-between" :class="row.key === 'price' && 'border-t border-line pt-2.5'">
+                  <span class="text-muted" x-text="t(row.label)"></span>
+                  <span class="flex items-center gap-1.5 font-bold tabular-nums">
+                    <span class="text-muted" x-text="row.from"></span>
+                    <i class="fa-solid fa-arrow-right rtl:-scale-x-100 text-[10px] text-line-strong" aria-hidden="true"></i>
+                    <span class="sr-only" x-text="t('sb.to')"></span>
+                    <span :class="diffClass(row.a, row.b)" x-text="row.to"></span>
+                  </span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <fieldset>
+          <legend class="label" x-text="t('sb.applyWhen')"></legend>
+          <div class="space-y-2">
+            <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line p-3 text-sm font-bold transition hover:bg-soft" :class="upgradeForm.applyWhen === 'immediate' && 'border-primary-500 bg-primary-500/10'">
+              <input type="radio" name="applyWhen" value="immediate" x-model="upgradeForm.applyWhen" class="h-4 w-4 accent-current text-brand">
+              <span x-text="t('sb.applyImmediate')"></span>
+            </label>
+            <label class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line p-3 text-sm font-bold transition hover:bg-soft" :class="upgradeForm.applyWhen === 'renewal' && 'border-primary-500 bg-primary-500/10'">
+              <input type="radio" name="applyWhen" value="renewal" x-model="upgradeForm.applyWhen" class="h-4 w-4 accent-current text-brand">
+              <span x-text="tf('sb.applyRenewal', { date: fmtDate(activeSub.ends_at) })"></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- الاحتساب التناسبي (قبل التأكيد) -->
+        <div x-show="upgradeForm.new_plan_id && upgradeForm.applyWhen === 'immediate' && !upgradeIssues.length" class="rounded-xl border border-line bg-page/50 p-3.5 text-sm" aria-live="polite">
+          <template x-if="proration">
+            <div class="space-y-1.5">
+              <p class="text-xs font-extrabold text-muted" x-text="t('sb.proration')"></p>
+              <p class="text-xs text-muted" x-text="proration.applicable ? tf('sb.prorationFormula', { remaining: fmtNum(proration.remaining), period: fmtNum(proration.period), diff: money(proration.diff) }) : t('sb.prorationNA')"></p>
+              <div class="flex items-center justify-between border-t border-line pt-1.5" x-show="proration.applicable">
+                <span class="font-bold" x-text="proration.amount >= 0 ? t('sb.prorationCharge') : t('sb.prorationCredit')"></span>
+                <span class="font-extrabold tabular-nums" :class="proration.amount < 0 && 'text-success-700 dark:text-success-500'" x-text="money(Math.abs(proration.amount))"></span>
+              </div>
+              <p class="text-xs text-muted" x-show="proration.applicable && proration.amount > 0" x-text="tf('sb.prorationInvoiceNote', { total: money(prorationInvoiceTotal) })"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sb.close')"></button>
+        <button type="submit" class="btn btn-primary" :disabled="busy || !upgradeForm.new_plan_id || upgradeIssues.length > 0" :aria-busy="busy.toString()">
+          <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+          <span x-text="t('sb.applyBtn')"></span>
+        </button>
+      </footer>
+    </form>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تمديد / تجديد الاشتراك (تاريخ محسوب + فاتورة بالضريبة)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'renew'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+
+  <template x-if="modal === 'renew' && activeSub">
+    <form @submit.prevent="applyRenew()" novalidate x-trap.noscroll="modal === 'renew'"
+          role="dialog" aria-modal="true" aria-labelledby="rm2-title" aria-describedby="rm2-sub" @keydown.escape.stop="closeModal()"
+          class="modal-panel max-w-md">
+      <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line p-5">
+        <div class="min-w-0">
+          <h2 id="rm2-title" class="truncate text-lg font-extrabold text-brand" x-text="isReactivation(activeSub) ? t('sb.menuReactivate') : t('sb.modalRenewTitle')"></h2>
+          <p id="rm2-sub" class="truncate text-sm text-muted" x-text="tenantName(activeSub.tenant)"></p>
+        </div>
+        <button type="button" class="icon-btn shrink-0" @click="closeModal()" :disabled="busy" :aria-label="t('sb.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </header>
+
+      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+        <div class="flex items-start gap-2.5 rounded-xl border border-warning-500/30 bg-warning-500/10 p-3.5 text-xs font-bold text-warning-800 dark:text-warning-500" x-show="renewBlockedByRule(activeSub)" role="alert">
+          <i class="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true"></i>
+          <span x-text="t('sb.renewWarnActive')"></span>
+        </div>
+
+        <fieldset class="space-y-1.5">
+          <legend class="label" x-text="t('sb.fCycle')"></legend>
+          <div class="seg w-full">
+            <template x-for="c in ['monthly', 'yearly']" :key="c">
+              <button type="button" class="seg-btn flex-1 justify-center" :aria-pressed="(renewForm.cycle === c).toString()" @click="renewForm.cycle = c; renewError = ''" x-text="t('sb.cycle.' + c)"></button>
+            </template>
+          </div>
+        </fieldset>
+
+        <div class="space-y-1.5">
+          <label for="rf-count" class="label"><span x-text="t('sb.fPeriods')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+          <input id="rf-count" type="number" inputmode="numeric" min="1" :max="renewForm.cycle === 'yearly' ? 3 : 12" step="1" x-model.number="renewForm.count" @input="renewError = ''"
+                 class="field tabular-nums" dir="ltr" :aria-invalid="(!!renewError).toString()" :aria-describedby="renewError ? 'rf-err' : 'rf-dates'">
+        </div>
+
+        <dl id="rf-dates" class="space-y-1.5 rounded-xl border border-line bg-page/50 p-3.5 text-sm">
+          <div class="flex justify-between"><dt class="text-muted" x-text="t('sb.currentEnd')"></dt><dd class="font-bold tabular-nums" x-text="fmtDate(activeSub.ends_at)"></dd></div>
+          <div class="flex justify-between"><dt class="text-muted" x-text="t('sb.fNewEndDate')"></dt><dd class="font-extrabold tabular-nums text-brand" x-text="renewEndDate ? fmtDate(renewEndDate) : '—'"></dd></div>
+          <div class="flex justify-between" x-show="activeSub.scheduledPlanId"><dt class="text-muted" x-text="t('sb.renewPlan')"></dt><dd class="font-bold" x-text="planName(planById(renewPlanId))"></dd></div>
+        </dl>
+        <p id="rf-err" class="err" x-show="renewError" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="renewError"></span></p>
+
+        <!-- الفاتورة التي ستُنشأ -->
+        <div class="rounded-xl border border-line bg-page/50 p-3.5 text-sm">
+          <p class="mb-2 text-xs font-extrabold text-muted" x-text="t('sb.renewInvoice')"></p>
+          <template x-if="renewInvoicePreview">
+            <dl class="space-y-1.5">
+              <div class="flex justify-between"><dt class="text-muted" x-text="t('sb.subtotal')"></dt><dd class="font-bold tabular-nums" x-text="money(renewInvoicePreview.subtotal)"></dd></div>
+              <div class="flex justify-between"><dt class="text-muted" x-text="t('sb.vat')"></dt><dd class="font-bold tabular-nums" x-text="money(renewInvoicePreview.vat)"></dd></div>
+              <div class="flex justify-between border-t border-line pt-1.5"><dt class="font-bold" x-text="t('sb.total')"></dt><dd class="font-extrabold tabular-nums" x-text="money(renewInvoicePreview.total)"></dd></div>
+            </dl>
+          </template>
+          <p x-show="!renewInvoicePreview" class="text-xs text-muted" x-text="t('sb.noInvoiceFree')"></p>
+        </div>
+
+        <div>
+          <label for="rf-notes" class="label" x-text="t('sb.fNotes')"></label>
+          <textarea id="rf-notes" x-model.trim="renewForm.note" rows="2" class="field resize-none" :placeholder="t('sb.fNotesPh')"></textarea>
+        </div>
+      </div>
+
+      <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sb.close')"></button>
+        <button type="submit" class="btn btn-primary" :disabled="busy || renewBlockedByRule(activeSub)" :aria-busy="busy.toString()">
+          <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+          <span x-text="t('sb.renewBtn')"></span>
+        </button>
+      </footer>
+    </form>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     نافذة — إلغاء الاشتراك (سبب إلزامي + بيان الأثر)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'cancel'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+
+  <template x-if="modal === 'cancel' && activeSub">
+    <form @submit.prevent="applyCancel()" novalidate x-trap.noscroll="modal === 'cancel'"
+          role="alertdialog" aria-modal="true" aria-labelledby="cm-title" aria-describedby="cm-impact" @keydown.escape.stop="closeModal()"
+          class="modal-panel max-w-md">
+      <header class="flex shrink-0 items-center gap-3 border-b border-line p-5">
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-error-100 text-error-700" aria-hidden="true"><i class="fa-solid fa-ban"></i></span>
+        <div class="min-w-0">
+          <h2 id="cm-title" class="truncate text-lg font-extrabold text-ink" x-text="t('sb.modalCancelTitle')"></h2>
+          <p class="truncate text-sm text-muted" x-text="tenantName(activeSub.tenant)"></p>
+        </div>
+      </header>
+
+      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+        <div id="cm-impact" class="space-y-1 rounded-xl border border-error-600/30 bg-error-500/10 p-3.5 text-xs font-bold text-error-700 dark:text-red-300">
+          <p x-text="t('sb.cancelWarning')"></p>
+          <ul class="list-disc space-y-0.5 ps-5" role="list">
+            <template x-for="line in cancelImpact(activeSub)" :key="line">
+              <li x-text="line"></li>
+            </template>
+          </ul>
+        </div>
+
+        <div class="relative"
+             x-data="selectDropdown({
+               id: 'cf-reason',
+               options: () => CANCEL_REASONS.map(k => ({ value: k, label: t('sb.reasonOptions.' + k) })),
+               get: () => cancelForm.reason,
+               set: (v) => { cancelForm.reason = v; cancelErrors.reason = ''; },
+               placeholder: () => t('sb.fReasonPlaceholder'),
+             })"
+             @click.outside="closeList()">
+          <p class="label"><span id="cf-reason-lbl" x-text="t('sb.fReason')"></span> <span class="text-danger" aria-hidden="true">*</span></p>
+          <button type="button" id="cf-reason-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="cf-reason-list" aria-labelledby="cf-reason-lbl cf-reason-btn" aria-required="true"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  :aria-invalid="(!!cancelErrors.reason).toString()" :aria-describedby="cancelErrors.reason ? 'cf-reason-err' : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start"
+                  :class="selectedItem ? 'font-bold' : 'font-normal text-muted'"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="cf-reason-list" role="listbox" aria-labelledby="cf-reason-lbl"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          <p id="cf-reason-err" class="err" x-show="cancelErrors.reason"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="cancelErrors.reason"></span></p>
+        </div>
+
+        <div>
+          <label for="cf-notes" class="label"><span x-text="cancelForm.reason === 'other' ? t('sb.fCancelNotesReq') : t('sb.fCancelNotes')"></span> <span class="text-danger" aria-hidden="true" x-show="cancelForm.reason === 'other'">*</span></label>
+          <textarea id="cf-notes" x-model.trim="cancelForm.note" @input="cancelErrors.note = ''" rows="3" class="field resize-none" :placeholder="t('sb.fNotesPh')"
+                    :aria-required="(cancelForm.reason === 'other').toString()" :aria-invalid="(!!cancelErrors.note).toString()" :aria-describedby="cancelErrors.note ? 'cf-notes-err' : null"></textarea>
+          <p id="cf-notes-err" class="err" x-show="cancelErrors.note"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="cancelErrors.note"></span></p>
+        </div>
+      </div>
+
+      <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('sb.cancelCancelBtn')"></button>
+        <button type="submit" class="btn btn-danger" :disabled="busy" :aria-busy="busy.toString()">
+          <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+          <span x-text="t('sb.cancelBtn')"></span>
+        </button>
+      </footer>
+    </form>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     حوار تأكيد عام (بديل SweetAlert داخل الحوارات حتى لا يتعارض مع x-trap)
+     ========================================================================== -->
+<div x-cloak x-show="confirmDlg.open" x-transition.opacity class="fixed inset-0 z-[80] grid place-items-center p-4">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="resolveConfirm(false)" aria-hidden="true"></div>
+  <template x-if="confirmDlg.open">
+    <div class="modal-panel max-w-md" role="alertdialog" aria-modal="true" aria-labelledby="cd-title" aria-describedby="cd-text"
+         x-trap.noscroll="confirmDlg.open" @keydown.escape.stop="resolveConfirm(false)">
+      <div class="flex items-start gap-3 p-5">
+        <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full" :class="confirmDlg.danger ? 'bg-error-100 text-error-700' : 'bg-warning-100 text-warning-700'" aria-hidden="true">
+          <i class="fa-solid" :class="confirmDlg.danger ? 'fa-ban' : 'fa-triangle-exclamation'"></i>
+        </span>
+        <div class="min-w-0">
+          <h2 id="cd-title" class="text-lg font-extrabold text-ink" x-text="confirmDlg.title"></h2>
+          <p id="cd-text" class="mt-1 text-sm text-muted" x-text="confirmDlg.text"></p>
+        </div>
+      </div>
+      <footer class="flex items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" @click="resolveConfirm(false)" x-text="t('sb.cancelCancelBtn')"></button>
+        <button type="button" class="btn" :class="confirmDlg.danger ? 'btn-danger' : 'btn-primary'" @click="resolveConfirm(true)" x-text="confirmDlg.confirmLabel"></button>
+      </footer>
+    </div>
+  </template>
+</div>
+
+<script>
+  /**
+   * حالة واجهة LND-05 — إدارة الاشتراكات (subscriptions).
+   * البيانات من مصدر SA المشترك (نسخ عميقة قابلة للتعديل): PLANS / TENANTS / SUBSCRIPTIONS / INVOICES.
+   * - المال بالهللة (أعداد صحيحة) ويُعرض عبر SA.money فقط؛ الضريبة 15% عبر SA.invoiceTotals.
+   * - التواريخ محلية YYYY-MM-DD عبر SA.parseLocal / isoLocal / addDays (بلا toISOString).
+   * - قاعدة العمل: اشتراك «حالي» واحد (غير ملغى/منتهٍ) لكل مؤسسة.
+   * في Laravel: SubscriptionService (renew / changePlan / cancel) + Invoice::create داخل معاملة واحدة.
+   */
+  /* =====================================================================================
+     FirOb — بيانات المسؤول العام المشتركة (Single Source of Truth) — SA
+     تُضمَّن حرفيًا في كل صفحات super-admin عند البناء، فلا تتعارض الصفحات أبدًا.
+     - العملة واحدة: USD (لا تتغير مع اللغة)، وضريبة القيمة المضافة 15% محسوبة على البنود.
+     - كل الحساب المالي بالهللة (أعداد صحيحة) عبر SA.m — لا جمع لأعداد عشرية.
+     - التواريخ محلية YYYY-MM-DD (لا toISOString) — لا انزياح يوم في UTC+3.
+     - حالة الفاتورة مشتقة من المدفوعات وتاريخ الاستحقاق (إلا void/draft المخزّنتين).
+     في Laravel: نفس الجداول (plans, tenants, subscriptions, invoices, invoice_items, payments, refunds)
+     والمبالغ bigint بالهللة، والحالات تُحسب في Model accessors/Jobs.
+     ===================================================================================== */
+  const SA = (() => {
+    /* ---------- التواريخ (محلية) ---------- */
+    const pad = (n) => String(n).padStart(2, '0');
+    const isoLocal = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    const parseLocal = (s) => { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d, 12, 0, 0, 0); };
+    const today = () => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; };
+    const addDays = (n, from) => { const d = from ? parseLocal(from) : today(); d.setDate(d.getDate() + n); return isoLocal(d); };
+    const daysBetween = (a, b) => Math.round((parseLocal(b) - parseLocal(a)) / 864e5);   // b − a بالأيام
+    const startOfDay = (s) => { const d = parseLocal(s); d.setHours(0, 0, 0, 0); return d; };
+    const endOfDay = (s) => { const d = parseLocal(s); d.setHours(23, 59, 59, 999); return d; };
+    const todayIso = () => isoLocal(today());
+
+    /* ---------- المال (هللة) ---------- */
+    const CURRENCY = 'USD';
+    const VAT_RATE = 0.15;
+    const m = {
+      toMinor: (usd) => Math.round(Number(usd || 0) * 100),
+      toMajor: (minor) => minor / 100,
+      sum: (arr) => arr.reduce((s, x) => s + Math.round(x), 0),
+    };
+    const fmtLocale = (loc) => (loc === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US');
+    const money = (minor, loc) => new Intl.NumberFormat(fmtLocale(loc), { style: 'currency', currency: CURRENCY, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format((minor || 0) / 100);
+    const moneyShort = (minor, loc) => new Intl.NumberFormat(fmtLocale(loc), { style: 'currency', currency: CURRENCY, notation: 'compact', maximumFractionDigits: 1 }).format((minor || 0) / 100);
+    const fmtDate = (s, loc, opts) => s ? new Intl.DateTimeFormat(fmtLocale(loc), opts || { day: 'numeric', month: 'short', year: 'numeric' }).format(parseLocal(s)) : '—';
+    const fmtNum = (n, loc) => new Intl.NumberFormat(fmtLocale(loc)).format(n || 0);
+
+    /* ---------- الباقات (الأسعار شهرية بالهللة، قبل الضريبة) ---------- */
+    const PLANS = [
+      { id: 1, code: 'trial',      name: { ar: 'الباقة التجريبية', en: 'Trial Plan' },       price_monthly: 0,     max_users: 5,   max_storage_mb: 1024,    ai_token_quota_monthly: 10000,   trial_days: 14, is_active: true,  sort_order: 1 },
+      { id: 2, code: 'basic',      name: { ar: 'الباقة الأساسية', en: 'Basic Plan' },        price_monthly: 4900,  max_users: 10,  max_storage_mb: 5120,    ai_token_quota_monthly: 50000,   trial_days: 0,  is_active: true,  sort_order: 2 },
+      { id: 3, code: 'pro',        name: { ar: 'الباقة الاحترافية', en: 'Pro Plan' },        price_monthly: 14900, max_users: 50,  max_storage_mb: 10240,   ai_token_quota_monthly: 100000,  trial_days: 0,  is_active: true,  sort_order: 3 },
+      { id: 4, code: 'enterprise', name: { ar: 'باقة المؤسسات', en: 'Enterprise Plan' },     price_monthly: 49900, max_users: 500, max_storage_mb: 1048576, ai_token_quota_monthly: 2000000, trial_days: 0,  is_active: true,  sort_order: 4 },
+      { id: 5, code: 'legacy',     name: { ar: 'الباقة القديمة', en: 'Legacy Plan' },        price_monthly: 2900,  max_users: 20,  max_storage_mb: 2048,    ai_token_quota_monthly: 20000,   trial_days: 0,  is_active: false, sort_order: 5 },
+    ];
+
+    /* ---------- المؤسسات (status: active | trial | suspended | inactive — متّسقة مع اشتراكاتها) ---------- */
+    const TENANTS = [
+      { id: 't1',  name: { ar: 'جامعة الأقصى', en: 'Al-Aqsa University' },               domain: 'aqsa-univ.firob.sa',   color: '#0E80A1', created_at: addDays(-900), status: 'active', country: 'PS', contact: { name: { ar: 'د. سامي الحلو', en: 'Sami Al-Helou' }, email: 'admin@aqsa-univ.edu.ps', phone: '+970 8 284 1234' } },
+      { id: 't2',  name: { ar: 'مدارس الرواد الأهلية', en: 'Al-Ruwad Schools' },          domain: 'alruwad.firob.sa',     color: '#0B6680', created_at: addDays(-200), status: 'active', country: 'SA', contact: { name: { ar: 'أ. نورة القحطاني', en: 'Noura Al-Qahtani' }, email: 'it@alruwad.edu.sa', phone: '+966 11 456 7788' } },
+      { id: 't3',  name: { ar: 'أكاديمية المستقبل', en: 'Future Academy' },               domain: 'future-acad.firob.sa', color: '#094F63', created_at: addDays(-10), status: 'trial', country: 'SA', contact: { name: { ar: 'م. خالد العتيبي', en: 'Khaled Al-Otaibi' }, email: 'khaled@future-acad.sa', phone: '+966 12 610 2200' } },
+      { id: 't4',  name: { ar: 'معهد النور التقني', en: 'Al-Noor Tech Institute' },       domain: 'alnoor-tech.firob.sa', color: '#0C6F8B', created_at: addDays(-95), status: 'active', country: 'SA', contact: { name: { ar: 'أ. ريم السبيعي', en: 'Reem Al-Subaie' }, email: 'admin@alnoor-tech.sa', phone: '+966 13 812 4410' } },
+      { id: 't5',  name: { ar: 'مدرسة ألفا الدولية', en: 'Alpha International School' }, domain: 'alpha-intl.firob.sa',  color: '#586670', created_at: addDays(-60), status: 'active', country: 'AE', contact: { name: { ar: 'Ms. Laura Chen', en: 'Laura Chen' }, email: 'ops@alpha-intl.ae', phone: '+971 4 330 1200' } },
+      { id: 't6',  name: { ar: 'جامعة الرياض الأهلية', en: 'Riyadh National University' }, domain: 'riyadh-nu.firob.sa', color: '#5A687D', created_at: addDays(-500), status: 'active', country: 'SA', contact: { name: { ar: 'د. فهد الشمري', en: 'Fahad Al-Shammari' }, email: 'it@riyadh-nu.edu.sa', phone: '+966 11 210 9000' } },
+      { id: 't7',  name: { ar: 'مركز إبداع للتدريب', en: 'Ibdaa Training Center' },       domain: 'ibdaa-center.firob.sa', color: '#0E80A1', created_at: addDays(-450), status: 'inactive', country: 'SA', contact: { name: { ar: 'أ. منى الزهراني', en: 'Mona Al-Zahrani' }, email: 'info@ibdaa-center.sa', phone: '+966 12 655 0303' } },
+      { id: 't8',  name: { ar: 'مدارس الفيصل النموذجية', en: 'Al-Faisal Model Schools' }, domain: 'alfaisal.firob.sa',    color: '#0B6680', created_at: addDays(-3), status: 'trial', country: 'SA', contact: { name: { ar: 'أ. عبدالله الفيصل', en: 'Abdullah Al-Faisal' }, email: 'admin@alfaisal.edu.sa', phone: '+966 11 470 1515' } },
+      { id: 't9',  name: { ar: 'كلية الطب الأهلية', en: 'National Medical College' },     domain: 'med-college.firob.sa', color: '#094F63', created_at: addDays(-370), status: 'active', country: 'SA', contact: { name: { ar: 'د. هالة الدوسري', en: 'Hala Al-Dosari' }, email: 'it@med-college.edu.sa', phone: '+966 11 880 4400' } },
+      { id: 't10', name: { ar: 'معهد اللغات الحديث', en: 'Modern Languages Institute' },  domain: 'mli.firob.sa',         color: '#0C6F8B', created_at: addDays(-500), status: 'active', country: 'JO', contact: { name: { ar: 'أ. ليث حداد', en: 'Laith Haddad' }, email: 'admin@mli.edu.jo', phone: '+962 6 555 1200' } },
+      { id: 't11', name: { ar: 'أكاديمية البرمجة الذكية', en: 'Smart Coding Academy' },  domain: 'smartcode.firob.sa',   color: '#586670', created_at: addDays(-30), status: 'active', country: 'PS', contact: { name: { ar: 'م. يوسف النجار', en: 'Yousef Al-Najjar' }, email: 'hello@smartcode.ps', phone: '+970 59 912 3456' } },
+      { id: 't12', name: { ar: 'مدرسة نجوم الغد', en: 'Stars of Tomorrow School' },      domain: 'starsedu.firob.sa',    color: '#5A687D', created_at: addDays(-800), status: 'suspended', country: 'SA', contact: { name: { ar: 'أ. سارة المطيري', en: 'Sara Al-Mutairi' }, email: 'admin@starsedu.sa', phone: '+966 11 230 7070' } },
+    ];
+
+    /* ---------- الاشتراكات (استخدام ≤ حدود الباقة دائمًا) ---------- */
+    const SUB = (id, tenant_id, plan_id, status, auto_renew, s, e, extra) => Object.assign(
+      { id, tenant_id, plan_id, status, auto_renew, starts_at: addDays(s), ends_at: addDays(e), cancelled_at: null, cancel_reason: null, scheduledPlanId: null,
+        usage: { usersUsed: 0, storageUsedMb: 0, aiTokensUsed: 0 } }, extra || {});
+    const SUBSCRIPTIONS = [
+      SUB(1001, 't1', 4, 'active',   true,  -400,  65,  { usage: { usersUsed: 340, storageUsedMb: 612000, aiTokensUsed: 1450000 } }),
+      SUB(1014, 't1', 3, 'cancelled', false, -900, -410, { cancelled_at: addDays(-420), cancel_reason: 'upgraded', usage: { usersUsed: 46, storageUsedMb: 9100, aiTokensUsed: 88000 } }),
+      SUB(1002, 't2', 3, 'active',   true,  -200,   5,  { usage: { usersUsed: 48, storageUsedMb: 9850, aiTokensUsed: 96500 } }),
+      SUB(1003, 't3', 1, 'trialing', false,  -10,   4,  { usage: { usersUsed: 3, storageUsedMb: 210, aiTokensUsed: 2200 } }),
+      SUB(1004, 't4', 2, 'past_due', true,   -95,  -3,  { usage: { usersUsed: 9, storageUsedMb: 4700, aiTokensUsed: 47000 } }),
+      SUB(1005, 't5', 3, 'active',   true,   -60, 300,  { scheduledPlanId: 4, usage: { usersUsed: 31, storageUsedMb: 6100, aiTokensUsed: 41000 } }),
+      SUB(1006, 't6', 4, 'active',   true,  -500, 180,  { usage: { usersUsed: 410, storageUsedMb: 780000, aiTokensUsed: 1800000 } }),
+      SUB(1007, 't7', 2, 'expired',  false, -400, -30,  { usage: { usersUsed: 6, storageUsedMb: 3100, aiTokensUsed: 18500 } }),
+      SUB(1013, 't7', 1, 'cancelled', false, -450, -400, { cancelled_at: addDays(-410), cancel_reason: 'not_needed', usage: { usersUsed: 2, storageUsedMb: 90, aiTokensUsed: 900 } }),
+      SUB(1008, 't8', 1, 'trialing', true,    -3,  11,  { usage: { usersUsed: 4, storageUsedMb: 340, aiTokensUsed: 3100 } }),
+      SUB(1009, 't9', 4, 'past_due', true,  -370,  -1,  { usage: { usersUsed: 388, storageUsedMb: 690000, aiTokensUsed: 1950000 } }),
+      SUB(1010, 't10', 3, 'cancelled', false, -250, 40, { cancelled_at: addDays(-15), cancel_reason: 'too_expensive', usage: { usersUsed: 22, storageUsedMb: 5200, aiTokensUsed: 51000 } }),
+      SUB(1015, 't10', 2, 'expired',  false, -500, -260, { usage: { usersUsed: 8, storageUsedMb: 3900, aiTokensUsed: 22000 } }),
+      SUB(1011, 't11', 2, 'active',  true,   -30, 335,  { usage: { usersUsed: 7, storageUsedMb: 2600, aiTokensUsed: 31000 } }),
+      SUB(1012, 't12', 5, 'paused',  false, -800,  20,  { usage: { usersUsed: 18, storageUsedMb: 1950, aiTokensUsed: 19500 } }),
+    ];
+
+    /* ---------- الفواتير (البنود بالهللة قبل الضريبة؛ الإجمالي = المجموع + 15%) ---------- */
+    const SUBLINE = (plan_id) => ({ description_key: 'sub', plan_id, qty: 1, unit_price: PLANS.find(p => p.id === plan_id).price_monthly });
+    const INV = (id, number, tenant_id, subscription_id, issue, due, items, extra) => Object.assign(
+      { id, invoice_number: number, tenant_id, subscription_id, issue_date: addDays(issue), due_date: addDays(due), items, voided_at: null, void_reason: null, status_override: null }, extra || {});
+    const INVOICES = [
+      INV(5001, 'INV-2026-0097', 't1', 1001, -35, -20, [SUBLINE(4)]),
+      INV(5002, 'INV-2026-0071', 't1', 1001, -65, -50, [SUBLINE(4)]),
+      INV(5015, 'INV-2025-0140', 't1', null, -400, -385, [{ description: { ar: 'حزمة تراخيص مستخدمين إضافية', en: 'Additional user license pack' }, qty: 2, unit_price: 25000 }]),
+      INV(5003, 'INV-2026-0088', 't2', 1002, -15, 0, [SUBLINE(3)]),
+      INV(5004, 'INV-2026-0055', 't2', 1002, -45, -30, [SUBLINE(3)]),
+      INV(5016, 'INV-2025-0119', 't2', null, -195, -180, [{ description: { ar: 'رسوم إعداد أولي', en: 'Initial setup fee' }, qty: 1, unit_price: 4900 }],
+          { status_override: 'void', voided_at: addDays(-190), void_reason: { ar: 'أُعفي من رسوم الإعداد ضمن العرض الترحيبي', en: 'Setup fee waived as part of the welcome offer' } }),
+      INV(5005, 'INV-2026-0090', 't3', null, -4, 11, [
+        { description: { ar: 'رسوم تفعيل نطاق مخصص', en: 'Custom domain setup fee' }, qty: 1, unit_price: 15000 },
+        { description: { ar: 'إضافة تخزين سحابي 50GB', en: 'Extra 50GB storage add-on' }, qty: 1, unit_price: 10000 }]),
+      INV(5007, 'INV-2026-0095', 't4', 1004, -33, -3, [SUBLINE(2)]),
+      INV(5008, 'INV-2026-0064', 't4', 1004, -63, -33, [SUBLINE(2)]),
+      INV(5009, 'INV-2026-0079', 't5', 1005, -30, -15, [SUBLINE(3)]),
+      INV(5010, 'INV-2026-0020', 't5', null, -90, -75, [{ description: { ar: 'رسوم دعم فني إضافي', en: 'Extra technical support' }, qty: 1, unit_price: 9900 }],
+          { status_override: 'void', voided_at: addDays(-80), void_reason: { ar: 'خدمة لم تُقدَّم', en: 'Service not delivered' } }),
+      INV(5011, 'INV-2026-0083', 't6', 1006, -30, -15, [SUBLINE(4)]),
+      INV(5012, 'INV-2026-0052', 't6', 1006, -60, -45, [SUBLINE(4)]),
+      INV(5013, 'INV-2025-0151', 't7', 1007, -60, -45, [SUBLINE(2)]),
+      INV(5017, 'INV-2026-0099', 't9', 1009, -8, -1, [SUBLINE(4)]),
+      INV(5018, 'INV-2026-0068', 't9', 1009, -31, -16, [SUBLINE(4)]),
+      INV(5019, 'INV-2026-0044', 't10', 1010, -45, -30, [SUBLINE(3)]),
+      INV(5020, 'INV-2026-0080', 't11', 1011, -30, -15, [SUBLINE(2)]),
+      INV(5021, 'INV-2026-0077', 't12', 1012, -30, -15, [SUBLINE(5)]),
+    ];
+
+    /* ---------- المدفوعات (refunds[] سجل استرداد جزئي/كلي مع السبب) ---------- */
+    const PAY = (id, invoice_id, tenant_id, amount, method, ref, status, at, extra) => Object.assign(
+      { id, invoice_id, tenant_id, amount, payment_method: method, transaction_reference: ref, status, paid_at: addDays(at), refunds: [] }, extra || {});
+    const PAYMENTS = [
+      PAY(9001, 5001, 't1', 34500, 'stripe', 'TXN-518820', 'completed', -32),
+      PAY(9002, 5001, 't1', 22885, 'stripe', 'TXN-518955', 'completed', -30),
+      PAY(9003, 5002, 't1', 57385, 'bank_transfer', 'WIRE-88213', 'completed', -60),
+      PAY(9016, 5015, 't1', 57500, 'paypal', 'PAY-10023', 'completed', -390),
+      PAY(9004, 5003, 't2', 17135, 'credit_card', 'TXN-519850', 'failed', -16),
+      PAY(9005, 5003, 't2', 8600, 'credit_card', 'TXN-520011', 'completed', -14),
+      PAY(9006, 5004, 't2', 17135, 'stripe', 'TXN-517700', 'completed', -40),
+      PAY(9007, 5005, 't3', 28750, 'bank_transfer', 'WIRE-91004', 'pending', -1),
+      PAY(9009, 5007, 't4', 5635, 'paypal', 'PAY-33210', 'failed', -2),
+      PAY(9010, 5008, 't4', 5635, 'cash', 'CASH-0031', 'completed', -58),
+      PAY(9011, 5009, 't5', 17135, 'stripe', 'TXN-521500', 'completed', -25),
+      PAY(9013, 5011, 't6', 57385, 'bank_transfer', 'WIRE-92100', 'completed', -28),
+      PAY(9014, 5012, 't6', 57385, 'stripe', 'TXN-516200', 'completed', -55,
+          { refunds: [{ id: 'R-301', amount: 5000, reason: { ar: 'تعويض عن انقطاع الخدمة يومين', en: 'Credit for a two-day service outage' }, by: 'Eman Kullab', at: addDays(-50) }] }),
+      PAY(9015, 5013, 't7', 5635, 'credit_card', 'TXN-509900', 'completed', -50),
+      PAY(9017, 5017, 't9', 57385, 'credit_card', 'TXN-523300', 'failed', -1),
+      PAY(9018, 5018, 't9', 57385, 'bank_transfer', 'WIRE-90770', 'completed', -20),
+      PAY(9019, 5019, 't10', 17135, 'stripe', 'TXN-519000', 'completed', -40),
+      PAY(9020, 5020, 't11', 5635, 'credit_card', 'TXN-520700', 'completed', -28),
+      PAY(9021, 5021, 't12', 3335, 'check', 'CHK-1182', 'completed', -25),
+    ];
+
+    /* ---------- حسابات مشتقة ---------- */
+    const plan = (id) => PLANS.find(p => p.id === id) || null;
+    const tenant = (id) => TENANTS.find(t => t.id === id) || null;
+    /* الاشتراك الحالي للمؤسسة = الأحدث بدءًا من غير الملغاة/المنتهية، وإلا الأحدث مطلقًا */
+    const currentSubscription = (tenantId) => {
+      const list = SUBSCRIPTIONS.filter(s => s.tenant_id === tenantId).sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1));
+      return list.find(s => !['cancelled', 'expired'].includes(s.status)) || list[0] || null;
+    };
+    /* الإيراد الشهري المتكرر (MRR) بالهللة: الاشتراكات التي تُفوتر فعلًا (active / past_due) */
+    const mrr = () => m.sum(SUBSCRIPTIONS.filter(s => ['active', 'past_due'].includes(s.status)).map(s => plan(s.plan_id).price_monthly));
+    const invoiceTotals = (inv) => {
+      const subtotal = m.sum(inv.items.map(i => i.qty * i.unit_price));
+      const vat = Math.round(subtotal * VAT_RATE);
+      return { subtotal, vat, total: subtotal + vat };
+    };
+    const refundedOf = (p) => m.sum((p.refunds || []).map(r => r.amount));
+    const refundableOf = (p) => (p.status === 'completed' ? p.amount - refundedOf(p) : 0);
+    /* المدفوع (إجمالي المدفوعات المكتملة) يغلق الفاتورة؛ الاسترداد لا يعيد فتحها بل يُسجَّل كإشعار دائن منفصل */
+    const paidOf = (inv, payments) => m.sum((payments || PAYMENTS).filter(p => p.invoice_id === inv.id && p.status === 'completed').map(p => p.amount));
+    const refundedOfInvoice = (inv, payments) => m.sum((payments || PAYMENTS).filter(p => p.invoice_id === inv.id).map(refundedOf));
+    /* الحالة المشتقة: void | refunded | paid | partially_paid | overdue | unpaid  (+ overdue منفصلة لتلوين «جزئي متأخر») */
+    const invoiceState = (inv, payments) => {
+      const { total } = invoiceTotals(inv);
+      const paid = paidOf(inv, payments), refunded = refundedOfInvoice(inv, payments);
+      const balance = inv.status_override === 'void' ? 0 : Math.max(0, total - paid);
+      const overdue = inv.status_override !== 'void' && balance > 0 && daysBetween(inv.due_date, todayIso()) > 0;
+      let status;
+      if (inv.status_override === 'void') status = 'void';
+      else if (paid > 0 && refunded >= paid) status = 'refunded';
+      else if (balance === 0 && total > 0) status = 'paid';
+      else if (paid > 0) status = 'partially_paid';
+      else status = overdue ? 'overdue' : 'unpaid';
+      return { total, paid, refunded, net: paid - refunded, balance, overdue, status };
+    };
+
+    return { CURRENCY, VAT_RATE, PLANS, TENANTS, SUBSCRIPTIONS, INVOICES, PAYMENTS,
+             pad, isoLocal, parseLocal, today, todayIso, addDays, daysBetween, startOfDay, endOfDay,
+             m, money, moneyShort, fmtDate, fmtNum, fmtLocale, plan, tenant, currentSubscription, mrr, invoiceTotals, refundedOf, refundableOf, paidOf, refundedOfInvoice, invoiceState };
+  })();
+
+  /* قائمة اختيار موحّدة (combobox) — Home/End، بحث بالكتابة، Tab يغلق، Escape لا يتسرّب */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : (typeof placeholder === 'function' ? placeholder() : placeholder); },
+      optId(item) { return this.id + '-opt-' + item.value; },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      // children[0] هو <template x-for> — لذا +1
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const clone = (x) => JSON.parse(JSON.stringify(x));
+
+    /* إضافة +n فترة فوترة (شهر/سنة) لتاريخ محلي مع قصّ نهاية الشهر (31 يناير + شهر = 28/29 فبراير) */
+    const addPeriod = (iso, cycle, count = 1) => {
+      const d = SA.parseLocal(iso);
+      const day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + (cycle === 'yearly' ? 12 : 1) * count);
+      const last = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12).getDate();
+      d.setDate(Math.min(day, last));
+      return SA.isoLocal(d);
+    };
+    const monthsOf = (cycle, count = 1) => (cycle === 'yearly' ? 12 : 1) * count;
+    const isIso = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && SA.isoLocal(SA.parseLocal(s)) === s;
+
+    /* تطبيع البحث العربي */
+    const norm = (s) => (s || '').toString().toLowerCase().normalize('NFKD')
+      .replace(/[ً-ٰـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+      .replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+    const CURRENT = ['active', 'trialing', 'past_due', 'paused'];
+    const BILLABLE = ['active', 'past_due'];
+    const CANCEL_REASONS = ['too_expensive', 'switched_provider', 'missing_features', 'not_needed', 'upgraded', 'other'];
+    /* دورة الفوترة غير موجودة في SA → امتداد على مستوى الصفحة (السنوية للعقود الطويلة) */
+    const CYCLE = { 1001: 'yearly', 1005: 'yearly', 1006: 'yearly', 1011: 'yearly' };
+    const INITIALS_AR = { t1: 'جأ', t2: 'رو', t3: 'مس', t4: 'نت', t5: 'أد', t6: 'رج', t7: 'إت', t8: 'فن', t9: 'طب', t10: 'لغ', t11: 'بذ', t12: 'نغ' };
+
+    const I18N = {
+      ar: {
+        docTitle: 'إدارة الاشتراكات — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة المسؤول العام', superAdmin: 'المسؤول العام',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', viewAllNotif: 'عرض جميع الإشعارات',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج', systemStatus: 'حالات النظام والأخطاء',
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'إدارة المحتوى', system: 'النظام' },
+        navItems: {
+          dashboard: 'لوحة القيادة', aiAnalytics: 'تحليلات AI', tenants: 'المؤسسات',
+          plans: 'الباقات', subscriptions: 'الاشتراكات', payments: 'المدفوعات والفواتير', users: 'المستخدمون', roles: 'الأدوار والصلاحيات',
+          repository: 'المستودع', reviewQueue: 'طابور المراجعة', activityLog: 'سجل النشاط', systemSettings: 'إعدادات النظام',
+        },
+        notif: { upload: 'رفعت "جامعة الأقصى" 12 عنصرًا جديدًا للمراجعة', quota: 'اقتربت مؤسسة من حد الباقة (87%)', pastdue: 'اشتراك "معهد النور التقني" متأخر السداد' },
+        footer: { tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', screenMap: 'خريطة الشاشات', help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل' },
+
+        sb: {
+          title: 'إدارة الاشتراكات', subtitle: 'تابع اشتراكات المؤسسات، رقّي أو خفّض باقاتها، جدّد مواعيد انتهائها، أو ألغِها عند الحاجة.',
+          addSubscription: 'تعيين اشتراك جديد',
+          kpiRegion: 'مؤشرات الاشتراكات', kpiActive: 'الاشتراكات النشطة', kpiTrialing: 'الحسابات التجريبية', kpiExpiring: 'تنتهي خلال 30 يومًا',
+          kpiMrr: 'الإيراد الشهري المتكرر (MRR)', kpiMrrHint: 'من {n} اشتراك مُفوتر (قبل الضريبة)',
+          searchPlaceholder: 'ابحث باسم المؤسسة، النطاق، أو الباقة…',
+          tabAll: 'الكل', tabActive: 'نشط', tabTrialing: 'تجريبي', tabPastDue: 'متأخر السداد', tabExpired: 'منتهٍ', tabCancelled: 'ملغى', tabPaused: 'متوقف مؤقتًا',
+          statusTabsLabel: 'تصفية حسب الحالة',
+          planFilterAll: 'كل الباقات', planFilterLabel: 'تصفية حسب الباقة',
+          resetFilters: 'مسح الفلاتر', exportCsv: 'تصدير CSV',
+          tableCaption: 'قائمة اشتراكات المؤسسات', sortedBy: 'مرتبة حسب {col} ({dir})', sortAsc: 'تصاعديًا', sortDesc: 'تنازليًا',
+          colTenant: 'المؤسسة', colPlan: 'الباقة والسعر', colStatus: 'الحالة', colStart: 'تاريخ البدء', colEnd: 'تاريخ الانتهاء', colActions: 'إجراءات',
+          current: 'الاشتراك الحالي للمؤسسة',
+          scheduledChange: 'مجدول للتحويل إلى {plan} عند التجديد',
+          daysLeft: 'باقي {n} يوم', daysLeftOne: 'باقي يوم واحد', endsToday: 'ينتهي اليوم', endedDaysAgo: 'انتهى قبل {n} يوم', dueSince: 'متأخر منذ {n} يوم', dueToday: 'متأخر منذ اليوم', cancelledShort: 'أُلغي',
+          viewDetails: 'عرض التفاصيل', menuEdit: 'تعديل الاشتراك', menuUpgrade: 'ترقية / تخفيض الباقة', menuRenew: 'تمديد / تجديد', menuReactivate: 'إعادة تفعيل', menuCancel: 'إلغاء الاشتراك',
+          menuPause: 'إيقاف مؤقت', menuResume: 'استئناف الاشتراك',
+          emptyTitle: 'لا توجد اشتراكات مطابقة', emptySubtitle: 'جرّب تعديل كلمات البحث أو الفلاتر المستخدمة، أو امسحها للعودة إلى القائمة الكاملة.',
+          showingRange: 'عرض {from}–{to} من {total} (الإجمالي {all} اشتراك)',
+          pagination: 'ترقيم الصفحات', prevPage: 'الصفحة السابقة', nextPage: 'الصفحة التالية', pageN: 'الصفحة {n}',
+          close: 'إغلاق',
+          autoRenew: 'التجديد التلقائي', autoRenewOn: 'مُفعّل', autoRenewOff: 'متوقف', autoRenewFor: 'التجديد التلقائي لمؤسسة {name}',
+          autoRenewOffTitle: 'إيقاف التجديد التلقائي؟', autoRenewOffText: 'لن يُجدَّد اشتراك «{name}» تلقائيًا، وسينتهي في {date} ما لم يُجدَّد يدويًا.', autoRenewOffBtn: 'نعم، أوقف التجديد',
+          free: 'مجانية', perMonth: '{amount} / شهريًا',
+          cycle: { monthly: 'شهري', yearly: 'سنوي' },
+
+          status: { active: 'نشط', trialing: 'تجريبي', past_due: 'متأخر السداد', expired: 'منتهٍ', cancelled: 'ملغى', paused: 'متوقف مؤقتًا' },
+
+          soClose: 'إغلاق اللوحة', soTabsLabel: 'أقسام تفاصيل الاشتراك', soTab: { overview: 'نظرة عامة', invoices: 'الفواتير' },
+          soTenantInfo: 'بيانات المؤسسة والاشتراك', soStarted: 'بدأ في', soEnds: 'ينتهي في', soCredit: 'رصيد دائن',
+          soCancelledOn: 'أُلغي في', soReason: 'سبب الإلغاء', soCurrentPlan: 'الباقة الحالية',
+          soPlanConsumption: 'الحدود مقابل الاستهلاك', soUsers: 'المستخدمون', soStorage: 'التخزين', soAiTokens: 'رموز AI الشهرية',
+          soInvoices: 'فواتير المؤسسة', soNoInvoices: 'لا توجد فواتير لهذه المؤسسة بعد.',
+          invIssued: 'صدرت', invDue: 'تستحق',
+          invStatus: { void: 'ملغاة', refunded: 'مستردة', paid: 'مدفوعة', partially_paid: 'مدفوعة جزئيًا', overdue: 'متأخرة', unpaid: 'غير مدفوعة' },
+          invLineSub: 'اشتراك {plan}', invLineRenewal: 'تجديد {plan} — {n} شهر', invLineProration: 'فرق تناسبي للترقية إلى {plan}', moreItems: '+{n} بند',
+
+          reasonOptions: { too_expensive: 'السعر مرتفع', switched_provider: 'الانتقال لمزوّد آخر', missing_features: 'ميزات غير متوفرة', not_needed: 'لم تعد هناك حاجة', upgraded: 'استُبدل باشتراك أعلى', other: 'سبب آخر' },
+
+          modalNewTitle: 'تعيين اشتراك جديد', modalEditTitle: 'تعديل الاشتراك',
+          fTenant: 'المؤسسة', fTenantPlaceholder: 'اختر المؤسسة…', fTenantHint: 'تظهر فقط المؤسسات التي لا تملك اشتراكًا حاليًا، تطبيقًا لقاعدة الاشتراك الواحد.',
+          noTenantsAvailable: 'جميع المؤسسات لديها اشتراك حالي — لا توجد مؤسسة متاحة لتعيين اشتراك جديد لها.',
+          fPlan: 'الباقة', fPlanEditHint: 'لتغيير الباقة استخدم «ترقية / تخفيض الباقة» ليُحتسب الفرق التناسبي.',
+          fStatus: 'حالة الاشتراك', statusTrialingOpt: 'تجريبي (Trial)', statusActiveOpt: 'نشط مباشرة', fStartDate: 'تاريخ البدء',
+          fCycle: 'دورة الفوترة', fEndDateComputed: 'تاريخ الانتهاء (محسوب)', endHintTrial: 'البدء + {n} يومًا تجريبية', endHintCycle: 'البدء + دورة فوترة واحدة',
+          firstInvoice: 'الفاتورة الأولى التي ستصدر', subtotal: 'المجموع قبل الضريبة', vat: 'ضريبة القيمة المضافة (15%)', total: 'الإجمالي',
+          saveChanges: 'حفظ التغييرات',
+          errTenant: 'اختر المؤسسة.', errTenantTaken: 'لهذه المؤسسة اشتراك حالي بالفعل.', errPlan: 'اختر باقة فعّالة.',
+          errStart: 'أدخل تاريخ بدء صحيحًا.', errStartRange: 'يجب أن يكون تاريخ البدء خلال سنة من اليوم.', errEndPast: 'تاريخ الانتهاء الناتج في الماضي؛ اختر تاريخ بدء أحدث.',
+
+          modalUpgradeTitle: 'ترقية / تخفيض الباقة', currentPlanLbl: 'الباقة الحالية', newPlanLbl: 'اختر الباقة الجديدة',
+          exceedsUsage: 'الاستهلاك الحالي يتجاوز حدودها', downgradeBlocked: 'لا يمكن التخفيض إلى هذه الباقة لأن الاستهلاك الحالي يتجاوز حدودها:',
+          limitIssue: '{limit}: المستخدم {used} والحد {max}', to: 'إلى',
+          previewChanges: 'معاينة التغييرات', comparisonUsers: 'الحد الأقصى للمستخدمين', comparisonStorage: 'الحد الأقصى للتخزين',
+          comparisonAiTokens: 'حصة رموز AI الشهرية', comparisonPrice: 'السعر الشهري',
+          applyWhen: 'توقيت تطبيق التغيير', applyImmediate: 'تطبيق فوري الآن', applyRenewal: 'تطبيق عند التجديد ({date})', applyBtn: 'تطبيق التغيير',
+          proration: 'الاحتساب التناسبي', prorationFormula: '{remaining} يومًا متبقية ÷ {period} يومًا في الفترة × فرق السعر للفترة {diff}',
+          prorationNA: 'لا يوجد احتساب تناسبي لهذه الحالة (الفترة التجريبية أو غير المفوترة).',
+          prorationCharge: 'مبلغ مستحق الآن (قبل الضريبة)', prorationCredit: 'رصيد دائن للمؤسسة', prorationInvoiceNote: 'ستصدر فاتورة بإجمالي {total} شاملًا الضريبة.',
+
+          modalRenewTitle: 'تمديد / تجديد الاشتراك', fPeriods: 'عدد الفترات', currentEnd: 'تاريخ الانتهاء الحالي', fNewEndDate: 'تاريخ الانتهاء الجديد', renewPlan: 'باقة التجديد',
+          renewInvoice: 'فاتورة التجديد', noInvoiceFree: 'باقة مجانية — لن تصدر فاتورة.',
+          errPeriods: 'أدخل عددًا صحيحًا من الفترات ضمن الحد المسموح.', errEndNotAfter: 'يجب أن يكون تاريخ الانتهاء الجديد بعد التاريخ الحالي ({date}).',
+          fNotes: 'ملاحظات (اختياري)', fNotesPh: 'أضف أي ملاحظات داخلية حول هذا الإجراء…',
+          renewBtn: 'تأكيد التجديد', renewWarnActive: 'تنبيه: تملك هذه المؤسسة اشتراكًا حاليًا آخر. لا يمكن إعادة تفعيل هذا الاشتراك قبل إلغاء أو إنهاء الاشتراك الآخر أولًا، حفاظًا على قاعدة الاشتراك الواحد لكل مؤسسة.',
+
+          modalCancelTitle: 'إلغاء الاشتراك؟', cancelWarning: 'سيتم تغيير الحالة إلى «ملغى» فورًا وتسجيل تاريخ الإلغاء وسببه. لا تُحذف بيانات الاشتراك.',
+          impactAccess: 'ينتهي وصول المؤسسة إلى الباقة اليوم.', impactAutoRenew: 'يُوقف التجديد التلقائي.', impactMrr: 'ينخفض الإيراد الشهري المتكرر بمقدار {amount}.', impactScheduled: 'يُلغى تغيير الباقة المجدول.',
+          fReason: 'سبب الإلغاء', fReasonPlaceholder: '— اختر سببًا —', fCancelNotes: 'ملاحظات إضافية (اختياري)', fCancelNotesReq: 'وضّح السبب',
+          errReason: 'اختر سبب الإلغاء.', errNote: 'اكتب توضيحًا للسبب (5 أحرف على الأقل).',
+          cancelBtn: 'نعم، ألغِ الاشتراك', cancelCancelBtn: 'تراجع',
+
+          pauseConfirmTitle: 'إيقاف الاشتراك مؤقتًا؟', pauseConfirmText: 'سيتم إيقاف وصول مؤسسة «{name}» إلى الباقة مؤقتًا إلى أن يتم استئناف الاشتراك.',
+          pauseBtn: 'نعم، أوقفه مؤقتًا',
+
+          toastCreated: 'تم تعيين اشتراك جديد لمؤسسة «{name}»', toastEdited: 'تم حفظ تعديلات اشتراك «{name}» (ينتهي {date})',
+          toastUpgraded: 'تم تطبيق تغيير الباقة لمؤسسة «{name}» فورًا',
+          toastScheduled: 'تم جدولة تغيير الباقة لمؤسسة «{name}» ليُطبّق عند التجديد', toastRenewed: 'تم تجديد اشتراك مؤسسة «{name}» حتى {date}',
+          toastInvoice: 'وأُصدرت الفاتورة {inv} بإجمالي {total}', toastCredit: 'وأُضيف رصيد دائن {amount}',
+          toastCancelled: 'تم إلغاء اشتراك مؤسسة «{name}» وإيقاف تجديده التلقائي',
+          toastPaused: 'تم إيقاف اشتراك مؤسسة «{name}» مؤقتًا', toastResumed: 'تم استئناف اشتراك مؤسسة «{name}»',
+          toastAutoRenewOn: 'تم تفعيل التجديد التلقائي لمؤسسة «{name}»', toastAutoRenewOff: 'تم إيقاف التجديد التلقائي لمؤسسة «{name}»',
+          liveResults: 'النتائج: {n} اشتراك', liveSorted: 'تم الترتيب حسب {col} {dir}', livePage: 'الصفحة {n} من {total}',
+          liveUnavailable: '«{action}» غير متاح لاشتراك «{name}» في حالته الحالية', liveExported: 'تم تصدير {n} اشتراك إلى CSV', liveBlocked: 'تعذّر التطبيق: الاستهلاك يتجاوز حدود الباقة',
+          yes: 'نعم', no: 'لا',
+          csv: { id: 'المعرّف', tenant: 'المؤسسة', domain: 'النطاق', plan: 'الباقة', price: 'السعر الشهري', currency: 'العملة', cycle: 'دورة الفوترة', status: 'الحالة', autoRenew: 'التجديد التلقائي', start: 'تاريخ البدء', end: 'تاريخ الانتهاء' },
+        },
+      },
+      en: {
+        docTitle: 'Subscriptions Management — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Super Admin Dashboard', superAdmin: 'Super Admin',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read', viewAllNotif: 'View all notifications',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out', systemStatus: 'System Status & Errors',
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content Management', system: 'System' },
+        navItems: {
+          dashboard: 'Dashboard', aiAnalytics: 'AI Analytics', tenants: 'Tenants',
+          plans: 'Plans', subscriptions: 'Subscriptions', payments: 'Invoices & Payments', users: 'Users', roles: 'Roles',
+          repository: 'Repository', reviewQueue: 'Review Queue', activityLog: 'Activity Log', systemSettings: 'System Settings',
+        },
+        notif: { upload: '"Al-Aqsa University" uploaded 12 new items for review', quota: 'A tenant is near its plan quota (87%)', pastdue: '"Al-Noor Tech Institute" subscription payment is past due' },
+        footer: { tagline: 'Central Educational Repository', rights: 'All rights reserved', screenMap: 'Screen map', help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational' },
+
+        sb: {
+          title: 'Subscriptions Management', subtitle: 'Track tenant subscriptions, upgrade or downgrade their plans, renew end dates, or cancel when needed.',
+          addSubscription: 'Assign New Subscription',
+          kpiRegion: 'Subscription indicators', kpiActive: 'Active Subscriptions', kpiTrialing: 'Trialing Accounts', kpiExpiring: 'Expiring within 30 days',
+          kpiMrr: 'Monthly Recurring Revenue (MRR)', kpiMrrHint: 'From {n} billable subscriptions (before VAT)',
+          searchPlaceholder: 'Search by tenant, domain, or plan…',
+          tabAll: 'All', tabActive: 'Active', tabTrialing: 'Trialing', tabPastDue: 'Past Due', tabExpired: 'Expired', tabCancelled: 'Cancelled', tabPaused: 'Paused',
+          statusTabsLabel: 'Filter by status',
+          planFilterAll: 'All plans', planFilterLabel: 'Filter by plan',
+          resetFilters: 'Reset filters', exportCsv: 'Export CSV',
+          tableCaption: 'Tenant subscriptions list', sortedBy: 'sorted by {col} ({dir})', sortAsc: 'ascending', sortDesc: 'descending',
+          colTenant: 'Tenant', colPlan: 'Plan & Price', colStatus: 'Status', colStart: 'Start Date', colEnd: 'End Date', colActions: 'Actions',
+          current: 'Tenant\'s current subscription',
+          scheduledChange: 'Scheduled to switch to {plan} at renewal',
+          daysLeft: '{n} days left', daysLeftOne: '1 day left', endsToday: 'Ends today', endedDaysAgo: 'Ended {n} days ago', dueSince: 'Past due {n} days', dueToday: 'Past due since today', cancelledShort: 'Cancelled',
+          viewDetails: 'View Details', menuEdit: 'Edit Subscription', menuUpgrade: 'Upgrade / Downgrade Plan', menuRenew: 'Extend / Renew', menuReactivate: 'Reactivate', menuCancel: 'Cancel Subscription',
+          menuPause: 'Pause Subscription', menuResume: 'Resume Subscription',
+          emptyTitle: 'No matching subscriptions', emptySubtitle: 'Try adjusting your search or filters, or reset them to see the full list.',
+          showingRange: 'Showing {from}–{to} of {total} ({all} subscriptions in total)',
+          pagination: 'Pagination', prevPage: 'Previous page', nextPage: 'Next page', pageN: 'Page {n}',
+          close: 'Close',
+          autoRenew: 'Auto-Renew', autoRenewOn: 'On', autoRenewOff: 'Off', autoRenewFor: 'Auto-renew for {name}',
+          autoRenewOffTitle: 'Turn off auto-renew?', autoRenewOffText: 'The subscription for "{name}" will not renew automatically and will end on {date} unless renewed manually.', autoRenewOffBtn: 'Yes, turn it off',
+          free: 'Free', perMonth: '{amount} / month',
+          cycle: { monthly: 'Monthly', yearly: 'Yearly' },
+
+          status: { active: 'Active', trialing: 'Trialing', past_due: 'Past Due', expired: 'Expired', cancelled: 'Cancelled', paused: 'Paused' },
+
+          soClose: 'Close panel', soTabsLabel: 'Subscription detail sections', soTab: { overview: 'Overview', invoices: 'Invoices' },
+          soTenantInfo: 'Tenant & Subscription Info', soStarted: 'Started on', soEnds: 'Ends on', soCredit: 'Credit balance',
+          soCancelledOn: 'Cancelled on', soReason: 'Cancellation reason', soCurrentPlan: 'Current Plan',
+          soPlanConsumption: 'Plan Limits vs Consumption', soUsers: 'Users', soStorage: 'Storage', soAiTokens: 'Monthly AI Tokens',
+          soInvoices: 'Tenant invoices', soNoInvoices: 'No invoices for this tenant yet.',
+          invIssued: 'Issued', invDue: 'Due',
+          invStatus: { void: 'Void', refunded: 'Refunded', paid: 'Paid', partially_paid: 'Partially paid', overdue: 'Overdue', unpaid: 'Unpaid' },
+          invLineSub: '{plan} subscription', invLineRenewal: '{plan} renewal — {n} month(s)', invLineProration: 'Prorated upgrade to {plan}', moreItems: '+{n} item(s)',
+
+          reasonOptions: { too_expensive: 'Too expensive', switched_provider: 'Switched to another provider', missing_features: 'Missing features', not_needed: 'No longer needed', upgraded: 'Replaced by a higher subscription', other: 'Other reason' },
+
+          modalNewTitle: 'Assign New Subscription', modalEditTitle: 'Edit Subscription',
+          fTenant: 'Tenant', fTenantPlaceholder: 'Select a tenant…', fTenantHint: 'Only tenants without a current subscription are shown, enforcing the single-subscription rule.',
+          noTenantsAvailable: 'Every tenant already has a current subscription — none are available for a new assignment.',
+          fPlan: 'Plan', fPlanEditHint: 'To change the plan use "Upgrade / Downgrade Plan" so the prorated difference is calculated.',
+          fStatus: 'Subscription status', statusTrialingOpt: 'Trialing', statusActiveOpt: 'Active immediately', fStartDate: 'Start date',
+          fCycle: 'Billing cycle', fEndDateComputed: 'End date (computed)', endHintTrial: 'Start + {n} trial days', endHintCycle: 'Start + one billing cycle',
+          firstInvoice: 'First invoice to be issued', subtotal: 'Subtotal', vat: 'VAT (15%)', total: 'Total',
+          saveChanges: 'Save changes',
+          errTenant: 'Select a tenant.', errTenantTaken: 'This tenant already has a current subscription.', errPlan: 'Select an active plan.',
+          errStart: 'Enter a valid start date.', errStartRange: 'The start date must be within one year of today.', errEndPast: 'The resulting end date is in the past; choose a later start date.',
+
+          modalUpgradeTitle: 'Upgrade / Downgrade Plan', currentPlanLbl: 'Current Plan', newPlanLbl: 'Choose the new plan',
+          exceedsUsage: 'Current usage exceeds its limits', downgradeBlocked: 'Cannot downgrade to this plan because current usage exceeds its limits:',
+          limitIssue: '{limit}: using {used}, limit {max}', to: 'to',
+          previewChanges: 'Preview of changes', comparisonUsers: 'Max users', comparisonStorage: 'Max storage',
+          comparisonAiTokens: 'Monthly AI token quota', comparisonPrice: 'Monthly price',
+          applyWhen: 'When to apply the change', applyImmediate: 'Apply immediately', applyRenewal: 'Apply at renewal ({date})', applyBtn: 'Apply Change',
+          proration: 'Proration', prorationFormula: '{remaining} remaining days ÷ {period} days in period × period price difference {diff}',
+          prorationNA: 'No proration applies here (trial or non-billed subscription).',
+          prorationCharge: 'Amount due now (before VAT)', prorationCredit: 'Credit to the tenant', prorationInvoiceNote: 'An invoice totalling {total} including VAT will be issued.',
+
+          modalRenewTitle: 'Extend / Renew Subscription', fPeriods: 'Number of periods', currentEnd: 'Current end date', fNewEndDate: 'New end date', renewPlan: 'Renewal plan',
+          renewInvoice: 'Renewal invoice', noInvoiceFree: 'Free plan — no invoice will be issued.',
+          errPeriods: 'Enter a whole number of periods within the allowed range.', errEndNotAfter: 'The new end date must be after the current end date ({date}).',
+          fNotes: 'Notes (optional)', fNotesPh: 'Add any internal notes about this action…',
+          renewBtn: 'Confirm Renewal', renewWarnActive: 'Warning: this tenant already has another current subscription. This subscription cannot be reactivated until the other one is cancelled or ended first, to preserve the single-subscription-per-tenant rule.',
+
+          modalCancelTitle: 'Cancel this subscription?', cancelWarning: 'The status changes to "Cancelled" immediately and the date and reason are recorded. Subscription data is not deleted.',
+          impactAccess: 'The tenant loses access to the plan today.', impactAutoRenew: 'Auto-renew is turned off.', impactMrr: 'MRR decreases by {amount}.', impactScheduled: 'The scheduled plan change is dropped.',
+          fReason: 'Cancellation reason', fReasonPlaceholder: '— Select a reason —', fCancelNotes: 'Additional notes (optional)', fCancelNotesReq: 'Explain the reason',
+          errReason: 'Select a cancellation reason.', errNote: 'Describe the reason (at least 5 characters).',
+          cancelBtn: 'Yes, cancel subscription', cancelCancelBtn: 'Go back',
+
+          pauseConfirmTitle: 'Pause this subscription?', pauseConfirmText: 'Access for "{name}" will be temporarily suspended until the subscription is resumed.',
+          pauseBtn: 'Yes, pause it',
+
+          toastCreated: 'New subscription assigned to "{name}"', toastEdited: 'Changes saved for "{name}" (ends {date})',
+          toastUpgraded: 'Plan change applied to "{name}" immediately',
+          toastScheduled: 'Plan change scheduled for "{name}" to apply at renewal', toastRenewed: 'Subscription for "{name}" renewed until {date}',
+          toastInvoice: 'and invoice {inv} issued for {total}', toastCredit: 'and a credit of {amount} was added',
+          toastCancelled: 'Subscription for "{name}" was cancelled and auto-renew turned off',
+          toastPaused: 'Subscription for "{name}" has been paused', toastResumed: 'Subscription for "{name}" has been resumed',
+          toastAutoRenewOn: 'Auto-renew enabled for "{name}"', toastAutoRenewOff: 'Auto-renew disabled for "{name}"',
+          liveResults: '{n} subscriptions found', liveSorted: 'Sorted by {col} {dir}', livePage: 'Page {n} of {total}',
+          liveUnavailable: '"{action}" is not available for "{name}" in its current status', liveExported: 'Exported {n} subscriptions to CSV', liveBlocked: 'Not applied: usage exceeds the plan limits',
+          yes: 'Yes', no: 'No',
+          csv: { id: 'ID', tenant: 'Tenant', domain: 'Domain', plan: 'Plan', price: 'Monthly price', currency: 'Currency', cycle: 'Billing cycle', status: 'Status', autoRenew: 'Auto-renew', start: 'Start date', end: 'End date' },
+        },
+      },
+    };
+
+    /* ---------- الحالة القابلة للتعديل (نسخ عميقة من SA) ---------- */
+    const PLANS = clone(SA.PLANS);
+    const TENANTS = clone(SA.TENANTS);
+    const SUBSCRIPTIONS = clone(SA.SUBSCRIPTIONS).map(s => Object.assign(s, {
+      billing_cycle: CYCLE[s.id] || 'monthly', credit_minor: 0, cancel_note: null,
+      tenant: TENANTS.find(tn => tn.id === s.tenant_id),
+    }));
+    const INVOICES = clone(SA.INVOICES);
+    let confirmResolve = null;
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'subscriptions',
+      liveMsg: '',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      announce(msg) { this.liveMsg = ''; this.$nextTick(() => { this.liveMsg = msg; }); },
+
+      /* ---------- التنقل ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'overview.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-robot', href: 'ai-analytics.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'tenants', icon: 'fa-solid fa-building-columns', href: 'tenants.html' },
+          { key: 'plans', icon: 'fa-solid fa-cubes', href: 'plans.html' },
+          { key: 'subscriptions', icon: 'fa-solid fa-layer-group', href: 'subscriptions.html' },
+          { key: 'payments', icon: 'fa-solid fa-file-invoice-dollar', href: 'payments.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'activity-log.html' },
+          { key: 'systemSettings', icon: 'fa-solid fa-sliders', href: 'system-settings.html' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'upload', time: '5m', read: false, icon: 'fa-solid fa-upload', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'pastdue', time: '40m', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'quota', time: '1h', read: true, icon: 'fa-solid fa-gauge-high', tone: 'bg-info-500/15 text-info-700 dark:text-blue-300' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- البيانات ---------- */
+      plans: PLANS,
+      tenantsPool: TENANTS,
+      subscriptions: SUBSCRIPTIONS,
+      invoices: INVOICES,
+      payments: SA.PAYMENTS,
+      CANCEL_REASONS,
+      addPeriod, monthsOf,
+
+      /* ---------- تنسيق ---------- */
+      money(minor) { return SA.money(minor, this.locale); },
+      fmtDate(iso) { return SA.fmtDate(iso, this.locale); },
+      fmtNum(n) { return SA.fmtNum(n, this.locale); },
+      tenantById(id) { return this.tenantsPool.find(tn => tn.id === id) || null; },
+      tenantName(tn) { return tn ? ((tn.name && tn.name[this.locale]) || (tn.name && tn.name.ar) || tn.id) : '—'; },
+      initials(tn) {
+        if (!tn) return '';
+        if (this.locale === 'ar' && INITIALS_AR[tn.id]) return INITIALS_AR[tn.id];
+        return (tn.name.en || '').split(/\s+/).map(w => w.replace(/^Al-/, '')[0] || '').slice(0, 2).join('').toUpperCase();
+      },
+      planById(id) { return this.plans.find(p => p.id === id) || null; },
+      planName(p) { return p ? ((p.name && p.name[this.locale]) || (p.name && p.name.ar) || p.code) : '—'; },
+      planPriceLabel(p) {
+        if (!p) return '—';
+        return p.price_monthly > 0 ? this.tf('sb.perMonth', { amount: this.money(p.price_monthly) }) : this.t('sb.free');
+      },
+      humanSize(mb) {
+        mb = Number(mb) || 0;
+        const f = (n) => new Intl.NumberFormat(SA.fmtLocale(this.locale), { maximumFractionDigits: 2 }).format(n);
+        if (mb >= 1024 * 1024) return f(mb / 1024 / 1024) + ' TB';
+        if (mb >= 1024) return f(mb / 1024) + ' GB';
+        return f(mb) + ' MB';
+      },
+      compactNumber(n) { return new Intl.NumberFormat(SA.fmtLocale(this.locale), { notation: 'compact', maximumFractionDigits: 2 }).format(Number(n) || 0); },
+      quotaPct(used, limit) { return limit ? Math.min(100, Math.round((used / limit) * 100)) : 0; },
+      quotaBarClass(pct) { return pct >= 100 ? 'bg-error-600' : pct > 80 ? 'bg-accent-500' : 'bg-primary-500'; },
+      quotaTextClass(pct) { return pct >= 100 ? 'text-error-700 dark:text-red-300' : pct > 80 ? 'text-yellow-900 dark:text-accent-500' : 'text-muted'; },
+      diffClass(oldV, newV) { return newV > oldV ? 'text-success-700 dark:text-success-500' : newV < oldV ? 'text-error-700 dark:text-red-300' : 'text-ink'; },
+      quotaRows(s) {
+        const p = this.planById(s.plan_id); const u = s.usage;
+        return [
+          { key: 'users', label: 'sb.soUsers', pct: this.quotaPct(u.usersUsed, p.max_users), text: this.fmtNum(u.usersUsed) + ' / ' + this.fmtNum(p.max_users) },
+          { key: 'storage', label: 'sb.soStorage', pct: this.quotaPct(u.storageUsedMb, p.max_storage_mb), text: this.humanSize(u.storageUsedMb) + ' / ' + this.humanSize(p.max_storage_mb) },
+          { key: 'ai', label: 'sb.soAiTokens', pct: this.quotaPct(u.aiTokensUsed, p.ai_token_quota_monthly), text: this.fmtNum(u.aiTokensUsed) + ' / ' + this.fmtNum(p.ai_token_quota_monthly) },
+        ];
+      },
+
+      statusLabel(s) { return this.t('sb.status.' + s); },
+      statusClass(s) { return { active: 'badge-success', trialing: 'badge-info', past_due: 'badge-warning', expired: 'badge-muted', cancelled: 'badge-danger', paused: 'badge-neutral' }[s] || 'badge-muted'; },
+      statusDotClass(s) { return { active: 'text-success-500', trialing: 'text-info-500', past_due: 'text-warning-500', expired: 'text-line-strong', cancelled: 'text-error-500', paused: 'text-muted' }[s] || 'text-line-strong'; },
+      cancelReasonLabel(r) { return r ? this.t('sb.reasonOptions.' + r) : '—'; },
+      invState(inv) { return SA.invoiceState(inv, this.payments); },
+      invStatusLabel(s) { return this.t('sb.invStatus.' + s); },
+      invStatusClass(s) { return { paid: 'badge-success', partially_paid: 'badge-info', unpaid: 'badge-warning', overdue: 'badge-danger', refunded: 'badge-neutral', void: 'badge-muted' }[s] || 'badge-muted'; },
+      invoicesFor(s) {
+        if (!s) return [];
+        return this.invoices.filter(i => i.tenant_id === s.tenant_id)
+          .sort((a, b) => (a.issue_date === b.issue_date ? b.id - a.id : (a.issue_date < b.issue_date ? 1 : -1)));
+      },
+      invoiceLineLabel(inv) {
+        const it = inv.items[0]; if (!it) return '';
+        const plan = this.planName(this.planById(it.plan_id));
+        let s = it.description_key === 'sub' ? this.tf('sb.invLineSub', { plan })
+          : it.description_key === 'renewal' ? this.tf('sb.invLineRenewal', { plan, n: this.fmtNum(it.qty) })
+          : it.description_key === 'proration' ? this.tf('sb.invLineProration', { plan })
+          : (it.description ? (it.description[this.locale] || it.description.ar) : '');
+        if (inv.items.length > 1) s += ' ' + this.tf('sb.moreItems', { n: this.fmtNum(inv.items.length - 1) });
+        return s;
+      },
+
+      daysLeft(s) { return SA.daysBetween(SA.todayIso(), s.ends_at); },
+      daysRemainingLabel(s) {
+        if (!s.ends_at) return '—';
+        const n = this.daysLeft(s);
+        if (s.status === 'paused') return this.t('sb.status.paused');
+        if (s.status === 'cancelled') return this.t('sb.cancelledShort');
+        if (s.status === 'past_due') return n >= 0 ? this.t('sb.dueToday') : this.tf('sb.dueSince', { n: this.fmtNum(Math.abs(n)) });
+        if (n < 0) return this.tf('sb.endedDaysAgo', { n: this.fmtNum(Math.abs(n)) });
+        if (n === 0) return this.t('sb.endsToday');
+        if (n === 1) return this.t('sb.daysLeftOne');
+        return this.tf('sb.daysLeft', { n: this.fmtNum(n) });
+      },
+      daysRemainingClass(s) {
+        if (['cancelled', 'expired', 'paused'].includes(s.status)) return 'text-muted';
+        if (s.status === 'past_due') return 'text-warning-700 dark:text-warning-500';
+        return this.daysLeft(s) <= 7 ? 'text-warning-700 dark:text-warning-500' : 'text-muted';
+      },
+
+      /* ---------- مؤشرات KPI (محسوبة من الحالة الحالية) ---------- */
+      mrrOf(subs) { return SA.m.sum(subs.filter(s => BILLABLE.includes(s.status)).map(s => this.planById(s.plan_id).price_monthly)); },
+      isExpiring(s) { if (!['active', 'trialing'].includes(s.status)) return false; const n = this.daysLeft(s); return n >= 0 && n <= 30; },
+      get kpis() {
+        const subs = this.subscriptions;
+        return {
+          active: subs.filter(s => s.status === 'active').length,
+          trialing: subs.filter(s => s.status === 'trialing').length,
+          expiring: subs.filter(s => this.isExpiring(s)).length,
+          billable: subs.filter(s => BILLABLE.includes(s.status)).length,
+          mrr: this.mrrOf(subs),
+        };
+      },
+
+      /* ---------- بحث / فلاتر / ترتيب / ترقيم ---------- */
+      search: '', statusFilter: 'all', planFilter: 'all',
+      sortKey: 'starts_at', sortDir: 'desc', page: 1, pageSize: 8,
+      sortCols: [
+        { key: 'tenant', label: 'sb.colTenant' }, { key: 'plan', label: 'sb.colPlan' }, { key: 'status', label: 'sb.colStatus' },
+        { key: 'starts_at', label: 'sb.colStart' }, { key: 'ends_at', label: 'sb.colEnd' },
+      ],
+      get statusTabs() {
+        const labels = { all: 'tabAll', active: 'tabActive', trialing: 'tabTrialing', past_due: 'tabPastDue', paused: 'tabPaused', expired: 'tabExpired', cancelled: 'tabCancelled' };
+        return Object.keys(labels).map(k => ({
+          key: k, label: this.t('sb.' + labels[k]),
+          count: k === 'all' ? this.subscriptions.length : this.subscriptions.filter(s => s.status === k).length,
+        }));
+      },
+      setStatusFilter(k) { this.statusFilter = k; },
+      onTabsKey(e) {
+        const keys = this.statusTabs.map(x => x.key);
+        const next = this.rovingIndex(e, keys.indexOf(this.statusFilter), keys.length);
+        if (next === null) return;
+        this.statusFilter = keys[next];
+        this.$nextTick(() => document.getElementById('st-tab-' + keys[next])?.focus());
+      },
+      /* مؤشر التنقل الدوّار (RTL-aware): يعيد الفهرس الجديد أو null */
+      rovingIndex(e, cur, len, vertical = false) {
+        const rtl = document.documentElement.dir === 'rtl';
+        let step = 0;
+        if (e.key === 'ArrowRight') step = rtl ? -1 : 1;
+        else if (e.key === 'ArrowLeft') step = rtl ? 1 : -1;
+        else if (vertical && e.key === 'ArrowDown') step = 1;
+        else if (vertical && e.key === 'ArrowUp') step = -1;
+        else if (e.key === 'Home') { e.preventDefault(); return 0; }
+        else if (e.key === 'End') { e.preventDefault(); return len - 1; }
+        else return null;
+        e.preventDefault();
+        return ((cur < 0 ? 0 : cur + step) % len + len) % len;
+      },
+      get hasFilters() { return !!this.search.trim() || this.statusFilter !== 'all' || this.planFilter !== 'all'; },
+      matches(s) {
+        const q = norm(this.search);
+        const plan = this.planById(s.plan_id);
+        const hay = norm([s.tenant.name.ar, s.tenant.name.en, s.tenant.domain, plan.name.ar, plan.name.en, plan.code].join(' '));
+        const matchesStatus = this.statusFilter === 'all' || (this.statusFilter === 'expiring' ? this.isExpiring(s) : s.status === this.statusFilter);
+        const matchesPlan = this.planFilter === 'all' || plan.code === this.planFilter;
+        return (!q || hay.includes(q)) && matchesStatus && matchesPlan;
+      },
+      sortValue(s, key) {
+        if (key === 'tenant') return this.tenantName(s.tenant);
+        if (key === 'plan') return this.planById(s.plan_id).price_monthly;
+        if (key === 'status') return this.statusLabel(s.status);
+        return s[key] || '';
+      },
+      get filteredSubs() {
+        const dir = this.sortDir === 'asc' ? 1 : -1, key = this.sortKey;
+        const coll = new Intl.Collator(SA.fmtLocale(this.locale));
+        return this.subscriptions.filter(s => this.matches(s)).sort((a, b) => {
+          const va = this.sortValue(a, key), vb = this.sortValue(b, key);
+          const c = typeof va === 'number' ? va - vb : coll.compare(String(va), String(vb));
+          return (c || a.id - b.id) * dir;
+        });
+      },
+      get pageCount() { return Math.max(1, Math.ceil(this.filteredSubs.length / this.pageSize)); },
+      get pagedSubs() { const p = Math.min(this.page, this.pageCount); return this.filteredSubs.slice((p - 1) * this.pageSize, p * this.pageSize); },
+      get pageFrom() { return this.filteredSubs.length ? (Math.min(this.page, this.pageCount) - 1) * this.pageSize + 1 : 0; },
+      get pageTo() { return Math.min(this.filteredSubs.length, Math.min(this.page, this.pageCount) * this.pageSize); },
+      goPage(n) {
+        const p = Math.min(Math.max(1, n), this.pageCount);
+        if (p === this.page) return;
+        this.page = p;
+        this.announce(this.tf('sb.livePage', { n: this.fmtNum(p), total: this.fmtNum(this.pageCount) }));
+      },
+      sortBy(key) {
+        if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        else { this.sortKey = key; this.sortDir = ['starts_at', 'ends_at'].includes(key) ? 'desc' : 'asc'; }
+        this.page = 1;
+        const col = this.t(this.sortCols.find(c => c.key === key).label);
+        this.announce(this.tf('sb.liveSorted', { col, dir: this.t(this.sortDir === 'asc' ? 'sb.sortAsc' : 'sb.sortDesc') }));
+      },
+      ariaSort(key) { return this.sortKey === key ? (this.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'; },
+      get sortSummary() {
+        const col = this.sortCols.find(c => c.key === this.sortKey);
+        return this.tf('sb.sortedBy', { col: this.t(col.label), dir: this.t(this.sortDir === 'asc' ? 'sb.sortAsc' : 'sb.sortDesc') });
+      },
+      onFiltersChanged() {
+        this.page = 1;
+        this.announce(this.tf('sb.liveResults', { n: this.fmtNum(this.filteredSubs.length) }));
+      },
+      resetFilters() { this.search = ''; this.statusFilter = 'all'; this.planFilter = 'all'; this.onFiltersChanged(); },
+
+      /* ---------- قواعد العمل وصلاحية الإجراءات ---------- */
+      tenantHasCurrent(tenant_id, excludeId) {
+        return this.subscriptions.some(s => s.tenant_id === tenant_id && s.id !== excludeId && CURRENT.includes(s.status));
+      },
+      availableTenants() { return this.tenantsPool.filter(tn => !this.tenantHasCurrent(tn.id)); },
+      isCurrent(s) { return CURRENT.includes(s.status); },
+      isReactivation(s) { return !!s && (s.status === 'expired' || s.status === 'cancelled'); },
+      renewBlockedByRule(s) { return this.isReactivation(s) && this.tenantHasCurrent(s.tenant_id, s.id); },
+      canEdit(s) { return ['active', 'trialing', 'past_due', 'paused'].includes(s.status); },
+      canUpgrade(s) { return ['active', 'trialing', 'past_due'].includes(s.status); },
+      canRenew(s) { return !this.renewBlockedByRule(s); },
+      canCancel(s) { return ['active', 'trialing', 'past_due', 'paused'].includes(s.status); },
+      canPause(s) { return ['active', 'trialing', 'past_due'].includes(s.status); },
+      canResume(s) { return s.status === 'paused'; },
+      canToggleAutoRenew(s) { return CURRENT.includes(s.status); },
+      rowActions(s) {
+        const paused = s.status === 'paused';
+        return [
+          { key: 'view', icon: 'fa-regular fa-eye', label: this.t('sb.viewDetails'), disabled: false },
+          { key: 'edit', icon: 'fa-solid fa-pen', label: this.t('sb.menuEdit'), disabled: !this.canEdit(s) },
+          { key: 'upgrade', icon: 'fa-solid fa-arrow-right-arrow-left', label: this.t('sb.menuUpgrade'), disabled: !this.canUpgrade(s) },
+          { key: 'renew', icon: 'fa-solid fa-rotate', label: this.isReactivation(s) ? this.t('sb.menuReactivate') : this.t('sb.menuRenew'), disabled: !this.canRenew(s) },
+          { key: 'pause', icon: paused ? 'fa-solid fa-play' : 'fa-solid fa-pause', label: paused ? this.t('sb.menuResume') : this.t('sb.menuPause'), disabled: !this.canPause(s) && !this.canResume(s) },
+          { key: 'cancel', icon: 'fa-solid fa-ban', label: this.t('sb.menuCancel'), danger: true, disabled: !this.canCancel(s) },
+        ];
+      },
+      runAction(key, s) {
+        const a = this.rowActions(s).find(x => x.key === key);
+        if (!a) return;
+        if (a.disabled) { this.announce(this.tf('sb.liveUnavailable', { action: a.label, name: this.tenantName(s.tenant) })); return; }
+        ({ view: () => this.openDetails(s), edit: () => this.openEditModal(s), upgrade: () => this.openUpgradeModal(s), renew: () => this.openRenewModal(s),
+           pause: () => (s.status === 'paused' ? this.menuResume(s) : this.menuPause(s)), cancel: () => this.openCancelModal(s) })[key]();
+      },
+
+      /* ---------- إدارة التركيز ---------- */
+      soOpener: null, modalOpener: null, confirmOpener: null,
+      restoreFocus(el) {
+        this.$nextTick(() => setTimeout(() => {
+          if (el && el.isConnected !== false && typeof el.focus === 'function') el.focus();
+          else document.getElementById('main')?.focus?.();
+        }, 30));
+      },
+
+      /* ---------- Slide-over التفاصيل ---------- */
+      slideOverOpen: false, selectedId: null, soTab: 'overview',
+      get selected() { return this.subscriptions.find(s => s.id === this.selectedId) || null; },
+      openDetails(s) {
+        this.soOpener = document.activeElement;
+        this.selectedId = s.id; this.soTab = 'overview';
+        this.slideOverOpen = true;
+      },
+      closeDetails() { if (!this.slideOverOpen) return; this.slideOverOpen = false; this.restoreFocus(this.soOpener); },
+      onSoTabsKey(e) {
+        const tabs = ['overview', 'invoices'];
+        const next = this.rovingIndex(e, tabs.indexOf(this.soTab), tabs.length);
+        if (next === null) return;
+        this.soTab = tabs[next];
+        this.$nextTick(() => document.getElementById('so-tab-' + tabs[next])?.focus());
+      },
+
+      /* ---------- حوار التأكيد العام ---------- */
+      confirmDlg: { open: false, title: '', text: '', confirmLabel: '', danger: false },
+      askConfirm({ title, text, confirmLabel, danger = false }) {
+        this.confirmOpener = document.activeElement;
+        this.confirmDlg = { open: true, title, text, confirmLabel, danger };
+        return new Promise(res => { confirmResolve = res; });
+      },
+      resolveConfirm(ok) {
+        const r = confirmResolve; confirmResolve = null;
+        this.confirmDlg = { open: false, title: '', text: '', confirmLabel: '', danger: false };
+        this.restoreFocus(this.confirmOpener);
+        if (r) r(ok);
+      },
+
+      /* ---------- النوافذ ---------- */
+      modal: null, busy: false, activeSubId: null,
+      get activeSub() { return this.subscriptions.find(s => s.id === this.activeSubId) || null; },
+      wait(ms = 400) { return new Promise(r => setTimeout(r, ms)); },
+      openModal(name, s) {
+        this.modalOpener = document.activeElement;
+        this.activeSubId = s ? s.id : null;
+        this.modal = name;
+      },
+      closeModal() {
+        if (this.busy || !this.modal) return;
+        this.modal = null; this.activeSubId = null;
+        this.restoreFocus(this.modalOpener);
+      },
+      focusField(id) { this.$nextTick(() => document.getElementById(id)?.focus?.()); },
+
+      /* ---------- إنشاء / تعديل اشتراك (الانتهاء محسوب) ---------- */
+      subForm: { mode: 'new', id: null, tenant_id: '', plan_id: 2, status: 'trialing', billing_cycle: 'monthly', starts_at: SA.todayIso() },
+      formErrors: { tenant: '', plan: '', starts_at: '' },
+      trialDaysFor(planId) { const p = this.planById(planId); return (p && p.trial_days) || 14; },
+      computeEndDate(f) {
+        if (!isIso(f.starts_at)) return '';
+        return f.status === 'trialing' ? SA.addDays(this.trialDaysFor(f.plan_id), f.starts_at) : addPeriod(f.starts_at, f.billing_cycle, 1);
+      },
+      get formEndDate() { return this.computeEndDate(this.subForm); },
+      subLine(planId, months, key = 'sub') {
+        const p = this.planById(planId);
+        return { description_key: key, plan_id: planId, qty: months, unit_price: p.price_monthly };
+      },
+      get formInvoicePreview() {
+        const f = this.subForm, p = this.planById(f.plan_id);
+        if (f.mode !== 'new' || f.status !== 'active' || !p || !p.price_monthly) return null;
+        return SA.invoiceTotals({ items: [this.subLine(f.plan_id, monthsOf(f.billing_cycle))] });
+      },
+      openNewModal() {
+        this.formErrors = { tenant: '', plan: '', starts_at: '' };
+        this.subForm = { mode: 'new', id: null, tenant_id: this.availableTenants()[0]?.id || '', plan_id: 2, status: 'trialing', billing_cycle: 'monthly', starts_at: SA.todayIso() };
+        this.openModal('form', null);
+      },
+      openEditModal(s) {
+        if (!this.canEdit(s)) return;
+        this.formErrors = { tenant: '', plan: '', starts_at: '' };
+        this.subForm = { mode: 'edit', id: s.id, tenant_id: s.tenant_id, plan_id: s.plan_id, status: s.status === 'trialing' ? 'trialing' : 'active', billing_cycle: s.billing_cycle, starts_at: s.starts_at };
+        this.openModal('form', s);
+      },
+      validateSubForm() {
+        const f = this.subForm, e = { tenant: '', plan: '', starts_at: '' };
+        if (f.mode === 'new') {
+          if (!f.tenant_id) e.tenant = this.t('sb.errTenant');
+          else if (this.tenantHasCurrent(f.tenant_id)) e.tenant = this.t('sb.errTenantTaken');
+        }
+        const p = this.planById(f.plan_id);
+        if (!p || (f.mode === 'new' && !p.is_active)) e.plan = this.t('sb.errPlan');
+        if (!isIso(f.starts_at)) e.starts_at = this.t('sb.errStart');
+        else if (Math.abs(SA.daysBetween(SA.todayIso(), f.starts_at)) > 365) e.starts_at = this.t('sb.errStartRange');
+        else if (this.computeEndDate(f) <= SA.todayIso()) e.starts_at = this.t('sb.errEndPast');
+        this.formErrors = e;
+        return e;
+      },
+      async saveSubscription() {
+        if (this.busy) return false;
+        const e = this.validateSubForm();
+        const firstBad = e.tenant ? 'nf-tenant-btn' : e.plan ? 'nf-plan-btn' : e.starts_at ? 'nf-start' : null;
+        if (firstBad) { this.announce(e.tenant || e.plan || e.starts_at); this.focusField(firstBad); return false; }
+        const f = { ...this.subForm };
+        this.busy = true;
+        await this.wait();
+        let msg;
+        if (f.mode === 'new') {
+          const tenant = this.tenantById(f.tenant_id);
+          const sub = {
+            id: Math.max(...this.subscriptions.map(s => s.id)) + 1, tenant_id: f.tenant_id, plan_id: f.plan_id, status: f.status,
+            auto_renew: f.status === 'active', starts_at: f.starts_at, ends_at: this.computeEndDate(f),
+            cancelled_at: null, cancel_reason: null, cancel_note: null, scheduledPlanId: null,
+            usage: { usersUsed: 0, storageUsedMb: 0, aiTokensUsed: 0 },
+            billing_cycle: f.status === 'trialing' ? 'monthly' : f.billing_cycle, credit_minor: 0, tenant,
+          };
+          this.subscriptions.unshift(sub);
+          msg = this.tf('sb.toastCreated', { name: this.tenantName(tenant) });
+          if (f.status === 'active' && this.planById(f.plan_id).price_monthly > 0) {
+            const inv = this.createInvoice(sub, [this.subLine(f.plan_id, monthsOf(sub.billing_cycle))]);
+            msg += ' ' + this.invoiceMsg(inv);
+          }
+        } else {
+          const sub = this.subscriptions.find(s => s.id === f.id);
+          sub.billing_cycle = f.billing_cycle;
+          sub.starts_at = f.starts_at;
+          sub.ends_at = this.computeEndDate(f);
+          msg = this.tf('sb.toastEdited', { name: this.tenantName(sub.tenant), date: this.fmtDate(sub.ends_at) });
+        }
+        this.busy = false;
+        this.closeModal();
+        this.notify(msg);
+        return true;
+      },
+
+      /* ---------- الفواتير ---------- */
+      nextInvoiceNumber() {
+        const year = SA.today().getFullYear();
+        const seq = this.invoices.map(i => /^INV-(\d{4})-(\d+)$/.exec(i.invoice_number)).filter(m => m && +m[1] === year).map(m => +m[2]);
+        return 'INV-' + year + '-' + String((seq.length ? Math.max(...seq) : 0) + 1).padStart(4, '0');
+      },
+      createInvoice(sub, items) {
+        const inv = {
+          id: Math.max(...this.invoices.map(i => i.id)) + 1, invoice_number: this.nextInvoiceNumber(),
+          tenant_id: sub.tenant_id, subscription_id: sub.id, issue_date: SA.todayIso(), due_date: SA.addDays(15),
+          items, voided_at: null, void_reason: null, status_override: null,
+        };
+        this.invoices.unshift(inv);
+        return inv;
+      },
+      invoiceMsg(inv) { return this.tf('sb.toastInvoice', { inv: inv.invoice_number, total: this.money(SA.invoiceTotals(inv).total) }); },
+
+      /* ---------- التجديد ---------- */
+      renewForm: { cycle: 'monthly', count: 1, note: '' },
+      renewError: '',
+      renewBase(s) {
+        const today = SA.todayIso();
+        return this.isReactivation(s) ? (s.ends_at > today ? s.ends_at : today) : s.ends_at;
+      },
+      maxPeriods(cycle) { return cycle === 'yearly' ? 3 : 12; },
+      validPeriods(f) { return Number.isInteger(f.count) && f.count >= 1 && f.count <= this.maxPeriods(f.cycle); },
+      get renewEndDate() {
+        const s = this.activeSub;
+        if (!s || !this.validPeriods(this.renewForm)) return '';
+        return addPeriod(this.renewBase(s), this.renewForm.cycle, this.renewForm.count);
+      },
+      get renewPlanId() { const s = this.activeSub; return s ? (s.scheduledPlanId || s.plan_id) : null; },
+      get renewInvoicePreview() {
+        const s = this.activeSub; if (!s || !this.renewEndDate) return null;
+        const p = this.planById(this.renewPlanId);
+        if (!p.price_monthly) return null;
+        return SA.invoiceTotals({ items: [this.subLine(p.id, monthsOf(this.renewForm.cycle, this.renewForm.count), 'renewal')] });
+      },
+      /* حارس: تاريخ الانتهاء الجديد يجب أن يكون بعد الحالي وبعد اليوم */
+      renewEndError(s, iso) {
+        if (!iso || !isIso(iso)) return this.t('sb.errPeriods');
+        if (iso <= s.ends_at) return this.tf('sb.errEndNotAfter', { date: this.fmtDate(s.ends_at) });
+        if (iso <= SA.todayIso()) return this.t('sb.errEndPast');
+        return '';
+      },
+      openRenewModal(s) {
+        if (!this.canRenew(s)) return;
+        this.renewForm = { cycle: s.billing_cycle || 'monthly', count: 1, note: '' };
+        this.renewError = '';
+        this.openModal('renew', s);
+      },
+      async applyRenew() {
+        const s = this.activeSub;
+        if (this.busy || !s || this.renewBlockedByRule(s)) return false;
+        const newEnd = this.renewEndDate;
+        const err = !this.validPeriods(this.renewForm) ? this.t('sb.errPeriods') : this.renewEndError(s, newEnd);
+        if (err) { this.renewError = err; this.announce(err); this.focusField('rf-count'); return false; }
+        const preview = this.renewInvoicePreview, planId = this.renewPlanId, months = monthsOf(this.renewForm.cycle, this.renewForm.count);
+        this.busy = true;
+        await this.wait();
+        s.plan_id = planId; s.scheduledPlanId = null;
+        s.ends_at = newEnd;
+        s.billing_cycle = this.renewForm.cycle;
+        if (['past_due', 'expired', 'cancelled'].includes(s.status)) { s.status = 'active'; s.cancelled_at = null; s.cancel_reason = null; s.cancel_note = null; }
+        let msg = this.tf('sb.toastRenewed', { name: this.tenantName(s.tenant), date: this.fmtDate(newEnd) });
+        if (preview) msg += ' ' + this.invoiceMsg(this.createInvoice(s, [this.subLine(planId, months, 'renewal')]));
+        this.busy = false;
+        this.closeModal();
+        this.notify(msg);
+        return true;
+      },
+
+      /* ---------- تغيير الباقة ---------- */
+      upgradeForm: { new_plan_id: null, applyWhen: 'immediate' },
+      get planChoices() { const s = this.activeSub; return s ? this.plans.filter(p => p.is_active && p.id !== s.plan_id) : []; },
+      planTabIndex(p, i) {
+        const sel = this.upgradeForm.new_plan_id;
+        const has = this.planChoices.some(x => x.id === sel);
+        return (has ? p.id === sel : i === 0) ? 0 : -1;
+      },
+      pickPlan(id) { this.upgradeForm.new_plan_id = id; },
+      onPlanKey(e) {
+        const list = this.planChoices;
+        const next = this.rovingIndex(e, list.findIndex(p => p.id === this.upgradeForm.new_plan_id), list.length, true);
+        if (next === null) return;
+        this.pickPlan(list[next].id);
+        this.$nextTick(() => document.getElementById('um-plan-' + list[next].id)?.focus());
+      },
+      /* حدود الباقة الهدف التي يتجاوزها الاستهلاك الحالي */
+      limitIssues(sub, plan) {
+        if (!sub || !plan) return [];
+        const u = sub.usage, out = [];
+        if (u.usersUsed > plan.max_users) out.push({ key: 'users', label: 'sb.comparisonUsers', used: u.usersUsed, limit: plan.max_users });
+        if (u.storageUsedMb > plan.max_storage_mb) out.push({ key: 'storage', label: 'sb.comparisonStorage', used: u.storageUsedMb, limit: plan.max_storage_mb });
+        if (u.aiTokensUsed > plan.ai_token_quota_monthly) out.push({ key: 'ai', label: 'sb.comparisonAiTokens', used: u.aiTokensUsed, limit: plan.ai_token_quota_monthly });
+        return out;
+      },
+      get upgradeIssues() { return this.limitIssues(this.activeSub, this.planById(this.upgradeForm.new_plan_id)); },
+      issueText(iss) {
+        const f = iss.key === 'storage' ? (v) => this.humanSize(v) : (v) => this.fmtNum(v);
+        return this.tf('sb.limitIssue', { limit: this.t(iss.label), used: f(iss.used), max: f(iss.limit) });
+      },
+      comparisonRows(sub, planId) {
+        const a = this.planById(sub.plan_id), b = this.planById(planId);
+        if (!a || !b) return [];
+        return [
+          { key: 'users', label: 'sb.comparisonUsers', a: a.max_users, b: b.max_users, from: this.fmtNum(a.max_users), to: this.fmtNum(b.max_users) },
+          { key: 'storage', label: 'sb.comparisonStorage', a: a.max_storage_mb, b: b.max_storage_mb, from: this.humanSize(a.max_storage_mb), to: this.humanSize(b.max_storage_mb) },
+          { key: 'ai', label: 'sb.comparisonAiTokens', a: a.ai_token_quota_monthly, b: b.ai_token_quota_monthly, from: this.compactNumber(a.ai_token_quota_monthly), to: this.compactNumber(b.ai_token_quota_monthly) },
+          { key: 'price', label: 'sb.comparisonPrice', a: a.price_monthly, b: b.price_monthly, from: this.planPriceLabel(a), to: this.planPriceLabel(b) },
+        ];
+      },
+      /* الاحتساب التناسبي بالهللة: الأيام المتبقية ÷ أيام الفترة × فرق سعر الفترة */
+      prorationFor(sub, planId) {
+        const from = this.planById(sub.plan_id), to = this.planById(planId);
+        if (!from || !to || !BILLABLE.includes(sub.status)) return { applicable: false, remaining: 0, period: 0, diff: 0, amount: 0 };
+        const periodStart = addPeriod(sub.ends_at, sub.billing_cycle, -1);
+        const period = SA.daysBetween(periodStart, sub.ends_at);
+        const remaining = Math.min(Math.max(SA.daysBetween(SA.todayIso(), sub.ends_at), 0), period);
+        const diff = (to.price_monthly - from.price_monthly) * monthsOf(sub.billing_cycle);
+        const amount = period > 0 ? Math.round(remaining * diff / period) : 0;
+        return { applicable: true, remaining, period, diff, amount };
+      },
+      get proration() { const s = this.activeSub; return s && this.upgradeForm.new_plan_id ? this.prorationFor(s, this.upgradeForm.new_plan_id) : null; },
+      get prorationInvoiceTotal() { const p = this.proration; return p && p.amount > 0 ? SA.invoiceTotals({ items: [{ qty: 1, unit_price: p.amount }] }).total : 0; },
+      openUpgradeModal(s) {
+        if (!this.canUpgrade(s)) return;
+        this.upgradeForm = { new_plan_id: null, applyWhen: 'immediate' };
+        this.openModal('upgrade', s);
+      },
+      async applyUpgrade() {
+        const s = this.activeSub, planId = this.upgradeForm.new_plan_id;
+        if (this.busy || !s || !planId) return false;
+        if (this.upgradeIssues.length) { this.announce(this.t('sb.liveBlocked')); return false; }
+        const pr = this.prorationFor(s, planId);
+        this.busy = true;
+        await this.wait();
+        let msg;
+        if (this.upgradeForm.applyWhen === 'immediate') {
+          s.plan_id = planId; s.scheduledPlanId = null;
+          msg = this.tf('sb.toastUpgraded', { name: this.tenantName(s.tenant) });
+          if (pr.amount > 0) msg += ' ' + this.invoiceMsg(this.createInvoice(s, [{ description_key: 'proration', plan_id: planId, qty: 1, unit_price: pr.amount }]));
+          else if (pr.amount < 0) { s.credit_minor += -pr.amount; msg += ' ' + this.tf('sb.toastCredit', { amount: this.money(-pr.amount) }); }
+        } else {
+          s.scheduledPlanId = planId;
+          msg = this.tf('sb.toastScheduled', { name: this.tenantName(s.tenant) });
+        }
+        this.busy = false;
+        this.closeModal();
+        this.notify(msg);
+        return true;
+      },
+
+      /* ---------- الإلغاء ---------- */
+      cancelForm: { reason: '', note: '' },
+      cancelErrors: { reason: '', note: '' },
+      cancelImpact(s) {
+        if (!s) return [];
+        const out = [this.t('sb.impactAccess')];
+        if (s.auto_renew) out.push(this.t('sb.impactAutoRenew'));
+        if (BILLABLE.includes(s.status)) {
+          const price = this.planById(s.plan_id).price_monthly;
+          if (price > 0) out.push(this.tf('sb.impactMrr', { amount: this.money(price) }));
+        }
+        if (s.scheduledPlanId) out.push(this.t('sb.impactScheduled'));
+        return out;
+      },
+      openCancelModal(s) {
+        if (!this.canCancel(s)) return;
+        this.cancelForm = { reason: '', note: '' };
+        this.cancelErrors = { reason: '', note: '' };
+        this.openModal('cancel', s);
+      },
+      async applyCancel() {
+        const s = this.activeSub;
+        if (this.busy || !s) return false;
+        const e = { reason: '', note: '' };
+        if (!this.cancelForm.reason) e.reason = this.t('sb.errReason');
+        if (this.cancelForm.reason === 'other' && (this.cancelForm.note || '').trim().length < 5) e.note = this.t('sb.errNote');
+        this.cancelErrors = e;
+        if (e.reason || e.note) { this.announce(e.reason || e.note); this.focusField(e.reason ? 'cf-reason-btn' : 'cf-notes'); return false; }
+        this.busy = true;
+        await this.wait();
+        s.status = 'cancelled';
+        s.cancelled_at = SA.todayIso();
+        s.cancel_reason = this.cancelForm.reason;
+        s.cancel_note = this.cancelForm.note || null;
+        s.auto_renew = false;
+        s.scheduledPlanId = null;
+        this.busy = false;
+        this.closeModal();
+        this.notify(this.tf('sb.toastCancelled', { name: this.tenantName(s.tenant) }));
+        return true;
+      },
+
+      /* ---------- إيقاف / استئناف ---------- */
+      async menuPause(s) {
+        if (!this.canPause(s)) return false;
+        const ok = await this.askConfirm({ title: this.t('sb.pauseConfirmTitle'), text: this.tf('sb.pauseConfirmText', { name: this.tenantName(s.tenant) }), confirmLabel: this.t('sb.pauseBtn') });
+        if (!ok) return false;
+        s._statusBeforePause = s.status;
+        s.status = 'paused';
+        this.notify(this.tf('sb.toastPaused', { name: this.tenantName(s.tenant) }));
+        return true;
+      },
+      menuResume(s) {
+        if (!this.canResume(s)) return false;
+        s.status = (s._statusBeforePause && s._statusBeforePause !== 'paused') ? s._statusBeforePause : 'active';
+        delete s._statusBeforePause;
+        this.notify(this.tf('sb.toastResumed', { name: this.tenantName(s.tenant) }));
+        return true;
+      },
+
+      /* ---------- التجديد التلقائي (الإيقاف يتطلب تأكيدًا) ---------- */
+      autoRenewLabel(s) { return this.tf('sb.autoRenewFor', { name: this.tenantName(s.tenant) }); },
+      async toggleAutoRenew(s) {
+        if (!this.canToggleAutoRenew(s)) { this.announce(this.tf('sb.liveUnavailable', { action: this.t('sb.autoRenew'), name: this.tenantName(s.tenant) })); return false; }
+        if (s.auto_renew) {
+          const ok = await this.askConfirm({
+            title: this.t('sb.autoRenewOffTitle'),
+            text: this.tf('sb.autoRenewOffText', { name: this.tenantName(s.tenant), date: this.fmtDate(s.ends_at) }),
+            confirmLabel: this.t('sb.autoRenewOffBtn'), danger: true,
+          });
+          if (!ok) return false;
+        }
+        s.auto_renew = !s.auto_renew;
+        this.notify(this.tf(s.auto_renew ? 'sb.toastAutoRenewOn' : 'sb.toastAutoRenewOff', { name: this.tenantName(s.tenant) }));
+        return true;
+      },
+
+      /* ---------- تصدير CSV (BOM + اقتباس + منع حقن الصيغ) ---------- */
+      csvCell(v) {
+        let s = String(v ?? '');
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      },
+      buildCsv(rows) {
+        const k = ['id', 'tenant', 'domain', 'plan', 'price', 'currency', 'cycle', 'status', 'autoRenew', 'start', 'end'];
+        const lines = [k.map(x => this.csvCell(this.t('sb.csv.' + x))).join(',')];
+        rows.forEach(s => {
+          const p = this.planById(s.plan_id);
+          lines.push([
+            s.id, this.tenantName(s.tenant), s.tenant.domain, this.planName(p), (SA.m.toMajor(p.price_monthly)).toFixed(2), SA.CURRENCY,
+            this.t('sb.cycle.' + s.billing_cycle), this.statusLabel(s.status), this.t(s.auto_renew ? 'sb.yes' : 'sb.no'), s.starts_at, s.ends_at,
+          ].map(v => this.csvCell(v)).join(','));
+        });
+        return '﻿' + lines.join('\r\n');
+      },
+      exportCsv() {
+        const rows = this.filteredSubs;
+        if (!rows.length) return;
+        const blob = new Blob([this.buildCsv(rows)], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'subscriptions-' + SA.todayIso() + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.announce(this.tf('sb.liveExported', { n: this.fmtNum(rows.length) }));
+      },
+
+      /* ---------- إشعار: منطقة حية + Toast (بلا HTML) ---------- */
+      notify(text) {
+        this.announce(text);
+        if (typeof Swal === 'undefined') return;
+        Swal.fire({
+          toast: true, position: this.locale === 'ar' ? 'top-start' : 'top-end',
+          showConfirmButton: false, timer: 3600, timerProgressBar: true,
+          icon: 'success', titleText: text,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (popup) => popup.setAttribute('dir', this.locale === 'ar' ? 'rtl' : 'ltr'),
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; this.wide = m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        document.title = this.t('docTitle');
+        ['search', 'statusFilter', 'planFilter'].forEach(k => this.$watch(k, () => this.onFiltersChanged()));
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      /* Escape عام: يغلق الطبقة العليا فقط */
+      closeAll() {
+        if (this.confirmDlg.open) { this.resolveConfirm(false); return; }
+        if (this.modal) { this.closeModal(); return; }
+        if (this.slideOverOpen) { this.closeDetails(); return; }
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

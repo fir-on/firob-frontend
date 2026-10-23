@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<meta name="color-scheme" content="light dark">
+<title>إنشاء حساب جديد — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض الوضع الفاتح) -->
+<script>
+  (function () {
+    var d = false;
+    try {
+      var s = localStorage.getItem('firob-theme');
+      d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      d = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    document.documentElement.classList.toggle('dark', d);
+    var m = document.getElementById('theme-color');
+    if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ①-ج تطبيق اللغة والاتجاه قبل الرسم (يمنع قفزة RTL → LTR) -->
+<script>
+  (function () {
+    var l = (window.FIROB && FIROB.locale) || 'ar';
+    document.documentElement.lang = l;
+    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+  })();
+</script>
+
+<!-- ② الخطوط: Tajawal للواجهة العربية + Manrope للواجهة الإنجليزية -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ Tailwind (إصدار مثبّت + Container Queries) + الألوان المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com/3.4.5?plugins=container-queries"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      /* شاشات قصيرة: نضغط العناصر الثانوية بدل ظهور سكرول */
+      screens: {
+        short:  { raw: '(max-height: 760px)' },   /* لابتوب 13" / تابلت أفقي */
+        xshort: { raw: '(max-height: 560px)' },   /* جوال أفقي */
+      },
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      /* سلّم خطوط مرن: المدخلات لا تقل عن 16px (يمنع تكبير iOS) */
+      fontSize: {
+        caption: ['0.875rem',  { lineHeight: '1.375rem' }],                               // 14px
+        label:   ['0.9375rem', { lineHeight: '1.5rem'   }],                               // 15px
+        body:    ['1rem',      { lineHeight: '1.5rem'   }],                               // 16px
+        lead:    ['1.0625rem', { lineHeight: '1.75rem'  }],                               // 17px
+        h1:      ['clamp(1.375rem, 1rem + 1.5vh, 1.875rem)', { lineHeight: '1.3'  }],    // 22 → 30px
+        display: ['clamp(1.5rem, 0.9rem + 2.2vh, 2.5rem)',   { lineHeight: '1.35' }],    // 24 → 40px
+      },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        error:   { 500:'#EF4444', 600:'#DC2626' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ④ طبقة المكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;  --ok: 4 120 87;       --glow: 14 128 161;
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+      /* مسافات الأمان (النوتش / شريط الإيماءات) */
+      --sat: env(safe-area-inset-top, 0px);    --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);   --sar: env(safe-area-inset-right, 0px);
+      /* مساحة محجوزة أسفل المحتوى لشريط التجربة العائم */
+      --ribbon-h: 4rem;
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165; --ok: 110 231 183;   --glow: 14 128 161;
+    }
+
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    html[lang='en'] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* الصفحة ثابتة؛ التمرير يحدث داخل منطقة النموذج فقط — ولا تمرير أفقي إطلاقًا */
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; max-width: 100%; }
+    body { @apply bg-page text-body text-ink antialiased; -webkit-tap-highlight-color: transparent; }
+    body.theme-anim, body.theme-anim * { transition: background-color .3s, border-color .3s, color .3s !important; }
+    [x-cloak] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    @keyframes breath { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
+    .app-h { height: 100vh; height: 100dvh; }
+    .safe-x { padding-left: var(--sal); padding-right: var(--sar); }
+    .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    /* شريط تمرير رفيع ظاهر لمنطقة النموذج الطويلة (أوضح للمستخدم من إخفائه) */
+    .thin-scroll { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong) / .5) transparent; scrollbar-gutter: stable; }
+    .thin-scroll::-webkit-scrollbar { width: 8px; }
+    .thin-scroll::-webkit-scrollbar-thumb { background: rgb(var(--line-strong) / .45); border-radius: 9999px; border: 2px solid rgb(var(--page)); }
+
+    .ic { @apply h-5 w-5 shrink-0 fill-none stroke-current; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---- Buttons ---- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2.5 whitespace-nowrap rounded-xl border border-transparent px-4 text-label font-bold transition duration-150; padding-block: .625rem; touch-action: manipulation; }
+    .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+    .btn:disabled { @apply cursor-not-allowed opacity-50; }
+    .btn.is-loading { @apply pointer-events-none cursor-progress opacity-90; }
+    .btn-lg { @apply min-h-[3rem] px-6 text-[1.0625rem] leading-7 active:translate-y-px; padding-block: clamp(.6rem, 1.5vh, .875rem); }
+    .btn-icon { @apply h-10 w-10 p-0; }
+    .btn-icon.btn-sm { @apply h-9 w-9 p-0; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .btn-primary:not(:disabled):hover { @apply bg-primary-600; }
+    .btn-primary:not(:disabled):active { @apply bg-primary-800; }
+    .btn-accent { @apply bg-accent-500 text-onaccent shadow-lg shadow-accent-500/25; }
+    .btn-accent:not(:disabled):hover { @apply bg-accent-600; }
+    .btn-accent:not(:disabled):active { @apply bg-accent-700; }
+    .btn-ghost { @apply bg-transparent text-brand; }
+    .btn-ghost:not(:disabled):hover { @apply bg-soft; }
+    .btn-ghost:not(:disabled):active { @apply bg-soft-2; }
+
+    /* ---- Form ---- */
+    .label { @apply block text-label font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-caption text-muted; }
+    .err   { @apply mt-1.5 flex items-start gap-1.5 text-caption font-bold text-danger; }
+    .warn  { @apply mt-1.5 flex items-start gap-1.5 text-caption font-bold; color: #B45309; }
+    .dark .warn { color: #FCD34D; }
+
+    .fgroup { @apply flex w-full items-center gap-3 rounded-xl border border-line-strong bg-field px-4 text-body text-ink transition; }
+    .fgroup:hover { @apply border-primary-500; }
+    .fgroup:focus-within, .fgroup[data-open='true'] { @apply border-brand; box-shadow: var(--ring); }
+    .fgroup[data-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+    .fgroup[data-invalid='true']:focus-within { box-shadow: 0 0 0 2px rgb(var(--card)), 0 0 0 4px #DC2626; }
+    .ok-mark { @apply opacity-0 transition-opacity; color: rgb(var(--ok)); }
+    .fgroup[data-valid='true'] .ok-mark { @apply opacity-100; }
+    /* 16px على الأقل دائمًا — يمنع التكبير التلقائي في iOS */
+    .fgroup-input { @apply min-w-0 flex-1 bg-transparent leading-6 text-ink outline-none placeholder:text-muted/70; font-size: max(16px, 1rem); padding-block: clamp(.5rem, 1.35vh, .75rem); min-height: 2.75rem; }
+    [dir='rtl'] .fgroup-input.rtl-end { text-align: right; }
+    .fgroup-input:-webkit-autofill, .fgroup-input:-webkit-autofill:hover, .fgroup-input:-webkit-autofill:focus {
+      -webkit-text-fill-color: rgb(var(--ink)); caret-color: rgb(var(--ink));
+      box-shadow: 0 0 0 1000px rgb(var(--field)) inset; transition: background-color 9999s;
+    }
+
+    /* ---- قائمة الدول المخصّصة (Select-only Combobox) ---- */
+    .fgroup-btn { @apply flex w-full min-w-0 cursor-pointer items-center justify-between gap-3 rounded-xl bg-transparent px-4 text-start leading-6 text-ink outline-none; font-size: max(16px, 1rem); padding-block: clamp(.5rem, 1.35vh, .75rem); min-height: 2.75rem; }
+
+    .listbox { @apply absolute start-0 z-30 overflow-y-auto overscroll-contain rounded-xl border border-line-strong bg-card p-1.5 shadow-pop;
+      width: 100%; min-width: min(16rem, calc(100vw - 2rem)); max-width: calc(100vw - 2rem); max-height: min(16rem, 45dvh);
+      scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .listbox::-webkit-scrollbar { width: 8px; }
+    .listbox::-webkit-scrollbar-track { background: transparent; }
+    .listbox::-webkit-scrollbar-thumb { background: rgb(var(--line-strong) / .55); border-radius: 9999px; border: 2px solid rgb(var(--card)); }
+    .listbox::-webkit-scrollbar-thumb:hover { background: rgb(var(--line-strong)); }
+
+    .opt { @apply flex min-h-[2.75rem] cursor-pointer select-none items-center gap-3 rounded-lg px-3 py-2 text-body text-ink transition-colors; }
+    .opt[data-active='true'] { @apply bg-soft; }
+    .opt[aria-selected='true'] { @apply font-bold text-brand; }
+    .opt[aria-selected='true'][data-active='true'] { @apply bg-soft-2; }
+
+    /* خانة رمز الدولة (+970) */
+    .dial { @apply grid min-w-[4.25rem] shrink-0 select-none place-items-center rounded-xl border border-line-strong bg-soft px-3 text-body font-bold tabular-nums text-ink; }
+
+    .check { @apply h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-line-strong bg-field transition; }
+    .check:hover:not(:disabled) { @apply border-primary-500; }
+    .check:checked { @apply border-primary-500 bg-primary-500; background-size: 100% 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5L15 6.5'/%3E%3C/svg%3E"); }
+    .check:focus-visible { outline: none; box-shadow: var(--ring); }
+    .check[aria-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+    .check[aria-invalid='true']:checked { @apply border-primary-500 bg-primary-500; }
+
+    /* متطلبات كلمة المرور */
+    .req { @apply inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors; }
+    .req[data-met='true'] { color: rgb(var(--ok)); @apply font-bold; }
+
+    /* ---- Alerts (إشعار عائم فوق المحتوى — لا يدفع الصفحة) ---- */
+    .alert { @apply flex items-start gap-3 rounded-xl border border-s-4 p-4 text-caption font-medium; }
+    .alert-error   { background: #FEF2F2; border-color: #FEE2E2; border-inline-start-color: #EF4444; color: #991B1B; }
+    .alert-success { background: #ECFDF5; border-color: #D1FAE5; border-inline-start-color: #10B981; color: #065F46; }
+    .dark .alert-error   { background: #2A1518; border-color: rgb(239 68 68 / .30);  border-inline-start-color: #EF4444; color: #FCA5A5; }
+    .dark .alert-success { background: #0F2A24; border-color: rgb(16 185 129 / .30); border-inline-start-color: #10B981; color: #6EE7B7; }
+
+    /* ---- Card / Link / Tool ---- */
+    .card { @apply rounded-3xl border border-line bg-card shadow-card; }
+    .dark .card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .75); }
+    .link { @apply rounded text-caption font-bold text-brand underline-offset-4 transition-colors hover:underline; }
+    .link:focus-visible { outline: none; box-shadow: var(--ring); }
+    .tool { @apply grid h-10 w-10 place-items-center rounded-xl border border-line-strong bg-field text-muted transition-colors hover:bg-soft hover:text-ink; }
+    .tool:focus-visible { outline: none; box-shadow: var(--ring); }
+    .feature { @apply flex items-center gap-3.5 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md; padding: clamp(.5rem, 1.5vh, .875rem) 1rem; }
+    .pill { @apply rounded-full border border-line-strong px-3 py-0.5 text-[0.8125rem] font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-50; }
+  }
+</style>
+
+<!-- ⑤ المنطق -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script>
+  /* النصوص — في Laravel تُنقل إلى lang/ar.json و lang/en.json */
+  const I18N = {
+    ar: {
+      title: 'إنشاء حساب جديد', skipMain: 'تخطّي إلى المحتوى الرئيسي', skipForm: 'تخطّي إلى نموذج التسجيل',
+      brandTag: 'مستودعك التعليمي الذكي',
+      heroTitle: 'ابدأ رحلتك مع مستودعك التعليمي الذكي.',
+      hero1: 'أنشئ حسابك وابدأ تنظيم موادك ومصادرك في دقائق',
+      hero2: 'بياناتك ومحتواك معزولة وآمنة داخل مساحة منشأتك',
+      hero3: 'وصول فوري لأدوات الذكاء الاصطناعي لتوليد ومراجعة المحتوى',
+      subtitle: 'أنشئ حسابك للانضمام إلى مساحة عمل منشأتك التعليمية.',
+      nameLabel: 'الاسم الكامل',
+      orgLabel: 'اسم المؤسسة / المدرسة', orgHint: 'سنساعدك على إعداد مساحة العمل خطوة بخطوة بعد التسجيل.',
+      tenantLabel: 'معرّف المنشأة', tenantHelp: 'لا تعرف معرّفك؟',
+      tenantHint: 'رابط منشأتك سيكون:',
+      tenantHelpBody: 'معرّف المنشأة هو الجزء الأول من رابط مساحة عمل مدرستك. إن كانت مدرستك مسجّلة مسبقًا فاطلبه من مدير المنصة لديكم، وإن كنت تنشئ مساحة جديدة فاختر اسمًا قصيرًا بالإنجليزية.',
+      emailLabel: 'البريد الإلكتروني',
+      countryLabel: 'الدولة', phoneLabel: 'رقم واتساب', phonePh: '5XXXXXXXX', phoneHint: 'بدون رمز الدولة أو الصفر في البداية.',
+      passLabel: 'كلمة المرور', confirmLabel: 'تأكيد كلمة المرور',
+      reqLen: '8 أحرف على الأقل', reqMix: 'حروف وأرقام', confirmOk: 'كلمتا المرور متطابقتان',
+      pwStrength: 'قوة كلمة المرور', pw1: 'ضعيفة', pw2: 'مقبولة', pw3: 'جيدة', pw4: 'قوية',
+      showPw: 'إظهار كلمة المرور', hidePw: 'إخفاء كلمة المرور', caps: 'زر Caps Lock مفعّل.',
+      agree: 'أوافق على', terms: 'شروط الاستخدام', and: 'و', privacy: 'سياسة الخصوصية', newTab: '(يُفتح في تبويب جديد)',
+      submit: 'إنشاء الحساب', busy: 'جارٍ إنشاء الحساب…',
+      themeDark: 'تفعيل الوضع الداكن', themeLight: 'تفعيل الوضع الفاتح',
+      nameReq: 'الاسم الكامل مطلوب.', nameMin: 'أدخل اسمًا من حرفين على الأقل.',
+      orgReq: 'اسم المؤسسة / المدرسة مطلوب.', orgMin: 'أدخل اسمًا من 3 أحرف على الأقل.',
+      tenantReq: 'معرّف المنشأة مطلوب.', tenantFmt: 'أحرف إنجليزية صغيرة وأرقام وشرطة (-) فقط، 3 أحرف فأكثر، ولا يبدأ أو ينتهي بشرطة.',
+      emailReq: 'البريد الإلكتروني مطلوب.', emailFmt: 'صيغة البريد الإلكتروني غير صحيحة.',
+      countryReq: 'اختر الدولة.', countryNoMatch: 'لا توجد دولة بهذا الاسم.',
+      phoneReq: 'رقم واتساب مطلوب.', phoneFmt: 'أدخل رقمًا صحيحًا (من 7 إلى 12 خانة) بدون رمز الدولة.',
+      passReq: 'كلمة المرور مطلوبة.', passMin: 'كلمة المرور لا تقل عن 8 أحرف.', passMix: 'استخدم حروفًا وأرقامًا معًا.',
+      confirmReq: 'أكّد كلمة المرور.', confirmMatch: 'كلمتا المرور غير متطابقتين.',
+      termsReq: 'يجب الموافقة على الشروط للمتابعة.',
+      formErrors: 'يرجى تصحيح الحقول المحدّدة باللون الأحمر.',
+      serverErr: 'تعذّر إنشاء الحساب: البريد مسجّل مسبقًا أو معرّف المنشأة غير صحيح. حاول مجددًا.',
+      success: 'تم إنشاء حسابك بنجاح. جارٍ التحويل…', dismiss: 'إغلاق الإشعار',
+      haveAccount: 'لديك حساب بالفعل؟', signIn: 'تسجيل الدخول',
+      demoTitle: 'تجربة سريعة', demoOk: 'تسجيل ناجح', demoBad: 'بريد مسجّل مسبقًا', demoLabel: 'شريط التجربة السريعة للنموذج الأولي',
+      rights: '© 2026 FirOb · جميع الحقوق محفوظة',
+      screens: 'خريطة الشاشات', langGroup: 'لغة الواجهة',
+    },
+    en: {
+      title: 'Create account', skipMain: 'Skip to main content', skipForm: 'Skip to sign-up form',
+      brandTag: 'Your smart learning repository',
+      heroTitle: 'Start your journey with your smart learning repository.',
+      hero1: 'Create your account and organize your resources in minutes',
+      hero2: 'Your data and content stay isolated and secure in your institution',
+      hero3: 'Instant access to AI tools to generate and review content',
+      subtitle: 'Create your account to join your institution’s workspace.',
+      nameLabel: 'Full name',
+      orgLabel: 'Institution / School name', orgHint: 'We’ll help you set up your workspace step by step after sign-up.',
+      tenantLabel: 'Institution ID', tenantHelp: 'Not sure of your ID?',
+      tenantHint: 'Your institution URL will be:',
+      tenantHelpBody: 'The institution ID is the first part of your school workspace URL. If your school is already registered, ask your platform admin for it; if you are creating a new workspace, choose a short English name.',
+      emailLabel: 'Email',
+      countryLabel: 'Country', phoneLabel: 'WhatsApp number', phonePh: '5XXXXXXXX', phoneHint: 'Without the country code or leading zero.',
+      passLabel: 'Password', confirmLabel: 'Confirm password',
+      reqLen: 'At least 8 characters', reqMix: 'Letters and numbers', confirmOk: 'Passwords match',
+      pwStrength: 'Password strength', pw1: 'Weak', pw2: 'Fair', pw3: 'Good', pw4: 'Strong',
+      showPw: 'Show password', hidePw: 'Hide password', caps: 'Caps Lock is on.',
+      agree: 'I agree to the', terms: 'Terms of Use', and: 'and', privacy: 'Privacy Policy', newTab: '(opens in a new tab)',
+      submit: 'Create account', busy: 'Creating account…',
+      themeDark: 'Switch to dark mode', themeLight: 'Switch to light mode',
+      nameReq: 'Full name is required.', nameMin: 'Enter a name of at least 2 characters.',
+      orgReq: 'Institution / school name is required.', orgMin: 'Enter a name of at least 3 characters.',
+      tenantReq: 'Institution ID is required.', tenantFmt: 'Lowercase letters, numbers and hyphens only, 3+ characters, not starting or ending with a hyphen.',
+      emailReq: 'Email is required.', emailFmt: 'Please enter a valid email address.',
+      countryReq: 'Please select a country.', countryNoMatch: 'No matching country.',
+      phoneReq: 'WhatsApp number is required.', phoneFmt: 'Enter a valid number (7–12 digits) without the country code.',
+      passReq: 'Password is required.', passMin: 'Password must be at least 8 characters.', passMix: 'Use both letters and numbers.',
+      confirmReq: 'Please confirm your password.', confirmMatch: 'Passwords do not match.',
+      termsReq: 'You must accept the terms to continue.',
+      formErrors: 'Please fix the fields highlighted in red.',
+      serverErr: 'Could not create the account: the email is already registered or the institution ID is invalid. Please try again.',
+      success: 'Your account was created successfully. Redirecting…', dismiss: 'Dismiss notification',
+      haveAccount: 'Already have an account?', signIn: 'Sign in',
+      demoTitle: 'Quick demo', demoOk: 'Valid sign-up', demoBad: 'Email already used', demoLabel: 'Prototype quick-demo ribbon',
+      rights: '© 2026 FirOb · All rights reserved',
+      screens: 'Screen map', langGroup: 'Interface language',
+    },
+  };
+
+  /* الدول + رموز الاتصال — في Laravel تُجلب من config/countries.php */
+  const COUNTRIES = [
+    { code: 'PS', dial: '970', ar: 'فلسطين',               en: 'Palestine' },
+    { code: 'SA', dial: '966', ar: 'السعودية',             en: 'Saudi Arabia' },
+    { code: 'JO', dial: '962', ar: 'الأردن',               en: 'Jordan' },
+    { code: 'EG', dial: '20',  ar: 'مصر',                  en: 'Egypt' },
+    { code: 'AE', dial: '971', ar: 'الإمارات',             en: 'United Arab Emirates' },
+    { code: 'KW', dial: '965', ar: 'الكويت',               en: 'Kuwait' },
+    { code: 'QA', dial: '974', ar: 'قطر',                  en: 'Qatar' },
+    { code: 'BH', dial: '973', ar: 'البحرين',              en: 'Bahrain' },
+    { code: 'OM', dial: '968', ar: 'عُمان',                en: 'Oman' },
+    { code: 'IQ', dial: '964', ar: 'العراق',               en: 'Iraq' },
+    { code: 'SY', dial: '963', ar: 'سوريا',                en: 'Syria' },
+    { code: 'LB', dial: '961', ar: 'لبنان',                en: 'Lebanon' },
+    { code: 'YE', dial: '967', ar: 'اليمن',                en: 'Yemen' },
+    { code: 'LY', dial: '218', ar: 'ليبيا',                en: 'Libya' },
+    { code: 'TN', dial: '216', ar: 'تونس',                 en: 'Tunisia' },
+    { code: 'DZ', dial: '213', ar: 'الجزائر',              en: 'Algeria' },
+    { code: 'MA', dial: '212', ar: 'المغرب',               en: 'Morocco' },
+    { code: 'SD', dial: '249', ar: 'السودان',              en: 'Sudan' },
+    { code: 'TR', dial: '90',  ar: 'تركيا',                en: 'Türkiye' },
+    { code: 'GB', dial: '44',  ar: 'المملكة المتحدة',      en: 'United Kingdom' },
+    { code: 'US', dial: '1',   ar: 'الولايات المتحدة',     en: 'United States' },
+  ];
+
+  /* يحوّل الأرقام العربية-الهندية (٠-٩) والفارسية (۰-۹) إلى أرقام لاتينية */
+  function toLatinDigits(str) {
+    return String(str).replace(/[٠-٩۰-۹]/g, d => String(d.charCodeAt(0) & 0xF));
+  }
+  /* يحوّل نصًّا إلى معرّف صالح للنطاق الفرعي (a-z, 0-9, -) */
+  function toSlug(str) {
+    return toLatinDigits(str).toLowerCase()
+      .replace(/[\s_.]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-{2,}/g, '-')
+      .replace(/^-+/, '')
+      .slice(0, 63);
+  }
+
+  function app() {
+    return {
+      /* --- الحالة --- */
+      lang: (window.FIROB && FIROB.locale) || document.documentElement.lang || 'ar',
+      dark: document.documentElement.classList.contains('dark'),
+      name: '', org: '', tenant: '', tenantTouched: false, tenantInfo: false,
+      email: '', country: 'PS', phone: '', password: '', confirm: '', agree: false,
+      countries: COUNTRIES,
+      cOpen: false, cActive: 0, cUp: false, cBuf: '', cTimer: null,
+      showPw: false, capsOn: false, busy: false, errors: {}, alert: '', alertTimer: null,
+
+      /* --- شبكة العناصر التعليمية الزخرفية --- */
+      tone: { m: 'bg-white/10', l: 'bg-white/[.06]', d: 'bg-primary-900/30', a: 'bg-accent-500/80', '-': '' },
+      cells: [
+        'm','l:play','-','a:check','d','-',
+        '-','m','d:table','-','l','-',
+        'd:book','-','m','-','a:chev','-',
+        '-','d','-','l:folder','-','m',
+        'm','-','d','-','l:code','-',
+        '-','d','-','m','-','l',
+      ],
+
+      /* --- الترجمة والثيم --- */
+      t(k) { return (I18N[this.lang] && I18N[this.lang][k]) || I18N.ar[k] || k; },
+      init() {
+        this.$watch('lang', () => this.applyLang()); this.applyLang(); this.syncMeta();
+        try {
+          const mq = window.matchMedia('(prefers-color-scheme: dark)');
+          mq.addEventListener?.('change', (e) => {
+            let saved = null; try { saved = localStorage.getItem('firob-theme'); } catch (_) {}
+            if (!saved) this.setTheme(e.matches, false);
+          });
+        } catch (_) {}
+        /* إغلاق قائمة الدول عند تغيير حجم النافذة أو تدوير الجهاز (موضعها يصبح غير صحيح) */
+        window.addEventListener('resize', () => { if (this.cOpen) this.cHide(false); }, { passive: true });
+      },
+      applyLang() {
+        const h = document.documentElement;
+        h.lang = this.lang; h.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
+        if (window.FIROB && typeof FIROB.setLocale === 'function') FIROB.setLocale(this.lang);   /* يثبّت اللغة للصفحة التالية */
+        document.title = this.t('title') + ' — FirOb';
+      },
+      setTheme(isDark, persist = true) {
+        document.body.classList.add('theme-anim');
+        this.dark = isDark;
+        document.documentElement.classList.toggle('dark', isDark);
+        if (persist) { try { localStorage.setItem('firob-theme', isDark ? 'dark' : 'light'); } catch (e) {} }
+        this.syncMeta();
+        clearTimeout(this._themeT); this._themeT = setTimeout(() => document.body.classList.remove('theme-anim'), 350);
+      },
+      toggleTheme() { this.setTheme(!this.dark); },
+      syncMeta() { document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7'); },
+
+      /* --- معرّف المنشأة --- */
+      onOrgInput() {
+        this.errors.org = '';
+        /* اقتراح معرّف تلقائي من اسم المؤسسة (إن كان بأحرف لاتينية) ما لم يكتبه المستخدم بنفسه */
+        if (!this.tenantTouched) {
+          const s = toSlug(this.org).replace(/-+$/, '');
+          if (s.length >= 3) { this.tenant = s; this.errors.tenant = ''; }
+          else if (!s) this.tenant = '';
+        }
+      },
+      onTenantInput() {
+        this.tenantTouched = true;
+        this.tenant = toSlug(this.tenant);
+        this.errors.tenant = '';
+      },
+      get tenantPreview() { return (this.tenant.replace(/-+$/, '') || 'school-name') + '.firob.net'; },
+
+      /* --- الدولة المختارة + رمز الاتصال --- */
+      get cSel() { return this.countries.find(c => c.code === this.country) || this.countries[0]; },
+      get dial() { return '+' + this.cSel.dial; },
+      cName(c) { return this.lang === 'ar' ? c.ar : c.en; },
+      get phoneDigits() { return this.phone.replace(/\D/g, '').replace(/^0+/, ''); },
+      get fullPhone() { return this.phoneDigits ? this.dial + this.phoneDigits : ''; },
+      onPhoneInput() {
+        /* أرقام لاتينية فقط + مسافات للتجميع؛ يُحذف رمز الدولة إن لُصق الرقم كاملًا */
+        let p = toLatinDigits(this.phone).replace(/[^\d\s]/g, '').replace(/\s{2,}/g, ' ').slice(0, 16);
+        const d = this.cSel.dial;
+        const raw = p.replace(/\s/g, '');
+        if (/^00/.test(raw) && raw.slice(2).startsWith(d)) p = raw.slice(2 + d.length);
+        this.phone = p.replace(/^\s+/, '');
+        this.errors.phone = '';
+      },
+
+      /* --- قائمة الدول (نمط ARIA: Select-only Combobox) --- */
+      cShow() {
+        const r = this.$refs.countryBtn.getBoundingClientRect();
+        /* نقيس المساحة داخل منطقة التمرير (وليس النافذة) لأن القائمة داخل حاوية قابلة للتمرير */
+        const box = this.$refs.main.getBoundingClientRect();
+        const below = Math.min(window.innerHeight, box.bottom) - r.bottom;
+        const above = r.top - Math.max(0, box.top);
+        this.cUp = below < 240 && above > below;              // تُفتح للأعلى إذا لم تتوفر مساحة كافية أسفل الحقل
+        this.cActive = Math.max(0, this.countries.findIndex(c => c.code === this.country));
+        this.cOpen = true;
+        this.cScroll();
+      },
+      cHide(focusBtn = true) {
+        this.cOpen = false; this.cBuf = '';
+        if (focusBtn) this.$refs.countryBtn.focus();
+      },
+      cToggle() { this.cOpen ? this.cHide(false) : this.cShow(); },
+      cPick(i) {
+        this.country = this.countries[i].code;
+        this.errors.country = '';
+        this.cHide();
+      },
+      cScroll() {
+        /* نمرّر القائمة نفسها فقط (لا scrollIntoView) كي لا تتحرك منطقة النموذج فتُغلق القائمة */
+        this.$nextTick(() => {
+          const ul = document.getElementById('country-list');
+          const li = document.getElementById('country-opt-' + this.countries[this.cActive].code);
+          if (!ul || !li) return;
+          const top = li.offsetTop, bottom = top + li.offsetHeight;
+          if (top < ul.scrollTop) ul.scrollTop = top - 6;
+          else if (bottom > ul.scrollTop + ul.clientHeight) ul.scrollTop = bottom - ul.clientHeight + 6;
+        });
+      },
+      /* البحث بالكتابة: يطابق بداية اسم الدولة بالعربية (مع/بدون "ال") أو الإنجليزية، أو رمز الاتصال */
+      cType(k) {
+        clearTimeout(this.cTimer);
+        this.cBuf += toLatinDigits(k).toLowerCase();
+        this.cTimer = setTimeout(() => this.cBuf = '', 700);
+        const b = this.cBuf.replace(/^\+/, '');
+        const i = this.countries.findIndex(c =>
+          [c.ar, c.ar.replace(/^ال/, ''), c.en.toLowerCase(), c.dial].some(n => n.startsWith(b)));
+        if (i > -1) { if (!this.cOpen) this.cShow(); this.cActive = i; this.cScroll(); }
+      },
+      cKey(e) {
+        const k = e.key, last = this.countries.length - 1;
+        if (!this.cOpen) {
+          if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(k)) { e.preventDefault(); this.cShow(); return; }
+        } else {
+          switch (k) {
+            case 'ArrowDown': e.preventDefault(); this.cActive = Math.min(last, this.cActive + 1); this.cScroll(); return;
+            case 'ArrowUp':   e.preventDefault(); this.cActive = Math.max(0, this.cActive - 1); this.cScroll(); return;
+            case 'PageDown':  e.preventDefault(); this.cActive = Math.min(last, this.cActive + 5); this.cScroll(); return;
+            case 'PageUp':    e.preventDefault(); this.cActive = Math.max(0, this.cActive - 5); this.cScroll(); return;
+            case 'Home':      e.preventDefault(); this.cActive = 0; this.cScroll(); return;
+            case 'End':       e.preventDefault(); this.cActive = last; this.cScroll(); return;
+            case 'Enter': case ' ': e.preventDefault(); this.cPick(this.cActive); return;
+            case 'Escape':    e.preventDefault(); e.stopPropagation(); this.cHide(); return;
+            case 'Tab':       this.cPick(this.cActive); this.cOpen = false; return;   /* سلوك select الأصلي: Tab يعتمد الخيار النشط */
+          }
+        }
+        if (k.length === 1 && k !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) this.cType(k);
+      },
+
+      /* --- قوة كلمة المرور (مؤشر إرشادي فقط؛ التحقق الفعلي في الخادم) --- */
+      get reqLen() { return this.password.length >= 8; },
+      get reqMix() { return /[a-zA-Z]/.test(this.password) && /\d/.test(this.password); },
+      get strength() {
+        const p = this.password;
+        if (!p) return 0;
+        let s = 0;
+        if (p.length >= 8) s++;
+        if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+        if (/\d/.test(p) && /[a-zA-Z]/.test(p)) s++;
+        if (/[^A-Za-z0-9]/.test(p) || p.length >= 12) s++;
+        return Math.max(s, 1);
+      },
+      get strengthKey() { return 'pw' + this.strength; },
+      get strengthBar() { return ['', 'bg-error-500', 'bg-accent-500', 'bg-primary-500', 'bg-emerald-500'][this.strength]; },
+      get strengthText() { return ['', 'text-danger', 'text-accent-700 dark:text-accent-500', 'text-brand', 'text-emerald-700 dark:text-emerald-400'][this.strength]; },
+      get confirmOk() { return !!this.confirm && this.confirm === this.password; },
+      checkCaps(e) { if (e && typeof e.getModifierState === 'function') this.capsOn = e.getModifierState('CapsLock'); },
+
+      /* --- التحقق --- */
+      rules: {
+        name(v)     { v = v.trim(); if (!v) return 'nameReq'; if (v.length < 2) return 'nameMin'; return ''; },
+        org(v)      { v = v.trim(); if (!v) return 'orgReq'; if (v.length < 3) return 'orgMin'; return ''; },
+        tenant(v)   { if (!v) return 'tenantReq'; if (!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(v)) return 'tenantFmt'; return ''; },
+        email(v)    { v = v.trim(); if (!v) return 'emailReq'; if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return 'emailFmt'; return ''; },
+      },
+      fieldError(f) {
+        switch (f) {
+          case 'name': case 'org': case 'tenant': case 'email': return this.rules[f](this[f]);
+          case 'country': return this.country ? '' : 'countryReq';
+          case 'phone': if (!this.phone.trim()) return 'phoneReq'; return /^\d{7,12}$/.test(this.phoneDigits) ? '' : 'phoneFmt';
+          case 'password': if (!this.password) return 'passReq'; if (this.password.length < 8) return 'passMin'; return this.reqMix ? '' : 'passMix';
+          case 'confirm': if (!this.confirm) return 'confirmReq'; return this.confirm === this.password ? '' : 'confirmMatch';
+          case 'agree': return this.agree ? '' : 'termsReq';
+        }
+        return '';
+      },
+      /* تحقق عند مغادرة الحقل — فقط إذا كتب المستخدم شيئًا (لا نزعجه بأخطاء "مطلوب" أثناء التنقّل) */
+      blurField(f) {
+        const val = f === 'tenant' ? this.tenant : this[f];
+        if (typeof val === 'string' && !val.trim()) return;
+        this.errors[f] = this.fieldError(f);
+      },
+      isValid(f) { const val = this[f]; return typeof val === 'string' && !!val.trim() && !this.fieldError(f) && !this.errors[f]; },
+      validate() {
+        this.name = this.name.trim(); this.org = this.org.trim(); this.email = this.email.trim();
+        this.tenant = this.tenant.replace(/-+$/, '');
+        const e = {};
+        ['name', 'org', 'tenant', 'email', 'country', 'phone', 'password', 'confirm', 'agree'].forEach(f => {
+          const m = this.fieldError(f); if (m) e[f] = m;
+        });
+        this.errors = e;
+        return Object.keys(e).length === 0;
+      },
+      notify(type, ms = 5000) {
+        this.alert = type; clearTimeout(this.alertTimer);
+        if (ms) this.alertTimer = setTimeout(() => this.alert = '', ms);
+      },
+      dismiss() { clearTimeout(this.alertTimer); this.alert = ''; },
+      async submit(force) {
+        if (this.busy) return;
+        this.alert = '';
+        if (!this.validate()) {
+          this.notify('invalid', 4000);
+          this.$nextTick(() => {
+            const el = this.$refs.form.querySelector('[aria-invalid="true"]');
+            if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus({ preventScroll: true }); }
+          });
+          return;
+        }
+        this.busy = true;
+        /* ---- التكامل مع Laravel ----
+           Blade:    this.$refs.form.submit();
+           Livewire: $wire.register({ name, org, tenant, email, country, phone: dial + phone, password, password_confirmation, terms })
+           التحقق وحل الـ Tenant وتفرّد البريد وتطبيع رقم الهاتف (E.164) والـ Rate Limiting تتم في الخادم فقط. */
+        await new Promise(r => setTimeout(r, 900));   // محاكاة للعرض فقط
+
+        if (force === 'bad') { this.busy = false; this.notify('error', 7000); return; }
+
+        /* نجاح: نُبقي الزر في حالة التحميل حتى الانتقال — الخطوة التالية: شاشة تأكيد البريد */
+        this.notify('success', 0);
+        if (window.FIROB && typeof FIROB.go === 'function') FIROB.go('verify-email', 900);
+        else setTimeout(() => { window.location.href = 'verify-email.html'; }, 900);
+      },
+      demo(ok) {
+        if (this.busy) return;
+        this.name = this.lang === 'ar' ? 'معلم تجريبي' : 'Demo Teacher';
+        this.org = this.lang === 'ar' ? 'مدرسة الأمل الأساسية' : 'Al-Amal Basic School';
+        this.tenant = 'demo-school'; this.tenantTouched = true; this.email = 'teacher@firob.sa';
+        this.country = 'PS'; this.phone = '599123456';
+        this.password = 'DemoPass123'; this.confirm = 'DemoPass123'; this.agree = true;
+        this.errors = {};
+        this.submit(ok ? 'ok' : 'bad');
+      },
+    };
+  }
+</script>
+</head>
+
+<body x-data="app()">
+
+<!-- ========== Icon Sprite ========== -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 011-1h9a1 1 0 011 1v16M15 10h4a1 1 0 011 1v10M2 21h20M8 8h3M8 12h3M8 16h3"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M2 21a8 8 0 0116 0M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A9.7 9.7 0 0112 6c6.5 0 10 6 10 6a17 17 0 01-3.2 3.9M6.6 7.7C3.9 9.3 2 12 2 12s3.5 6 10 6c1.5 0 2.9-.3 4.1-.8M9.9 9.9a3 3 0 004.2 4.2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5v-7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 012 2v13H7a2 2 0 00-2 2V4z"/><path d="M7 19h12"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></symbol>
+</svg>
+
+<!-- روابط التخطّي (Skip Links) -->
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:font-bold focus:text-onaccent focus-visible:outline-none focus-visible:shadow-[var(--ring)]" x-text="t('skipMain')">تخطّي إلى المحتوى الرئيسي</a>
+<a href="#signup-form" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:font-bold focus:text-onaccent focus-visible:outline-none focus-visible:shadow-[var(--ring)]" x-text="t('skipForm')">تخطّي إلى نموذج التسجيل</a>
+
+<!-- إشعار عائم: منطقة حيّة ثابتة في DOM، ومحتواها يظهر فوق الصفحة دون دفعها -->
+<div class="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4" style="top: calc(1rem + var(--sat));" aria-live="polite" aria-atomic="true">
+  <div x-show="alert" x-cloak
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="-translate-y-3 opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+       class="pointer-events-auto w-full max-w-md rounded-xl bg-card shadow-pop">
+    <div class="alert" :class="alert === 'success' ? 'alert-success' : 'alert-error'" :role="alert === 'success' ? 'status' : 'alert'">
+      <svg class="ic mt-0.5" aria-hidden="true"><use :href="alert === 'success' ? '#i-check-circle' : '#i-x-circle'"/></svg>
+      <p class="flex-1" x-text="alert ? t({ error: 'serverErr', success: 'success', invalid: 'formErrors' }[alert]) : ''"></p>
+      <button type="button" class="-m-1.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg opacity-70 transition hover:opacity-100 focus-visible:outline-none focus-visible:shadow-[var(--ring)]" @click="dismiss()" :aria-label="t('dismiss')">
+        <svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="app-h flex w-full overflow-hidden">
+
+  <!-- ╔══════════ الجانب الأول: الهوية البصرية — يظهر من التابلت (md) فما فوق ══════════╗ -->
+  <aside class="relative hidden h-full overflow-hidden bg-gradient-to-br from-primary-500 via-primary-700 to-primary-900 text-white dark:from-[#0A4356] dark:via-[#062F3B] dark:to-[#031820] md:flex md:w-[40%] lg:w-[45%] xl:w-[44%]"
+         style="padding-top: var(--sat); padding-bottom: var(--sab);">
+
+    <div aria-hidden="true" class="absolute inset-0 grid grid-cols-6 grid-rows-6 gap-2 p-4 lg:gap-3 lg:p-6">
+      <template x-for="(c, i) in cells" :key="i">
+        <div class="grid place-items-center rounded-2xl motion-safe:animate-[breath_7s_ease-in-out_infinite]"
+             :class="tone[c.split(':')[0]]" :style="{ animationDelay: ((i * 7) % 11) * 0.5 + 's' }">
+          <template x-if="c.includes(':')">
+            <svg class="ic" :class="c.startsWith('a') ? 'text-onaccent' : 'text-white/70'"><use :href="'#i-' + c.split(':')[1]"/></svg>
+          </template>
+        </div>
+      </template>
+    </div>
+    <div aria-hidden="true" class="absolute -bottom-24 -start-24 h-80 w-80 rounded-full bg-accent-500/15 blur-3xl"></div>
+    <div aria-hidden="true" class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(7,60,76,.78)_0%,rgba(7,60,76,.5)_52%,transparent_100%)]"></div>
+
+    <div class="no-scrollbar relative z-10 m-auto flex max-h-full w-full flex-col items-center overflow-y-auto px-[clamp(1.5rem,4vw,4rem)] py-6 text-center short:py-4">
+
+      <!-- الشعار -->
+      <div class="inline-flex items-center rounded-xl bg-white p-0 shadow-pop">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" width="352" height="96" decoding="async"
+             class="mx-1 -my-2.5 block h-[clamp(3.25rem,9vh,6rem)] w-auto max-w-[min(22rem,80%)] object-contain">
+      </div>
+      <p class="mt-3 text-lead font-bold text-primary-50 short:mt-2" x-text="t('brandTag')"></p>
+
+      <h2 class="mt-[clamp(1rem,3.4vh,2rem)] max-w-lg text-balance text-display font-extrabold" x-text="t('heroTitle')"></h2>
+
+      <!-- قائمة المزايا: تُخفى في الشاشات القصيرة جدًا كي لا تُقصّ -->
+      <ul class="mt-[clamp(1rem,3.4vh,2.25rem)] w-full max-w-md space-y-[clamp(.5rem,1.4vh,.75rem)] text-start text-label xshort:hidden">
+        <li class="feature">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-accent-500 short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-user-plus"/></svg></span>
+          <span class="font-medium" x-text="t('hero1')"></span>
+        </li>
+        <li class="feature">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-accent-500 short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-shield"/></svg></span>
+          <span class="font-medium" x-text="t('hero2')"></span>
+        </li>
+        <li class="feature">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15 text-accent-500 short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-sparkle"/></svg></span>
+          <span class="font-medium" x-text="t('hero3')"></span>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- ╔══════════ الجانب الثاني: نموذج التسجيل ══════════╗ -->
+  <div class="safe-x flex h-full min-w-0 flex-1 flex-col bg-[radial-gradient(48rem_22rem_at_50%_0%,rgb(var(--glow)/0.13),transparent)]">
+
+    <!-- شريط علوي (يحترم النوتش) -->
+    <div class="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 sm:px-8 lg:px-10" style="padding-top: calc(.5rem + var(--sat));">
+      <div class="flex min-w-0 items-center gap-2.5 md:hidden">
+        <span class="inline-flex items-center rounded-lg bg-white p-1 shadow-sm">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" width="112" height="28" class="block h-7 w-auto max-w-[8rem] object-contain">
+        </span>
+      </div>
+      <span class="hidden md:block" aria-hidden="true"></span>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <button type="button" class="tool" @click="toggleTheme()" :aria-pressed="dark"
+                :aria-label="dark ? t('themeLight') : t('themeDark')" :title="dark ? t('themeLight') : t('themeDark')">
+          <svg class="ic" x-show="!dark" aria-hidden="true"><use href="#i-moon"/></svg>
+          <svg class="ic" x-show="dark" x-cloak aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
+
+        <div class="flex h-10 items-center rounded-xl border border-line-strong bg-field p-1" role="group" :aria-label="t('langGroup')">
+          <button type="button" lang="ar" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                  :class="lang === 'ar' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'ar'" @click="lang = 'ar'">عربي</button>
+          <button type="button" lang="en" class="h-full rounded-lg px-3.5 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring)]"
+                  :class="lang === 'en' ? 'bg-primary-500 text-white' : 'text-muted hover:bg-soft'" :aria-pressed="lang === 'en'" @click="lang = 'en'">EN</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- المحتوى: يتمرّر داخليًا (النموذج طويل)، مع حجز مساحة أسفل لشريط التجربة ومسافة الأمان -->
+    <main id="main" x-ref="main" tabindex="-1" class="thin-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto overflow-x-hidden px-4 pt-3 focus:outline-none sm:px-8 short:pt-1"
+          style="padding-bottom: calc(var(--ribbon-h) + var(--sab));" @scroll.passive="cOpen && cHide(false)">
+      <section class="@container card my-auto w-full max-w-[34rem] p-[clamp(1.25rem,3vh,2.25rem)] max-[359px]:rounded-2xl max-[359px]:p-4 xshort:p-4" aria-labelledby="signup-title">
+
+        <!-- الترويسة -->
+        <header class="mb-[clamp(.75rem,2.2vh,1.5rem)]">
+          <div class="flex items-center gap-3">
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-line bg-soft text-brand short:h-9 short:w-9" aria-hidden="true"><svg class="ic"><use href="#i-user-plus"/></svg></span>
+            <h1 id="signup-title" class="text-h1 font-extrabold text-ink" x-text="t('title')">إنشاء حساب جديد</h1>
+          </div>
+          <p class="mt-2 text-caption text-muted short:hidden" x-text="t('subtitle')"></p>
+        </header>
+
+        <!-- Laravel: action="{{ route('register') }}" + @csrf -->
+        <form id="signup-form" x-ref="form" method="POST" action="/register" novalidate class="space-y-[clamp(.75rem,1.8vh,1.25rem)]" @submit.prevent="submit()" :aria-busy="busy">
+
+          <!-- ① الاسم الكامل -->
+          <div>
+            <label class="label mb-1.5" for="name"><span x-text="t('nameLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <div class="fgroup" :data-invalid="!!errors.name" :data-valid="isValid('name')">
+              <svg class="ic text-muted" aria-hidden="true"><use href="#i-user"/></svg>
+              <input id="name" name="name" type="text" autocomplete="name" autocapitalize="words" enterkeyhint="next" required aria-required="true"
+                     class="fgroup-input"
+                     x-model="name" @input="errors.name = ''" @blur="blurField('name')"
+                     :aria-invalid="!!errors.name" :aria-describedby="errors.name ? 'name-err' : null">
+              <svg class="ic ok-mark !h-4 !w-4" aria-hidden="true"><use href="#i-tick"/></svg>
+            </div>
+            <p id="name-err" class="err" x-show="errors.name" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.name)"></span></p>
+          </div>
+
+          <!-- ② اسم المؤسسة / المدرسة -->
+          <div>
+            <label class="label mb-1.5" for="org"><span x-text="t('orgLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <div class="fgroup" :data-invalid="!!errors.org" :data-valid="isValid('org')">
+              <svg class="ic text-muted" aria-hidden="true"><use href="#i-building"/></svg>
+              <input id="org" name="organization_name" type="text" autocomplete="organization" enterkeyhint="next" required aria-required="true"
+                     class="fgroup-input"
+                     x-model="org" @input="onOrgInput()" @blur="blurField('org')"
+                     :aria-invalid="!!errors.org" :aria-describedby="errors.org ? 'org-err' : 'org-hint'">
+              <svg class="ic ok-mark !h-4 !w-4" aria-hidden="true"><use href="#i-tick"/></svg>
+            </div>
+            <p id="org-hint" class="hint short:hidden" x-show="!errors.org" x-text="t('orgHint')"></p>
+            <p id="org-err" class="err" x-show="errors.org" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.org)"></span></p>
+          </div>
+
+          <!-- ③ سياق المنشأة (Tenant) -->
+          <div class="rounded-2xl border border-line bg-soft/60 p-3 sm:p-3.5">
+            <div class="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <label class="label" for="tenant"><span x-text="t('tenantLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+              <button type="button" class="link inline-flex min-h-[2rem] items-center gap-1" @click="tenantInfo = !tenantInfo" :aria-expanded="tenantInfo" aria-controls="tenant-info">
+                <svg class="ic !h-4 !w-4" aria-hidden="true"><use href="#i-info"/></svg><span x-text="t('tenantHelp')"></span>
+              </button>
+            </div>
+            <p id="tenant-info" x-show="tenantInfo" x-cloak x-transition.opacity class="mb-2 rounded-xl border border-line bg-card px-3 py-2 text-caption text-muted" x-text="t('tenantHelpBody')"></p>
+            <div class="fgroup" :data-invalid="!!errors.tenant" :data-valid="isValid('tenant')">
+              <svg class="ic text-muted" aria-hidden="true"><use href="#i-globe"/></svg>
+              <div dir="ltr" class="flex min-w-0 flex-1 items-center">
+                <input id="tenant" name="tenant" type="text" inputmode="url" autocomplete="off" enterkeyhint="next"
+                       autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="school-name" required aria-required="true" maxlength="63"
+                       class="fgroup-input text-end"
+                       x-model="tenant" @input="onTenantInput()" @blur="tenant = tenant.replace(/-+$/, ''); blurField('tenant')"
+                       :aria-invalid="!!errors.tenant" :aria-describedby="errors.tenant ? 'tenant-err' : 'tenant-hint'">
+                <span class="shrink-0 select-none border-s border-line ps-2 text-label font-bold text-muted sm:ps-3" aria-hidden="true">.firob.net</span>
+              </div>
+            </div>
+            <p id="tenant-hint" class="hint flex flex-wrap items-center gap-x-1.5 xshort:hidden" x-show="!errors.tenant">
+              <span x-text="t('tenantHint')"></span>
+              <bdi dir="ltr" class="break-all font-bold" :class="tenant ? 'text-brand' : 'text-ink'" x-text="tenantPreview">school-name.firob.net</bdi>
+            </p>
+            <p id="tenant-err" class="err" x-show="errors.tenant" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.tenant)"></span></p>
+          </div>
+
+          <!-- ④ البريد الإلكتروني -->
+          <div>
+            <label class="label mb-1.5" for="email"><span x-text="t('emailLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <div class="fgroup" :data-invalid="!!errors.email" :data-valid="isValid('email')">
+              <svg class="ic text-muted" aria-hidden="true"><use href="#i-mail"/></svg>
+              <input id="email" name="email" type="email" dir="ltr" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false"
+                     enterkeyhint="next" placeholder="name@school.edu" required aria-required="true"
+                     class="fgroup-input rtl-end"
+                     x-model="email" @input="errors.email = ''" @blur="email = email.trim(); blurField('email')"
+                     :aria-invalid="!!errors.email" :aria-describedby="errors.email ? 'email-err' : null">
+              <svg class="ic ok-mark !h-4 !w-4" aria-hidden="true"><use href="#i-tick"/></svg>
+            </div>
+            <p id="email-err" class="err" x-show="errors.email" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.email)"></span></p>
+          </div>
+
+          <!-- ⑤ الدولة + رقم واتساب — عمودان عندما تتسع البطاقة نفسها (Container Query) لا الشاشة -->
+          <div class="grid gap-[clamp(.75rem,1.8vh,1.25rem)] @md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] @md:gap-3">
+
+            <!-- الدولة: قائمة مخصّصة (ARIA Select-only Combobox) -->
+            <div>
+              <label id="country-label" class="label mb-1.5" for="country" @click.prevent="$refs.countryBtn.focus()"><span x-text="t('countryLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+
+              <div class="relative" @click.outside="cOpen && cHide(false)">
+                <div class="fgroup !gap-0 !p-0" :data-invalid="!!errors.country" :data-open="cOpen">
+                  <button id="country" x-ref="countryBtn" type="button" class="fgroup-btn"
+                          role="combobox" aria-haspopup="listbox" aria-controls="country-list" aria-required="true"
+                          aria-labelledby="country-label country-value"
+                          :aria-expanded="cOpen"
+                          :aria-activedescendant="cOpen ? 'country-opt-' + countries[cActive].code : null"
+                          :aria-invalid="!!errors.country" :aria-describedby="errors.country ? 'country-err' : null"
+                          @click="cToggle()" @keydown="cKey($event)" @keyup.space.prevent>
+                    <span id="country-value" class="min-w-0 flex-1 truncate" x-text="cName(cSel)">فلسطين</span>
+                    <span dir="ltr" class="shrink-0 text-caption font-bold tabular-nums text-muted" x-text="dial" aria-hidden="true"></span>
+                    <svg class="ic text-muted transition-transform duration-200" :class="cOpen && 'rotate-180'" aria-hidden="true"><use href="#i-chev"/></svg>
+                  </button>
+                </div>
+
+                <input type="hidden" name="country" :value="country">
+
+                <ul id="country-list" role="listbox" aria-labelledby="country-label" class="listbox"
+                    :class="cUp ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top'"
+                    x-show="cOpen" x-cloak
+                    x-transition:enter="transition ease-out duration-150"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-100"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    @mousedown.prevent @scroll.stop>
+                  <template x-for="(c, i) in countries" :key="c.code">
+                    <li :id="'country-opt-' + c.code" role="option" class="opt"
+                        :aria-selected="c.code === country" :data-active="i === cActive"
+                        @mouseenter="cActive = i" @click="cPick(i)">
+                      <span class="min-w-0 flex-1 truncate" x-text="cName(c)"></span>
+                      <span dir="ltr" class="shrink-0 text-caption font-medium tabular-nums text-muted" x-text="'+' + c.dial"></span>
+                      <span class="grid h-4 w-4 shrink-0 place-items-center" aria-hidden="true">
+                        <svg x-show="c.code === country" class="ic !h-4 !w-4 text-brand" style="stroke-width:2.4"><use href="#i-tick"/></svg>
+                      </span>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+
+              <p id="country-err" class="err" x-show="errors.country" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.country)"></span></p>
+            </div>
+
+            <!-- رقم واتساب -->
+            <div>
+              <label class="label mb-1.5" for="phone"><span x-text="t('phoneLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+              <div dir="ltr" class="flex items-stretch gap-2">
+                <span id="phone-code" class="dial" x-text="dial">+970</span>
+                <div class="fgroup min-w-0 flex-1" :data-invalid="!!errors.phone" :data-valid="isValid('phone')">
+                  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="next" maxlength="16"
+                         :placeholder="t('phonePh')" required aria-required="true"
+                         class="fgroup-input tabular-nums"
+                         x-model="phone" @input="onPhoneInput()" @blur="blurField('phone')"
+                         :aria-invalid="!!errors.phone" :aria-describedby="'phone-code ' + (errors.phone ? 'phone-err' : 'phone-hint')">
+                  <svg class="ic ok-mark !h-4 !w-4" aria-hidden="true"><use href="#i-tick"/></svg>
+                </div>
+              </div>
+              <input type="hidden" name="phone_country_code" :value="dial">
+              <input type="hidden" name="full_phone" :value="fullPhone">
+              <p id="phone-hint" class="hint short:hidden" x-show="!errors.phone" x-text="t('phoneHint')"></p>
+              <p id="phone-err" class="err" x-show="errors.phone" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.phone)"></span></p>
+            </div>
+          </div>
+
+          <!-- ⑥ كلمة المرور + التأكيد -->
+          <div>
+            <div class="grid gap-[clamp(.75rem,1.8vh,1.25rem)] @md:grid-cols-2 @md:gap-3">
+              <div>
+                <label class="label mb-1.5" for="password"><span x-text="t('passLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup !pe-1.5" :data-invalid="!!errors.password">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-lock"/></svg>
+                  <input id="password" x-ref="password" name="password" dir="ltr" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"
+                         enterkeyhint="next" placeholder="••••••••" required aria-required="true" minlength="8"
+                         class="fgroup-input rtl-end" :type="showPw ? 'text' : 'password'"
+                         x-model="password" @input="errors.password = ''; if (errors.confirm === 'confirmMatch' && confirm === password) errors.confirm = ''"
+                         @keydown="checkCaps($event)" @keyup="checkCaps($event)" @blur="capsOn = false; blurField('password')"
+                         :aria-invalid="!!errors.password" :aria-describedby="['pw-reqs', errors.password ? 'password-err' : '', capsOn ? 'caps-warn' : ''].filter(Boolean).join(' ')">
+                  <button type="button" class="btn btn-ghost btn-icon shrink-0 !text-muted"
+                          @mousedown.prevent
+                          @click="showPw = !showPw; $nextTick(() => { const i = $refs.password; i.focus(); const n = i.value.length; try { i.setSelectionRange(n, n); } catch (_) {} })"
+                          :aria-pressed="showPw" :aria-label="showPw ? t('hidePw') : t('showPw')" :title="showPw ? t('hidePw') : t('showPw')" aria-controls="password confirm">
+                    <svg class="ic" x-show="!showPw" aria-hidden="true"><use href="#i-eye"/></svg>
+                    <svg class="ic" x-show="showPw" x-cloak aria-hidden="true"><use href="#i-eye-off"/></svg>
+                  </button>
+                </div>
+                <p id="password-err" class="err" x-show="errors.password" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.password)"></span></p>
+                <p id="caps-warn" class="warn" x-show="capsOn" x-cloak role="status"><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-warning"/></svg><span x-text="t('caps')"></span></p>
+              </div>
+
+              <div>
+                <label class="label mb-1.5" for="confirm"><span x-text="t('confirmLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="fgroup" :data-invalid="!!errors.confirm" :data-valid="confirmOk && reqLen">
+                  <svg class="ic text-muted" aria-hidden="true"><use href="#i-lock"/></svg>
+                  <input id="confirm" name="password_confirmation" dir="ltr" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"
+                         enterkeyhint="done" placeholder="••••••••" required aria-required="true"
+                         class="fgroup-input rtl-end" :type="showPw ? 'text' : 'password'"
+                         x-model="confirm" @input="errors.confirm = ''" @blur="blurField('confirm')"
+                         :aria-invalid="!!errors.confirm" :aria-describedby="errors.confirm ? 'confirm-err' : (confirmOk ? 'confirm-ok' : null)">
+                  <svg class="ic ok-mark !h-4 !w-4" aria-hidden="true"><use href="#i-tick"/></svg>
+                </div>
+                <p id="confirm-err" class="err" x-show="errors.confirm" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.confirm)"></span></p>
+                <p id="confirm-ok" class="sr-only" x-text="confirmOk ? t('confirmOk') : ''"></p>
+              </div>
+            </div>
+
+            <!-- المتطلبات + مؤشر القوة (المؤشر البصري مخفي عن قارئات الشاشة، ونصّه يُعلن عبر role=status) -->
+            <div class="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <ul id="pw-reqs" class="flex flex-wrap gap-x-4 gap-y-1">
+                <li class="req" :data-met="reqLen">
+                  <svg class="ic !h-4 !w-4" aria-hidden="true"><use :href="reqLen ? '#i-tick' : '#i-dot'"/></svg><span x-text="t('reqLen')"></span>
+                </li>
+                <li class="req" :data-met="reqMix">
+                  <svg class="ic !h-4 !w-4" aria-hidden="true"><use :href="reqMix ? '#i-tick' : '#i-dot'"/></svg><span x-text="t('reqMix')"></span>
+                </li>
+              </ul>
+              <div class="flex min-w-[9rem] flex-1 items-center gap-2 @md:max-w-[14rem]" x-show="password" x-cloak aria-hidden="true">
+                <div class="flex flex-1 gap-1" dir="ltr">
+                  <template x-for="i in 4" :key="i">
+                    <span class="h-1.5 flex-1 rounded-full bg-line-strong/30 transition-colors duration-300" :class="i <= strength && strengthBar"></span>
+                  </template>
+                </div>
+                <span class="min-w-[3.5rem] text-end text-caption font-bold" :class="strengthText" x-text="t(strengthKey)"></span>
+              </div>
+            </div>
+            <span class="sr-only" role="status" x-text="password ? t('pwStrength') + ': ' + t(strengthKey) : ''"></span>
+          </div>
+
+          <!-- ⑦ الموافقة على الشروط -->
+          <div>
+            <div class="flex items-start gap-3 text-label font-medium">
+              <input id="agree" type="checkbox" name="terms" class="check mt-[.15rem]" required aria-required="true"
+                     x-model="agree" @change="errors.agree = ''"
+                     :aria-invalid="!!errors.agree" :aria-describedby="errors.agree ? 'agree-err' : null">
+              <p class="leading-6">
+                <label for="agree" class="cursor-pointer select-none" x-text="t('agree')"></label>
+                <a href="terms.html" target="_blank" rel="noopener" class="link !text-label inline-flex items-center gap-0.5">
+                  <span x-text="t('terms')"></span><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-external"/></svg><span class="sr-only" x-text="t('newTab')"></span>
+                </a>
+                <span x-text="t('and')"></span>
+                <a href="privacy.html" target="_blank" rel="noopener" class="link !text-label inline-flex items-center gap-0.5">
+                  <span x-text="t('privacy')"></span><svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-external"/></svg><span class="sr-only" x-text="t('newTab')"></span>
+                </a>
+                <span class="text-danger" aria-hidden="true">*</span>
+              </p>
+            </div>
+            <p id="agree-err" class="err" x-show="errors.agree" x-cloak><svg class="ic mt-0.5 !h-4 !w-4" aria-hidden="true"><use href="#i-x-circle"/></svg><span x-text="t(errors.agree)"></span></p>
+          </div>
+
+          <!-- زر الإنشاء — للتحويل إلى التركوازي بدّل btn-accent بـ btn-primary -->
+          <button type="submit" class="btn btn-accent btn-lg w-full" :class="busy && 'is-loading'" :aria-busy="busy" :disabled="busy">
+            <svg x-show="busy" x-cloak class="ic animate-spin" aria-hidden="true"><use href="#i-spinner"/></svg>
+            <span x-text="busy ? t('busy') : t('submit')">إنشاء الحساب</span>
+            <svg x-show="!busy" class="ic ltr:rotate-180" aria-hidden="true"><use href="#i-arrow"/></svg>
+          </button>
+        </form>
+
+        <p class="mt-[clamp(.75rem,2vh,1.25rem)] text-center text-label text-muted">
+          <span x-text="t('haveAccount')"></span>
+          <a href="login.html" class="link ms-1 !text-label" x-text="t('signIn')"></a>
+        </p>
+      </section>
+
+      <!-- تذييل: داخل منطقة التمرير فلا يقتطع من ارتفاع النموذج -->
+      <footer class="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 px-4 py-2 text-center text-[0.8125rem] text-muted short:mt-2">
+        <span x-text="t('rights')"></span>
+        <a href="../index.html" class="pill inline-flex items-center gap-1 text-muted hover:bg-soft hover:text-ink">
+          <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-home"/></svg><span x-text="t('screens')"></span>
+        </a>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<!-- ========== شريط النموذج الأولي العائم (Prototype Ribbon) — معزول عن التذييل الإنتاجي، احذفه بالكامل قبل الإطلاق ========== -->
+<div class="fixed z-50" style="bottom: calc(.75rem + var(--sab)); inset-inline-end: calc(.75rem + var(--sar)); max-width: calc(100vw - 1.5rem - var(--sal) - var(--sar));"
+     role="region" :aria-label="t('demoLabel')">
+  <div class="no-scrollbar flex items-center gap-1.5 overflow-x-auto rounded-full border border-dashed border-accent-500/70 bg-slate-900/90 p-1.5 shadow-pop backdrop-blur-md">
+    <span class="flex shrink-0 items-center gap-1 rounded-full bg-accent-500 px-2.5 py-1 text-[0.6875rem] font-extrabold uppercase tracking-wide text-onaccent">
+      <svg class="ic !h-3.5 !w-3.5" aria-hidden="true"><use href="#i-sparkle"/></svg>
+      <span class="hidden sm:inline" x-text="t('demoTitle')"></span>
+    </span>
+    <button type="button" class="pill min-h-[2.25rem] shrink-0 whitespace-nowrap !border-white/20 !text-white hover:!bg-white/10" :disabled="busy" @click="demo(true)" x-text="t('demoOk')"></button>
+    <button type="button" class="pill min-h-[2.25rem] shrink-0 whitespace-nowrap !border-red-400/60 !text-red-300 hover:!bg-red-500/15" :disabled="busy" @click="demo(false)" x-text="t('demoBad')"></button>
+  </div>
+</div>
+
+</body>
+</html>

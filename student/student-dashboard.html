@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>لوحة الطالب — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }  /* كان 3.93:1 في الداكن */
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- أشرطة التقدّم (ProgressMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-500; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- أداء: تخطّي رسم البطاقات خارج الشاشة ---------- */
+    .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 220px; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="student-dashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:ring-2" :class="!expanded && 'lg:flex-none lg:justify-center'" :aria-label="t('appTitle')">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold text-muted ltr:tracking-wide" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); } else if (mobile) { mobileNav = false; }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <!-- جرس الإشعارات -->
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-controls="notif-menu" :aria-expanded="notifOpen.toString()"
+                    :aria-label="t('notifications') + (unread ? ' (' + fmt(unread) + ')' : '')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="relMin(n.min)"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- قائمة الملف الشخصي -->
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="studentName + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="initials"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="studentName"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleStudent')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-brand" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="../common/notifications.html" role="menuitem" class="menu-item"><i class="fa-regular fa-bell w-4 text-muted" aria-hidden="true"></i> <span x-text="t('notifications')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="student-dashboard.html" class="hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" aria-current="page" x-text="t('sd.title')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — STU-01: الشاشة الرئيسية للطالب (كل الأرقام محسوبة من مصدر بيانات واحد) ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <h1 class="sr-only" x-text="t('sd.title')"></h1>
+
+      <!-- ================= بانر الترحيب ================= -->
+      <section class="panel relative overflow-hidden p-5 sm:p-7" aria-labelledby="welcome-title">
+        <!-- دوائر زخرفية: مخفية على الجوال (تكلفة blur على GPU) -->
+        <div class="pointer-events-none absolute -end-16 -top-16 hidden h-56 w-56 rounded-full bg-primary-500/10 blur-xl sm:block" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -start-10 -bottom-20 hidden h-48 w-48 rounded-full bg-accent-500/10 blur-xl sm:block" aria-hidden="true"></div>
+
+        <div class="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex min-w-0 items-center gap-4">
+            <span class="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-primary-500 text-xl font-extrabold text-white sm:h-20 sm:w-20 sm:text-2xl" aria-hidden="true" x-text="initials"></span>
+            <div class="min-w-0">
+              <h2 id="welcome-title" class="text-xl font-extrabold leading-tight text-ink sm:text-2xl">
+                <span x-text="t('sd.welcome')"></span> <span x-text="studentName"></span> <span aria-hidden="true">👋</span>
+              </h2>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span class="badge badge-primary"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i> <span x-text="t('sd.gradeLevel')"></span></span>
+                <span class="badge badge-muted"><i class="fa-regular fa-calendar" aria-hidden="true"></i> <span x-text="t('sd.academicYear')"></span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="shrink-0 rounded-xl border border-line bg-field/60 p-4 sm:min-w-[15rem]">
+            <div class="flex items-center justify-between gap-3 text-xs font-bold">
+              <span id="overall-label" class="text-muted" x-text="t('sd.overallProgress')"></span>
+              <span class="text-brand tabular-nums" x-text="fmtPct(overall.pct)"></span>
+            </div>
+            <div class="quota-track mt-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="overall-label"
+                 :aria-valuenow="overall.pct" :aria-valuetext="fmtPct(overall.pct) + ' — ' + tf('sd.lessonsOf', { d: fmt(overall.done), t: fmt(overall.total) })">
+              <div class="quota-fill bg-primary-500" :style="'width:' + overall.pct + '%'"></div>
+            </div>
+            <p class="mt-2 text-xs leading-5 text-muted" x-text="tf('sd.overallProgressHint', { d: fmt(overall.done), t: fmt(overall.total) })"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= مفهوم مقترح لليوم — رابط حقيقي على العنوان + نمط stretched-link ================= -->
+      <article class="panel relative flex items-center gap-4 p-4 transition hover:border-primary-500 focus-within:border-primary-500 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand sm:p-5">
+        <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-lightbulb"></i></span>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-muted" x-text="t('sd.conceptOfDayLabel')"></p>
+          <h2 class="truncate font-extrabold text-ink">
+            <a :href="'concept-viewer.html?id=' + concept.id" class="after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none"
+               :lang="locale" x-text="concept[locale]"></a>
+          </h2>
+          <p class="truncate text-xs text-muted" :lang="altLocale" :dir="altLocale === 'ar' ? 'rtl' : 'ltr'"
+             x-text="concept[altLocale] + ' · ' + subjectName(subjectById(concept.subject), altLocale)"></p>
+        </div>
+        <span class="btn btn-outline btn-sm pointer-events-none shrink-0" aria-hidden="true">
+          <span class="hidden sm:inline" x-text="t('sd.conceptOfDayCta')"></span>
+          <i class="fa-solid fa-arrow-right rtl:-scale-x-100"></i>
+        </span>
+      </article>
+
+      <!-- ================= مؤشرات الأداء (KPI) — محسوبة ================= -->
+      <section :aria-label="t('sd.kpisLabel')">
+        <ul class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" role="list">
+          <template x-for="k in kpis" :key="k.key">
+            <li class="panel p-4 sm:p-5">
+              <div class="flex items-center justify-between gap-3">
+                <p :id="'kpi-' + k.key" class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('sd.kpi.' + k.key)"></p>
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.tone" aria-hidden="true"><i class="fa-solid" :class="k.icon"></i></span>
+              </div>
+              <p class="mt-2 text-2xl font-extrabold tabular-nums text-ink" :aria-describedby="'kpi-' + k.key" x-text="k.value"></p>
+              <p x-show="k.hint" class="mt-0.5 truncate text-xs text-muted" x-text="k.hint"></p>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ================= المواد المسجَّلة (Subjects Grid) — قالب واحد ================= -->
+      <section id="subjects" aria-labelledby="subjects-title" class="space-y-3">
+        <div class="flex flex-wrap items-end justify-between gap-2">
+          <h2 id="subjects-title" class="text-lg font-extrabold text-ink sm:text-xl" x-text="t('sd.subjectsTitle')"></h2>
+          <p class="text-xs font-bold text-muted" x-text="tf('sd.thisTerm', { n: pluralize('subjects', subjects.length) })"></p>
+        </div>
+
+        <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
+          <template x-for="s in subjects" :key="s.id">
+            <li class="panel cv-auto flex flex-col gap-4 p-4 sm:p-5">
+              <div class="flex items-center gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl" :class="s.tone" aria-hidden="true"><i class="fa-solid" :class="s.icon"></i></span>
+                <div class="min-w-0">
+                  <h3 :id="'sub-' + s.id" class="truncate font-extrabold text-ink" x-text="subjectName(s)"></h3>
+                  <p class="text-xs text-muted"><span x-text="t('sd.activeConcepts')"></span>: <span class="font-bold tabular-nums text-ink" x-text="fmt(s.concepts)"></span></p>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                  <span class="text-muted" x-text="tf('sd.lessonsOf', { d: fmt(s.done), t: fmt(s.total) })"></span>
+                  <span class="tabular-nums" :class="tone(s.pct).text" x-text="fmtPct(s.pct)"></span>
+                </div>
+                <div class="quota-track mt-1.5" role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-labelledby="'sub-' + s.id"
+                     :aria-valuenow="s.pct" :aria-valuetext="fmtPct(s.pct) + ' — ' + tf('sd.lessonsOf', { d: fmt(s.done), t: fmt(s.total) })">
+                  <div class="quota-fill" :class="tone(s.pct).bar" :style="'width:' + s.pct + '%'"></div>
+                </div>
+                <p x-show="s.pct < 40" class="mt-1.5 text-xs font-bold text-muted">
+                  <i class="fa-solid fa-seedling me-1 text-brand" aria-hidden="true"></i><span x-text="t('sd.lowProgressNudge')"></span>
+                </p>
+              </div>
+              <a :href="'student-courses.html?course=' + s.id" class="btn btn-sm mt-auto w-full" :class="s.pct < 40 ? 'btn-outline' : 'btn-primary'"
+                 :aria-label="t('sd.continueCourse') + ': ' + subjectName(s)">
+                <i class="fa-solid fa-play rtl:-scale-x-100" aria-hidden="true"></i> <span x-text="t('sd.continueCourse')"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <section class="grid gap-4 sm:gap-6 lg:grid-cols-3">
+
+        <!-- ================= محاولات الاختبارات الأخيرة — عرض واحد مرسوم (x-if + wide) ================= -->
+        <div id="quiz-attempts" class="panel min-w-0 lg:col-span-2" aria-labelledby="attempts-title" role="region">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line p-4 sm:p-5">
+            <h2 id="attempts-title" class="text-lg font-extrabold text-ink" x-text="t('sd.attemptsTitle')"></h2>
+            <div class="flex items-center gap-3">
+              <p class="text-xs font-bold text-muted" x-text="tf('sd.lastN', { n: pluralize('attempts', recent.length) })"></p>
+              <a href="student-quiz-history.html" class="text-xs font-bold text-brand hover:underline" x-text="t('sd.viewAllAttempts')"></a>
+            </div>
+          </div>
+
+          <!-- جدول — الشاشات العريضة (≥ 1280px) -->
+          <template x-if="wide">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[760px] border-collapse text-sm">
+                <caption class="sr-only" x-text="t('sd.attemptsTitle')"></caption>
+                <thead>
+                  <tr class="border-b border-line text-xs font-extrabold text-muted ltr:uppercase ltr:tracking-wide">
+                    <th scope="col" class="px-4 py-3 text-start" x-text="t('sd.colQuiz')"></th>
+                    <th scope="col" class="px-4 py-3 text-start" x-text="t('sd.colSubject')"></th>
+                    <th scope="col" class="px-4 py-3 text-start" x-text="t('sd.colDate')"></th>
+                    <th scope="col" class="px-4 py-3 text-start" x-text="t('sd.colScore')"></th>
+                    <th scope="col" class="px-4 py-3 text-start" x-text="t('sd.colResult')"></th>
+                    <th scope="col" class="px-4 py-3 text-center"><span class="sr-only" x-text="t('sd.colAction')"></span></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-line">
+                  <template x-for="a in recent" :key="a.id">
+                    <tr class="transition hover:bg-soft/50">
+                      <th scope="row" class="px-4 py-3.5 text-start align-middle font-bold text-ink" x-text="a[locale]"></th>
+                      <td class="px-4 py-3.5 align-middle text-muted" x-text="subjectName(subjectById(a.subject))"></td>
+                      <td class="px-4 py-3.5 align-middle text-muted tabular-nums"><time :datetime="isoDate(a.date)" x-text="fmtDate(a.date)"></time></td>
+                      <td class="px-4 py-3.5 align-middle font-bold tabular-nums text-ink"><bdi x-text="scoreText(a)"></bdi></td>
+                      <td class="px-4 py-3.5 align-middle">
+                        <span class="badge" :class="attemptBadge(a).cls">
+                          <i class="fa-solid text-[10px]" :class="attemptBadge(a).icon" aria-hidden="true"></i>
+                          <span x-text="attemptBadge(a).label"></span>
+                        </span>
+                      </td>
+                      <td class="px-4 py-3.5 text-center align-middle">
+                        <a :href="'student-quiz-result.html?attempt=' + a.id" class="act group relative text-brand" :aria-label="t('sd.viewResult') + ': ' + a[locale]">
+                          <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                          <span class="tooltip-bubble" aria-hidden="true" x-text="t('sd.viewResult')"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                        </a>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <!-- بطاقات — الجوال والأجهزة اللوحية -->
+          <template x-if="!wide">
+            <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4" role="list">
+              <template x-for="a in recent" :key="a.id">
+                <li class="relative rounded-xl border border-line p-3.5 transition hover:border-primary-500 focus-within:border-primary-500">
+                  <div class="flex items-start justify-between gap-2">
+                    <h3 class="min-w-0 font-bold leading-6 text-ink">
+                      <a :href="'student-quiz-result.html?attempt=' + a.id" class="after:absolute after:inset-0 after:rounded-xl" x-text="a[locale]"></a>
+                    </h3>
+                    <span class="badge shrink-0" :class="attemptBadge(a).cls">
+                      <i class="fa-solid text-[10px]" :class="attemptBadge(a).icon" aria-hidden="true"></i>
+                      <span x-text="attemptBadge(a).label"></span>
+                    </span>
+                  </div>
+                  <p class="mt-1 text-xs text-muted">
+                    <span x-text="subjectName(subjectById(a.subject))"></span> ·
+                    <time class="tabular-nums" :datetime="isoDate(a.date)" x-text="fmtDate(a.date)"></time> ·
+                    <bdi class="font-bold tabular-nums text-ink" x-text="scoreText(a)"></bdi>
+                  </p>
+                  <p class="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand" aria-hidden="true">
+                    <span x-text="t('sd.viewResult')"></span><i class="fa-solid fa-arrow-right text-[10px] rtl:-scale-x-100"></i>
+                  </p>
+                </li>
+              </template>
+            </ul>
+          </template>
+        </div>
+
+        <!-- ================= المهام والاختبارات القادمة — مرتّبة حسب الإلحاح + حالة «متأخر» ================= -->
+        <div id="upcoming" class="panel min-w-0 p-4 sm:p-5" role="region" aria-labelledby="upcoming-title">
+          <div class="mb-4">
+            <h2 id="upcoming-title" class="text-lg font-extrabold text-ink" x-text="t('sd.upcomingTitle')"></h2>
+            <p class="mt-1 text-xs text-muted" x-text="t('sd.upcomingSubtitle')"></p>
+          </div>
+
+          <p x-show="!tasks.length" class="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted" x-text="t('sd.noTasks')"></p>
+
+          <ul class="space-y-3" role="list">
+            <template x-for="tk in tasks" :key="tk.code">
+              <li class="rounded-xl border p-3.5" :class="tk.state === 'overdue' ? 'border-error-500/50 bg-error-500/5' : (tk.state === 'missed' ? 'border-dashed border-line' : 'border-line')">
+                <div class="flex items-start gap-3">
+                  <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl" :class="subjectById(tk.subject).tone" aria-hidden="true"><i class="fa-solid" :class="subjectById(tk.subject).icon"></i></span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                      <h3 class="min-w-0 font-bold leading-6 text-ink" :class="tk.state === 'missed' && 'text-muted'" x-text="tk[locale]"></h3>
+                      <span x-show="tk.state !== 'open'" class="badge shrink-0" :class="STATE_BADGE[tk.state]" x-text="t('sd.state.' + tk.state)"></span>
+                    </div>
+                    <p class="text-xs text-muted" x-text="subjectName(subjectById(tk.subject))"></p>
+                    <p class="mt-1 text-xs font-bold" :class="dueTone(tk)">
+                      <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                      <span x-text="t('sd.dueOn')"></span>
+                      <time class="tabular-nums" :datetime="isoDate(tk.due)" x-text="fmtDate(tk.due)"></time>
+                      <span aria-hidden="true">·</span> <span x-text="relDay(tk.days)"></span>
+                    </p>
+                  </div>
+                </div>
+                <template x-if="tk.state !== 'missed'">
+                  <a :href="'quiz-player.html?code=' + tk.code + (tk.state === 'overdue' ? '&late=1' : '')" class="btn btn-sm mt-3 w-full"
+                     :class="tk.state === 'overdue' ? 'btn-outline !border-error-500/60' : 'btn-accent'"
+                     :aria-label="t(tk.state === 'overdue' ? 'sd.startLate' : 'sd.startQuiz') + ': ' + tk[locale]">
+                    <i class="fa-solid fa-pen" aria-hidden="true"></i> <span x-text="t(tk.state === 'overdue' ? 'sd.startLate' : 'sd.startQuiz')"></span>
+                  </a>
+                </template>
+                <p x-show="tk.state === 'missed'" class="mt-3 rounded-lg bg-soft/70 px-3 py-2 text-xs leading-5 text-muted" x-text="t('sd.missedHint')"></p>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-muted opacity-80" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * حالة واجهة شاشة «لوحة الطالب الرئيسية» (STU-01).
+   * مصدر بيانات واحد (STUDENT / SUBJECTS / ATTEMPTS / TASKS / CONCEPT) — كل الأرقام في الواجهة
+   * (التقدّم العام، المؤشرات، الإلحاح) محسوبة منه، ولا يوجد رقم مكتوب يدويًا في HTML.
+   * التواريخ نسبية إلى «اليوم» حتى يبقى النموذج صحيحًا في أي يوم يُفتح فيه.
+   * في Laravel: تُستبدل الثوابت بخصائص #[Computed] في مكوّن Livewire.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+
+    /* ---------- البيانات التجريبية (مصدر واحد) ---------- */
+    const DAY = 864e5;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayAt = (offset) => new Date(today.getTime() + offset * DAY);
+
+    const STUDENT = { id: 'STU-2210', ar: 'عمر خالد الفرا', en: 'Omar Khaled Al-Farra' };
+
+    const SUBJECTS = [
+      { id: 'math-g11', ar: 'الرياضيات',         en: 'Mathematics',      icon: 'fa-square-root-variable', tone: 'bg-primary-500/10 text-brand',                                  concepts: 18, done: 18, total: 25 },
+      { id: 'phys-g11', ar: 'الفيزياء',          en: 'Physics',          icon: 'fa-atom',                 tone: 'bg-info-500/15 text-info-700 dark:text-blue-300',                concepts: 14, done: 9,  total: 20 },
+      { id: 'arab-g11', ar: 'اللغة العربية',     en: 'Arabic Language',  icon: 'fa-language',             tone: 'bg-success-500/15 text-success-700 dark:text-success-500',       concepts: 22, done: 27, total: 30 },
+      { id: 'hist-g11', ar: 'التاريخ',           en: 'History',          icon: 'fa-landmark',             tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500',          concepts: 10, done: 6,  total: 20 },
+      { id: 'chem-g11', ar: 'الكيمياء',          en: 'Chemistry',        icon: 'fa-flask',                tone: 'bg-primary-500/10 text-brand',                                  concepts: 16, done: 12, total: 20 },
+      { id: 'engl-g11', ar: 'اللغة الإنجليزية',  en: 'English Language', icon: 'fa-spell-check',          tone: 'bg-info-500/15 text-info-700 dark:text-blue-300',                concepts: 12, done: 11, total: 20 },
+    ].map(s => ({ ...s, pct: s.total ? Math.round(s.done / s.total * 100) : 0 }));
+
+    /* ================= محاولات الطالب — مصدر واحد مشترك بين: لوحة الطالب، سجل المحاولات، صفحة النتيجة =================
+       كل درجة/نسبة/حالة محسوبة من الإجابات نفسها (لا أرقام مكتوبة يدويًا).
+       earned = null ⇒ السؤال بانتظار تصحيح المعلّم ⇒ المحاولة «بانتظار التصحيح» ولا نسبة/نجاح نهائي.
+       + المحاولات المُسلَّمة فعليًا من quiz-player.html (localStorage: firob-attempt-done:CODE) تُدمج تلقائيًا. */
+    const T = (ar, en) => ({ ar, en });
+    const M = (math) => ({ math });
+    const SA_DAY = 864e5;
+    const SA_TODAY = (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); })();
+
+    const SUBJECT_META = {
+      'math-g11': { ar: 'الرياضيات', en: 'Mathematics', icon: 'fa-square-root-variable' },
+      'phys-g11': { ar: 'الفيزياء', en: 'Physics', icon: 'fa-atom' },
+      'arab-g11': { ar: 'اللغة العربية', en: 'Arabic Language', icon: 'fa-language' },
+      'hist-g11': { ar: 'التاريخ', en: 'History', icon: 'fa-landmark' },
+      'chem-g11': { ar: 'الكيمياء', en: 'Chemistry', icon: 'fa-flask' },
+      'engl-g11': { ar: 'اللغة الإنجليزية', en: 'English Language', icon: 'fa-spell-check' },
+    };
+
+    const SA_RAW = [
+      { id: 'ATT-2210-09', code: 'QZ-C11-104', subject: 'chem-g11', title: T('اختبار الروابط الكيميائية', 'Chemical Bonds Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 3, at: [10, 5], durationSec: 1260, timeAllowed: 30, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 10, earned: 10, q: T('ما نوع الرابطة في جزيء كلوريد الصوديوم؟', 'What type of bond is in sodium chloride?'), math: 'NaCl',
+          yours: T('أيونية', 'Ionic'), correct: T('أيونية', 'Ionic'), grader: 'auto', fb: T('صحيح: انتقال إلكترون من Na إلى Cl يكوّن أيونين متجاذبين.', 'Correct: an electron moves from Na to Cl, forming attracting ions.') },
+        { type: 'tf', bloom: 'understand', marks: 10, earned: 10, q: T('الرابطة التساهمية تنتج عن مشاركة الإلكترونات.', 'A covalent bond results from sharing electrons.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 0, q: T('كم رابطة تساهمية يكوّنها الكربون عادةً؟', 'How many covalent bonds does carbon usually form?'),
+          yours: M('2'), correct: M('4'), grader: 'auto', fb: T('للكربون أربعة إلكترونات تكافؤ، فيكوّن أربع روابط.', 'Carbon has four valence electrons, so it forms four bonds.') },
+        { type: 'essay', bloom: 'analyze', marks: 10, earned: null, q: T('قارن بين الرابطة الأيونية والتساهمية من حيث درجة الانصهار.', 'Compare ionic and covalent bonds in terms of melting point.'),
+          yours: T('المركبات الأيونية درجة انصهارها أعلى لأن التجاذب بين الأيونات قوي في الشبكة البلورية.', 'Ionic compounds melt at higher temperatures because ions attract strongly in the crystal lattice.'), grader: 'teacher', fb: null },
+      ] },
+      { id: 'ATT-2210-08', code: 'QZ-M11-203', subject: 'math-g11', title: T('اختبار الفصل الثالث', 'Chapter 3 Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 13, at: [9, 42], durationSec: 1930, timeAllowed: 45, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('ما قيمة x في المعادلة التالية؟', 'What is the value of x in the following equation?'), math: '2x + 5 = 13',
+          yours: M('x = 4'), correct: M('x = 4'), grader: 'auto', fb: T('صحيح: نطرح 5 من الطرفين ثم نقسم على 2.', 'Correct: subtract 5 from both sides, then divide by 2.') },
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('ما ميل الخط المار بالنقطتين التاليتين؟', 'What is the slope of the line through these points?'), math: '(1, 2), (3, 6)',
+          yours: M('m = 2'), correct: M('m = 2'), grader: 'auto', fb: T('صحيح: (6 − 2) ÷ (3 − 1) = 2.', 'Correct: (6 − 2) ÷ (3 − 1) = 2.') },
+        { type: 'tf', bloom: 'understand', marks: 10, earned: 10, q: T('الخطان المتوازيان لهما الميل نفسه.', 'Parallel lines have the same slope.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'understand', marks: 10, earned: 8, q: T('اشرح معنى كل من m و b في الصورة الميلية لمعادلة الخط.', 'Explain the meaning of m and b in slope-intercept form.'), math: 'y = mx + b',
+          yours: T('m هو الميل ويحدد انحدار الخط، و b هو نقطة تقاطعه مع محور y.', 'm is the slope that sets the steepness; b is where the line crosses the y-axis.'), grader: 'teacher',
+          fb: T('شرح صحيح؛ كان ينقصه مثال عددي يوضّح أثر تغيّر m.', 'Correct explanation; a numeric example showing the effect of changing m was missing.') },
+        { type: 'essay', bloom: 'analyze', marks: 10, earned: 8, q: T('كيف تتحقق من أن خطين متعامدان باستخدام ميليهما؟', 'How do you check that two lines are perpendicular using their slopes?'),
+          yours: T('إذا كان حاصل ضرب الميلين يساوي −1 فهما متعامدان.', 'If the product of the slopes is −1, they are perpendicular.'), grader: 'teacher',
+          fb: T('صحيح، مع ملاحظة الحالة الخاصة للخط الرأسي الذي ميله غير معرّف.', 'Correct; note the special case of a vertical line with an undefined slope.') },
+      ] },
+      { id: 'ATT-2210-07', code: 'QZ-C11-105', subject: 'chem-g11', title: T('اختبار التفاعلات الكيميائية', 'Chemical Reactions Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 16, at: [11, 15], durationSec: 1500, timeAllowed: 30, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('ما المعادلة الموزونة لتكوّن الماء؟', 'Which is the balanced equation for forming water?'),
+          yours: M('2H₂ + O₂ → 2H₂O'), correct: M('2H₂ + O₂ → 2H₂O'), grader: 'auto', fb: T('موازنة صحيحة.', 'Correctly balanced.') },
+        { type: 'mcq', bloom: 'understand', marks: 10, earned: 0, q: T('ماذا نغيّر لموازنة المعادلة الكيميائية؟', 'What do we change to balance a chemical equation?'),
+          yours: T('الأرقام السفلية', 'The subscripts'), correct: T('المعاملات', 'The coefficients'), grader: 'auto',
+          fb: T('تغيير الأرقام السفلية يغيّر المادة نفسها؛ نغيّر المعاملات فقط.', 'Changing subscripts changes the substance itself; only coefficients change.') },
+        { type: 'tf', bloom: 'remember', marks: 10, earned: 10, q: T('تبقى الكتلة الكلية ثابتة في التفاعل الكيميائي.', 'Total mass stays constant in a chemical reaction.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('قانون حفظ الكتلة.', 'Law of conservation of mass.') },
+        { type: 'essay', bloom: 'analyze', marks: 10, earned: 5, q: T('حدّد العامل المؤكسد والمختزل في التفاعل التالي مع التعليل.', 'Identify the oxidizing and reducing agents in the reaction below, with reasons.'), math: 'Zn + Cu²⁺ → Zn²⁺ + Cu',
+          yours: T('الزنك هو العامل المؤكسد لأنه فقد إلكترونات.', 'Zinc is the oxidizing agent because it lost electrons.'), grader: 'teacher',
+          fb: T('عكستَ المفهومين: الزنك يفقد إلكترونات فهو العامل المختزل، و Cu²⁺ هو المؤكسد.', 'You swapped them: zinc loses electrons so it is the reducing agent; Cu²⁺ is the oxidizing agent.') },
+        { type: 'essay', bloom: 'apply', marks: 10, earned: 4, q: T('صنّف التفاعل التالي واذكر السبب.', 'Classify the following reaction and give the reason.'), math: 'CaCO₃ → CaO + CO₂',
+          yours: T('تفاعل اتحاد.', 'A combination reaction.'), grader: 'teacher',
+          fb: T('هو تفاعل تفكك: مادة واحدة تتحوّل إلى مادتين. أحسنت ذكر النواتج.', 'It is a decomposition: one substance becomes two. Good job naming the products.') },
+      ] },
+      { id: 'ATT-2210-06', code: 'QZ-A11-302', subject: 'arab-g11', title: T('اختبار قواعد اللغة', 'Grammar Rules Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 19, at: [10, 0], durationSec: 720, timeAllowed: 20, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 5, earned: 5, q: T('ما ركنا الجملة الاسمية؟', 'What are the two pillars of the nominal sentence?'),
+          yours: T('المبتدأ والخبر', 'Subject and predicate'), correct: T('المبتدأ والخبر', 'Subject and predicate'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 5, q: T('ما نوع الخبر في: «الكتابُ على الطاولةِ»؟', 'What type of predicate is in «الكتابُ على الطاولةِ»?'),
+          yours: T('شبه جملة', 'A phrase'), correct: T('شبه جملة', 'A phrase'), grader: 'auto', fb: T('صحيح: جار ومجرور.', 'Correct: a prepositional phrase.') },
+        { type: 'tf', bloom: 'understand', marks: 5, earned: 5, q: T('«كان» تنصب المبتدأ وترفع الخبر.', '«كان» makes the subject accusative and the predicate nominative.'),
+          yours: T('خطأ', 'False'), correct: T('خطأ', 'False'), grader: 'auto', fb: T('صحيح: العكس هو الصواب — ترفع الاسم وتنصب الخبر.', 'Correct: it is the reverse — nominative subject, accusative predicate.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 5, q: T('اختر الجملة التي خبرها جملة فعلية:', 'Choose the sentence whose predicate is a verbal clause:'),
+          yours: T('الطالبُ يقرأُ', 'الطالبُ يقرأُ'), correct: T('الطالبُ يقرأُ', 'الطالبُ يقرأُ'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 5, earned: 2, q: T('أعرب: «كان الجوُّ ماطرًا».', 'Parse: «كان الجوُّ ماطرًا».'),
+          yours: T('كان: فعل ماضٍ، الجو: فاعل مرفوع، ماطرًا: حال.', 'كان: past verb; الجو: agent; ماطرًا: circumstantial.'), grader: 'teacher',
+          fb: T('«الجو» اسم كان مرفوع وليس فاعلًا، و«ماطرًا» خبر كان منصوب.', '«الجو» is the noun of كان (nominative), not an agent; «ماطرًا» is its accusative predicate.') },
+      ] },
+      { id: 'ATT-2210-05', code: 'QZ-P11-110', subject: 'phys-g11', title: T('اختبار الحركة والقوة', 'Motion & Force Quiz'),
+        attemptNo: 1, attemptsAllowed: 1, daysAgo: 22, at: [8, 30], durationSec: 2400, timeAllowed: 45, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 10, earned: 10, q: T('جسم كتلته 2 kg يتسارع بمعدل 3 m/s². ما القوة المحصلة؟', 'A 2 kg body accelerates at 3 m/s². What is the net force?'),
+          yours: M('6 N'), correct: M('6 N'), grader: 'auto', fb: T('صحيح: F = ma = 2 × 3.', 'Correct: F = ma = 2 × 3.') },
+        { type: 'tf', bloom: 'understand', marks: 10, earned: 10, q: T('الإزاحة كمية متجهة.', 'Displacement is a vector quantity.'),
+          yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح: لها مقدار واتجاه.', 'Correct: it has magnitude and direction.') },
+        { type: 'mcq', bloom: 'remember', marks: 10, earned: 10, q: T('ما وحدة التسارع في النظام الدولي؟', 'What is the SI unit of acceleration?'),
+          yours: M('m/s²'), correct: M('m/s²'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'analyze', marks: 10, earned: 0, q: T('سيارة سرعتها ثابتة على طريق مستقيم. ما القوة المحصلة عليها؟', 'A car moves at constant velocity on a straight road. What is the net force on it?'),
+          yours: T('تساوي قوة المحرك', 'Equal to the engine force'), correct: T('صفر', 'Zero'), grader: 'auto',
+          fb: T('السرعة الثابتة تعني تسارعًا صفريًا، إذن القوة المحصلة صفر (قوة المحرك تعادل الاحتكاك).', 'Constant velocity means zero acceleration, so the net force is zero (engine force balances friction).') },
+        { type: 'essay', bloom: 'apply', marks: 10, earned: 8, q: T('فسّر لماذا يندفع الراكب إلى الأمام عند توقف الحافلة فجأة.', 'Explain why a passenger lurches forward when a bus stops suddenly.'),
+          yours: T('بسبب القصور الذاتي؛ جسم الراكب يميل للاستمرار في الحركة.', 'Because of inertia; the passenger’s body tends to keep moving.'), grader: 'teacher',
+          fb: T('تفسير صحيح بقانون نيوتن الأول؛ أضف دور حزام الأمان كقوة خارجية.', 'Correct use of Newton’s first law; add the seatbelt’s role as an external force.') },
+      ] },
+      { id: 'ATT-2210-04', code: 'QZ-H11-401', subject: 'hist-g11', title: T('اختبار الثورة الصناعية', 'Industrial Revolution Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 26, at: [12, 10], durationSec: 2050, timeAllowed: 40, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 20, earned: 20, q: T('في أي بلد بدأت الثورة الصناعية؟', 'In which country did the Industrial Revolution begin?'),
+          yours: T('بريطانيا', 'Britain'), correct: T('بريطانيا', 'Britain'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'remember', marks: 20, earned: 0, q: T('من طوّر الآلة البخارية بصورتها الفعّالة؟', 'Who developed the efficient steam engine?'),
+          yours: T('توماس إديسون', 'Thomas Edison'), correct: T('جيمس واط', 'James Watt'), grader: 'auto', fb: T('جيمس واط في القرن الثامن عشر؛ إديسون جاء لاحقًا.', 'James Watt in the 18th century; Edison came later.') },
+        { type: 'tf', bloom: 'understand', marks: 20, earned: 0, q: T('أدّت الثورة الصناعية إلى هجرة السكان من المدن إلى الأرياف.', 'The Industrial Revolution drove people from cities to the countryside.'),
+          yours: T('صواب', 'True'), correct: T('خطأ', 'False'), grader: 'auto', fb: T('العكس: هاجر السكان من الأرياف إلى المدن الصناعية.', 'The reverse: people moved from the countryside to industrial cities.') },
+        { type: 'essay', bloom: 'analyze', marks: 20, earned: 15, q: T('حلّل أثر الثورة الصناعية على ظروف العمال.', 'Analyze the impact of the Industrial Revolution on workers’ conditions.'),
+          yours: T('زادت ساعات العمل وانتشرت عمالة الأطفال وظهرت النقابات للمطالبة بالحقوق.', 'Working hours grew, child labor spread, and unions formed to demand rights.'), grader: 'teacher',
+          fb: T('تحليل جيد؛ ينقصه ذكر التشريعات التي حسّنت الظروف لاحقًا.', 'Good analysis; it misses the later laws that improved conditions.') },
+        { type: 'essay', bloom: 'understand', marks: 20, earned: 6, q: T('اذكر ثلاثة أسباب لقيام الثورة الصناعية.', 'Give three causes of the Industrial Revolution.'),
+          yours: T('توفر الفحم.', 'Availability of coal.'), grader: 'teacher', fb: T('ذكرت سببًا واحدًا فقط؛ راجع: رأس المال، الأسواق، الاختراعات.', 'You gave only one cause; review: capital, markets, inventions.') },
+      ] },
+      { id: 'ATT-2210-03', code: 'QZ-E11-501', subject: 'engl-g11', title: T('اختبار الأزمنة', 'Verb Tenses Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 30, at: [9, 0], durationSec: 1100, timeAllowed: 25, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'apply', marks: 8, earned: 8, q: T('أكمل: I ___ to Paris twice.', 'Complete: I ___ to Paris twice.'), yours: M('have been'), correct: M('have been'), grader: 'auto', fb: T('صحيح: تجربة دون زمن محدد.', 'Correct: an experience with no specific time.') },
+        { type: 'mcq', bloom: 'apply', marks: 8, earned: 8, q: T('أكمل: She ___ the report yesterday.', 'Complete: She ___ the report yesterday.'), yours: M('finished'), correct: M('finished'), grader: 'auto', fb: T('صحيح: yesterday زمن ماضٍ محدد.', 'Correct: yesterday is a specific past time.') },
+        { type: 'tf', bloom: 'remember', marks: 8, earned: 8, q: T('يُستخدم المضارع التام مع since و for.', 'Present perfect is used with since and for.'), yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'understand', marks: 8, earned: 8, q: T('أي جملة صحيحة؟', 'Which sentence is correct?'), yours: M('I have lived here since 2020.'), correct: M('I have lived here since 2020.'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 8, earned: 2, q: T('اكتب فقرة قصيرة تقارن فيها بين زمنين.', 'Write a short paragraph contrasting two tenses.'), yours: T('I went to school. I have went home.', 'I went to school. I have went home.'), grader: 'teacher',
+          fb: T('خطأ في التصريف: الصحيح have gone. والفقرة قصيرة جدًا.', 'Form error: it should be have gone. The paragraph is too short.') },
+      ] },
+      { id: 'ATT-2210-02', code: 'QZ-M11-202', subject: 'math-g11', title: T('اختبار المصفوفات', 'Matrices Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 35, at: [13, 30], durationSec: 1700, timeAllowed: 30, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 5, earned: 5, q: T('ما رتبة المصفوفة التي لها 2 صفوف و3 أعمدة؟', 'What is the order of a matrix with 2 rows and 3 columns?'), yours: M('2 × 3'), correct: M('2 × 3'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'tf', bloom: 'understand', marks: 5, earned: 5, q: T('ضرب المصفوفات ليس إبداليًا دائمًا.', 'Matrix multiplication is not always commutative.'), yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح: AB ≠ BA عمومًا.', 'Correct: AB ≠ BA in general.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 0, q: T('ما محدد المصفوفة التالية؟', 'What is the determinant of the following matrix?'), math: '[[2, 1], [4, 3]]', yours: M('10'), correct: M('2'), grader: 'auto', fb: T('المحدد = 2×3 − 1×4 = 2.', 'det = 2×3 − 1×4 = 2.') },
+        { type: 'mcq', bloom: 'apply', marks: 5, earned: 5, q: T('ناتج جمع مصفوفتين من الرتبة 2×2 هو مصفوفة من الرتبة:', 'Adding two 2×2 matrices gives a matrix of order:'), yours: M('2 × 2'), correct: M('2 × 2'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 5, earned: 0, q: T('متى لا يكون للمصفوفة معكوس؟ علّل.', 'When does a matrix have no inverse? Explain.'), yours: T('', ''), grader: 'teacher', fb: T('لم تُجب. المصفوفة ليس لها معكوس عندما يكون محددها صفرًا.', 'Not answered. A matrix has no inverse when its determinant is zero.') },
+      ] },
+      { id: 'ATT-2210-01', code: 'QZ-A11-301', subject: 'arab-g11', title: T('اختبار البلاغة', 'Rhetoric Quiz'),
+        attemptNo: 1, attemptsAllowed: 2, daysAgo: 40, at: [10, 20], durationSec: 1320, timeAllowed: 25, passMark: 60, questions: [
+        { type: 'mcq', bloom: 'remember', marks: 6, earned: 6, q: T('ما أركان التشبيه؟', 'What are the elements of a simile?'), yours: T('المشبّه والمشبّه به والأداة ووجه الشبه', 'Tenor, vehicle, particle and ground'), correct: T('المشبّه والمشبّه به والأداة ووجه الشبه', 'Tenor, vehicle, particle and ground'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'mcq', bloom: 'understand', marks: 6, earned: 6, q: T('التشبيه البليغ هو ما حُذف منه:', 'An eloquent simile omits:'), yours: T('الأداة ووجه الشبه', 'The particle and the ground'), correct: T('الأداة ووجه الشبه', 'The particle and the ground'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'tf', bloom: 'apply', marks: 6, earned: 6, q: T('«العلمُ نورٌ» تشبيه بليغ.', '«العلمُ نورٌ» is an eloquent simile.'), yours: T('صواب', 'True'), correct: T('صواب', 'True'), grader: 'auto', fb: T('صحيح.', 'Correct.') },
+        { type: 'essay', bloom: 'analyze', marks: 6, earned: 3, q: T('بيّن أثر الصورة في: «رأيتُ أسدًا يخطب».', 'Explain the image’s effect in: «رأيتُ أسدًا يخطب».'), yours: T('استعارة تدل على الشجاعة.', 'A metaphor showing courage.'), grader: 'teacher', fb: T('صحيح النوع؛ وضّح القرينة «يخطب» ونوع الاستعارة (تصريحية).', 'Right type; explain the clue «يخطب» and the metaphor type (explicit).') },
+        { type: 'essay', bloom: 'apply', marks: 6, earned: 0, q: T('اكتب جملة فيها استعارة مكنية.', 'Write a sentence with an implicit metaphor.'), yours: T('الشمس كالذهب.', 'The sun is like gold.'), grader: 'teacher', fb: T('هذه جملة تشبيه وليست استعارة؛ مثال: «ضحكت الشمس».', 'That is a simile, not a metaphor; e.g. «ضحكت الشمس».') },
+      ] },
+    ];
+
+    /* درجة/نسبة/حالة محسوبة من الإجابات */
+    function saScore(a) {
+      const max = a.questions.reduce((s, q) => s + q.marks, 0);
+      const graded = a.questions.filter(q => q.earned != null);
+      const earned = graded.reduce((s, q) => s + q.earned, 0);
+      const pending = graded.length < a.questions.length;
+      const pct = pending ? null : (max ? Math.round(earned / max * 100) : 0);
+      const status = pending ? 'pending' : (pct >= a.passMark ? 'passed' : 'failed');
+      return { max, earned, gradedMax: graded.reduce((s, q) => s + q.marks, 0), pending, pct, status };
+    }
+    /* محاولات مُسلَّمة فعليًا من مشغّل الاختبار (تبقى «بانتظار التصحيح» — التصحيح في الخادم) */
+    function saLocalAttempts() {
+      const out = [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || k.indexOf('firob-attempt-done:') !== 0) continue;
+          const d = JSON.parse(localStorage.getItem(k) || 'null');
+          if (!d || !d.attemptId || !d.title) continue;
+          out.push({ id: d.attemptId, code: d.code, subject: d.subject, title: d.title, attemptNo: 1, attemptsAllowed: d.attemptsAllowed || 1,
+                     date: new Date(d.submittedAt), durationSec: d.durationSec || 0, timeAllowed: d.duration || 0, passMark: 60,
+                     questions: null, local: true, answered: d.answered, total: d.total, reason: d.reason,
+                     max: d.totalMarks || 0, earned: 0, gradedMax: 0, pending: true, pct: null, status: 'pending' });
+        }
+      } catch (e) {}
+      return out;
+    }
+    const SA_ATTEMPTS = SA_RAW.map(a => ({ ...a, date: new Date(SA_TODAY.getTime() - a.daysAgo * SA_DAY + (a.at[0] * 60 + a.at[1]) * 60000), ...saScore(a) }));
+    const allAttempts = () => saLocalAttempts().concat(SA_ATTEMPTS).sort((x, y) => y.date - x.date);
+
+    /* محاولات الطالب من المصدر المشترك (نفس سجل المحاولات وصفحة النتيجة) — «الأخيرة» = أحدث 5 */
+    const ATTEMPTS = allAttempts().map(a => ({ id: a.id, code: a.code, subject: a.subject, ar: a.title.ar, en: a.title.en,
+      date: a.date, score: a.earned, max: a.max, pct: a.pct, status: a.status, passed: a.status === 'passed', pending: a.pending }));
+    const SUBMITTED_CODES = new Set(ATTEMPTS.map(a => a.code));
+
+    /* المهام: offset = عدد الأيام حتى الموعد (سالب = فات) — lateAllowed يحدد إمكانية التسليم المتأخر */
+    const TASKS = [
+      { code: 'QZ-M11-204', subject: 'math-g11', ar: 'اختبار المعادلات التفاضلية', en: 'Differential Equations Quiz', offset: -2, lateAllowed: true },
+      { code: 'QZ-C11-106', subject: 'chem-g11', ar: 'اختبار الجدول الدوري',        en: 'Periodic Table Quiz',          offset: 1,  lateAllowed: false },
+      { code: 'QZ-A11-303', subject: 'arab-g11', ar: 'اختبار قواعد النحو',          en: 'Syntax Rules Quiz',            offset: 5,  lateAllowed: true },
+      { code: 'QZ-H11-402', subject: 'hist-g11', ar: 'اختبار الحرب العالمية الأولى', en: 'World War I Quiz',             offset: -4, lateAllowed: false },
+    ];
+
+    const CONCEPT = { id: 'CPT-M11-014', subject: 'math-g11', ar: 'حل المعادلة الخطية بمتغيّر واحد', en: 'Solving Single-Variable Linear Equations' };
+
+    const I18N = {
+      ar: {
+        docTitle: 'لوحة الطالب — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'بوابة الطالب',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في موادي واختباراتي…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', logout: 'تسجيل الخروج',
+        roleStudent: 'طالب',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', learning: 'التعلّم', account: 'الحساب' },
+        navItems: {
+          dashboard: 'لوحة التحكم', courses: 'المقررات الدراسية', catalog: 'الكتالوج العام',
+          availableQuizzes: 'الاختبارات المتاحة', quizResults: 'نتائج المحاولات', quizHistory: 'سجل محاولاتي',
+          profile: 'الملف الشخصي', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: {
+          resultPublished: 'تم نشر نتيجة «اختبار الحركة والقوة» — الفيزياء',
+          upcomingReminder: 'موعد «اختبار الجدول الدوري» غدًا — الكيمياء',
+          gradePosted: 'صحّح المعلّم «اختبار قواعد اللغة» يدويًا',
+        },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          subjects: { zero: 'لا مواد', one: 'مادة واحدة', two: 'مادتان', few: '{n} مواد', many: '{n} مادة', other: '{n} مادة' },
+          attempts: { zero: 'لا محاولات', one: 'محاولة واحدة', two: 'محاولتان', few: '{n} محاولات', many: '{n} محاولة', other: '{n} محاولة' },
+          tasks:    { zero: 'لا مهام', one: 'مهمة واحدة', two: 'مهمتان', few: '{n} مهام', many: '{n} مهمة', other: '{n} مهمة' },
+        },
+
+        sd: {
+          title: 'لوحة الطالب',
+          welcome: 'مرحبًا بعودتك،',
+          gradeLevel: 'الصف الحادي عشر — المسار العلمي', academicYear: 'العام الدراسي 2026 / 2027',
+          overallProgress: 'التقدّم العام', overallProgressHint: 'أنجزت {d} من {t} درسًا في كل موادك هذا الفصل.',
+          lessonsOf: '{d} من {t} درسًا',
+
+          kpisLabel: 'مؤشرات الأداء',
+          kpi: { enrolled: 'المواد المسجَّلة', completed: 'الاختبارات المنجزة', average: 'متوسط الدرجات', pending: 'اختبارات بانتظار الحل' },
+          kpiPassRate: 'نجحت في {p} منها', kpiOverdue: 'منها {n} متأخرة', kpiNone: 'لا شيء متأخر',
+
+          subjectsTitle: 'المواد المسجَّلة', thisTerm: '{n} هذا الفصل',
+          activeConcepts: 'المفاهيم النشطة', continueCourse: 'متابعة التعلّم',
+          lowProgressNudge: 'ابدأ بدرس واحد اليوم — كل خطوة تُحتسب.',
+
+          conceptOfDayLabel: 'مفهوم مقترح لمراجعته اليوم', conceptOfDayCta: 'استعراض المفهوم',
+
+          attemptsTitle: 'محاولات الاختبارات الأخيرة', lastN: 'آخر {n}', viewAllAttempts: 'عرض الكل',
+          colQuiz: 'الاختبار', colSubject: 'المادة', colDate: 'التاريخ', colScore: 'الدرجة', colResult: 'النتيجة', colAction: 'الإجراءات',
+          scorePassed: 'ناجح', scoreFailed: 'غير ناجح', scorePending: 'بانتظار التصحيح', viewResult: 'عرض النتيجة والتصحيح',
+
+          upcomingTitle: 'المهام والاختبارات القادمة', upcomingSubtitle: 'مرتّبة حسب الأقرب موعدًا.',
+          dueOn: 'الموعد:', startQuiz: 'ابدأ الاختبار', startLate: 'ابدأ الآن (تسليم متأخر)',
+          state: { overdue: 'متأخر', missed: 'انتهى الموعد', soon: 'قريب' },
+          missedHint: 'انتهى موعد هذا الاختبار ولا يقبل التسليم المتأخر. تواصل مع معلّمك إن كان لديك عذر.',
+          noTasks: 'لا توجد مهام قادمة — أحسنت!',
+        },
+      },
+      en: {
+        docTitle: 'Student Dashboard — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Student Portal',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search my subjects & quizzes…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', logout: 'Log out',
+        roleStudent: 'Student',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', learning: 'Learning', account: 'Account' },
+        navItems: {
+          dashboard: 'Dashboard', courses: 'Courses', catalog: 'Public Catalog',
+          availableQuizzes: 'Available Quizzes', quizResults: 'Quiz Results', quizHistory: 'Attempt History',
+          profile: 'Profile', notificationCenter: 'Notification Center',
+        },
+        notif: {
+          resultPublished: 'Result published for "Motion & Force Quiz" — Physics',
+          upcomingReminder: '"Periodic Table Quiz" is due tomorrow — Chemistry',
+          gradePosted: 'Your teacher manually graded "Grammar Rules Quiz"',
+        },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          subjects: { zero: 'No subjects', one: '{n} subject', other: '{n} subjects' },
+          attempts: { zero: 'No attempts', one: '{n} attempt', other: '{n} attempts' },
+          tasks:    { zero: 'No tasks', one: '{n} task', other: '{n} tasks' },
+        },
+
+        sd: {
+          title: 'Student Dashboard',
+          welcome: 'Welcome back,',
+          gradeLevel: 'Grade 11 — Science Track', academicYear: 'Academic Year 2026 / 2027',
+          overallProgress: 'Overall Progress', overallProgressHint: 'You have completed {d} of {t} lessons across all subjects this term.',
+          lessonsOf: '{d} of {t} lessons',
+
+          kpisLabel: 'Performance indicators',
+          kpi: { enrolled: 'Enrolled Subjects', completed: 'Completed Quizzes', average: 'Average Score', pending: 'Pending Quizzes' },
+          kpiPassRate: 'Passed {p} of them', kpiOverdue: '{n} overdue', kpiNone: 'Nothing overdue',
+
+          subjectsTitle: 'Enrolled Subjects', thisTerm: '{n} this term',
+          activeConcepts: 'Active Concepts', continueCourse: 'Continue Learning',
+          lowProgressNudge: 'Start with one lesson today — every step counts.',
+
+          conceptOfDayLabel: 'Suggested concept to review today', conceptOfDayCta: 'View Concept',
+
+          attemptsTitle: 'Recent Quiz Attempts', lastN: 'Last {n}', viewAllAttempts: 'View all',
+          colQuiz: 'Quiz', colSubject: 'Subject', colDate: 'Date', colScore: 'Score', colResult: 'Result', colAction: 'Actions',
+          scorePassed: 'Passed', scoreFailed: 'Failed', scorePending: 'Awaiting grading', viewResult: 'View result & feedback',
+
+          upcomingTitle: 'Upcoming Tasks & Quizzes', upcomingSubtitle: 'Sorted by nearest due date.',
+          dueOn: 'Due:', startQuiz: 'Start Quiz', startLate: 'Start now (late submission)',
+          state: { overdue: 'Overdue', missed: 'Closed', soon: 'Due soon' },
+          missedHint: 'This quiz has closed and does not accept late submissions. Contact your teacher if you have an excuse.',
+          noTasks: 'No upcoming tasks — well done!',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: wideMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'dashboard',
+      get expanded() { return this.mobile || !this.collapsed; },
+      get altLocale() { return this.locale === 'ar' ? 'en' : 'ar'; },
+
+      /* ---------- البيانات (للقالب) ---------- */
+      subjects: SUBJECTS,
+      concept: CONCEPT,
+      STATE_BADGE: { overdue: 'badge-danger', missed: 'badge-muted', soon: 'badge-warning' },
+      get studentName() { return STUDENT[this.locale]; },
+      get initials() {
+        // أول حرف من الاسم الأول + أول حرف من اسم الأب (عمر خالد → عخ)
+        return STUDENT[this.locale].trim().split(/\s+/).slice(0, 2).map(w => w[0]).join(this.locale === 'ar' ? '\u200C' : '').toUpperCase();  // ZWNJ: حرفان منفصلان لا متصلان
+      },
+      get overall() {
+        const done = SUBJECTS.reduce((s, x) => s + x.done, 0);
+        const total = SUBJECTS.reduce((s, x) => s + x.total, 0);
+        return { done, total, pct: total ? Math.round(done / total * 100) : 0 };
+      },
+      get recent() { return ATTEMPTS.slice(0, 5); },
+      get tasks() {
+        const rank = { overdue: 0, soon: 1, open: 2, missed: 3 };
+        return TASKS.filter(tk => !SUBMITTED_CODES.has(tk.code)).map(tk => {   // ما سُلِّم من مشغّل الاختبار لا يظهر كمهمة
+          const days = tk.offset;
+          const state = days < 0 ? (tk.lateAllowed ? 'overdue' : 'missed') : (days <= 2 ? 'soon' : 'open');
+          return { ...tk, due: dayAt(days), days, state };
+        }).sort((a, b) => rank[a.state] - rank[b.state] || a.days - b.days);
+      },
+      get kpis() {
+        const n = ATTEMPTS.length, graded = ATTEMPTS.filter(a => a.pct != null);
+        const avg = graded.length ? Math.round(graded.reduce((s, a) => s + a.pct, 0) / graded.length) : null;   // المحاولات بانتظار التصحيح لا تدخل المتوسط
+        const passed = ATTEMPTS.filter(a => a.passed).length;
+        const actionable = this.tasks.filter(tk => tk.state !== 'missed');
+        const overdue = actionable.filter(tk => tk.state === 'overdue').length;
+        return [
+          { key: 'enrolled',  icon: 'fa-book-open',     tone: 'bg-primary-500/10 text-brand',                           value: this.fmt(SUBJECTS.length), hint: '' },
+          { key: 'completed', icon: 'fa-square-check',  tone: 'bg-success-500/15 text-success-700 dark:text-success-500', value: this.fmt(n), hint: n ? this.tf('sd.kpiPassRate', { p: this.fmt(passed) }) : '' },
+          { key: 'average',   icon: 'fa-chart-line',    tone: 'bg-info-500/15 text-info-700 dark:text-blue-300',          value: avg == null ? '—' : this.fmtPct(avg), hint: '' },
+          { key: 'pending',   icon: 'fa-hourglass-half', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500',   value: this.fmt(actionable.length),
+            hint: overdue ? this.tf('sd.kpiOverdue', { n: this.fmt(overdue) }) : this.t('sd.kpiNone') },
+        ];
+      },
+      attemptBadge(a) {
+        return a.pending ? { cls: 'badge-warning', icon: 'fa-hourglass-half', label: this.t('sd.scorePending') }
+             : a.passed ? { cls: 'badge-success', icon: 'fa-check', label: this.t('sd.scorePassed') + ' · ' + this.fmtPct(a.pct) }
+             : { cls: 'badge-danger', icon: 'fa-xmark', label: this.t('sd.scoreFailed') + ' · ' + this.fmtPct(a.pct) };
+      },
+      scoreText(a) { return (a.pending ? '—' : this.fmt(a.score)) + ' / ' + this.fmt(a.max); },
+      subjectById(id) { return SUBJECTS.find(s => s.id === id) || { ar: id, en: id, icon: 'fa-book', tone: 'bg-soft text-brand' }; },
+      subjectName(s, loc) { return s ? s[loc || this.locale] : ''; },
+      tone(p) {
+        // لا أحمر للتقدّم المنخفض (ليس خطأً) — الأحمر محجوز للمواعيد الفائتة والرسوب
+        return p >= 75 ? { bar: 'bg-success-700 dark:bg-success-500', text: 'text-success-700 dark:text-success-500' }
+                       : { bar: 'bg-primary-500', text: 'text-brand' };
+      },
+      dueTone(tk) {
+        return { overdue: 'text-danger', soon: 'text-warning-800 dark:text-warning-500', open: 'text-muted', missed: 'text-muted' }[tk.state];
+      },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) { return String(this.t(path)).replace(/\{(\w+)\}/g, (_, k) => (vars && vars[k] != null ? vars[k] : '')); },
+      get intlLocale() { return this.locale === 'ar' ? 'ar-u-nu-latn' : 'en-US'; },
+      fmt(n) { return new Intl.NumberFormat(this.intlLocale).format(n); },
+      fmtPct(n) { return n == null ? '—' : this.fmt(n) + '%'; },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      fmtDate(d) { return new Intl.DateTimeFormat(this.intlLocale, { day: 'numeric', month: 'short' }).format(d); },
+      isoDate(d) { return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); },
+      relDay(days) { return new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto' }).format(days, 'day'); },
+      relMin(min) {
+        const rtf = new Intl.RelativeTimeFormat(this.intlLocale, { numeric: 'auto', style: 'short' });
+        return min < 60 ? rtf.format(-min, 'minute') : (min < 1440 ? rtf.format(-Math.round(min / 60), 'hour') : rtf.format(-Math.round(min / 1440), 'day'));
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.altLocale); },
+
+      /* ---------- التنقل (بوابة الطالب) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'dashboard', icon: 'fa-solid fa-gauge-high', href: 'student-dashboard.html' },
+        ]},
+        { group: 'learning', items: [
+          { key: 'courses', icon: 'fa-solid fa-book-open', href: 'student-courses.html' },
+          { key: 'catalog', icon: 'fa-solid fa-layer-group', href: 'learning-objects-catalog.html' },
+          { key: 'availableQuizzes', icon: 'fa-solid fa-pen-to-square', href: 'quiz-player.html' },
+          { key: 'quizResults', icon: 'fa-solid fa-chart-simple', href: 'student-quiz-result.html' },
+          { key: 'quizHistory', icon: 'fa-solid fa-clock-rotate-left', href: 'student-quiz-history.html' },
+        ]},
+        { group: 'account', items: [
+          { key: 'profile', icon: 'fa-regular fa-user', href: '../common/profile.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', tone: 'primary' },
+        ]},
+      ],
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'resultPublished', min: 15,   read: false, icon: 'fa-solid fa-square-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'upcomingReminder', min: 120, read: false, icon: 'fa-regular fa-clock', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+        { id: 3, key: 'gradePosted', min: 1440,     read: true,  icon: 'fa-solid fa-pen', tone: 'bg-primary-500/15 text-brand' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- عامة ---------- */
+      init() {
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          if (g && g.offsetParent !== null) g.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

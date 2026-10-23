@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>نتائج الاختبارات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+<!-- بيانات تجريبية مشتركة (مقررات/وحدات/دروس/مفاهيم) — تُحذف عند الانتقال إلى Laravel -->
+<script src="../asset/js/firob-mock-data.js"></script>
+<!-- نسخة احتياطية مطابقة: تعمل الصفحة حتى لو لم يُوضع الملف في asset/js -->
+<script>
+window.FIROB_MOCK = window.FIROB_MOCK || {
+  /* إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس شاشة ADM-05 */
+  structure: {
+    units:   { enabled: true, required: true },
+    lessons: { enabled: true, required: true },
+  },
+
+  /* المقررات (Subject) — الصف خاصية على المقرر (subjects.grade_id) */
+  courses: [
+    { id: 'math-g7', ar: 'الرياضيات - الصف السابع',     en: 'Mathematics - Grade 7',     gradeAr: 'السابع الأساسي', gradeEn: 'Grade 7', icon: 'fa-square-root-variable', cls: 'bg-primary-500/10 text-brand' },
+    { id: 'sci-g8',  ar: 'العلوم العامة - الصف الثامن', en: 'General Science - Grade 8', gradeAr: 'الثامن الأساسي', gradeEn: 'Grade 8', icon: 'fa-flask',                cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+    { id: 'arab-g9', ar: 'اللغة العربية - الصف التاسع', en: 'Arabic Language - Grade 9', gradeAr: 'التاسع الأساسي', gradeEn: 'Grade 9', icon: 'fa-book-open',            cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+  ],
+
+  /* الوحدات (Unit — units.subject_id) */
+  units: [
+    { id: 'u101', courseId: 'math-g7', ar: 'الوحدة الأولى: الأعداد الصحيحة',      en: 'Unit 1: Integers' },
+    { id: 'u102', courseId: 'math-g7', ar: 'الوحدة الثانية: الكسور والنسب',       en: 'Unit 2: Fractions & Ratios' },
+    { id: 'u201', courseId: 'sci-g8',  ar: 'الوحدة الأولى: الخلية ومكوناتها',     en: 'Unit 1: The Cell & Its Components' },
+    { id: 'u202', courseId: 'sci-g8',  ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions' },
+    { id: 'u301', courseId: 'arab-g9', ar: 'الوحدة الأولى: النصوص الأدبية',       en: 'Unit 1: Literary Texts' },
+  ],
+
+  /* الدروس (Lesson — lessons.unit_id) */
+  lessons: [
+    { id: 'l1011', unitId: 'u101', ar: 'جمع الأعداد الصحيحة وطرحها',        en: 'Adding & Subtracting Integers' },
+    { id: 'l1012', unitId: 'u101', ar: 'ضرب الأعداد الصحيحة وقسمتها',       en: 'Multiplying & Dividing Integers' },
+    { id: 'l1021', unitId: 'u102', ar: 'تبسيط الكسور',                      en: 'Simplifying Fractions' },
+    { id: 'l1022', unitId: 'u102', ar: 'النسبة والتناسب',                   en: 'Ratio & Proportion' },
+    { id: 'l2011', unitId: 'u201', ar: 'مكونات الخلية النباتية',             en: 'Plant Cell Components' },
+    { id: 'l2012', unitId: 'u201', ar: 'تركيب الخلية النباتية والحيوانية',   en: 'Plant & Animal Cell Structure' },
+    { id: 'l2021', unitId: 'u202', ar: 'أنواع التفاعلات الكيميائية',         en: 'Types of Chemical Reactions' },
+    { id: 'l2022', unitId: 'u202', ar: 'موازنة المعادلات الكيميائية',        en: 'Balancing Chemical Equations' },
+    { id: 'l3011', unitId: 'u301', ar: 'تحليل النص الشعري',                 en: 'Analysing Poetry' },
+    { id: 'l3012', unitId: 'u301', ar: 'عناصر القصة القصيرة',               en: 'Short Story Elements' },
+  ],
+
+  /* المفاهيم (Concept) — links = withCount(['learningObjects', 'questions']) */
+  concepts: [
+    { id: 1,  code: 'CPT-MATH-001', ar: 'الأعداد الصحيحة الموجبة والسالبة', en: 'Positive & Negative Integers',
+      descAr: 'يشرح مفهوم الأعداد الصحيحة الموجبة والسالبة وطرق تمثيلها على خط الأعداد.',
+      descEn: 'Explains positive and negative integers and how to represent them on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', links: { objects: 6, questions: 24 } },
+    { id: 2,  code: 'CPT-MATH-002', ar: 'خاصية الإبدال في الضرب', en: 'Commutative Property of Multiplication',
+      descAr: 'يوضّح أن ترتيب العددين المضروبين لا يغيّر حاصل الضرب.',
+      descEn: 'Shows that the order of the two multiplied numbers does not change the product.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', links: { objects: 3, questions: 10 } },
+    { id: 3,  code: 'CPT-MATH-003', ar: 'القيمة المطلقة للعدد', en: 'Absolute Value of a Number',
+      descAr: 'يعرّف القيمة المطلقة بأنها المسافة بين العدد والصفر على خط الأعداد.',
+      descEn: 'Defines absolute value as the distance between a number and zero on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 4,  code: 'CPT-SCI-004', ar: 'تركيب الخلية النباتية والحيوانية', en: 'Plant & Animal Cell Structure',
+      descAr: 'يقارن بين مكونات الخلية النباتية والخلية الحيوانية ووظائف كل عضو فيها.',
+      descEn: 'Compares the components of plant and animal cells and the function of each organelle.',
+      courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', links: { objects: 4, questions: 12 } },
+    { id: 5,  code: 'CPT-SCI-005', ar: 'موازنة المعادلة الكيميائية', en: 'Balancing Chemical Equations',
+      descAr: 'يشرح كيفية موازنة عدد الذرات في طرفي المعادلة الكيميائية باستخدام المعاملات.',
+      descEn: 'Explains how to balance atom counts on both sides of a chemical equation using coefficients.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: null, links: { objects: 2, questions: 0 } },
+    { id: 6,  code: 'CPT-ARAB-006', ar: 'عناصر القصة القصيرة: الشخصية', en: 'Elements of the Short Story: Character',
+      descAr: 'يتناول دور الشخصية في بناء الحبكة وأنواعها في القصة القصيرة.',
+      descEn: 'Covers the role of character in building the plot and its types within a short story.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', links: { objects: 5, questions: 18 } },
+    { id: 7,  code: 'CPT-UNFL-007', ar: 'الصورة الشعرية', en: 'Poetic Imagery',
+      descAr: 'يعرّف الصورة الشعرية ودورها في تجسيد المعنى وإثراء النص الأدبي.',
+      descEn: 'Defines poetic imagery and its role in embodying meaning and enriching literary text.',
+      courseId: null, unitId: null, lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 8,  code: 'CPT-MATH-008', ar: 'تبسيط الكسور الاعتيادية', en: 'Simplifying Common Fractions',
+      descAr: 'يشرح قسمة البسط والمقام على العامل المشترك الأكبر للوصول إلى أبسط صورة.',
+      descEn: 'Explains dividing numerator and denominator by their GCD to reach the simplest form.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', links: { objects: 2, questions: 8 } },
+    { id: 9,  code: 'CPT-MATH-009', ar: 'النسبة المئوية', en: 'Percentages',
+      descAr: 'يعرّف النسبة المئوية كنسبة من مئة ويطبّقها على مسائل حياتية.',
+      descEn: 'Defines a percentage as a ratio out of one hundred and applies it to everyday problems.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 10, code: 'CPT-SCI-010', ar: 'التفاعلات الطاردة والماصة للحرارة', en: 'Exothermic & Endothermic Reactions',
+      descAr: 'يميّز بين التفاعلات التي تُطلق الحرارة والتي تمتصها مع أمثلة من الحياة اليومية.',
+      descEn: 'Distinguishes reactions that release heat from those that absorb it, with everyday examples.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', links: { objects: 1, questions: 6 } },
+    { id: 11, code: 'CPT-ARAB-011', ar: 'الوزن الشعري', en: 'Poetic Metre',
+      descAr: 'يعرّف الوزن الشعري والتفعيلات الأساسية في الشعر العربي.',
+      descEn: 'Defines poetic metre and the basic feet of Arabic poetry.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3011', links: { objects: 0, questions: 0 } },
+    { id: 12, code: 'CPT-ARAB-012', ar: 'التشبيه', en: 'Simile',
+      descAr: 'يعرّف التشبيه وأركانه الأربعة وأنواعه.',
+      descEn: 'Defines the simile, its four components and its types.',
+      courseId: 'arab-g9', unitId: null, lessonId: null, links: { objects: 3, questions: 0 } },
+  ],
+};
+</script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }  /* كان 3.93:1 في الداكن */
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }  /* كان 4.28:1 */
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-accent-700 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة / شريط التقدّم (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-[width] duration-500; }
+    /* نسبة النجاح/الرسوب: كانت error-700 على الداكن 2.62:1 */
+    .pct-pass { @apply text-success-700 dark:text-success-500; }
+    .pct-fail { @apply text-error-700 dark:text-red-300; }
+    li.attempt-card { content-visibility: auto; contain-intrinsic-size: auto 230px; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+
+    /* ---------- بطاقة المقرر / الاختبار (Icon Chip) ---------- */
+    .course-icon { @apply grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg; }
+
+    /* ---------- مؤشر صحة/خطأ الإجابة (AnswerIndicator) ---------- */
+    .ans-indicator { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="quizResultsManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li><a href="quizzes.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.quizzes')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('qr.breadcrumbCurrent')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — نتائج الاختبارات ومحاولات الطلبة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + التنقّل + التصدير -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <div class="mb-2 flex flex-wrap items-center gap-2">
+            <a href="quizzes.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i>
+              <span x-text="t('qr.backToQuizzes')"></span>
+            </a>
+            <template x-if="quizFilter !== 'all'">
+              <span class="contents">
+                <span class="text-muted" aria-hidden="true">·</span>
+                <a :href="'quiz-builder.html?code=' + quizFilter + '&mode=edit'" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+                  <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                  <span x-text="t('qr.editThisQuiz')"></span>
+                </a>
+              </span>
+            </template>
+          </div>
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('qr.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qr.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button type="button" class="btn btn-outline" @click="exportReport('excel')" :disabled="!filtered.length">
+            <i class="fa-solid fa-file-excel text-success-700 dark:text-success-500" aria-hidden="true"></i>
+            <span x-text="t('qr.exportExcel')"></span>
+          </button>
+          <button type="button" class="btn btn-outline" @click="exportReport('pdf')" :disabled="!filtered.length">
+            <i class="fa-solid fa-file-pdf text-error-700 dark:text-red-300" aria-hidden="true"></i>
+            <span x-text="t('qr.exportPdf')"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- سياق الاختبار المحدد (?code=…) -->
+      <section x-show="quizFilter !== 'all'" x-cloak class="panel flex flex-wrap items-center gap-3 p-4" :aria-label="t('qr.quizContext')">
+        <span class="course-icon h-11 w-11" :class="course(curQuiz?.courseId)?.cls" aria-hidden="true"><i class="fa-solid" :class="course(curQuiz?.courseId)?.icon"></i></span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-extrabold" :lang="locale" x-text="curQuiz ? quizName(curQuiz) : ''"></p>
+          <p class="text-xs text-muted">
+            <bdi class="font-mono" dir="ltr" x-text="quizFilter"></bdi> ·
+            <span x-text="curQuiz ? tf('qr.quizFacts', { m: curQuiz.totalMarks, p: curQuiz.passingScore, d: curQuiz.duration }) : ''"></span>
+          </p>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" @click="quizFilter = 'all'">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('qr.showAllQuizzes')"></span>
+        </button>
+      </section>
+
+      <!-- ================= المؤشرات — محسوبة من النتائج المفلترة ================= -->
+      <section :aria-label="t('qr.kpisLabel')" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <template x-for="k in kpiCards" :key="k.key">
+          <div class="panel p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qr.kpi.' + k.key)"></p>
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl" :class="k.cls" aria-hidden="true"><i class="fa-solid" :class="k.icon"></i></span>
+            </div>
+            <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="kpiValue(k.key)"></p>
+            <p class="mt-1 text-xs text-muted" x-text="kpiHint(k.key)"></p>
+          </div>
+        </template>
+      </section>
+
+      <!-- تنبيه «بحاجة لتصحيح» — الإجراء الأكثر أهمية للمعلّم -->
+      <div x-show="kpis.needsGrading && statusFilter !== 'needs_grading'" x-cloak
+           class="flex flex-wrap items-center gap-3 rounded-2xl border border-info-500/40 bg-info-500/10 px-4 py-3 text-sm">
+        <i class="fa-solid fa-pen-to-square text-info-700 dark:text-blue-300" aria-hidden="true"></i>
+        <p class="min-w-0 flex-1 font-bold text-ink" x-text="tf('qr.needsGradingBanner', { n: pluralize('attempts', kpis.needsGrading) })"></p>
+        <button type="button" class="btn btn-outline btn-sm" @click="statusFilter = 'needs_grading'" x-text="t('qr.showThem')"></button>
+      </div>
+
+      <!-- ================= البحث والفلاتر ================= -->
+      <section class="panel flex flex-wrap items-center gap-3 p-4 sm:p-5" role="search" :aria-label="t('qr.filtersLabel')">
+        <div class="relative min-w-0 flex-[2_1_16rem]">
+          <label for="attempt-search" class="sr-only" x-text="t('qr.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="attempt-search" x-ref="attemptSearch" type="search" x-model.debounce.200ms="search" :placeholder="t('qr.searchPlaceholder')" autocomplete="off"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line-strong bg-field ps-10 pe-10 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none">
+          <button type="button" x-show="search" x-cloak @click="search = ''; $refs.attemptSearch.focus()" :aria-label="t('qr.clearSearch')"
+                  class="absolute end-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors hover:bg-soft hover:text-ink">
+            <i class="fa-solid fa-circle-xmark text-sm" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="min-w-0 flex-[1_1_15rem]"
+             x-data="selectDropdown({ id: 'quiz-filter', options: () => quizOptions(), get: () => quizFilter, set: (v) => { quizFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="quiz-filter-label" for="quiz-filter" class="sr-only" x-text="t('qr.filter.quiz')"></label>
+          <div class="relative" data-combo-anchor>
+            <button type="button" id="quiz-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="quiz-filter-list"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="quiz-filter-list" role="listbox" aria-labelledby="quiz-filter-label"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+        <div class="min-w-0 flex-[1_1_10rem]"
+             x-data="selectDropdown({ id: 'status-filter', options: () => statusOptions(), get: () => statusFilter, set: (v) => { statusFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="status-filter-label" for="status-filter" class="sr-only" x-text="t('qr.filter.status')"></label>
+          <div class="relative" data-combo-anchor>
+            <button type="button" id="status-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="status-filter-list"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="status-filter-list" role="listbox" aria-labelledby="status-filter-label"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+        <div class="min-w-0 flex-[1_1_10rem]"
+             x-data="selectDropdown({ id: 'date-filter', options: () => dateOptions(), get: () => dateFilter, set: (v) => { dateFilter = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="date-filter-label" for="date-filter" class="sr-only" x-text="t('qr.filter.date')"></label>
+          <div class="relative" data-combo-anchor>
+            <button type="button" id="date-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="date-filter-list"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="date-filter-list" role="listbox" aria-labelledby="date-filter-label"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+        <div class="min-w-0 flex-[1_1_10rem]"
+             x-data="selectDropdown({ id: 'sort-filter', options: () => sortOptions(), get: () => sortBy, set: (v) => { sortBy = v }, placeholder: '—' })"
+             @click.outside="closeList()">
+          <label id="sort-filter-label" for="sort-filter" class="sr-only" x-text="t('qr.filter.sort')"></label>
+          <div class="relative" data-combo-anchor>
+            <button type="button" id="sort-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="sort-filter-list"
+                    :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                    class="field flex h-11 w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()" @keydown="onKey($event)">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="sort-filter-list" role="listbox" aria-labelledby="sort-filter-label"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline h-11 flex-[1_1_auto] sm:flex-none" @click="resetFilters()" :disabled="!activeFilterCount">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>
+          <span x-text="t('qr.resetFilters')"></span>
+          <span x-show="activeFilterCount" class="badge badge-primary px-2" x-text="activeFilterCount"></span>
+        </button>
+      </section>
+
+      <p class="sr-only" aria-live="polite" x-text="resultsMsg"></p>
+      <p class="sr-only" role="status" aria-live="polite" x-text="liveMsg"></p>
+
+      <!-- ================= تحليل الأسئلة (عند اختيار اختبار واحد) ================= -->
+      <section x-show="itemAnalysis.length" x-cloak class="panel p-5 sm:p-6" aria-labelledby="ia-title">
+        <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="ia-title" class="text-lg font-extrabold text-ink" x-text="t('qr.itemAnalysis')"></h2>
+            <p class="text-xs text-muted sm:text-sm" x-text="tf('qr.itemAnalysisSub', { n: pluralize('attempts', gradedCount) })"></p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[640px] border-collapse text-sm">
+            <caption class="sr-only" x-text="t('qr.itemAnalysis')"></caption>
+            <thead>
+              <tr class="bg-soft text-ink">
+                <th scope="col" class="w-12 px-3 py-2.5 text-start text-xs font-extrabold">#</th>
+                <th scope="col" class="px-3 py-2.5 text-start text-xs font-extrabold" x-text="t('qr.colQuestion')"></th>
+                <th scope="col" class="w-44 px-3 py-2.5 text-start text-xs font-extrabold" x-text="t('qr.colCorrectRate')"></th>
+                <th scope="col" class="px-3 py-2.5 text-start text-xs font-extrabold" x-text="t('qr.colCommonWrong')"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              <template x-for="r in itemAnalysis" :key="r.idx">
+                <tr>
+                  <td class="px-3 py-3 align-top font-bold tabular-nums" x-text="r.idx + 1"></td>
+                  <td class="px-3 py-3 align-top" lang="ar" dir="auto" x-text="r.q"></td>
+                  <td class="px-3 py-3 align-top">
+                    <div class="flex items-center justify-between text-xs font-bold">
+                      <span class="tabular-nums" :class="r.rate < 50 ? 'pct-fail' : 'pct-pass'" x-text="r.rate + '%'"></span>
+                      <span class="text-muted tabular-nums" x-text="r.correct + ' / ' + r.n"></span>
+                    </div>
+                    <div class="quota-track mt-1" aria-hidden="true"><div class="quota-fill" :class="r.rate < 50 ? 'bg-error-500' : 'bg-success-500'" :style="`width:${r.rate}%`"></div></div>
+                  </td>
+                  <td class="px-3 py-3 align-top text-muted" lang="ar" dir="auto" x-text="r.topWrong ? '«' + r.topWrong + '» × ' + r.topWrongN : '—'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= حالة فارغة ================= -->
+      <section x-show="!filtered.length" x-cloak class="panel flex flex-col items-center gap-3 p-10 text-center">
+        <span class="grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-user-graduate text-xl"></i></span>
+        <h2 class="text-lg font-extrabold text-ink" x-text="t('qr.emptyTitle')"></h2>
+        <p class="max-w-sm text-sm text-muted" x-text="t('qr.emptySub')"></p>
+        <button type="button" class="btn btn-outline mt-1" @click="resetFilters(); $refs.attemptSearch.focus()" x-show="activeFilterCount">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('qr.resetFilters')"></span>
+        </button>
+      </section>
+
+      <!-- ================= بطاقات (أقل من xl) — يُرسم عرض واحد فقط ================= -->
+      <template x-if="filtered.length && !wide">
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="list" :aria-label="t('qr.title')">
+          <template x-for="a in pageRows" :key="a.id">
+            <li class="attempt-card panel flex min-w-0 flex-col gap-3 p-4" :data-att="a.id">
+              <div class="flex items-start gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="initials(a)"></span>
+                <div class="min-w-0 flex-1">
+                  <h2 class="truncate font-extrabold leading-6" :lang="locale" x-text="studentName(a)"></h2>
+                  <p class="truncate text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="a.student.id"></bdi> · <span x-text="tf('qr.attemptNo', { n: a.attemptNo })"></span></p>
+                </div>
+                <span class="badge shrink-0" :class="STATUS[status(a)][0]"><i class="fa-solid text-[10px]" :class="STATUS[status(a)][1]" aria-hidden="true"></i> <span x-text="t('qr.status.' + status(a))"></span></span>
+              </div>
+              <p class="truncate text-sm font-bold text-ink" :lang="locale" x-text="quizName(quiz(a))"></p>
+              <div x-show="a.submittedAt">
+                <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                  <span class="tabular-nums text-ink" x-text="earned(a) + ' / ' + quiz(a).totalMarks"></span>
+                  <span class="tabular-nums" :class="pct(a) >= quiz(a).passingScore ? 'pct-pass' : 'pct-fail'">
+                    <span x-text="pct(a) + '%'"></span><span x-show="pendingCount(a)" class="ms-1 font-medium text-muted" x-text="'(' + t('qr.provisional') + ')'"></span>
+                  </span>
+                </div>
+                <div class="quota-track mt-1.5" aria-hidden="true"><div class="quota-fill" :class="pct(a) >= quiz(a).passingScore ? 'bg-success-500' : 'bg-error-500'" :style="`width:${pct(a)}%`"></div></div>
+              </div>
+              <p x-show="!a.submittedAt" class="text-center text-xs font-bold text-muted" x-text="t('qr.inProgressShort')"></p>
+              <p class="text-xs text-muted" x-text="metaLine(a)"></p>
+              <div class="mt-auto flex items-center justify-end gap-1.5 border-t border-line pt-3">
+                <button type="button" data-act="details" class="act group relative" aria-haspopup="dialog" @click="openDetails(a, $event)" :aria-label="t('qr.act.details') + ': ' + studentName(a)"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.act.details')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <a x-show="canGrade(a)" data-act="grade" :href="'quiz-grading.html?attempt=' + a.id" class="act group relative" :class="pendingCount(a) && '!border-info-500 text-info-700 dark:text-blue-300'" :aria-label="(pendingCount(a) ? tf('qr.gradeN', { n: pendingCount(a) }) : t('qr.act.grade')) + ': ' + studentName(a)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="pendingCount(a) ? tf('qr.gradeN', { n: pendingCount(a) }) : t('qr.act.grade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </template>
+
+      <!-- ================= جدول (xl+) ================= -->
+      <template x-if="filtered.length && wide">
+        <section class="panel overflow-hidden" aria-labelledby="attempts-table-title">
+          <h2 id="attempts-table-title" class="sr-only" x-text="t('qr.title')"></h2>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1120px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('qr.title') + ' — ' + pageInfo"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colStudent')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colQuiz')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qr.colScore')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colStatus')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qr.colDuration')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colDate')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('qr.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="a in pageRows" :key="a.id">
+                  <tr class="transition-colors" :data-att="a.id" :class="rowTone(a)">
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex items-center gap-3">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true" x-text="initials(a)"></span>
+                        <div class="min-w-0">
+                          <p class="truncate font-extrabold leading-6" :lang="locale" x-text="studentName(a)"></p>
+                          <p class="truncate text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="a.student.id"></bdi> · <span x-text="tf('qr.attemptNo', { n: a.attemptNo })"></span></p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="max-w-[18rem] px-4 py-4 align-middle">
+                      <span class="badge badge-muted"><bdi class="font-mono" dir="ltr" x-text="a.quizCode"></bdi></span>
+                      <p class="truncate font-bold leading-6" :lang="locale" :title="quizName(quiz(a))" x-text="quizName(quiz(a))"></p>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                      <div class="mx-auto w-32">
+                        <div x-show="a.submittedAt">
+                          <div class="flex items-center justify-between gap-2 text-xs font-bold">
+                            <span class="tabular-nums text-ink" x-text="earned(a) + ' / ' + quiz(a).totalMarks"></span>
+                            <span class="tabular-nums" :class="pct(a) >= quiz(a).passingScore ? 'pct-pass' : 'pct-fail'">
+                              <span x-text="pct(a) + '%'"></span><span x-show="pendingCount(a)" class="ms-1 font-medium text-muted" x-text="'(' + t('qr.provisional') + ')'"></span>
+                            </span>
+                          </div>
+                          <div class="quota-track mt-1.5" aria-hidden="true"><div class="quota-fill" :class="pct(a) >= quiz(a).passingScore ? 'bg-success-500' : 'bg-error-500'" :style="`width:${pct(a)}%`"></div></div>
+                        </div>
+                        <p x-show="!a.submittedAt" class="text-center text-xs font-bold text-muted" x-text="t('qr.inProgressShort')"></p>
+                      </div>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                <span class="badge shrink-0" :class="STATUS[status(a)][0]"><i class="fa-solid text-[10px]" :class="STATUS[status(a)][1]" aria-hidden="true"></i> <span x-text="t('qr.status.' + status(a))"></span></span>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold tabular-nums">
+                      <time x-show="a.durationSec != null" :datetime="'PT' + a.durationSec + 'S'" x-text="fmtDuration(a.durationSec)"></time>
+                      <span x-show="a.durationSec == null" class="text-muted">—</span>
+                    </td>
+                    <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">
+                      <span x-show="!a.submittedAt" x-text="t('qr.startedAt') + ': '"></span>
+                      <time :datetime="a.submittedAt || a.startedAt" x-text="fmtDate(a.submittedAt || a.startedAt)"></time>
+                    </td>
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex justify-end gap-1.5">
+                        <button type="button" data-act="details" class="act group relative" aria-haspopup="dialog" @click="openDetails(a, $event)" :aria-label="t('qr.act.details') + ': ' + studentName(a)"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.act.details')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                        <a x-show="canGrade(a)" data-act="grade" :href="'quiz-grading.html?attempt=' + a.id" class="act group relative" :class="pendingCount(a) && '!border-info-500 text-info-700 dark:text-blue-300'" :aria-label="(pendingCount(a) ? tf('qr.gradeN', { n: pendingCount(a) }) : t('qr.act.grade')) + ': ' + studentName(a)"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="pendingCount(a) ? tf('qr.gradeN', { n: pendingCount(a) }) : t('qr.act.grade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+
+      <!-- ================= الترقيم (Livewire: ->paginate(20)->links()) ================= -->
+      <div x-show="filtered.length" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs font-bold text-muted" x-text="pageInfo"></p>
+        <nav x-show="pageCount > 1" class="flex items-center gap-1.5" :aria-label="t('qr.pagination')">
+          <button type="button" class="act disabled:cursor-not-allowed disabled:opacity-40" :disabled="page === 1" @click="goPage(page - 1)" :aria-label="t('qr.prev')">
+            <i class="fa-solid fa-chevron-left rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+          </button>
+          <template x-for="p in pageCount" :key="p">
+            <button type="button" class="act font-bold" :class="p === page && 'border-transparent bg-primary-500 text-white'"
+                    :aria-current="p === page ? 'page' : null" :aria-label="tf('qr.pageN', { n: p })" @click="goPage(p)" x-text="p"></button>
+          </template>
+          <button type="button" class="act disabled:cursor-not-allowed disabled:opacity-40" :disabled="page === pageCount" @click="goPage(page + 1)" :aria-label="t('qr.next')">
+            <i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+          </button>
+        </nav>
+      </div>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     تفاصيل محاولة الطالب — تفصيل كامل ومتّسق لكل الأسئلة (quiz_answers)
+     ========================================================================== -->
+<div x-cloak x-show="detailsOpen" x-transition.opacity class="fixed inset-0 z-[60]">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeDetails()" aria-hidden="true"></div>
+
+  <div x-show="detailsOpen" x-trap.noscroll.noreturn="detailsOpen" role="dialog" aria-modal="true" aria-labelledby="details-title"
+       @keydown.escape.stop.prevent="closeDetails()"
+       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="absolute inset-y-0 end-0 flex w-full max-w-xl flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <div class="min-w-0">
+        <p class="text-xs font-bold text-muted" x-text="pv ? tf('qr.posOf', { n: pvIndex + 1, total: filtered.length }) : ''"></p>
+        <h2 id="details-title" class="text-lg font-extrabold text-ink" x-text="t('qr.detailsTitle')"></h2>
+      </div>
+      <div class="flex shrink-0 items-center gap-1">
+        <button type="button" class="icon-btn" @click="stepDetails(-1)" :disabled="pvIndex <= 0" :aria-label="t('qr.prevAttempt')"><i class="fa-solid fa-chevron-left rtl:-scale-x-100" aria-hidden="true"></i></button>
+        <button type="button" class="icon-btn" @click="stepDetails(1)" :disabled="pvIndex >= filtered.length - 1" :aria-label="t('qr.nextAttempt')"><i class="fa-solid fa-chevron-right rtl:-scale-x-100" aria-hidden="true"></i></button>
+        <button type="button" class="icon-btn" @click="closeDetails()" :aria-label="t('qr.detailsClose')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+    </header>
+
+    <template x-if="pv">
+      <div class="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5">
+        <div class="flex items-start gap-3">
+          <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-soft text-base font-extrabold text-brand" aria-hidden="true" x-text="initials(pv)"></span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-lg font-extrabold leading-7 text-ink" :lang="locale" x-text="studentName(pv)"></p>
+            <p class="truncate text-xs text-muted"><bdi class="font-mono" dir="ltr" x-text="pv.student.id"></bdi> · <span x-text="tf('qr.attemptNo', { n: pv.attemptNo })"></span></p>
+          </div>
+          <span class="badge shrink-0" :class="STATUS[status(pv)][0]"><i class="fa-solid text-[10px]" :class="STATUS[status(pv)][1]" aria-hidden="true"></i> <span x-text="t('qr.status.' + status(pv))"></span></span>
+        </div>
+
+        <div class="rounded-xl border border-line bg-soft/60 p-3.5">
+          <p class="mb-1 text-xs font-extrabold text-muted" x-text="t('qr.detailsQuiz')"></p>
+          <p class="text-sm font-bold leading-6 text-ink"><bdi class="badge badge-muted me-1.5 font-mono" dir="ltr" x-text="pv.quizCode"></bdi><span :lang="locale" x-text="quizName(quiz(pv))"></span></p>
+        </div>
+
+        <dl x-show="pv.submittedAt" class="grid grid-cols-3 gap-3 text-center">
+          <div class="flex flex-col-reverse rounded-xl border border-line p-3"><dt class="mt-1 text-xs font-bold text-muted" x-text="t('qr.detailsScore')"></dt><dd class="text-xl font-extrabold tabular-nums text-brand" x-text="earned(pv) + ' / ' + quiz(pv).totalMarks"></dd></div>
+          <div class="flex flex-col-reverse rounded-xl border border-line p-3"><dt class="mt-1 text-xs font-bold text-muted" x-text="t('qr.detailsPercentage')"></dt><dd class="text-xl font-extrabold tabular-nums" :class="pct(pv) >= quiz(pv).passingScore ? 'pct-pass' : 'pct-fail'" x-text="pct(pv) + '%'"></dd></div>
+          <div class="flex flex-col-reverse rounded-xl border border-line p-3"><dt class="mt-1 text-xs font-bold text-muted" x-text="t('qr.colDuration')"></dt><dd class="text-xl font-extrabold tabular-nums text-brand" x-text="fmtDuration(pv.durationSec)"></dd></div>
+        </dl>
+        <p x-show="pv.submittedAt && pendingCount(pv)" class="rounded-xl border border-info-500/40 bg-info-500/10 p-3 text-sm font-bold text-ink"
+           x-text="tf('qr.pendingNote', { n: pendingCount(pv) })"></p>
+
+        <p x-show="!pv.submittedAt" class="rounded-xl border border-dashed border-line-strong/60 bg-page/50 p-3.5 text-sm leading-6 text-muted"
+           x-text="tf('qr.inProgressNotice', { since: elapsedMin(pv), limit: quiz(pv).duration })"></p>
+
+        <section x-show="pv.submittedAt" aria-labelledby="bd-title">
+          <h3 id="bd-title" class="mb-2.5 flex items-center gap-2 text-sm font-extrabold text-ink">
+            <i class="fa-solid fa-list-check text-brand" aria-hidden="true"></i> <span x-text="tf('qr.breakdownTitle', { n: pv.answers.length })"></span>
+          </h3>
+          <ol class="space-y-3" role="list">
+            <template x-for="(ans, k) in answerRows(pv)" :key="k">
+              <li class="rounded-xl border border-line p-3.5" :class="ans.state === 'correct' ? 'bg-success-500/5' : ans.state === 'pending' ? 'bg-info-500/5' : 'bg-error-500/5'">
+                <div class="flex items-start gap-3">
+                  <span class="ans-indicator" aria-hidden="true"
+                        :class="{ correct: 'bg-success-500/15 text-success-700 dark:text-success-500', partial: 'bg-warning-500/15 text-warning-800 dark:text-warning-500', wrong: 'bg-error-500/15 text-error-700 dark:text-red-300', pending: 'bg-info-500/15 text-info-700 dark:text-blue-300' }[ans.state]">
+                    <i class="fa-solid" :class="{ correct: 'fa-check', partial: 'fa-circle-half-stroke', wrong: 'fa-xmark', pending: 'fa-hourglass-half' }[ans.state]"></i>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="min-w-0 font-bold leading-6 text-ink" lang="ar" dir="auto">
+                        <span class="text-muted" x-text="tf('qr.questionN', { n: k + 1 }) + ': '"></span><span x-text="ans.q"></span>
+                      </p>
+                      <span class="badge shrink-0 tabular-nums" :class="{ correct: 'badge-success', partial: 'badge-warning', wrong: 'badge-danger', pending: 'badge-info' }[ans.state]"
+                            x-text="(ans.earned == null ? '—' : ans.earned) + ' / ' + ans.marks"></span>
+                    </div>
+                    <p class="sr-only" x-text="t('qr.ansState.' + ans.state)"></p>
+                    <dl class="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                      <div class="min-w-0"><dt class="text-xs font-bold text-muted" x-text="t('qr.studentAnswer')"></dt>
+                        <dd class="whitespace-pre-line break-words font-bold text-ink" lang="ar" dir="auto" x-text="ans.answer"></dd></div>
+                      <div class="min-w-0" x-show="ans.state !== 'correct'"><dt class="text-xs font-bold text-muted" x-text="t(ans.type === 'essay' ? 'qr.modelAnswer' : 'qr.correctAnswer')"></dt>
+                        <dd class="whitespace-pre-line break-words font-bold text-success-700 dark:text-success-500" lang="ar" dir="auto" x-text="ans.correctAnswer"></dd></div>
+                    </dl>
+                    <details x-show="ans.feedback" class="mt-2.5 rounded-lg bg-accent-500/10 p-2.5 text-xs" :open="ans.state !== 'correct'">
+                      <summary class="cursor-pointer font-extrabold text-ink">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1 text-yellow-900 dark:text-accent-500" aria-hidden="true"></i><span x-text="t('qr.aiFeedback')"></span>
+                      </summary>
+                      <p class="mt-1.5 leading-5 text-muted" lang="ar" dir="auto" x-text="ans.feedback"></p>
+                    </details>
+                  </div>
+                </div>
+              </li>
+            </template>
+          </ol>
+        </section>
+      </div>
+    </template>
+
+    <footer class="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" @click="exportReport('pdf', pv)" x-show="pv && pv.submittedAt">
+        <i class="fa-solid fa-file-pdf text-error-700 dark:text-red-300" aria-hidden="true"></i> <span x-text="t('qr.exportAttemptPdf')"></span>
+      </button>
+      <a x-show="pv && canGrade(pv)" :href="pv ? 'quiz-grading.html?attempt=' + pv.id : '#'" class="btn" :class="pv && pendingCount(pv) ? 'btn-accent' : 'btn-outline'">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span x-text="pv && pendingCount(pv) ? tf('qr.gradeN', { n: pendingCount(pv) }) : t('qr.reviewGrading')"></span>
+      </a>
+    </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Select-only Combobox — نمط ARIA APG).
+   * options: () => [{ value, label }] | get: () => القيمة | set: (v) => تحديث
+   * لوحة المفاتيح: ↑↓ Home End Enter Space Esc Tab + البحث بالكتابة (type-ahead).
+   * Esc يوقف الانتشار حتى لا يُغلق اللوحة الجانبية/النافذة الأم (C5).
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : placeholder; },
+      optId(item) { return this.id + '-opt-' + (item.value === '' ? 'none' : item.value); },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة نتائج الاختبارات ومحاولات الطلبة.
+   * — مصدر واحد للبيانات: attempts[] تُرسم منه البطاقات والجدول (بدل نسختين مكتوبتين يدويًا).
+   * — الحالة محسوبة: قيد التنفيذ / بحاجة لتصحيح (مقالي غير مصحّح) / ناجح / راسب وفق درجة نجاح كل اختبار.
+   * — الدرجات متّسقة: مجموع تفصيل الإجابات = درجة المحاولة، ومجموع درجات الأسئلة = الدرجة الكلية للاختبار.
+   * — ?code=QZ-… (من quizzes.html) يفلتر الاختبار ويعرض تحليل الأسئلة.
+   * — في Livewire: QuizResults + #[Url] + scopeStatus() + KPIs بتجميع واحد + تصدير عبر Job في الطابور.
+   */
+  function quizResultsManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const wideMQ = window.matchMedia('(min-width: 1280px)');
+    const M = window.FIROB_MOCK;
+    const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+
+    const STUDENTS = {
+      S1: { id: 'STU-1042', ar: 'ريم خالد الفرا', en: 'Reem Khaled Al-Farra' },
+      S2: { id: 'STU-1077', ar: 'أحمد ياسر حمدان', en: 'Ahmad Yaser Hamdan' },
+      S3: { id: 'STU-1090', ar: 'دانة سامي قديح', en: 'Dana Sami Qdeih' },
+      S4: { id: 'STU-1103', ar: 'عمر وليد أبو شريعة', en: 'Omar Walid Abu Sharia' },
+      S5: { id: 'STU-1121', ar: 'لين ناصر الحلاق', en: 'Leen Nasser Al-Hallaq' },
+      S6: { id: 'STU-1134', ar: 'كريم باسم النجار', en: 'Karim Basem Al-Najjar' },
+      S7: { id: 'STU-1150', ar: 'سلمى فادي عيسى', en: 'Salma Fadi Issa' },
+      S8: { id: 'STU-1162', ar: 'يزن محمود الشامي', en: 'Yazan Mahmoud Al-Shami' },
+    };
+
+    /* الاختبارات (نفس رموز quizzes.html و quiz-builder) — مجموع درجات الأسئلة = الدرجة الكلية */
+    const QUIZZES = {
+      'QZ-MATH-101': { ar: 'اختبار تشخيصي: الأعداد الصحيحة', en: 'Diagnostic Quiz: Integers', courseId: 'math-g7', passingScore: 60, duration: 20, questions: [
+        { q: 'أوجد ناتج: (-7) + 12', type: 'mcq', marks: 5, correct: '5' },
+        { q: 'رتّب الأعداد تصاعديًا: -3, 5, -8, 0', type: 'mcq', marks: 5, correct: '-8, -3, 0, 5' },
+        { q: 'احسب: 15 - (-9)', type: 'mcq', marks: 5, correct: '24' } ] },
+      'QZ-MATH-102': { ar: 'اختبار تكويني: خصائص الضرب', en: 'Formative Quiz: Multiplication Properties', courseId: 'math-g7', passingScore: 60, duration: 15, questions: [
+        { q: 'ما نتيجة ضرب (-4) × (-3)؟', type: 'mcq', marks: 5, correct: '12' },
+        { q: 'حاصل جمع عددين صحيحين سالبين هو دائمًا عدد سالب.', type: 'tf', marks: 2, correct: 'صحيح' },
+        { q: 'اشرح بمثال عملي كيف تُستخدم الأعداد الصحيحة السالبة لتمثيل حالات حياتية.', type: 'essay', marks: 8, correct: 'درجة حرارة -5° تعني 5 درجات تحت الصفر، والدين -200 يعني أن الشخص مدين بهذا المبلغ.' } ] },
+      'QZ-SCI-201': { ar: 'اختبار ختامي: تركيب الخلية', en: 'Summative Quiz: Cell Structure', courseId: 'sci-g8', passingScore: 60, duration: 40, questions: [
+        { q: 'ما العضية المسؤولة عن إنتاج الطاقة في الخلية؟', type: 'mcq', marks: 15, correct: 'الميتوكوندريا' },
+        { q: 'ما الغشاء الذي ينظّم دخول المواد وخروجها من الخلية؟', type: 'mcq', marks: 10, correct: 'الغشاء البلازمي' },
+        { q: 'قارن بين الخلية النباتية والحيوانية من حيث الجدار الخلوي.', type: 'essay', marks: 25, correct: 'للخلية النباتية جدار خلوي سليلوزي يمنحها الشكل والدعامة، ولا تمتلكه الخلية الحيوانية.' } ] },
+      'QZ-SCI-202': { ar: 'اختبار تشخيصي: موازنة المعادلات الكيميائية', en: 'Diagnostic Quiz: Balancing Chemical Equations', courseId: 'sci-g8', passingScore: 60, duration: 20, questions: [
+        { q: 'وازن المعادلة: H₂ + O₂ → H₂O', type: 'mcq', marks: 4, correct: '2H₂ + O₂ → 2H₂O' },
+        { q: 'ماذا نغيّر عند موازنة المعادلة؟', type: 'mcq', marks: 4, correct: 'المعاملات' },
+        { q: 'على أي قانون تقوم الموازنة؟', type: 'mcq', marks: 4, correct: 'قانون حفظ الكتلة' } ] },
+      'QZ-ARAB-301': { ar: 'اختبار تكويني: عناصر القصة القصيرة', en: 'Formative Quiz: Elements of the Short Story', courseId: 'arab-g9', passingScore: 60, duration: 10, questions: [
+        { q: 'عدّد عنصرين من عناصر القصة القصيرة.', type: 'mcq', marks: 2, correct: 'الحدث والشخصية' },
+        { q: 'ما وظيفة الحبكة في القصة؟', type: 'mcq', marks: 3, correct: 'ترتيب الأحداث بشكل مشوّق ومنطقي' },
+        { q: 'من الذي يروي أحداث القصة؟', type: 'mcq', marks: 3, correct: 'الراوي (قد يكون شخصية أو صوتًا خارجيًا)' } ] },
+      'QZ-ARAB-302': { ar: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية', en: 'Summative Quiz: Unit 1 — Literary Texts', courseId: 'arab-g9', passingScore: 50, duration: 45, questions: [
+        { q: 'اذكر عنصرين من عناصر الصورة الشعرية.', type: 'mcq', marks: 20, correct: 'التشبيه والاستعارة' },
+        { q: 'ما الغرض من النص الوصفي؟', type: 'mcq', marks: 20, correct: 'تقديم مشهد حسي دقيق للمكان أو الشخص' },
+        { q: 'حلّل الصورة الفنية في البيت المعروض وبيّن أثرها في المعنى.', type: 'essay', marks: 20, correct: 'تحديد نوع الصورة وطرفيها، ثم بيان أثرها في تقوية المعنى وإثارة الخيال.' } ] },
+      'QZ-MATH-104': { ar: 'اختبار ختامي: النسبة والتناسب', en: 'Summative Quiz: Ratio & Proportion', courseId: 'math-g7', passingScore: 60, duration: 35, questions: [
+        { q: 'إذا كانت النسبة 2:3 والعدد الأول 8، فما العدد الثاني؟', type: 'mcq', marks: 20, correct: '12' },
+        { q: 'أي النسب الآتية تساوي 4:6؟', type: 'mcq', marks: 20, correct: '2:3' } ] },
+    };
+    Object.values(QUIZZES).forEach(q => { q.totalMarks = q.questions.reduce((s, x) => s + x.marks, 0); });
+
+    /* المحاولات (quiz_attempts) — answers: [إجابة الطالب، الدرجة (null = مقالي بانتظار التصحيح)، ملاحظة AI] */
+    const A = (id, s, quizCode, attemptNo, hours, durationSec, answers) => ({
+      id, student: STUDENTS[s], quizCode, attemptNo, startedAt: ago(hours + (answers ? durationSec / 3600 : 0)),
+      submittedAt: answers ? ago(hours) : null, durationSec: answers ? durationSec : null,
+      answers: (answers || []).map(([answer, earned, feedback]) => ({ answer, earned, feedback })) });
+    const ATTEMPTS = [
+      A('ATT-1042', 'S1', 'QZ-MATH-101', 1, 3, 892, [['5', 5, 'تطبيق سليم لقاعدة جمع عددين مختلفين في الإشارة.'], ['-8, -3, 0, 5', 5, 'ترتيب صحيح يُظهر فهمًا جيدًا لخط الأعداد.'], ['6', 0, 'خطأ شائع: طرح السالب يساوي جمع العدد الموجب؛ 15 - (-9) = 15 + 9 = 24.']]),
+      A('ATT-1043', 'S3', 'QZ-MATH-101', 1, 26, 1100, [['-5', 0, 'خلط في الإشارة: الناتج يأخذ إشارة العدد الأكبر قيمة مطلقة (12).'], ['-8, -3, 0, 5', 5, 'ترتيب صحيح.'], ['24', 5, 'تطبيق صحيح لقاعدة طرح السالب.']]),
+      A('ATT-1077', 'S2', 'QZ-MATH-102', 1, 5, 700, [['12', 5, 'تطبيق صحيح لقاعدة: سالب × سالب = موجب.'], ['صحيح', 2, 'إجابة صحيحة.'], ['الحرارة -3 تحت الصفر في الشتاء، والدين سالب لأنه مال علينا.', 6, 'مثالان مناسبان؛ ينقص توضيح معنى الإشارة السالبة بدقة.']]),
+      A('ATT-1078', 'S7', 'QZ-MATH-102', 1, 2, 810, [['-12', 0, 'خطأ في قاعدة الإشارات: حاصل ضرب عددين سالبين موجب.'], ['خاطئ', 0, 'جمع عددين سالبين يعطي دائمًا عددًا سالبًا.'], ['نستخدم الأعداد السالبة للحرارة تحت الصفر.', null, '']]),
+      A('ATT-1090', 'S3', 'QZ-SCI-201', 1, 50, 2110, [['النواة', 0, 'خلط بين وظيفة النواة (التحكم) والميتوكوندريا (إنتاج الطاقة).'], ['الغشاء البلازمي', 10, 'إجابة دقيقة.'], ['لا يوجد فرق', 0, 'الفرق الجوهري هو الجدار الخلوي السليلوزي في الخلية النباتية.']]),
+      A('ATT-1091', 'S8', 'QZ-SCI-201', 1, 30, 2300, [['الميتوكوندريا', 15, 'إجابة صحيحة.'], ['الجدار الخلوي', 0, 'الجدار الخلوي للدعامة؛ تنظيم المرور وظيفة الغشاء البلازمي.'], ['للنباتية جدار من السليلوز يحافظ على شكلها، والحيوانية بلا جدار لذا شكلها غير منتظم.', 20, 'مقارنة جيدة مع تعليل؛ يمكن إضافة مثال.']]),
+      A('ATT-1103', 'S4', 'QZ-SCI-202', 1, 0.2, null, null),
+      A('ATT-1104', 'S5', 'QZ-SCI-202', 1, 72, 900, [['2H₂ + O₂ → 2H₂O', 4, 'موازنة صحيحة.'], ['الأرقام السفلية', 0, 'لا نغيّر الأرقام السفلية بل المعاملات فقط.'], ['قانون حفظ الكتلة', 4, 'إجابة صحيحة.']]),
+      A('ATT-1121', 'S5', 'QZ-ARAB-301', 1, 120, 520, [['الحدث والشخصية', 2, 'عنصران أساسيان صحيحان.'], ['ترتيب الأحداث بشكل مشوّق ومنطقي', 3, 'تعريف دقيق للحبكة.'], ['الكاتب فقط', 0, 'خلط بين الكاتب والراوي؛ راجع درس زوايا السرد.']]),
+      A('ATT-1122', 'S6', 'QZ-ARAB-301', 1, 8, 600, [['الحدث', 1, 'ذكر عنصرًا واحدًا فقط من اثنين.'], ['تعريف الشخصيات', 0, 'الحبكة هي ترتيب الأحداث وترابطها، لا تعريف الشخصيات.'], ['الراوي', 3, 'إجابة صحيحة.']]),
+      A('ATT-1134', 'S6', 'QZ-ARAB-302', 1, 500, 2402, [['التشبيه والاستعارة', 20, 'تحديد صحيح.'], ['سرد الأحداث بالترتيب الزمني', 0, 'خلط بين النص الوصفي والسردي.'], ['الصورة تشبيه يقوّي المعنى.', null, '']]),
+      A('ATT-1135', 'S6', 'QZ-ARAB-302', 2, 200, 2500, [['التشبيه والاستعارة', 20, 'تحديد صحيح.'], ['تقديم مشهد حسي دقيق للمكان أو الشخص', 20, 'إجابة دقيقة بعد المراجعة.'], ['تشبيه بليغ حذفت أداته ووجه شبهه فقوّى المعنى وأثار الخيال.', 10, 'تحديد نوع الصورة صحيح؛ ينقص بيان طرفيها.']]),
+      A('ATT-1150', 'S2', 'QZ-MATH-104', 1, 1, 1500, [['12', 20, 'تطبيق صحيح للتناسب.'], ['3:2', 0, 'عُكست النسبة؛ 4:6 تُبسَّط إلى 2:3.']]),
+      A('ATT-1151', 'S1', 'QZ-MATH-104', 1, 900, 1700, [['12', 20, 'إجابة صحيحة.'], ['2:3', 20, 'تبسيط صحيح للنسبة.']]),
+    ];
+
+    const I18N = {
+      ar: {
+        docTitle: 'نتائج الاختبارات — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد المحتوى والأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { newAttempt: 'طالب جديد أنهى محاولة: «اختبار تكويني: خصائص الضرب»', needsGrading: 'محاولات بانتظار تصحيح الأسئلة المقالية', aiFeedbackReady: 'اكتملت ملاحظات الذكاء الاصطناعي لمحاولة جديدة' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          attempts: { zero: 'لا محاولات', one: 'محاولة واحدة', two: 'محاولتان', few: '{n} محاولات', many: '{n} محاولةً', other: '{n} محاولة' },
+          questions: { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: '{n} أسئلة', many: '{n} سؤالًا', other: '{n} سؤال' },
+        },
+
+        qr: {
+          breadcrumbCurrent: 'نتائج الاختبارات',
+          backToQuizzes: 'العودة إلى الاختبارات', editThisQuiz: 'تعديل هذا الاختبار',
+          title: 'نتائج الاختبارات ومحاولات الطلبة', subtitle: 'تابع محاولات الطلبة ودرجاتهم ونسب النجاح والوقت المستغرق، وراجع تفصيل كل إجابة، وصحّح الأسئلة المقالية المعلّقة.',
+          exportExcel: 'تصدير Excel', exportPdf: 'تصدير PDF', exportAttemptPdf: 'PDF للمحاولة',
+          fmt: { excel: 'Excel', pdf: 'PDF' },
+          toastExport: 'سيُجهَّز ملف {type} لـ {n} وفق الفلاتر الحالية (معاينة). يحتوي بيانات شخصية للطلبة — شاركه وفق سياسة الخصوصية.',
+          quizContext: 'الاختبار المحدد', quizFacts: 'الدرجة الكلية {m} · النجاح من {p}% · المدة {d} دقيقة', showAllQuizzes: 'كل الاختبارات',
+          kpisLabel: 'مؤشرات النتائج',
+          kpi: { total: 'المحاولات', avg: 'متوسط الدرجات', pass: 'نسبة النجاح', time: 'متوسط وقت الحل' },
+          kpiHint: { total: '{n} قيد التنفيذ', avg: 'من {n} مصحّحة', pass: 'وفق درجة نجاح كل اختبار', time: 'للمحاولات المسلَّمة' },
+          needsGradingBanner: '{n} بانتظار تصحيح أسئلة مقالية.', showThem: 'عرضها',
+          filtersLabel: 'بحث وفلترة المحاولات', searchPlaceholder: 'ابحث باسم الطالب أو رقمه أو رمز المحاولة…', clearSearch: 'مسح البحث',
+          filter: { quiz: 'الاختبار', status: 'الحالة', date: 'التاريخ', sort: 'الترتيب' },
+          allQuizzes: 'كل الاختبارات', allStatuses: 'كل الحالات',
+          status: { passed: 'ناجح', failed: 'راسب', needs_grading: 'بحاجة لتصحيح', in_progress: 'قيد التنفيذ' },
+          date: { all: 'كل الأوقات', today: 'آخر 24 ساعة', d7: 'آخر 7 أيام', d30: 'آخر 30 يومًا' },
+          sort: { newest: 'الأحدث أولًا', oldest: 'الأقدم أولًا', high: 'الأعلى درجة', low: 'الأقل درجة' },
+          resetFilters: 'مسح الفلاتر', resultsCount: 'النتائج: {n}',
+          itemAnalysis: 'تحليل الأسئلة', itemAnalysisSub: 'بناءً على {n} — الأصعب أولًا', colQuestion: 'السؤال', colCorrectRate: 'نسبة الإجابة الصحيحة', colCommonWrong: 'الإجابة الخاطئة الأكثر تكرارًا',
+          emptyTitle: 'لا محاولات مطابقة', emptySub: 'جرّب تعديل البحث أو الفلاتر.',
+          colStudent: 'الطالب', colQuiz: 'الاختبار', colScore: 'الدرجة والنسبة', colStatus: 'الحالة', colDuration: 'الوقت المستغرق', colDate: 'تاريخ التسليم', colActions: 'إجراءات',
+          attemptNo: 'المحاولة {n}', startedAt: 'بدأت', provisional: 'مؤقتة', inProgressShort: 'لم تُسلَّم بعد',
+          act: { details: 'عرض التفاصيل', grade: 'التصحيح' },
+          pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية', pageN: 'الصفحة {n}', pageInfo: 'عرض {from}–{to} من {total}',
+          detailsTitle: 'تفاصيل محاولة الطالب', detailsClose: 'إغلاق', detailsQuiz: 'الاختبار', posOf: '{n} من {total}', prevAttempt: 'المحاولة السابقة', nextAttempt: 'المحاولة التالية',
+          detailsScore: 'الدرجة', detailsPercentage: 'النسبة',
+          pendingNote: 'الدرجة مؤقتة: {n} سؤال مقالي بانتظار التصحيح اليدوي.',
+          inProgressNotice: 'لم يُسلِّم الطالب المحاولة بعد — بدأها قبل {since} دقيقة من أصل {limit} دقيقة مسموحة. تظهر الدرجة والتفصيل فور التسليم.',
+          breakdownTitle: 'تفصيل الإجابات ({n})', questionN: 'سؤال {n}',
+          studentAnswer: 'إجابة الطالب', correctAnswer: 'الإجابة الصحيحة', modelAnswer: 'الإجابة النموذجية', aiFeedback: 'ملاحظة الذكاء الاصطناعي',
+          ansState: { correct: 'إجابة صحيحة.', partial: 'إجابة صحيحة جزئيًا.', wrong: 'إجابة خاطئة.', pending: 'بانتظار التصحيح اليدوي.' },
+          gradeN: 'تصحيح {n} معلّق', reviewGrading: 'مراجعة التصحيح',
+          minSec: '{m} د {s} ث',
+        },
+      },
+      en: {
+        docTitle: 'Quiz Results — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Content & Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { newAttempt: 'A student just finished an attempt: "Formative Quiz: Multiplication Properties"', needsGrading: 'Attempts are waiting for essay grading', aiFeedbackReady: 'AI feedback for a new attempt is ready' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          attempts: { zero: 'no attempts', one: '{n} attempt', other: '{n} attempts' },
+          questions: { zero: 'no questions', one: '{n} question', other: '{n} questions' },
+        },
+
+        qr: {
+          breadcrumbCurrent: 'Quiz Results',
+          backToQuizzes: 'Back to quizzes', editThisQuiz: 'Edit this quiz',
+          title: 'Quiz Results & Student Attempts', subtitle: 'Track student attempts, scores, pass rates and time spent, review every answer, and grade pending essay questions.',
+          exportExcel: 'Export Excel', exportPdf: 'Export PDF', exportAttemptPdf: 'Attempt PDF',
+          fmt: { excel: 'Excel', pdf: 'PDF' },
+          toastExport: 'A {type} file for {n} will be prepared using the current filters (preview). It contains student personal data — share it according to the privacy policy.',
+          quizContext: 'Selected quiz', quizFacts: 'Total marks {m} · pass at {p}% · {d} min', showAllQuizzes: 'All quizzes',
+          kpisLabel: 'Results indicators',
+          kpi: { total: 'Attempts', avg: 'Average score', pass: 'Pass rate', time: 'Avg. time spent' },
+          kpiHint: { total: '{n} in progress', avg: 'From {n} graded', pass: "Using each quiz's passing score", time: 'For submitted attempts' },
+          needsGradingBanner: '{n} waiting for essay grading.', showThem: 'Show them',
+          filtersLabel: 'Search and filter attempts', searchPlaceholder: 'Search by student name, ID or attempt code…', clearSearch: 'Clear search',
+          filter: { quiz: 'Quiz', status: 'Status', date: 'Date', sort: 'Sort' },
+          allQuizzes: 'All quizzes', allStatuses: 'All statuses',
+          status: { passed: 'Passed', failed: 'Failed', needs_grading: 'Needs grading', in_progress: 'In progress' },
+          date: { all: 'All time', today: 'Last 24 hours', d7: 'Last 7 days', d30: 'Last 30 days' },
+          sort: { newest: 'Newest first', oldest: 'Oldest first', high: 'Highest score', low: 'Lowest score' },
+          resetFilters: 'Clear filters', resultsCount: 'Results: {n}',
+          itemAnalysis: 'Question analysis', itemAnalysisSub: 'Based on {n} — hardest first', colQuestion: 'Question', colCorrectRate: 'Correct rate', colCommonWrong: 'Most common wrong answer',
+          emptyTitle: 'No matching attempts', emptySub: 'Try changing the search or filters.',
+          colStudent: 'Student', colQuiz: 'Quiz', colScore: 'Score & %', colStatus: 'Status', colDuration: 'Time spent', colDate: 'Submitted', colActions: 'Actions',
+          attemptNo: 'Attempt {n}', startedAt: 'Started', provisional: 'provisional', inProgressShort: 'Not submitted yet',
+          act: { details: 'View details', grade: 'Grade' },
+          pagination: 'Pagination', prev: 'Previous page', next: 'Next page', pageN: 'Page {n}', pageInfo: 'Showing {from}–{to} of {total}',
+          detailsTitle: 'Student Attempt Details', detailsClose: 'Close', detailsQuiz: 'Quiz', posOf: '{n} of {total}', prevAttempt: 'Previous attempt', nextAttempt: 'Next attempt',
+          detailsScore: 'Score', detailsPercentage: 'Percentage',
+          pendingNote: 'Provisional score: {n} essay question(s) await manual grading.',
+          inProgressNotice: 'The student has not submitted yet — started {since} min ago of {limit} min allowed. Score and breakdown appear on submission.',
+          breakdownTitle: 'Answer breakdown ({n})', questionN: 'Question {n}',
+          studentAnswer: "Student's answer", correctAnswer: 'Correct answer', modelAnswer: 'Model answer', aiFeedback: 'AI feedback',
+          ansState: { correct: 'Correct answer.', partial: 'Partially correct.', wrong: 'Incorrect answer.', pending: 'Awaiting manual grading.' },
+          gradeN: 'Grade {n} pending', reviewGrading: 'Review grading',
+          minSec: '{m}m {s}s',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      wide: wideMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'quizzes',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      fmt(n) { return Number(n).toLocaleString('en-US'); },
+      fmtDuration(sec) { if (sec == null) return '—'; return this.tf('qr.minSec', { m: Math.floor(sec / 60), s: String(sec % 60).padStart(2, '0') }); },
+      fmtDate(iso) { return new Intl.DateTimeFormat(this.locale === 'ar' ? 'ar' : 'en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)); },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 14 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      notifications: [
+        { id: 1, key: 'newAttempt', time: '6m', read: false, icon: 'fa-solid fa-circle-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'needsGrading', time: '2h', read: false, icon: 'fa-solid fa-pen-to-square', tone: 'bg-info-500/15 text-info-700 dark:text-blue-300' },
+        { id: 3, key: 'aiFeedbackReady', time: '5h', read: true, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- البيانات والحسابات ---------- */
+      attempts: ATTEMPTS,
+      STATUS: { passed: ['badge-success', 'fa-circle-check'], failed: ['badge-danger', 'fa-circle-xmark'],
+                needs_grading: ['badge-info', 'fa-pen-to-square'], in_progress: ['badge-warning', 'fa-hourglass-half'] },
+      quiz(a) { return QUIZZES[a.quizCode]; },
+      quizName(q) { return q ? (this.locale === 'en' ? q.en : q.ar) : ''; },
+      get curQuiz() { return QUIZZES[this.quizFilter] || null; },
+      course(id) { return M.courses.find(c => c.id === id); },
+      studentName(a) { return this.locale === 'en' ? a.student.en : a.student.ar; },
+      initials(a) { return this.studentName(a).split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase(); },
+      earned(a) { return a.answers.reduce((s, x) => s + (x.earned ?? 0), 0); },
+      pendingCount(a) { return a.answers.filter(x => x.earned == null).length; },
+      pct(a) { return a.submittedAt ? Math.round(this.earned(a) / this.quiz(a).totalMarks * 100) : null; },
+      status(a) {
+        if (!a.submittedAt) return 'in_progress';
+        if (this.pendingCount(a)) return 'needs_grading';
+        return this.pct(a) >= this.quiz(a).passingScore ? 'passed' : 'failed';
+      },
+      canGrade(a) { return !!a.submittedAt && this.quiz(a).questions.some(q => q.type === 'essay'); },
+      elapsedMin(a) { return Math.max(1, Math.round((Date.now() - new Date(a.startedAt)) / 60000)); },
+      rowTone(a) { return { failed: 'bg-error-500/5 hover:bg-error-500/10', in_progress: 'bg-warning-500/5 hover:bg-warning-500/10', needs_grading: 'bg-info-500/5 hover:bg-info-500/10' }[this.status(a)] || 'hover:bg-soft/40'; },
+      metaLine(a) {
+        return a.submittedAt ? this.fmtDuration(a.durationSec) + ' · ' + this.fmtDate(a.submittedAt)
+                             : this.t('qr.startedAt') + ': ' + this.fmtDate(a.startedAt) + ' · ' + this.t('qr.inProgressShort');
+      },
+      answerRows(a) {
+        return this.quiz(a).questions.map((q, i) => {
+          const ans = a.answers[i] || { answer: '—', earned: 0, feedback: '' };
+          const state = ans.earned == null ? 'pending' : ans.earned >= q.marks ? 'correct' : ans.earned > 0 ? 'partial' : 'wrong';
+          return { q: q.q, type: q.type, marks: q.marks, correctAnswer: q.correct, answer: ans.answer, earned: ans.earned, feedback: ans.feedback, state };
+        });
+      },
+
+      /* ---------- الفلاتر (Livewire: #[Url]) ---------- */
+      search: '', quizFilter: 'all', statusFilter: 'all', dateFilter: 'all', sortBy: 'newest',
+      quizOptions() {
+        return [{ value: 'all', label: this.t('qr.allQuizzes') },
+                ...Object.entries(QUIZZES).map(([code, q]) => ({ value: code, label: this.quizName(q) }))];
+      },
+      statusOptions() { return [{ value: 'all', label: this.t('qr.allStatuses') }, ...['needs_grading', 'passed', 'failed', 'in_progress'].map(v => ({ value: v, label: this.t('qr.status.' + v) }))]; },
+      dateOptions() { return ['all', 'today', 'd7', 'd30'].map(v => ({ value: v, label: this.t('qr.date.' + v) })); },
+      sortOptions() { return ['newest', 'oldest', 'high', 'low'].map(v => ({ value: v, label: this.t('qr.sort.' + v) })); },
+      get activeFilterCount() {
+        return (this.search.trim() ? 1 : 0) + (this.quizFilter !== 'all') + (this.statusFilter !== 'all') + (this.dateFilter !== 'all');
+      },
+      resetFilters() { this.search = ''; this.quizFilter = 'all'; this.statusFilter = 'all'; this.dateFilter = 'all'; },
+      get filtered() {
+        const q = this.search.trim().toLowerCase();
+        const hrs = { today: 24, d7: 168, d30: 720 }[this.dateFilter];
+        const from = hrs ? Date.now() - hrs * 3600e3 : null;
+        const ts = (a) => new Date(a.submittedAt || a.startedAt).getTime();
+        // المحاولات قيد التنفيذ (بلا درجة) تأتي آخرًا في ترتيب الدرجات
+        const sorters = { newest: (x, y) => ts(y) - ts(x), oldest: (x, y) => ts(x) - ts(y),
+                          high: (x, y) => (this.pct(y) ?? -1) - (this.pct(x) ?? -1), low: (x, y) => (this.pct(x) ?? 999) - (this.pct(y) ?? 999) };
+        return this.attempts
+          .filter(a => (this.quizFilter === 'all' || a.quizCode === this.quizFilter) &&
+                       (this.statusFilter === 'all' || this.status(a) === this.statusFilter) &&
+                       (!from || ts(a) >= from) &&
+                       (!q || [a.student.ar, a.student.en, a.student.id, a.id].some(s => s.toLowerCase().includes(q))))
+          .sort(sorters[this.sortBy]);
+      },
+      get resultsMsg() { return this.activeFilterCount ? this.tf('qr.resultsCount', { n: this.pluralize('attempts', this.filtered.length) }) : ''; },
+
+      /* ---------- المؤشرات (من النتائج المفلترة) ---------- */
+      kpiCards: [
+        { key: 'total', icon: 'fa-list-check', cls: 'bg-primary-500/10 text-brand' },
+        { key: 'avg', icon: 'fa-chart-simple', cls: 'bg-info-500/15 text-info-700 dark:text-blue-300' },
+        { key: 'pass', icon: 'fa-trophy', cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { key: 'time', icon: 'fa-stopwatch', cls: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+      ],
+      get kpis() {
+        const F = this.filtered;
+        const graded = F.filter(a => a.submittedAt && !this.pendingCount(a));
+        const submitted = F.filter(a => a.submittedAt);
+        const avg = (xs) => xs.length ? Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) : null;
+        return {
+          total: F.length, inProgress: F.filter(a => !a.submittedAt).length, graded: graded.length,
+          avg: avg(graded.map(a => this.pct(a))),
+          pass: graded.length ? Math.round(graded.filter(a => this.status(a) === 'passed').length / graded.length * 100) : null,
+          time: avg(submitted.map(a => a.durationSec)),
+          needsGrading: F.filter(a => this.status(a) === 'needs_grading').length,
+        };
+      },
+      kpiValue(k) {
+        const v = this.kpis;
+        return { total: this.fmt(v.total), avg: v.avg == null ? '—' : v.avg + '%', pass: v.pass == null ? '—' : v.pass + '%', time: this.fmtDuration(v.time) }[k];
+      },
+      kpiHint(k) {
+        const v = this.kpis;
+        return { total: this.tf('qr.kpiHint.total', { n: v.inProgress }), avg: this.tf('qr.kpiHint.avg', { n: v.graded }),
+                 pass: this.t('qr.kpiHint.pass'), time: this.t('qr.kpiHint.time') }[k];
+      },
+
+      /* ---------- تحليل الأسئلة ---------- */
+      get gradedCount() { return this.filtered.filter(a => a.submittedAt).length; },
+      get itemAnalysis() {
+        const q = this.curQuiz;
+        if (!q) return [];
+        const subs = this.filtered.filter(a => a.submittedAt);
+        if (!subs.length) return [];
+        return q.questions.map((qq, idx) => {
+          let n = 0, correct = 0; const wrong = {};
+          subs.forEach(a => {
+            const x = a.answers[idx];
+            if (!x || x.earned == null) return;
+            n++;
+            if (x.earned >= qq.marks) correct++;
+            else if (qq.type !== 'essay') wrong[x.answer] = (wrong[x.answer] || 0) + 1;
+          });
+          const top = Object.entries(wrong).sort((a, b) => b[1] - a[1])[0];
+          return { idx, q: qq.q, n, correct, rate: n ? Math.round(correct / n * 100) : 0, topWrong: top?.[0], topWrongN: top?.[1] };
+        }).filter(r => r.n).sort((a, b) => a.rate - b.rate);
+      },
+
+      /* ---------- الترقيم ---------- */
+      page: 1, perPage: 8,
+      get pageCount() { return Math.max(1, Math.ceil(this.filtered.length / this.perPage)); },
+      get pageRows() { return this.filtered.slice((this.page - 1) * this.perPage, this.page * this.perPage); },
+      get pageInfo() {
+        const total = this.filtered.length, from = total ? (this.page - 1) * this.perPage + 1 : 0;
+        return this.tf('qr.pageInfo', { from, to: Math.min(from + this.perPage - 1, total), total: this.pluralize('attempts', total) });
+      },
+      goPage(p) { this.page = Math.min(Math.max(1, p), this.pageCount); },
+
+      /* ---------- لوحة التفاصيل ---------- */
+      detailsOpen: false, pvId: null, _pvReturn: null,
+      get pv() { return this.attempts.find(a => a.id === this.pvId) || null; },
+      get pvIndex() { return this.filtered.findIndex(a => a.id === this.pvId); },
+      openDetails(a, ev) { this._pvReturn = ev?.currentTarget || null; this.pvId = a.id; this.detailsOpen = true; },
+      stepDetails(d) { const n = this.filtered[this.pvIndex + d]; if (n) this.pvId = n.id; },
+      closeDetails() {
+        this.detailsOpen = false;
+        const id = this.pvId, back = this._pvReturn;
+        this.$nextTick(() => {
+          const row = document.querySelector(`[data-att="${id}"] [data-act=details]`);
+          (row || (back?.isConnected ? back : null) || this.$refs.attemptSearch)?.focus();
+        });
+      },
+
+      /* ---------- التصدير (Livewire: Job في الطابور + إشعار برابط مؤقت) ---------- */
+      liveMsg: '',
+      exportReport(type, single = null) {
+        const msg = this.tf('qr.toastExport', { type: this.t('qr.fmt.' + type), n: this.pluralize('attempts', single ? 1 : this.filtered.length) });
+        this.liveMsg = msg;
+        if (!window.Swal) return;
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: msg, showConfirmButton: false, timer: 5000, customClass: { popup: 'firob-swal firob-toast' } });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        const qp = new URLSearchParams(window.location.search);
+        const code = qp.get('code'), st = qp.get('status');                       // قادم من quizzes.html / quiz-grading.html
+        if (code && QUIZZES[code]) this.quizFilter = code;
+        if (['passed', 'failed', 'needs_grading', 'in_progress'].includes(st)) this.statusFilter = st;
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        wideMQ.addEventListener('change', (m) => { this.wide = m.matches; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        ['search', 'quizFilter', 'statusFilter', 'dateFilter', 'sortBy'].forEach(k => this.$watch(k, () => { this.page = 1; }));
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          (g && g.offsetParent !== null ? g : this.$refs.attemptSearch)?.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — اللوحة الجانبية تعالج Esc بنفسها
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>دعوات المستخدمين — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- شريحة الحالة (Status Tabs) ---------- */
+    .status-tab { @apply inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .status-tab[aria-selected="true"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-500 hover:text-white; }
+    .status-tab .count { @apply rounded-full bg-black/10 px-1.5 text-xs dark:bg-white/15; }
+    .status-tab[aria-selected="true"] .count { @apply bg-white/25; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="openMenuId = null" @resize.window="openMenuId = null"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || modal || panelOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.invitations')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-03: دعوات المستخدمين ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء الدعوة -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('inv.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('inv.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-accent" @click="openInvite()">
+          <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+          <span x-text="t('inv.inviteNew')"></span>
+        </button>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPIs) ================= -->
+      <section aria-label="KPIs" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('inv.kpiTotal')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-envelope-open-text"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">28</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('inv.kpiPending')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-hourglass-half"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">9</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('inv.kpiAccepted')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">14</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('inv.kpiExpired')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-error-500/15 text-error-700 dark:text-error-500" aria-hidden="true"><i class="fa-solid fa-ban"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">5</p>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر وعلامات تبويب الحالة ================= -->
+      <section class="panel flex flex-col gap-4 p-4 sm:p-5">
+
+        <!-- علامات تبويب الحالة (Status Tabs) -->
+        <div class="flex items-center gap-2 overflow-x-auto scroll-thin" role="tablist" :aria-label="t('inv.colStatus')">
+          <button type="button" role="tab" class="status-tab" :aria-selected="(statusFilter === 'all').toString()" @click="statusFilter = 'all'">
+            <span x-text="t('inv.statusAll')"></span> <span class="count">10</span>
+          </button>
+          <button type="button" role="tab" class="status-tab" :aria-selected="(statusFilter === 'pending').toString()" @click="statusFilter = 'pending'">
+            <span x-text="t('inv.statusPending')"></span> <span class="count">4</span>
+          </button>
+          <button type="button" role="tab" class="status-tab" :aria-selected="(statusFilter === 'accepted').toString()" @click="statusFilter = 'accepted'">
+            <span x-text="t('inv.statusAccepted')"></span> <span class="count">3</span>
+          </button>
+          <button type="button" role="tab" class="status-tab" :aria-selected="(statusFilter === 'expired').toString()" @click="statusFilter = 'expired'">
+            <span x-text="t('inv.statusExpired')"></span> <span class="count">2</span>
+          </button>
+          <button type="button" role="tab" class="status-tab" :aria-selected="(statusFilter === 'revoked').toString()" @click="statusFilter = 'revoked'">
+            <span x-text="t('inv.statusRevoked')"></span> <span class="count">1</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div class="relative min-w-0 flex-1">
+            <label for="inv-search" class="sr-only" x-text="t('inv.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+            <input id="inv-search" type="search" x-model="search" :placeholder="t('inv.searchPlaceholder')"
+                   class="h-11 w-full min-w-0 rounded-xl border border-line bg-field ps-10 pe-3 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          </div>
+
+          <!-- فلتر الدور -->
+          <div class="relative w-full shrink-0 lg:w-56"
+               x-data="selectDropdown({
+                 options: () => [
+                   { value: 'all', label: t('inv.roleAll') },
+                   { value: 'tenant_admin', label: t('inv.roleAdmin') },
+                   { value: 'reviewer', label: t('inv.roleReviewer') },
+                   { value: 'editor', label: t('inv.roleTeacher') },
+                   { value: 'student', label: t('inv.roleStudent') },
+                 ],
+                 get: () => roleFilter,
+                 set: (v) => roleFilter = v,
+               })"
+               @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+            <label for="role-filter" class="sr-only" x-text="t('inv.colRole')"></label>
+            <button type="button" id="role-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="role-filter-list"
+                    :aria-activedescendant="active > -1 ? 'role-filter-opt-' + items[active].value : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                    @click="toggleList()"
+                    @keydown.down.prevent="move(1)"
+                    @keydown.up.prevent="move(-1)"
+                    @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                    @keydown.space.prevent="toggleList()">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="role-filter-list" role="listbox" aria-labelledby="role-filter"
+                x-transition.origin.top.duration.150ms
+                class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="'role-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="resetFilters()">
+            <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i>
+            <span x-text="t('inv.resetFilters')"></span>
+          </button>
+        </div>
+
+        <!-- شريط الإجراءات الجماعية (Bulk Actions) -->
+        <div x-show="selectedIds.length > 0" x-cloak x-transition.opacity
+             class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary-500/30 bg-soft px-4 py-3">
+          <p class="text-sm font-bold text-brand">
+            <i class="fa-solid fa-circle-check me-1.5" aria-hidden="true"></i>
+            <span x-text="tf('inv.selectedCount', { n: selectedIds.length })"></span>
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn btn-outline btn-sm" :disabled="busy" @click="bulkResend()">
+              <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> <span x-text="t('inv.bulkResend')"></span>
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" :disabled="busy" @click="confirmBulkRevoke()">
+              <i class="fa-solid fa-ban" aria-hidden="true"></i> <span x-text="t('inv.bulkRevoke')"></span>
+            </button>
+            <button type="button" class="act" @click="selectedIds = []" :aria-label="t('inv.clearSelection')">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= جدول الدعوات (DataTable) ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="inv-table-title">
+        <h2 id="inv-table-title" class="sr-only" x-text="t('inv.title')"></h2>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+          <!-- بطاقة 1 — Pending -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(1)" @change="toggleSelect(1)" aria-label="sara.newteacher@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">sara.newteacher@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('sara.newteacher@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل يومين · تنتهي خلال 5 أيام</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 1, email: 'sara.newteacher@alaqsa.edu.ps', status: 'pending' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 1).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-accent" x-text="t('inv.roleTeacher')"></span>
+              <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">سارة أحمد المصري</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 2 — Pending -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(2)" @change="toggleSelect(2)" aria-label="omar.reviewer@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">omar.reviewer@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('omar.reviewer@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 6 ساعات · تنتهي خلال 42 ساعة</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 2, email: 'omar.reviewer@alaqsa.edu.ps', status: 'pending' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 2).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-info" x-text="t('inv.roleReviewer')"></span>
+              <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">محمد خالد يوسف</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 3 — Accepted -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(3)" @change="toggleSelect(3)" aria-label="huda.admin@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">huda.admin@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('huda.admin@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل يوم واحد · قُبلت أمس</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 3, email: 'huda.admin@alaqsa.edu.ps', status: 'accepted' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 3).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-primary" x-text="t('inv.roleAdmin')"></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusAccepted')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">سارة أحمد المصري</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 4 — Expired -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(4)" @change="toggleSelect(4)" aria-label="khaled.student@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">khaled.student@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('khaled.student@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 10 أيام · انتهت صلاحيتها قبل 3 أيام</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 4, email: 'khaled.student@alaqsa.edu.ps', status: 'expired' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 4).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-neutral" x-text="t('inv.roleStudent')"></span>
+              <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusExpired')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">لع</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">ليان عمر الشريف</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 5 — Revoked -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(5)" @change="toggleSelect(5)" aria-label="yousef.teacher@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">yousef.teacher@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('yousef.teacher@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 5 أيام · أُلغيت قبل يومين</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 5, email: 'yousef.teacher@alaqsa.edu.ps', status: 'revoked' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 5).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-accent" x-text="t('inv.roleTeacher')"></span>
+              <span class="badge badge-danger"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusRevoked')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">نح</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">نور حسن عودة</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 6 — Pending -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(6)" @change="toggleSelect(6)" aria-label="maya.reviewer@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">maya.reviewer@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('maya.reviewer@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 3 أيام · تنتهي خلال 4 أيام</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 6, email: 'maya.reviewer@alaqsa.edu.ps', status: 'pending' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 6).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-info" x-text="t('inv.roleReviewer')"></span>
+              <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">سارة أحمد المصري</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 7 — Accepted -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(7)" @change="toggleSelect(7)" aria-label="ali.admin@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">ali.admin@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('ali.admin@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 15 يومًا · قُبلت قبل 12 يومًا</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 7, email: 'ali.admin@alaqsa.edu.ps', status: 'accepted' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 7).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-primary" x-text="t('inv.roleAdmin')"></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusAccepted')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">محمد خالد يوسف</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 8 — Expired -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(8)" @change="toggleSelect(8)" aria-label="dina.student@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">dina.student@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('dina.student@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 20 يومًا · انتهت صلاحيتها قبل 13 يومًا</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 8, email: 'dina.student@alaqsa.edu.ps', status: 'expired' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 8).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-neutral" x-text="t('inv.roleStudent')"></span>
+              <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusExpired')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">لع</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">ليان عمر الشريف</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 9 — Pending -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(9)" @change="toggleSelect(9)" aria-label="tariq.reviewer@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">tariq.reviewer@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('tariq.reviewer@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 4 أيام · تنتهي خلال 3 أيام</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 9, email: 'tariq.reviewer@alaqsa.edu.ps', status: 'pending' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 9).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-info" x-text="t('inv.roleReviewer')"></span>
+              <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">نح</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">نور حسن عودة</span></p>
+            </div>
+          </li>
+
+          <!-- بطاقة 10 — Accepted -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="checkbox-row mt-1 h-4 w-4 shrink-0 rounded border-line-strong text-brand focus-visible:ring-2"
+                     :checked="isSelected(10)" @change="toggleSelect(10)" aria-label="lina.teacher@alaqsa.edu.ps">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-extrabold leading-6" dir="ltr" style="text-align:right">lina.teacher@alaqsa.edu.ps</p>
+                  <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('lina.teacher@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                </div>
+                <p class="mt-1 text-xs text-muted">قبل 8 أيام · قُبلت قبل 6 أيام</p>
+              </div>
+              <button type="button" class="act shrink-0" @click="toggleMenu({ id: 10, email: 'lina.teacher@alaqsa.edu.ps', status: 'accepted' }, $event)"
+                      aria-haspopup="menu" :aria-expanded="(openMenuId === 10).toString()" :aria-label="t('inv.colActions')">
+                <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-accent" x-text="t('inv.roleTeacher')"></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusAccepted')"></span></span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 border-t border-line pt-3">
+              <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+              <p class="truncate text-xs text-muted"><span x-text="t('inv.invitedBy')"></span> <span class="font-bold text-ink">محمد خالد يوسف</span></p>
+            </div>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1080px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('inv.title')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="w-12 px-5 py-3.5 text-start">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="allSelected" @change="toggleSelectAll()" :aria-label="t('inv.selectAll')">
+                  </th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('inv.colEmail')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('inv.colRole')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('inv.colInvitedBy')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('inv.colDates')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('inv.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('inv.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <!-- صف 1 — Pending -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(1)" @change="toggleSelect(1)" aria-label="sara.newteacher@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">sara.newteacher@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('sara.newteacher@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('inv.roleTeacher')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                      <span class="truncate text-xs font-bold">سارة أحمد المصري</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل يومين<br>تنتهي خلال 5 أيام</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 1, email: 'sara.newteacher@alaqsa.edu.ps', status: 'pending' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 1).toString()" :aria-label="t('inv.colActions') + ': sara.newteacher@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 2 — Pending -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(2)" @change="toggleSelect(2)" aria-label="omar.reviewer@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">omar.reviewer@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('omar.reviewer@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('inv.roleReviewer')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                      <span class="truncate text-xs font-bold">محمد خالد يوسف</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 6 ساعات<br>تنتهي خلال 42 ساعة</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 2, email: 'omar.reviewer@alaqsa.edu.ps', status: 'pending' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 2).toString()" :aria-label="t('inv.colActions') + ': omar.reviewer@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 3 — Accepted -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(3)" @change="toggleSelect(3)" aria-label="huda.admin@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">huda.admin@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('huda.admin@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-primary" x-text="t('inv.roleAdmin')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                      <span class="truncate text-xs font-bold">سارة أحمد المصري</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل يوم واحد<br>قُبلت أمس</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusAccepted')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 3, email: 'huda.admin@alaqsa.edu.ps', status: 'accepted' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 3).toString()" :aria-label="t('inv.colActions') + ': huda.admin@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 4 — Expired -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(4)" @change="toggleSelect(4)" aria-label="khaled.student@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">khaled.student@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('khaled.student@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-neutral" x-text="t('inv.roleStudent')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">لع</span>
+                      <span class="truncate text-xs font-bold">ليان عمر الشريف</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 10 أيام<br>انتهت صلاحيتها قبل 3 أيام</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusExpired')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 4, email: 'khaled.student@alaqsa.edu.ps', status: 'expired' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 4).toString()" :aria-label="t('inv.colActions') + ': khaled.student@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 5 — Revoked -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(5)" @change="toggleSelect(5)" aria-label="yousef.teacher@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">yousef.teacher@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('yousef.teacher@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('inv.roleTeacher')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">نح</span>
+                      <span class="truncate text-xs font-bold">نور حسن عودة</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 5 أيام<br>أُلغيت قبل يومين</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-danger"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusRevoked')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 5, email: 'yousef.teacher@alaqsa.edu.ps', status: 'revoked' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 5).toString()" :aria-label="t('inv.colActions') + ': yousef.teacher@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 6 — Pending -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(6)" @change="toggleSelect(6)" aria-label="maya.reviewer@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">maya.reviewer@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('maya.reviewer@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('inv.roleReviewer')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                      <span class="truncate text-xs font-bold">سارة أحمد المصري</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 3 أيام<br>تنتهي خلال 4 أيام</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 6, email: 'maya.reviewer@alaqsa.edu.ps', status: 'pending' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 6).toString()" :aria-label="t('inv.colActions') + ': maya.reviewer@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 7 — Accepted -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(7)" @change="toggleSelect(7)" aria-label="ali.admin@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">ali.admin@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('ali.admin@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-primary" x-text="t('inv.roleAdmin')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                      <span class="truncate text-xs font-bold">محمد خالد يوسف</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 15 يومًا<br>قُبلت قبل 12 يومًا</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusAccepted')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 7, email: 'ali.admin@alaqsa.edu.ps', status: 'accepted' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 7).toString()" :aria-label="t('inv.colActions') + ': ali.admin@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 8 — Expired -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(8)" @change="toggleSelect(8)" aria-label="dina.student@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">dina.student@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('dina.student@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-neutral" x-text="t('inv.roleStudent')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">لع</span>
+                      <span class="truncate text-xs font-bold">ليان عمر الشريف</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 20 يومًا<br>انتهت صلاحيتها قبل 13 يومًا</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusExpired')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 8, email: 'dina.student@alaqsa.edu.ps', status: 'expired' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 8).toString()" :aria-label="t('inv.colActions') + ': dina.student@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 9 — Pending -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(9)" @change="toggleSelect(9)" aria-label="tariq.reviewer@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">tariq.reviewer@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('tariq.reviewer@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('inv.roleReviewer')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">نح</span>
+                      <span class="truncate text-xs font-bold">نور حسن عودة</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 4 أيام<br>تنتهي خلال 3 أيام</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-accent"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusPending')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 9, email: 'tariq.reviewer@alaqsa.edu.ps', status: 'pending' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 9).toString()" :aria-label="t('inv.colActions') + ': tariq.reviewer@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 10 — Accepted -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox" class="h-4 w-4 rounded border-line-strong text-brand focus-visible:ring-2"
+                           :checked="isSelected(10)" @change="toggleSelect(10)" aria-label="lina.teacher@alaqsa.edu.ps">
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <p class="truncate font-extrabold" dir="ltr" style="text-align:right">lina.teacher@alaqsa.edu.ps</p>
+                      <button type="button" class="act h-7 w-7 shrink-0 border-none" @click="copyEmail('lina.teacher@alaqsa.edu.ps')" :aria-label="t('inv.copyEmail')"><i class="fa-regular fa-copy text-xs" aria-hidden="true"></i></button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('inv.roleTeacher')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                      <span class="truncate text-xs font-bold">محمد خالد يوسف</span>
+                    </div>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-xs text-muted">قبل 8 أيام<br>قُبلت قبل 6 أيام</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('inv.statusAccepted')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act" @click="toggleMenu({ id: 10, email: 'lina.teacher@alaqsa.edu.ps', status: 'accepted' }, $event)"
+                              aria-haspopup="menu" :aria-expanded="(openMenuId === 10).toString()" :aria-label="t('inv.colActions') + ': lina.teacher@alaqsa.edu.ps'">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- حالة عدم وجود نتائج (DataTable Empty State — محفوظة للعرض، غير مفعّلة افتراضيًا) -->
+                <tr x-show="demoEmptyState" x-cloak>
+                  <td colspan="7" class="px-5 py-16 text-center">
+                    <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand">
+                      <i class="fa-solid fa-envelope-circle-check text-xl" aria-hidden="true"></i>
+                    </span>
+                    <p class="font-extrabold text-ink" x-text="t('inv.emptyTitle')"></p>
+                    <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('inv.emptySubtitle')"></p>
+                    <button type="button" @click="resetFilters()" class="btn btn-outline mt-4">
+                      <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i> <span x-text="t('inv.resetFilters')"></span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ================= تذييل الصفحات (Pagination) ================= -->
+        <div class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div class="flex flex-wrap items-center gap-3">
+            <p class="text-xs font-bold text-muted">
+              <span x-text="t('inv.showing')"></span> <span class="text-ink">1–10</span> <span x-text="t('inv.of')"></span> <span class="text-ink">28</span> <span x-text="t('inv.invitationsWord')"></span>
+            </p>
+            <div class="relative w-28 shrink-0"
+                 x-data="selectDropdown({
+                   options: () => [
+                     { value: '10', label: '10 / ' + t('inv.page') },
+                     { value: '25', label: '25 / ' + t('inv.page') },
+                     { value: '50', label: '50 / ' + t('inv.page') },
+                   ],
+                   get: () => pageSize,
+                   set: (v) => pageSize = v,
+                 })"
+                 @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+              <label for="page-size" class="sr-only" x-text="t('inv.perPage')"></label>
+              <button type="button" id="page-size" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="page-size-list"
+                      :aria-activedescendant="active > -1 ? 'page-size-opt-' + items[active].value : null"
+                      class="field flex w-full items-center justify-between gap-1.5 py-1.5 text-start text-xs font-bold"
+                      @click="toggleList()"
+                      @keydown.down.prevent="move(1)"
+                      @keydown.up.prevent="move(-1)"
+                      @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                      @keydown.space.prevent="toggleList()">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="page-size-list" role="listbox" aria-labelledby="page-size"
+                  x-transition.origin.top.duration.150ms
+                  class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="'page-size-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+          <nav class="flex items-center gap-1.5" :aria-label="t('inv.pagination')">
+            <button type="button" disabled class="act opacity-40" :aria-label="t('inv.prev')">
+              <i class="fa-solid ltr:fa-chevron-left rtl:fa-chevron-right text-xs" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="act font-bold border-transparent bg-primary-500 text-white" aria-current="page">1</button>
+            <button type="button" class="act font-bold">2</button>
+            <button type="button" class="act font-bold">3</button>
+            <span aria-hidden="true" class="inline-grid h-9 w-9 shrink-0 place-items-center text-sm font-bold text-muted">&hellip;</span>
+            <button type="button" class="act font-bold">3</button>
+            <button type="button" class="act" :aria-label="t('inv.next')">
+              <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-xs" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     قائمة إجراءات الصف (Kebab Menu) — عنصر واحد بموضع ثابت (fixed)
+     يُحسب موضعه ديناميكيًا عبر getBoundingClientRect() لتجنّب القصّ (clipping)
+     الناتج عن overflow-x-auto داخل حاوية الجدول.
+     ========================================================================== -->
+<div x-show="openMenuId !== null" x-cloak x-transition.opacity.scale.95
+     class="fixed z-[70] w-60 overflow-hidden rounded-2xl border border-line bg-card shadow-pop"
+     :style="'top:' + menuPos.top + 'px; left:' + menuPos.left + 'px;'"
+     @click.outside="openMenuId = null" role="menu" :aria-hidden="(openMenuId === null).toString()">
+  <template x-if="kebabInvitation">
+    <div>
+      <button type="button" role="menuitem" class="menu-item" x-show="kebabInvitation.status !== 'accepted'"
+              @click="resendInvite(kebabInvitation); openMenuId = null">
+        <i class="fa-solid fa-paper-plane w-4 text-muted" aria-hidden="true"></i> <span x-text="t('inv.menuResend')"></span>
+      </button>
+      <button type="button" role="menuitem" class="menu-item" x-show="kebabInvitation.status === 'pending'"
+              @click="copyInviteLink(kebabInvitation); openMenuId = null">
+        <i class="fa-solid fa-link w-4 text-muted" aria-hidden="true"></i> <span x-text="t('inv.menuCopyLink')"></span>
+      </button>
+      <template x-if="kebabInvitation.status === 'accepted'">
+        <p class="px-4 py-2.5 text-xs text-muted" x-text="t('inv.menuNoActions')"></p>
+      </template>
+      <div class="border-t border-line" x-show="kebabInvitation.status === 'pending'"></div>
+      <button type="button" role="menuitem" class="menu-item !text-danger hover:!bg-error-500/10" x-show="kebabInvitation.status === 'pending'"
+              @click="confirmRevoke(kebabInvitation); openMenuId = null">
+        <i class="fa-solid fa-ban w-4" aria-hidden="true"></i> <span x-text="t('inv.menuRevoke')"></span>
+      </button>
+    </div>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — إرسال دعوة جديدة
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]"
+     role="dialog" aria-modal="true" aria-labelledby="panel-title" @keydown.escape.window="closePanel()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePanel()"></div>
+
+  <form @submit.prevent="submitInvite()" x-show="panelOpen" x-trap.noscroll="panelOpen"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+        class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="panel-title" class="text-lg font-extrabold text-ink" x-text="t('inv.panelTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closePanel()" :disabled="busy" :aria-label="t('inv.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+      <div>
+        <label for="if-emails" class="label"><span x-text="t('inv.fieldEmails')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <textarea id="if-emails" x-model.trim="form.emails" required rows="3" dir="ltr" style="text-align:right"
+                  class="field" :aria-invalid="(formSubmitted && !emailsValid).toString()" aria-describedby="if-emails-hint"
+                  :placeholder="t('inv.fieldEmailsPlaceholder')"></textarea>
+        <p id="if-emails-hint" class="hint" x-text="t('inv.fieldEmailsHint')"></p>
+        <p class="err" x-show="formSubmitted && !emailsValid"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('inv.emailsInvalid')"></span></p>
+      </div>
+
+      <!-- اختيار الدور -->
+      <div class="relative"
+           x-data="selectDropdown({
+             options: () => [
+               { value: 'tenant_admin', label: t('inv.roleAdmin') },
+               { value: 'reviewer', label: t('inv.roleReviewer') },
+               { value: 'editor', label: t('inv.roleTeacher') },
+               { value: 'student', label: t('inv.roleStudent') },
+             ],
+             get: () => form.role,
+             set: (v) => form.role = v,
+           })"
+           @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+        <label for="if-role" class="label"><span x-text="t('inv.fieldRole')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <button type="button" id="if-role" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                :aria-expanded="open.toString()" aria-controls="if-role-list"
+                :aria-activedescendant="active > -1 ? 'if-role-opt-' + items[active].value : null"
+                class="field flex w-full items-center justify-between gap-2 text-start"
+                @click="toggleList()"
+                @keydown.down.prevent="move(1)"
+                @keydown.up.prevent="move(-1)"
+                @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                @keydown.space.prevent="toggleList()">
+          <span class="truncate" x-text="triggerLabel"></span>
+          <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+        </button>
+        <ul x-show="open" x-cloak x-ref="list" id="if-role-list" role="listbox" aria-labelledby="if-role"
+            x-transition.origin.top.duration.150ms
+            class="combo-list scroll-thin">
+          <template x-for="(item, idx) in items" :key="item.value">
+            <li :id="'if-role-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                @click="choose(item)" @mousemove="active = idx">
+              <span class="truncate" x-text="item.label"></span>
+              <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <!-- مدة صلاحية الدعوة -->
+      <fieldset>
+        <legend class="label" x-text="t('inv.fieldExpiry')"></legend>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm font-bold transition hover:border-primary-500"
+                 :class="form.expiry === '24h' && 'border-primary-700 bg-soft text-brand'">
+            <input type="radio" name="expiry" value="24h" x-model="form.expiry" class="sr-only">
+            <span x-text="t('inv.expiry24h')"></span>
+          </label>
+          <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm font-bold transition hover:border-primary-500"
+                 :class="form.expiry === '48h' && 'border-primary-700 bg-soft text-brand'">
+            <input type="radio" name="expiry" value="48h" x-model="form.expiry" class="sr-only">
+            <span x-text="t('inv.expiry48h')"></span>
+          </label>
+          <label class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm font-bold transition hover:border-primary-500"
+                 :class="form.expiry === '7d' && 'border-primary-700 bg-soft text-brand'">
+            <input type="radio" name="expiry" value="7d" x-model="form.expiry" class="sr-only">
+            <span x-text="t('inv.expiry7d')"></span>
+          </label>
+        </div>
+      </fieldset>
+
+      <div>
+        <label for="if-message" class="label" x-text="t('inv.fieldMessage')"></label>
+        <textarea id="if-message" x-model.trim="form.message" rows="4" class="field" :placeholder="t('inv.fieldMessagePlaceholder')" aria-describedby="if-message-hint"></textarea>
+        <p id="if-message-hint" class="hint" x-text="t('inv.fieldMessageHint')"></p>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('inv.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy" :aria-busy="busy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('inv.sending') : t('inv.send')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد إلغاء دعوة واحدة (Revoke Confirmation)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'revoke'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="alertdialog" aria-modal="true" aria-labelledby="rm-title" aria-describedby="rm-desc" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()"></div>
+  <div x-show="modal === 'revoke'" x-trap.noscroll="modal === 'revoke'"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700"><i class="fa-solid fa-ban text-xl" aria-hidden="true"></i></span>
+    <h3 id="rm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('inv.revokeTitle')"></h3>
+    <p id="rm-desc" class="mt-2 text-sm text-muted">
+      <span x-text="t('inv.revokeText')"></span> <span class="font-bold text-ink" dir="ltr" x-text="revokeTarget && revokeTarget.email"></span>
+    </p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('inv.revokeCancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="revokeConfirmed()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('inv.revokeConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد الإلغاء الجماعي (Bulk Revoke Confirmation)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'bulkRevoke'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="alertdialog" aria-modal="true" aria-labelledby="brm-title" aria-describedby="brm-desc" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()"></div>
+  <div x-show="modal === 'bulkRevoke'" x-trap.noscroll="modal === 'bulkRevoke'"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700"><i class="fa-solid fa-ban text-xl" aria-hidden="true"></i></span>
+    <h3 id="brm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('inv.bulkRevokeTitle')"></h3>
+    <p id="brm-desc" class="mt-2 text-sm text-muted">
+      <span x-text="tf('inv.bulkRevokeText', { n: selectedIds.length })"></span>
+    </p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('inv.revokeCancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="bulkRevokeConfirmed()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('inv.revokeConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة ADM-03 — دعوات المستخدمين. مبنية على نفس هيكل "Dashboard Shell"
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد.
+   * الصفوف في الجدول ثابتة (Static Mock Rows) — عمليات البحث/الفلترة/الترقيم
+   * الفعلية ستُنفَّذ لاحقًا عبر Livewire + Eloquent.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «هدى محمود»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+
+        inv: {
+          title: 'دعوات المستخدمين', subtitle: 'أرسل دعوات جديدة لانضمام المستخدمين إلى منظمتك، وتابع حالة القبول والصلاحية لكل دعوة من مكان واحد.',
+          inviteNew: 'أرسل دعوة جديدة',
+          kpiTotal: 'إجمالي الدعوات المرسلة', kpiPending: 'الدعوات المعلّقة', kpiAccepted: 'الدعوات المقبولة', kpiExpired: 'منتهية / ملغاة',
+          searchPlaceholder: 'ابحث بالبريد الإلكتروني أو اسم الداعي…',
+          statusAll: 'الكل', statusPending: 'معلّقة', statusAccepted: 'مقبولة', statusExpired: 'منتهية', statusRevoked: 'ملغاة',
+          roleAll: 'كل الأدوار', roleAdmin: 'مدير منظمة', roleReviewer: 'مراجع محتوى', roleTeacher: 'معلّم / محرّر', roleStudent: 'طالب',
+          resetFilters: 'مسح الفلاتر',
+          selectedCount: 'تم تحديد {n} دعوة', bulkResend: 'إعادة إرسال', bulkRevoke: 'إلغاء المحدد', clearSelection: 'إلغاء التحديد',
+          colEmail: 'البريد الإلكتروني للمدعو', colRole: 'الدور المسند', colInvitedBy: 'تمت الدعوة بواسطة', colDates: 'تاريخ الإرسال / الانتهاء', colStatus: 'الحالة', colActions: 'إجراءات',
+          selectAll: 'تحديد الكل', invitedBy: 'بواسطة',
+          copyEmail: 'نسخ البريد الإلكتروني',
+          menuResend: 'إعادة إرسال الدعوة', menuCopyLink: 'نسخ رابط الدعوة', menuRevoke: 'إلغاء الدعوة', menuNoActions: 'لا توجد إجراءات متاحة',
+          emptyTitle: 'لا توجد دعوات مطابقة', emptySubtitle: 'جرّب تعديل كلمات البحث أو الفلاتر المستخدمة، أو امسحها للعودة إلى القائمة الكاملة.',
+          showing: 'عرض', of: 'من', invitationsWord: 'دعوة', page: 'صفحة', perPage: 'عدد العناصر بالصفحة', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية',
+          panelTitle: 'إرسال دعوة جديدة',
+          fieldEmails: 'البريد الإلكتروني للمدعوين', fieldEmailsPlaceholder: 'name@example.com, name2@example.com',
+          fieldEmailsHint: 'أدخل بريدًا واحدًا أو عدة عناوين مفصولة بفاصلة لإرسال دعوات دفعة واحدة.',
+          fieldRole: 'الدور الوظيفي', fieldExpiry: 'مدة صلاحية الدعوة',
+          expiry24h: '24 ساعة', expiry48h: '48 ساعة', expiry7d: '7 أيام',
+          fieldMessage: 'رسالة ترحيب مخصّصة (اختياري)', fieldMessageHint: 'ستظهر هذه الرسالة في بريد الدعوة الإلكتروني المُرسل.', fieldMessagePlaceholder: 'مرحبًا بك في فريقنا…',
+          cancel: 'إلغاء', send: 'إرسال الدعوة', sending: 'جارٍ الإرسال',
+          emailsInvalid: 'يرجى إدخال عنوان بريد إلكتروني صحيح واحد على الأقل.',
+          revokeTitle: 'إلغاء هذه الدعوة؟', revokeText: 'لن يتمكن صاحب هذا البريد من قبول الدعوة بعد الآن:', revokeCancel: 'تراجع', revokeConfirm: 'نعم، ألغِ الدعوة',
+          bulkRevokeTitle: 'إلغاء الدعوات المحددة؟', bulkRevokeText: 'سيتم إلغاء {n} دعوة محددة نهائيًا. لن يتمكن أصحابها من قبولها بعد الآن.',
+          toastSent: 'تم إرسال الدعوة بنجاح (معاينة فقط)', toastResend: 'تمت إعادة إرسال الدعوة بنجاح (معاينة فقط)',
+          toastCopyEmail: 'تم نسخ البريد الإلكتروني (معاينة فقط)', toastCopyLink: 'تم نسخ رابط الدعوة إلى الحافظة (معاينة فقط)',
+          toastRevoke: 'تم إلغاء الدعوة بنجاح (معاينة فقط)', toastBulkResend: 'تمت إعادة إرسال {n} دعوة بنجاح (معاينة فقط)', toastBulkRevoke: 'تم إلغاء {n} دعوة بنجاح (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', org: 'Organization Management' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Huda Mahmoud"', quota: 'User seat quota is nearing its limit (83%)', reset: 'A password reset link was sent successfully' },
+
+        inv: {
+          title: 'User Invitations', subtitle: 'Send new invitations for users to join your organization, and track acceptance and expiry status for every invitation in one place.',
+          inviteNew: 'Invite New User',
+          kpiTotal: 'Total Invitations Sent', kpiPending: 'Pending Invitations', kpiAccepted: 'Accepted Invitations', kpiExpired: 'Expired / Revoked',
+          searchPlaceholder: 'Search by invitee email or inviter name…',
+          statusAll: 'All', statusPending: 'Pending', statusAccepted: 'Accepted', statusExpired: 'Expired', statusRevoked: 'Revoked',
+          roleAll: 'All roles', roleAdmin: 'Tenant Admin', roleReviewer: 'Content Reviewer', roleTeacher: 'Teacher / Editor', roleStudent: 'Student',
+          resetFilters: 'Reset filters',
+          selectedCount: '{n} invitation(s) selected', bulkResend: 'Bulk Resend', bulkRevoke: 'Bulk Revoke', clearSelection: 'Clear selection',
+          colEmail: 'Invitee Email', colRole: 'Assigned Role', colInvitedBy: 'Invited By', colDates: 'Sent / Expires', colStatus: 'Status', colActions: 'Actions',
+          selectAll: 'Select all', invitedBy: 'by',
+          copyEmail: 'Copy email',
+          menuResend: 'Resend Invite', menuCopyLink: 'Copy Invite Link', menuRevoke: 'Revoke Invite', menuNoActions: 'No actions available',
+          emptyTitle: 'No matching invitations', emptySubtitle: 'Try adjusting your search or filters, or reset them to see the full list.',
+          showing: 'Showing', of: 'of', invitationsWord: 'invitations', page: 'page', perPage: 'Items per page', pagination: 'Pagination', prev: 'Previous page', next: 'Next page',
+          panelTitle: 'Send New Invitation',
+          fieldEmails: 'Invitee Email(s)', fieldEmailsPlaceholder: 'name@example.com, name2@example.com',
+          fieldEmailsHint: 'Enter a single email or multiple comma-separated addresses to send invitations in batch.',
+          fieldRole: 'Job Role', fieldExpiry: 'Invitation Expiry Duration',
+          expiry24h: '24 hours', expiry48h: '48 hours', expiry7d: '7 days',
+          fieldMessage: 'Custom welcome message (optional)', fieldMessageHint: 'This message will appear in the invitation email.', fieldMessagePlaceholder: 'Welcome to our team…',
+          cancel: 'Cancel', send: 'Send Invitation', sending: 'Sending',
+          emailsInvalid: 'Please enter at least one valid email address.',
+          revokeTitle: 'Revoke this invitation?', revokeText: 'The owner of this email will no longer be able to accept the invitation:', revokeCancel: 'Cancel', revokeConfirm: 'Yes, revoke invite',
+          bulkRevokeTitle: 'Revoke selected invitations?', bulkRevokeText: '{n} selected invitation(s) will be permanently revoked. Their owners will no longer be able to accept them.',
+          toastSent: 'Invitation sent successfully (preview only)', toastResend: 'Invitation resent successfully (preview only)',
+          toastCopyEmail: 'Email copied to clipboard (preview only)', toastCopyLink: 'Invitation link copied to clipboard (preview only)',
+          toastRevoke: 'Invitation revoked successfully (preview only)', toastBulkResend: '{n} invitation(s) resent successfully (preview only)', toastBulkRevoke: '{n} invitation(s) revoked successfully (preview only)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'invitations',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- حالة عرض توضيحية للحالة الفارغة (محفوظة دون تفعيل تفاعلي) ---------- */
+      demoEmptyState: false,
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+        this.openMenuId = null;
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- شريط البحث والفلاتر (عرض فقط — بلا منطق فلترة فعلي؛ سيُنفَّذ عبر Livewire) ---------- */
+      search: '', roleFilter: 'all', statusFilter: 'all', pageSize: '10',
+      resetFilters() { this.search = ''; this.roleFilter = 'all'; this.statusFilter = 'all'; },
+
+      /* ---------- التحديد الجماعي (Bulk Selection) ---------- */
+      selectedIds: [], allRowIds: [1,2,3,4,5,6,7,8,9,10],
+      isSelected(id) { return this.selectedIds.includes(id); },
+      toggleSelect(id) {
+        this.selectedIds = this.isSelected(id) ? this.selectedIds.filter(x => x !== id) : [...this.selectedIds, id];
+      },
+      get allSelected() { return this.selectedIds.length > 0 && this.selectedIds.length === this.allRowIds.length; },
+      toggleSelectAll() { this.selectedIds = this.allSelected ? [] : [...this.allRowIds]; },
+
+      /* ---------- قائمة إجراءات الصف (Kebab) بموضع ثابت لمنع القصّ ---------- */
+      openMenuId: null, kebabInvitation: null, menuPos: { top: 0, left: 0 },
+      toggleMenu(invitation, evt) {
+        if (this.openMenuId === invitation.id) { this.openMenuId = null; return; }
+        const btn = evt.currentTarget;
+        const r = btn.getBoundingClientRect();
+        const menuW = 240, gap = 6, pad = 8;
+        const isRtl = document.documentElement.dir === 'rtl';
+        let left = isRtl ? r.right - menuW : r.left;
+        left = Math.min(Math.max(pad, left), window.innerWidth - menuW - pad);
+        let top = r.bottom + gap;
+        const menuHEstimate = 180;
+        if (top + menuHEstimate > window.innerHeight - pad) { top = r.top - menuHEstimate - gap; }
+        this.menuPos = { top: Math.max(pad, top), left };
+        this.kebabInvitation = invitation;
+        this.openMenuId = invitation.id;
+      },
+
+      /* ---------- اللوحة الجانبية (Slide-over): إرسال دعوة جديدة ---------- */
+      panelOpen: false, formSubmitted: false, busy: false,
+      form: { emails: '', role: 'student', expiry: '48h', message: '' },
+      get emailsValid() {
+        const list = this.form.emails.split(',').map(s => s.trim()).filter(Boolean);
+        return list.length > 0 && list.every(e => /.+@.+\..+/.test(e));
+      },
+      openInvite() {
+        this.formSubmitted = false;
+        this.form = { emails: '', role: 'student', expiry: '48h', message: '' };
+        this.panelOpen = true;
+      },
+      closePanel() { if (!this.busy) { this.panelOpen = false; } },
+      async submitInvite() {
+        this.formSubmitted = true;
+        if (!this.emailsValid) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 600));
+        this.busy = false;
+        this.toastSuccess(this.t('inv.toastSent'));
+        this.panelOpen = false;
+      },
+
+      /* ---------- إجراءات الصف المفردة ---------- */
+      copyEmail(email) {
+        navigator.clipboard?.writeText(email).catch(() => {});
+        this.toastSuccess(this.t('inv.toastCopyEmail'));
+      },
+      copyInviteLink(invitation) {
+        const link = window.location.origin + '/invitations/accept?token=inv-' + invitation.id;
+        navigator.clipboard?.writeText(link).catch(() => {});
+        this.toastSuccess(this.t('inv.toastCopyLink'));
+      },
+      async resendInvite(invitation) {
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 400));
+        this.busy = false;
+        this.toastSuccess(this.t('inv.toastResend'));
+      },
+
+      /* ---------- النوافذ المنبثقة (تأكيد الإلغاء المفرد / الجماعي) ---------- */
+      modal: null, revokeTarget: null,
+      closeModal() { if (!this.busy) { this.modal = null; this.revokeTarget = null; } },
+      confirmRevoke(invitation) { this.revokeTarget = invitation; this.modal = 'revoke'; },
+      async revokeConfirmed() {
+        if (!this.revokeTarget) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 400));
+        this.busy = false;
+        this.toastSuccess(this.t('inv.toastRevoke'));
+        this.modal = null;
+        this.revokeTarget = null;
+      },
+
+      /* ---------- الإجراءات الجماعية (Bulk Actions) ---------- */
+      async bulkResend() {
+        this.busy = true;
+        const n = this.selectedIds.length;
+        await new Promise(r => setTimeout(r, 600));
+        this.busy = false;
+        this.toastSuccess(this.tf('inv.toastBulkResend', { n }));
+        this.selectedIds = [];
+      },
+      confirmBulkRevoke() { this.modal = 'bulkRevoke'; },
+      async bulkRevokeConfirmed() {
+        this.busy = true;
+        const n = this.selectedIds.length;
+        await new Promise(r => setTimeout(r, 600));
+        this.busy = false;
+        this.toastSuccess(this.tf('inv.toastBulkRevoke', { n }));
+        this.modal = null;
+        this.selectedIds = [];
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; this.openMenuId = null;
+        if (!this.busy) { this.modal = null; }
+      },
+    };
+  }
+</script>
+</body>
+</html>

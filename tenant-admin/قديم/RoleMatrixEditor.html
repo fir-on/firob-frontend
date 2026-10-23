@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>مصفوفة الأدوار والصلاحيات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- صندوق الاختيار المخصص (Matrix Checkbox) ---------- */
+    .check { @apply h-5 w-5 shrink-0 cursor-pointer appearance-none rounded-md border border-line-strong bg-field transition; }
+    .check:hover:not(:disabled) { @apply border-primary-500; }
+    .check:checked { @apply border-primary-500 bg-primary-500; background-size: 100% 100%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.5 3.5L15 6.5'/%3E%3C/svg%3E"); }
+    .check:indeterminate { @apply border-primary-500 bg-primary-500; background-size: 60% 60%; background-position: center; background-repeat: no-repeat;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M5 10h10'/%3E%3C/svg%3E"); }
+    .check:focus-visible { outline: none; box-shadow: var(--ring); }
+    .check:disabled { @apply cursor-not-allowed opacity-45; }
+
+    /* ---------- المفتاح (Switch) ---------- */
+    .switch { @apply inline-flex cursor-pointer items-center gap-3 text-sm font-medium; }
+    .switch-track { @apply relative h-6 w-11 shrink-0 rounded-full bg-line-strong transition-colors; }
+    .switch-track::after { content: ''; @apply absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform; }
+    .peer:checked ~ .switch-track { @apply bg-primary-500; }
+    .peer:checked ~ .switch-track::after { transform: translateX(1.25rem); }
+    [dir='rtl'] .peer:checked ~ .switch-track::after { transform: translateX(-1.25rem); }
+    .peer:focus-visible ~ .switch-track { box-shadow: var(--ring); }
+    .peer:disabled ~ .switch-track { @apply opacity-45; }
+    .switch:has(.peer:disabled) { @apply cursor-not-allowed; }
+
+    /* ---------- مصفوفة الصلاحيات (Permission Matrix) ---------- */
+    .matrix-scroll { @apply overflow-auto rounded-xl border border-line; max-height: min(42rem, 68dvh); }
+    .matrix-table { border-collapse: separate; border-spacing: 0; }
+    .matrix-sticky-col { position: sticky; inset-inline-start: 0; z-index: 10; }
+    .matrix-sticky-head { position: sticky; top: 0; z-index: 20; }
+    .matrix-sticky-corner { position: sticky; inset-inline-start: 0; top: 0; z-index: 30; }
+    .matrix-cell { @apply border-b border-line px-3 py-3 align-middle; }
+    .matrix-flash { animation: matrixFlash 1.6s ease-out; }
+    @keyframes matrixFlash { 0%, 100% { box-shadow: inset 0 0 0 9999px transparent; } 15%, 45% { box-shadow: inset 0 0 0 9999px rgb(var(--brand) / .14); } }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="openMenuId = null" @resize.window="openMenuId = null"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || modal || panelOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.roleMatrix')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — مصفوفة الأدوار والصلاحيات ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          :class="dirty && 'pb-28 sm:pb-28'"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + أزرار الإجراءات -->
+      <section class="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('rm.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('rm.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button type="button" class="btn btn-outline" :disabled="!dirty || busy" @click="discardMatrix()">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+            <span x-text="t('rm.discardChanges')"></span>
+          </button>
+          <button type="button" class="btn btn-primary relative" :disabled="!dirty || busy" :aria-busy="busy" @click="saveMatrix()">
+            <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+            <i class="fa-solid fa-floppy-disk" x-show="!busy" aria-hidden="true"></i>
+            <span x-text="busy ? t('rm.saving') : t('rm.saveChanges')"></span>
+            <span x-show="dirty && !busy" x-cloak class="absolute -end-1 -top-1 h-2.5 w-2.5 rounded-full bg-accent-500 ring-2 ring-card" :aria-label="t('rm.unsavedDotAria')"></span>
+          </button>
+          <button type="button" class="btn btn-accent" @click="openCreateRole()">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            <span x-text="t('rm.addRole')"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPI) ================= -->
+      <section aria-label="KPIs" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rm.kpiTotalRoles')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-user-shield"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="roles.length"></p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rm.kpiTotalPermissions')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-key"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="allPermCodes.length"></p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rm.kpiCustomRoles')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="roles.filter(r => r.isCustom).length"></p>
+        </div>
+        <!-- تنبيه أمني: دور مسؤول النظام -->
+        <button type="button" class="panel p-4 text-start transition hover:border-warning-500/60 sm:p-5" @click="flashSystemRole()">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rm.kpiSecurityAlert')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+          </div>
+          <p class="mt-2 truncate text-sm font-extrabold text-warning-700 dark:text-warning-500" x-text="systemRole.name"></p>
+          <p class="mt-1 text-xs text-muted" x-text="tf('rm.kpiSecurityAlertCaption', { count: allPermCodes.length })"></p>
+        </button>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر ================= -->
+      <section class="panel flex flex-col gap-3 p-4 lg:flex-row lg:items-center sm:p-5">
+        <div class="relative min-w-0 flex-1">
+          <label for="perm-search" class="sr-only" x-text="t('rm.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="perm-search" type="search" x-model="search" :placeholder="t('rm.searchPlaceholder')"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line bg-field ps-10 pe-3 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+        </div>
+
+        <!-- فلتر الوحدة -->
+        <div class="relative w-full shrink-0 lg:w-60"
+             x-data="selectDropdown({
+               options: () => [{ value: 'all', label: t('rm.moduleAll') }, ...permissionGroups.map(g => ({ value: g.key, label: g.name }))],
+               get: () => moduleFilter,
+               set: (val) => moduleFilter = val,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="module-filter" class="sr-only" x-text="t('rm.moduleFilterLabel')"></label>
+          <button type="button" id="module-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="module-filter-list"
+                  :aria-activedescendant="active > -1 ? 'module-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="module-filter-list" role="listbox" aria-labelledby="module-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'module-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <button type="button" class="btn btn-outline shrink-0" @click="toggleGlobalSelection()">
+          <i class="fa-solid" :class="globalAllChecked ? 'fa-square-minus' : 'fa-square-check'" aria-hidden="true"></i>
+          <span x-text="globalAllChecked ? t('rm.deselectAllGlobal') : t('rm.selectAllGlobal')"></span>
+        </button>
+      </section>
+
+      <!-- ================= مصفوفة الأدوار والصلاحيات (سطح المكتب — xl+) ================= -->
+      <section class="panel hidden overflow-hidden xl:block" aria-labelledby="matrix-title">
+        <h2 id="matrix-title" class="sr-only" x-text="t('rm.title')"></h2>
+
+        <div class="matrix-scroll scroll-thin">
+          <table class="matrix-table w-full text-sm" :style="'min-width:' + (18 + roles.length * 11) + 'rem'">
+            <caption class="sr-only" x-text="t('rm.title')"></caption>
+            <thead>
+              <tr>
+                <!-- الزاوية العلوية: تبديل طيّ/توسيع الكل -->
+                <th scope="col" class="matrix-sticky-corner matrix-cell border-e border-line bg-soft text-start" style="width:18rem">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-extrabold text-ink" x-text="t('rm.colModulePermission')"></span>
+                    <button type="button" class="act h-8 w-8 shrink-0 bg-card" @click="toggleAllGroups()" :aria-label="allGroupsCollapsed ? t('rm.expandAll') : t('rm.collapseAll')" :title="allGroupsCollapsed ? t('rm.expandAll') : t('rm.collapseAll')">
+                      <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" :class="!allGroupsCollapsed && 'rotate-180'" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </th>
+                <!-- أعمدة الأدوار -->
+                <template x-for="role in roles" :key="role.id">
+                  <th scope="col" class="matrix-sticky-head matrix-cell bg-soft text-center" style="width:11rem" :class="role.id === flashedRoleId && 'matrix-flash'">
+                    <div class="flex flex-col items-center gap-1.5">
+                      <div class="flex max-w-full items-center gap-1.5">
+                        <span class="truncate text-sm font-extrabold text-ink" :title="role.name" x-text="role.name"></span>
+                        <i x-show="role.isSystem" class="fa-solid fa-lock shrink-0 text-xs text-warning-600 dark:text-warning-500" :title="t('rm.lockedTooltip')" aria-hidden="true"></i>
+                      </div>
+                      <span class="badge" :class="role.isSystem ? 'badge-warning' : (role.isCustom ? 'badge-accent' : 'badge-primary')">
+                        <span x-text="role.isSystem ? t('rm.roleSystemBadge') : (role.isCustom ? t('rm.roleCustomBadge') : t('rm.roleStandardBadge'))"></span>
+                      </span>
+
+                      <!-- عنصر تحكم للدور: تحديد الكل / قائمة الإجراءات -->
+                      <div class="mt-1 flex items-center gap-1.5">
+                        <template x-if="!role.isSystem">
+                          <label class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-card px-2 py-1 text-[11px] font-bold text-muted transition hover:bg-page" :title="t('rm.selectAllForRole')">
+                            <input type="checkbox" class="check h-4 w-4"
+                                   :checked="isRoleFullyChecked(role)"
+                                   x-effect="$el.indeterminate = !isRoleFullyChecked(role) && isRolePartiallyChecked(role)"
+                                   @change="toggleRole(role)">
+                            <span x-text="t('rm.selectAllShort')"></span>
+                          </label>
+                        </template>
+                        <button type="button" class="act h-7 w-7 shrink-0 bg-card" @click="toggleRoleMenu(role, $event)"
+                                aria-haspopup="menu" :aria-expanded="(openMenuId === role.id).toString()" :aria-label="t('rm.colActions') + ': ' + role.name">
+                          <i class="fa-solid fa-ellipsis-vertical text-xs" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                </template>
+              </tr>
+            </thead>
+            <template x-for="group in permissionGroups" :key="group.key">
+              <tbody :id="'group-' + group.key">
+                <!-- صف رأس المجموعة -->
+                <tr class="bg-soft/60">
+                  <th scope="rowgroup" class="matrix-sticky-col matrix-cell border-e border-line bg-soft/60 text-start">
+                    <button type="button" class="flex w-full items-center gap-2.5 text-start" @click="collapsedGroups[group.key] = !collapsedGroups[group.key]"
+                            :aria-expanded="(!collapsedGroups[group.key]).toString()" :aria-controls="'group-' + group.key">
+                      <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="collapsedGroups[group.key] && '-rotate-90 rtl:rotate-90'" aria-hidden="true"></i>
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary-500/10 text-brand" aria-hidden="true"><i :class="group.icon" class="text-xs"></i></span>
+                      <span class="min-w-0 flex-1 truncate text-xs font-extrabold text-ink" x-text="group.name"></span>
+                    </button>
+                  </th>
+                  <template x-for="role in roles" :key="role.id">
+                    <td class="matrix-cell bg-soft/60 text-center">
+                      <i x-show="role.isSystem" class="fa-solid fa-lock text-sm text-success-600/80 dark:text-success-500/80" :title="t('rm.lockedTooltip')" aria-hidden="true"></i>
+                      <input x-show="!role.isSystem" type="checkbox" class="check"
+                             :aria-label="tf('rm.groupSelectAllAria', { group: group.name, role: role.name })"
+                             :checked="isGroupFullyCheckedForRole(group, role)"
+                             x-effect="$el.indeterminate = !isGroupFullyCheckedForRole(group, role) && isGroupPartiallyCheckedForRole(group, role)"
+                             @change="toggleGroupForRole(group, role)">
+                    </td>
+                  </template>
+                </tr>
+                <!-- صفوف الصلاحيات ضمن المجموعة -->
+                <template x-for="perm in group.permissions" :key="perm.code">
+                  <tr x-show="!collapsedGroups[group.key]" class="transition hover:bg-soft/30">
+                    <th scope="row" class="matrix-sticky-col matrix-cell border-e border-line bg-card text-start">
+                      <p class="truncate text-sm font-bold text-ink" x-text="perm.name"></p>
+                      <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right" x-text="perm.code"></p>
+                    </th>
+                    <template x-for="role in roles" :key="role.id">
+                      <td class="matrix-cell text-center">
+                        <i x-show="role.isSystem" class="fa-solid fa-lock text-sm text-success-600/80 dark:text-success-500/80" :title="t('rm.lockedTooltip')" aria-hidden="true"></i>
+                        <input x-show="!role.isSystem" type="checkbox" class="check"
+                               :aria-label="role.name + ' — ' + perm.name"
+                               :checked="cellChecked(role, perm.code)"
+                               @change="toggleCell(role, perm.code)">
+                      </td>
+                    </template>
+                  </tr>
+                </template>
+              </tbody>
+            </template>
+          </table>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line px-5 py-3.5 text-xs font-bold text-muted">
+          <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-square-check text-brand" aria-hidden="true"></i> <span x-text="t('rm.legendGranted')"></span></span>
+          <span class="inline-flex items-center gap-1.5"><i class="fa-regular fa-square text-line-strong" aria-hidden="true"></i> <span x-text="t('rm.legendNotGranted')"></span></span>
+          <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-lock text-success-600/80 dark:text-success-500/80" aria-hidden="true"></i> <span x-text="t('rm.legendLocked')"></span></span>
+        </div>
+      </section>
+
+      <!-- ================= عرض الجوال واللوحي (أقل من xl) ================= -->
+      <section class="space-y-4 xl:hidden" aria-labelledby="matrix-title-mobile">
+        <h2 id="matrix-title-mobile" class="sr-only" x-text="t('rm.title')"></h2>
+
+        <!-- محدد الدور (تبويبات أفقية) -->
+        <div class="panel p-2">
+          <div class="flex gap-2 overflow-x-auto scroll-thin pb-1" role="tablist" :aria-label="t('rm.mobileRoleTabsLabel')">
+            <template x-for="role in roles" :key="'tab-' + role.id">
+              <button type="button" role="tab" :aria-selected="(selectedMobileRoleId === role.id).toString()" @click="selectedMobileRoleId = role.id"
+                      class="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold transition"
+                      :class="selectedMobileRoleId === role.id ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25' : 'text-ink hover:bg-soft'">
+                <i x-show="role.isSystem" class="fa-solid fa-lock text-xs" aria-hidden="true"></i>
+                <span x-text="role.name"></span>
+                <span x-show="role.isCustom" class="h-1.5 w-1.5 rounded-full bg-accent-500" aria-hidden="true"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- بطاقة معلومات الدور المحدد -->
+        <div class="panel flex flex-wrap items-start justify-between gap-3 p-4">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="font-extrabold text-ink" x-text="selectedMobileRole.name"></p>
+              <span class="badge" :class="selectedMobileRole.isSystem ? 'badge-warning' : (selectedMobileRole.isCustom ? 'badge-accent' : 'badge-primary')">
+                <span x-text="selectedMobileRole.isSystem ? t('rm.roleSystemBadge') : (selectedMobileRole.isCustom ? t('rm.roleCustomBadge') : t('rm.roleStandardBadge'))"></span>
+              </span>
+            </div>
+            <p class="mt-1 text-xs text-muted" x-text="selectedMobileRole.description"></p>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <button type="button" class="act" @click="toggleRoleMenu(selectedMobileRole, $event)" aria-haspopup="menu"
+                    :aria-expanded="(openMenuId === selectedMobileRole.id).toString()" :aria-label="t('rm.colActions') + ': ' + selectedMobileRole.name">
+              <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <p x-show="selectedMobileRole.isSystem" x-cloak class="flex items-start gap-2.5 rounded-xl border border-warning-500/30 bg-warning-500/10 p-3.5 text-xs font-bold text-warning-700 dark:text-warning-500">
+          <i class="fa-solid fa-circle-info mt-0.5 shrink-0" aria-hidden="true"></i>
+          <span x-text="t('rm.systemLockedNotice')"></span>
+        </p>
+
+        <!-- بطاقات مجموعات الصلاحيات -->
+        <template x-for="group in permissionGroups" :key="'m-' + group.key">
+          <div class="panel overflow-hidden">
+            <button type="button" class="flex w-full items-center justify-between gap-3 p-4 text-start" @click="collapsedGroups[group.key] = !collapsedGroups[group.key]"
+                    :aria-expanded="(!collapsedGroups[group.key]).toString()">
+              <span class="flex min-w-0 items-center gap-3">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i :class="group.icon"></i></span>
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-extrabold text-ink" x-text="group.name"></span>
+                  <span class="block text-xs text-muted" x-text="tf('rm.groupGrantedCount', { granted: groupGrantedCountForRole(group, selectedMobileRole), total: group.permissions.length })"></span>
+                </span>
+              </span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-muted transition-transform duration-200" :class="collapsedGroups[group.key] && '-rotate-90 rtl:rotate-90'" aria-hidden="true"></i>
+            </button>
+
+            <div x-show="!collapsedGroups[group.key]" x-transition class="border-t border-line">
+              <div x-show="!selectedMobileRole.isSystem" class="flex justify-end border-b border-line px-4 py-2">
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="toggleGroupForRole(group, selectedMobileRole)"
+                        x-text="isGroupFullyCheckedForRole(group, selectedMobileRole) ? t('rm.deselectAllShort') : t('rm.selectAllShort')"></button>
+              </div>
+              <ul class="divide-y divide-line" role="list">
+                <template x-for="perm in group.permissions" :key="perm.code">
+                  <li class="flex items-center justify-between gap-3 p-4">
+                    <span class="min-w-0">
+                      <span class="block truncate text-sm font-bold text-ink" x-text="perm.name"></span>
+                      <span class="block truncate text-xs text-muted" dir="ltr" style="text-align:right" x-text="perm.code"></span>
+                    </span>
+                    <label class="switch shrink-0">
+                      <input type="checkbox" class="peer sr-only"
+                             :checked="cellChecked(selectedMobileRole, perm.code)"
+                             :disabled="selectedMobileRole.isSystem"
+                             @change="toggleCell(selectedMobileRole, perm.code)">
+                      <span class="switch-track"></span>
+                    </label>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+        </template>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     شريط التغييرات غير المحفوظة (Unsaved Matrix Bar) — عائم أسفل الشاشة
+     ========================================================================== -->
+<div x-show="dirty" x-cloak x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="translate-y-full opacity-0" x-transition:enter-end="translate-y-0 opacity-100"
+     x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0"
+     class="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-3 sm:px-6" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom, 0px));" role="status" aria-live="polite">
+  <div class="flex w-full max-w-2xl flex-col items-center gap-3 rounded-2xl border border-line bg-card p-4 shadow-pop sm:flex-row sm:justify-between">
+    <p class="flex items-center gap-2.5 text-sm font-bold text-ink">
+      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation text-xs"></i></span>
+      <span x-text="t('rm.unsavedBarText')"></span>
+    </p>
+    <div class="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+      <button type="button" class="btn btn-outline btn-sm flex-1 sm:flex-none" :disabled="busy" @click="discardMatrix()" x-text="t('rm.unsavedBarDiscard')"></button>
+      <button type="button" class="btn btn-primary btn-sm flex-1 sm:flex-none" :disabled="busy" :aria-busy="busy" @click="saveMatrix()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('rm.saving') : t('rm.unsavedBarSave')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     قائمة إجراءات الدور (Kebab Menu) — عنصر واحد بموضع ثابت (fixed)
+     ========================================================================== -->
+<div x-show="openMenuId !== null" x-cloak x-transition.opacity.scale.95
+     class="fixed z-[70] w-60 overflow-hidden rounded-2xl border border-line bg-card shadow-pop"
+     :style="'top:' + menuPos.top + 'px; left:' + menuPos.left + 'px;'"
+     @click.outside="openMenuId = null" role="menu" :aria-hidden="(openMenuId === null).toString()">
+  <template x-if="kebabRole">
+    <div>
+      <template x-if="kebabRole.isSystem">
+        <p class="flex items-center gap-2.5 px-4 py-3 text-xs font-bold text-muted">
+          <i class="fa-solid fa-lock text-warning-600 dark:text-warning-500" aria-hidden="true"></i>
+          <span x-text="t('rm.systemRoleMenuNotice')"></span>
+        </p>
+      </template>
+      <template x-if="!kebabRole.isSystem">
+        <div>
+          <button type="button" role="menuitem" class="menu-item" @click="openEditRole(kebabRole); openMenuId = null">
+            <i class="fa-solid fa-pen w-4 text-muted" aria-hidden="true"></i> <span x-text="t('rm.menuEditRole')"></span>
+          </button>
+          <button type="button" role="menuitem" class="menu-item" @click="openCreateRole(kebabRole.id); openMenuId = null">
+            <i class="fa-solid fa-clone w-4 text-muted" aria-hidden="true"></i> <span x-text="t('rm.menuCloneRole')"></span>
+          </button>
+          <button type="button" role="menuitem" class="menu-item" @click="toggleRole(kebabRole); openMenuId = null">
+            <i class="fa-solid w-4" :class="isRoleFullyChecked(kebabRole) ? 'fa-square-minus' : 'fa-square-check'" aria-hidden="true"></i>
+            <span x-text="isRoleFullyChecked(kebabRole) ? t('rm.deselectAllForRole') : t('rm.selectAllForRole')"></span>
+          </button>
+          <div class="border-t border-line"></div>
+          <button type="button" role="menuitem" class="menu-item !text-danger hover:!bg-error-500/10" @click="confirmDeleteRole(kebabRole); openMenuId = null">
+            <i class="fa-solid fa-trash w-4" aria-hidden="true"></i> <span x-text="t('rm.menuDeleteRole')"></span>
+          </button>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — إضافة / تعديل دور
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]"
+     role="dialog" aria-modal="true" aria-labelledby="panel-title" @keydown.escape.window="closePanel()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePanel()"></div>
+
+  <form @submit.prevent="submitRole()" x-show="panelOpen" x-trap.noscroll="panelOpen"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+        class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="panel-title" class="text-lg font-extrabold text-ink" x-text="editingRole ? t('rm.panelEditTitle') : t('rm.panelAddTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closePanel()" :disabled="busy" :aria-label="t('rm.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+      <div>
+        <label for="rf-name" class="label"><span x-text="t('rm.fieldRoleName')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="rf-name" type="text" x-model.trim="roleForm.name" required class="field" :aria-invalid="(formSubmitted && !roleForm.name).toString()">
+        <p class="err" x-show="formSubmitted && !roleForm.name"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('rm.nameRequired')"></span></p>
+      </div>
+
+      <div>
+        <label for="rf-key" class="label" x-text="t('rm.fieldRoleKey')"></label>
+        <input id="rf-key" type="text" dir="ltr" style="text-align:right" :value="editingRole ? editingRole.key : roleKeyPreview" disabled class="field font-mono text-xs">
+        <p class="hint" x-text="t('rm.fieldRoleKeyHint')"></p>
+      </div>
+
+      <div>
+        <label for="rf-desc" class="label" x-text="t('rm.fieldDescription')"></label>
+        <textarea id="rf-desc" rows="3" x-model.trim="roleForm.description" class="field resize-none"></textarea>
+      </div>
+
+      <!-- استنساخ الصلاحيات من دور آخر — عند الإنشاء فقط -->
+      <div class="relative" x-show="!editingRole" x-cloak
+           x-data="selectDropdown({
+             options: () => [{ value: '', label: t('rm.cloneNone') }, ...roles.map(r => ({ value: String(r.id), label: r.name }))],
+             get: () => String(roleForm.cloneFromId || ''),
+             set: (val) => roleForm.cloneFromId = val ? Number(val) : '',
+           })"
+           @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+        <label for="rf-clone" class="label" x-text="t('rm.fieldCloneFrom')"></label>
+        <button type="button" id="rf-clone" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                :aria-expanded="open.toString()" aria-controls="rf-clone-list"
+                :aria-activedescendant="active > -1 ? 'rf-clone-opt-' + items[active].value : null"
+                class="field flex w-full items-center justify-between gap-2 text-start"
+                @click="toggleList()"
+                @keydown.down.prevent="move(1)"
+                @keydown.up.prevent="move(-1)"
+                @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                @keydown.space.prevent="toggleList()">
+          <span class="truncate" x-text="triggerLabel"></span>
+          <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+        </button>
+        <ul x-show="open" x-cloak x-ref="list" id="rf-clone-list" role="listbox" aria-labelledby="rf-clone"
+            x-transition.origin.top.duration.150ms
+            class="combo-list scroll-thin">
+          <template x-for="(item, idx) in items" :key="item.value">
+            <li :id="'rf-clone-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                @click="choose(item)" @mousemove="active = idx">
+              <span class="truncate" x-text="item.label"></span>
+              <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+            </li>
+          </template>
+        </ul>
+        <p class="hint" x-text="t('rm.fieldCloneFromHint')"></p>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('rm.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy" :aria-busy="busy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('rm.saving') : t('rm.save')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد حذف الدور
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'deleteRole'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="alertdialog" aria-modal="true" aria-labelledby="drm-title" aria-describedby="drm-desc" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()"></div>
+  <div x-show="modal === 'deleteRole'" x-trap.noscroll="modal === 'deleteRole'"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700"><i class="fa-solid fa-trash text-xl" aria-hidden="true"></i></span>
+    <h3 id="drm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('rm.deleteRoleTitle')"></h3>
+    <p id="drm-desc" class="mt-2 text-sm text-muted">
+      <span x-text="t('rm.deleteRoleText')"></span> <span class="font-bold text-ink" x-text="roleToDelete && roleToDelete.name"></span>.
+    </p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('rm.deleteRoleCancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="deleteRoleConfirmed()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('rm.deleteRoleConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة مصفوفة الأدوار والصلاحيات — مبنية على نفس هيكل "Dashboard Shell"
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد.
+   * الأدوار والصلاحيات بيانات تجريبية ثابتة (Static Mock Data)؛ الحفظ/التراجع
+   * الفعلي للمصفوفة سيُنفَّذ لاحقًا عبر Livewire + Eloquent على جدول role_has_permissions.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+
+        rm: {
+          title: 'مصفوفة الأدوار والصلاحيات', subtitle: 'حدِّد الصلاحيات الممنوحة لكل دور داخل منظمتك، وأنشئ أدوارًا مخصصة حسب الحاجة.',
+          addRole: 'إضافة دور جديد', saveChanges: 'حفظ التغييرات', saving: 'جارٍ الحفظ', discardChanges: 'تراجع عن التغييرات',
+          unsavedDotAria: 'توجد تغييرات غير محفوظة',
+          kpiTotalRoles: 'إجمالي الأدوار', kpiTotalPermissions: 'إجمالي الصلاحيات', kpiCustomRoles: 'أدوار مخصّصة',
+          kpiSecurityAlert: 'تنبيه أمني', kpiSecurityAlertCaption: 'يملك صلاحية كاملة ({count} من {count})',
+          searchPlaceholder: 'ابحث باسم الصلاحية أو مفتاحها، مثل users.create…',
+          moduleFilterLabel: 'تصفية حسب الوحدة', moduleAll: 'كل الوحدات',
+          selectAllGlobal: 'تحديد الكل', deselectAllGlobal: 'إلغاء تحديد الكل',
+          colModulePermission: 'الوحدة / الصلاحية', colActions: 'إجراءات',
+          roleSystemBadge: 'دور نظامي', roleCustomBadge: 'دور مخصّص', roleStandardBadge: 'دور أساسي',
+          selectAllForRole: 'تحديد كل الصلاحيات لهذا الدور', deselectAllForRole: 'إلغاء تحديد كل الصلاحيات',
+          selectAllShort: 'تحديد الكل', deselectAllShort: 'إلغاء التحديد',
+          expandAll: 'توسيع كل المجموعات', collapseAll: 'طيّ كل المجموعات',
+          lockedTooltip: 'دور نظامي — صلاحياته ثابتة ولا يمكن تعديلها',
+          groupSelectAllAria: 'تحديد كل صلاحيات مجموعة {group} للدور {role}',
+          groupGrantedCount: 'مُمنوحة {granted} من {total}',
+          legendGranted: 'ممنوحة', legendNotGranted: 'غير ممنوحة', legendLocked: 'ثابتة (دور نظامي)',
+          mobileRoleTabsLabel: 'اختيار الدور', systemLockedNotice: 'هذا دور نظامي يملك صلاحية كاملة دائمًا، ولا يمكن تعديل صلاحياته الفردية.',
+          systemRoleMenuNotice: 'دور نظامي — لا يمكن تعديله أو حذفه',
+          menuEditRole: 'تعديل بيانات الدور', menuCloneRole: 'استنساخ الدور', menuDeleteRole: 'حذف الدور',
+          panelAddTitle: 'إضافة دور جديد', panelEditTitle: 'تعديل بيانات الدور',
+          fieldRoleName: 'اسم الدور', fieldRoleKey: 'مفتاح الدور (Key)', fieldRoleKeyHint: 'يُولَّد تلقائيًا من الاسم ولا يمكن تعديله لاحقًا.',
+          fieldDescription: 'الوصف', fieldCloneFrom: 'استنساخ الصلاحيات من دور موجود', fieldCloneFromHint: 'اختياري — سيتم نسخ كل صلاحيات الدور المحدد إلى الدور الجديد.',
+          cloneNone: 'البدء من دور فارغ (بلا صلاحيات)',
+          cancel: 'إلغاء', save: 'حفظ', nameRequired: 'اسم الدور مطلوب.',
+          deleteRoleTitle: 'حذف الدور نهائيًا؟', deleteRoleText: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع صلاحيات دور', deleteRoleCancel: 'إلغاء', deleteRoleConfirm: 'نعم، احذف نهائيًا',
+          unsavedBarText: 'توجد تغييرات غير محفوظة في المصفوفة', unsavedBarSave: 'حفظ التغييرات', unsavedBarDiscard: 'تراجع',
+          toastRoleCreated: 'تم إنشاء الدور بنجاح (معاينة فقط)', toastRoleUpdated: 'تم تحديث بيانات الدور (معاينة فقط)',
+          toastRoleDeleted: 'تم حذف الدور نهائيًا (معاينة فقط)', toastMatrixSaved: 'تم حفظ مصفوفة الصلاحيات بنجاح (معاينة فقط)', toastMatrixDiscarded: 'تم التراجع عن جميع التغييرات غير المحفوظة',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', org: 'Organization Management' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'User seat quota is nearing its limit (83%)', reset: 'A password reset link was sent successfully' },
+
+        rm: {
+          title: 'Role & Permission Matrix', subtitle: "Define the permissions granted to each role in your organization, and create custom roles as needed.",
+          addRole: 'Add New Role', saveChanges: 'Save Changes', saving: 'Saving', discardChanges: 'Discard Changes',
+          unsavedDotAria: 'Unsaved changes present',
+          kpiTotalRoles: 'Total Roles', kpiTotalPermissions: 'Total Permissions', kpiCustomRoles: 'Custom Roles',
+          kpiSecurityAlert: 'Security Alert', kpiSecurityAlertCaption: 'Has full access ({count} of {count})',
+          searchPlaceholder: 'Search by permission name or key, e.g. users.create…',
+          moduleFilterLabel: 'Filter by module', moduleAll: 'All Modules',
+          selectAllGlobal: 'Select All', deselectAllGlobal: 'Deselect All',
+          colModulePermission: 'Module / Permission', colActions: 'Actions',
+          roleSystemBadge: 'System Role', roleCustomBadge: 'Custom Role', roleStandardBadge: 'Standard Role',
+          selectAllForRole: 'Select all permissions for this role', deselectAllForRole: 'Deselect all permissions',
+          selectAllShort: 'Select all', deselectAllShort: 'Deselect all',
+          expandAll: 'Expand all groups', collapseAll: 'Collapse all groups',
+          lockedTooltip: 'System role — permissions are fixed and cannot be changed',
+          groupSelectAllAria: 'Select all {group} permissions for {role}',
+          groupGrantedCount: 'Granted {granted} of {total}',
+          legendGranted: 'Granted', legendNotGranted: 'Not granted', legendLocked: 'Fixed (system role)',
+          mobileRoleTabsLabel: 'Select role', systemLockedNotice: 'This is a system role with permanent full access — individual permissions cannot be modified.',
+          systemRoleMenuNotice: 'System role — cannot be edited or deleted',
+          menuEditRole: 'Edit role details', menuCloneRole: 'Clone role', menuDeleteRole: 'Delete role',
+          panelAddTitle: 'Add New Role', panelEditTitle: 'Edit Role',
+          fieldRoleName: 'Role name', fieldRoleKey: 'Role key', fieldRoleKeyHint: 'Auto-generated from the name and cannot be changed later.',
+          fieldDescription: 'Description', fieldCloneFrom: 'Clone permissions from existing role', fieldCloneFromHint: 'Optional — all permissions from the selected role will be copied to the new role.',
+          cloneNone: 'Start from an empty role (no permissions)',
+          cancel: 'Cancel', save: 'Save', nameRequired: 'Role name is required.',
+          deleteRoleTitle: 'Permanently delete this role?', deleteRoleText: 'This cannot be undone. All permissions for role', deleteRoleCancel: 'Cancel', deleteRoleConfirm: 'Yes, delete permanently',
+          unsavedBarText: 'You have unsaved matrix changes', unsavedBarSave: 'Save Changes', unsavedBarDiscard: 'Discard',
+          toastRoleCreated: 'Role created successfully (preview only)', toastRoleUpdated: "Role's data was updated (preview only)",
+          toastRoleDeleted: 'Role was permanently deleted (preview only)', toastMatrixSaved: 'Permission matrix saved successfully (preview only)', toastMatrixDiscarded: 'All unsaved changes were discarded',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'roleMatrix',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+        this.openMenuId = null;
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* =====================================================================
+         نموذج بيانات الصلاحيات (permissions) مُجمّعة حسب الوحدة/الجدول — ثابت
+         ===================================================================== */
+      permissionGroups: [
+        { key: 'users', name: 'User Management', icon: 'fa-solid fa-users', permissions: [
+          { code: 'users.view', name: 'View Users', desc: 'View the list and profile details of users.' },
+          { code: 'users.create', name: 'Create Users', desc: 'Invite and create new user accounts.' },
+          { code: 'users.edit', name: 'Edit Users', desc: "Update users' profile data and roles." },
+          { code: 'users.delete', name: 'Delete Users', desc: 'Permanently remove user accounts.' },
+        ]},
+        { key: 'resources', name: 'Resource Repository', icon: 'fa-solid fa-folder-open', permissions: [
+          { code: 'resources.view', name: 'View Resources', desc: 'Browse uploaded learning resources.' },
+          { code: 'resources.upload', name: 'Upload Resources', desc: 'Add new files to the repository.' },
+          { code: 'resources.approve', name: 'Approve Resources', desc: 'Approve or reject submitted resources.' },
+          { code: 'resources.delete', name: 'Delete Resources', desc: 'Permanently remove resources from the repository.' },
+        ]},
+        { key: 'reports', name: 'Reports & Analytics', icon: 'fa-solid fa-chart-pie', permissions: [
+          { code: 'reports.view', name: 'View Reports', desc: 'Access analytics dashboards and reports.' },
+          { code: 'reports.export', name: 'Export Reports', desc: 'Export report data to CSV or PDF.' },
+        ]},
+        { key: 'settings', name: 'Tenant Settings', icon: 'fa-solid fa-sliders', permissions: [
+          { code: 'settings.view', name: 'View Settings', desc: 'View tenant configuration settings.' },
+          { code: 'settings.update', name: 'Update Settings', desc: 'Modify tenant configuration settings.' },
+        ]},
+      ],
+      get allPermCodes() { return this.permissionGroups.flatMap(g => g.permissions.map(p => p.code)); },
+
+      /* =====================================================================
+         نموذج بيانات الأدوار (roles) — ثابت
+         ===================================================================== */
+      roles: [
+        { id: 1, key: 'tenant_admin', name: 'Tenant Admin', description: 'Full administrative access across the entire tenant workspace.', isSystem: true, isCustom: false },
+        { id: 2, key: 'content_reviewer', name: 'Content Reviewer', description: 'Reviews, approves, or rejects submitted learning resources.', isSystem: false, isCustom: false },
+        { id: 3, key: 'editor', name: 'Editor', description: 'Creates and edits learning materials and resources.', isSystem: false, isCustom: false },
+        { id: 4, key: 'auditor', name: 'Auditor', description: 'Read-only access across the workspace for compliance review.', isSystem: false, isCustom: false },
+        { id: 5, key: 'qa_specialist', name: 'QA Specialist', description: 'Custom role for quality-assurance spot checks on resources.', isSystem: false, isCustom: true },
+      ],
+      get systemRole() { return this.roles.find(r => r.isSystem) || this.roles[0]; },
+
+      /* ---------- جدول الربط (role_has_permissions) — المصفوفة الفعلية ---------- */
+      matrix: {
+        1: { 'users.view': true, 'users.create': true, 'users.edit': true, 'users.delete': true, 'resources.view': true, 'resources.upload': true, 'resources.approve': true, 'resources.delete': true, 'reports.view': true, 'reports.export': true, 'settings.view': true, 'settings.update': true },
+        2: { 'users.view': true, 'users.create': false, 'users.edit': false, 'users.delete': false, 'resources.view': true, 'resources.upload': true, 'resources.approve': true, 'resources.delete': false, 'reports.view': true, 'reports.export': false, 'settings.view': false, 'settings.update': false },
+        3: { 'users.view': false, 'users.create': false, 'users.edit': false, 'users.delete': false, 'resources.view': true, 'resources.upload': true, 'resources.approve': false, 'resources.delete': false, 'reports.view': false, 'reports.export': false, 'settings.view': false, 'settings.update': false },
+        4: { 'users.view': true, 'users.create': false, 'users.edit': false, 'users.delete': false, 'resources.view': true, 'resources.upload': false, 'resources.approve': false, 'resources.delete': false, 'reports.view': true, 'reports.export': true, 'settings.view': true, 'settings.update': false },
+        5: { 'users.view': false, 'users.create': false, 'users.edit': false, 'users.delete': false, 'resources.view': true, 'resources.upload': false, 'resources.approve': true, 'resources.delete': false, 'reports.view': true, 'reports.export': false, 'settings.view': false, 'settings.update': false },
+      },
+      originalMatrix: {},
+      dirty: false,
+      busy: false,
+      nextRoleId: 6,
+
+      /* ---------- حالة شريط البحث والفلاتر (عرض فقط — سيُنفَّذ لاحقًا عبر Livewire) ---------- */
+      search: '', moduleFilter: 'all',
+
+      /* ---------- حالة طيّ/توسيع المجموعات ---------- */
+      collapsedGroups: {},
+      get allGroupsCollapsed() { return this.permissionGroups.every(g => this.collapsedGroups[g.key]); },
+      toggleAllGroups() {
+        const collapseAll = !this.allGroupsCollapsed;
+        this.permissionGroups.forEach(g => { this.collapsedGroups[g.key] = collapseAll; });
+      },
+
+      /* ---------- تنبيه أمني: إبراز عمود الدور النظامي ---------- */
+      flashedRoleId: null,
+      flashSystemRole() {
+        this.flashedRoleId = this.systemRole.id;
+        setTimeout(() => { this.flashedRoleId = null; }, 1600);
+      },
+
+      /* ---------- عرض الجوال: محدد الدور ---------- */
+      selectedMobileRoleId: 1,
+      get selectedMobileRole() { return this.roles.find(r => r.id === this.selectedMobileRoleId) || this.roles[0]; },
+
+      /* =====================================================================
+         منطق المصفوفة: قراءة/تبديل الخلايا الفردية والمجموعات والأدوار
+         ===================================================================== */
+      cellChecked(role, code) { return !!(this.matrix[role.id] && this.matrix[role.id][code]); },
+      toggleCell(role, code) {
+        if (role.isSystem) return;
+        this.matrix[role.id][code] = !this.matrix[role.id][code];
+        this.dirty = true;
+      },
+
+      isRoleFullyChecked(role) { return this.allPermCodes.every(c => this.matrix[role.id]?.[c]); },
+      isRolePartiallyChecked(role) { return this.allPermCodes.some(c => this.matrix[role.id]?.[c]); },
+      toggleRole(role) {
+        if (role.isSystem) return;
+        const full = this.isRoleFullyChecked(role);
+        this.allPermCodes.forEach(c => { this.matrix[role.id][c] = !full; });
+        this.dirty = true;
+      },
+
+      isGroupFullyCheckedForRole(group, role) { return group.permissions.every(p => this.matrix[role.id]?.[p.code]); },
+      isGroupPartiallyCheckedForRole(group, role) { return group.permissions.some(p => this.matrix[role.id]?.[p.code]); },
+      toggleGroupForRole(group, role) {
+        if (role.isSystem) return;
+        const full = this.isGroupFullyCheckedForRole(group, role);
+        group.permissions.forEach(p => { this.matrix[role.id][p.code] = !full; });
+        this.dirty = true;
+      },
+      groupGrantedCountForRole(group, role) { return group.permissions.filter(p => this.matrix[role.id]?.[p.code]).length; },
+
+      get globalAllChecked() {
+        const editable = this.roles.filter(r => !r.isSystem);
+        if (!editable.length) return false;
+        return editable.every(role => this.allPermCodes.every(c => this.matrix[role.id]?.[c]));
+      },
+      toggleGlobalSelection() {
+        const full = this.globalAllChecked;
+        this.roles.forEach(role => {
+          if (role.isSystem) return;
+          this.allPermCodes.forEach(c => { this.matrix[role.id][c] = !full; });
+        });
+        this.dirty = true;
+      },
+
+      async saveMatrix() {
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 500));
+        this.busy = false;
+        this.originalMatrix = JSON.parse(JSON.stringify(this.matrix));
+        this.dirty = false;
+        this.toastSuccess(this.t('rm.toastMatrixSaved'));
+      },
+      discardMatrix() {
+        this.matrix = JSON.parse(JSON.stringify(this.originalMatrix));
+        this.dirty = false;
+        this.toastSuccess(this.t('rm.toastMatrixDiscarded'));
+      },
+
+      /* =====================================================================
+         اللوحة الجانبية (Slide-over): إضافة / تعديل / استنساخ دور
+         ===================================================================== */
+      panelOpen: false, editingRole: null, formSubmitted: false,
+      roleForm: { name: '', description: '', cloneFromId: '' },
+      slugify(text) {
+        return (text || '').toLowerCase().trim()
+          .replace(/[^a-z0-9؀-ۿ\s-]/g, '')
+          .replace(/\s+/g, '_')
+          .replace(/-+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'new_role';
+      },
+      get roleKeyPreview() { return this.slugify(this.roleForm.name); },
+      openCreateRole(cloneFromId = null) {
+        this.editingRole = null;
+        this.formSubmitted = false;
+        this.roleForm = { name: '', description: '', cloneFromId: cloneFromId || '' };
+        this.panelOpen = true;
+      },
+      openEditRole(role) {
+        this.editingRole = role;
+        this.formSubmitted = false;
+        this.roleForm = { name: role.name, description: role.description, cloneFromId: '' };
+        this.panelOpen = true;
+      },
+      closePanel() { if (!this.busy) { this.panelOpen = false; } },
+      async submitRole() {
+        this.formSubmitted = true;
+        if (!this.roleForm.name.trim()) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 500));
+        this.busy = false;
+
+        if (this.editingRole) {
+          this.editingRole.name = this.roleForm.name.trim();
+          this.editingRole.description = this.roleForm.description.trim();
+          this.toastSuccess(this.t('rm.toastRoleUpdated'));
+        } else {
+          const newId = this.nextRoleId++;
+          const newRole = { id: newId, key: this.slugify(this.roleForm.name), name: this.roleForm.name.trim(), description: this.roleForm.description.trim(), isSystem: false, isCustom: true };
+          const base = {};
+          this.allPermCodes.forEach(c => { base[c] = false; });
+          if (this.roleForm.cloneFromId && this.matrix[this.roleForm.cloneFromId]) {
+            this.allPermCodes.forEach(c => { base[c] = !!this.matrix[this.roleForm.cloneFromId][c]; });
+          }
+          this.roles.push(newRole);
+          this.matrix[newId] = base;
+          this.originalMatrix[newId] = JSON.parse(JSON.stringify(base));
+          this.toastSuccess(this.t('rm.toastRoleCreated'));
+        }
+        this.panelOpen = false;
+      },
+
+      /* ---------- نافذة تأكيد حذف الدور ---------- */
+      modal: null, roleToDelete: null,
+      closeModal() { if (!this.busy) { this.modal = null; this.roleToDelete = null; } },
+      confirmDeleteRole(role) {
+        if (role.isSystem) return;
+        this.roleToDelete = role;
+        this.modal = 'deleteRole';
+      },
+      async deleteRoleConfirmed() {
+        if (!this.roleToDelete) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 400));
+        this.busy = false;
+        const id = this.roleToDelete.id;
+        this.roles = this.roles.filter(r => r.id !== id);
+        delete this.matrix[id];
+        delete this.originalMatrix[id];
+        if (this.selectedMobileRoleId === id) { this.selectedMobileRoleId = this.roles[0].id; }
+        this.toastSuccess(this.t('rm.toastRoleDeleted'));
+        this.modal = null;
+        this.roleToDelete = null;
+      },
+
+      /* ---------- قائمة إجراءات الدور (Kebab) بموضع ثابت لمنع القصّ ---------- */
+      openMenuId: null, kebabRole: null, menuPos: { top: 0, left: 0 },
+      toggleRoleMenu(role, evt) {
+        if (this.openMenuId === role.id) { this.openMenuId = null; return; }
+        const btn = evt.currentTarget;
+        const r = btn.getBoundingClientRect();
+        const menuW = 240, gap = 6, pad = 8;
+        const isRtl = document.documentElement.dir === 'rtl';
+        let left = isRtl ? r.right - menuW : r.left;
+        left = Math.min(Math.max(pad, left), window.innerWidth - menuW - pad);
+        let top = r.bottom + gap;
+        const menuHEstimate = 190;
+        if (top + menuHEstimate > window.innerHeight - pad) { top = r.top - menuHEstimate - gap; }
+        this.menuPos = { top: Math.max(pad, top), left };
+        this.kebabRole = role;
+        this.openMenuId = role.id;
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        this.originalMatrix = JSON.parse(JSON.stringify(this.matrix));
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; this.openMenuId = null;
+        if (!this.busy) { this.modal = null; this.panelOpen = false; }
+      },
+    };
+  }
+</script>
+</body>
+</html>

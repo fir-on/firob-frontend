@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>نتائج الاختبارات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-white/10 bg-slate-900/90 px-2.5 py-1 text-xs font-medium tracking-wide text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 ease-out;
+      @apply dark:border-slate-800/20 dark:bg-slate-100 dark:text-slate-900;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-slate-900/90 opacity-0 transition-all duration-200 ease-out;
+      @apply dark:border-t-slate-100;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-accent-700 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة / شريط التقدّم (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- بطاقة المقرر / الاختبار (Icon Chip) ---------- */
+    .course-icon { @apply grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg; }
+
+    /* ---------- مؤشر صحة/خطأ الإجابة (AnswerIndicator) ---------- */
+    .ans-indicator { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="quizResultsManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }
+                       else if ($event.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { $event.preventDefault(); $refs.attemptSearch?.focus(); }"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || detailsOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li><a href="quizzes.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.quizzes')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('qr.breadcrumbCurrent')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — نتائج الاختبارات ومحاولات الطلبة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + روابط التنقّل + الإجراءات -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <div class="mb-2 flex flex-wrap items-center gap-2">
+            <a href="quizzes.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid ltr:fa-arrow-right rtl:fa-arrow-left" aria-hidden="true"></i>
+              <span x-text="t('qr.backToQuizzes')"></span>
+            </a>
+            <span class="text-line-strong" aria-hidden="true">·</span>
+            <a href="quiz-builder.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+              <span x-text="t('qr.openBuilder')"></span>
+            </a>
+          </div>
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('qr.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qr.subtitle')"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button type="button" class="btn btn-outline" @click="exportReport('Excel')">
+            <i class="fa-solid fa-file-excel text-success-700 dark:text-success-500" aria-hidden="true"></i>
+            <span x-text="t('qr.exportExcel')"></span>
+          </button>
+          <button type="button" class="btn btn-outline" @click="exportReport('PDF')">
+            <i class="fa-solid fa-file-pdf text-error-600" aria-hidden="true"></i>
+            <span x-text="t('qr.exportPdf')"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPI) ================= -->
+      <section aria-label="KPIs" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qr.kpiTotalAttempts')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-list-check"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">1,284</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qr.kpiAvgScore')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-chart-simple"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">76%</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qr.kpiPassRate')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-trophy"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">81%</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('qr.kpiAvgTime')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-stopwatch"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">22<span class="text-sm font-bold text-muted" x-text="' ' + t('qr.minutesUnit')"></span></p>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر ================= -->
+      <section class="panel flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:flex-wrap lg:items-center lg:gap-3">
+        <div class="relative min-w-0 w-full flex-1 lg:w-auto lg:min-w-[14rem] lg:basis-56">
+          <label for="attempt-search" class="sr-only" x-text="t('qr.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong transition-colors duration-200" aria-hidden="true"></i>
+          <input id="attempt-search" x-ref="attemptSearch" type="search" x-model="searchQuery" :placeholder="t('qr.searchPlaceholder')"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line bg-field ps-10 pe-10 text-sm text-ink placeholder:text-line-strong transition-all duration-200 focus:border-brand focus:bg-page focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <button type="button" x-show="searchQuery" x-cloak x-transition.opacity.duration.150ms
+                  @click="searchQuery = ''; $refs.attemptSearch.focus()" :aria-label="t('qr.clearSearch')"
+                  class="absolute end-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-line-strong transition-colors duration-150 hover:bg-soft hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <i class="fa-solid fa-circle-xmark text-sm" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- فلتر عنوان الاختبار -->
+        <div class="relative w-full shrink-0 lg:w-56"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qr.filterQuizAll') },
+                 { value: 'QZ-MATH-101', label: 'اختبار تشخيصي: الأعداد الصحيحة' },
+                 { value: 'QZ-MATH-102', label: 'اختبار تكويني: خصائص الضرب' },
+                 { value: 'QZ-SCI-201',  label: 'اختبار ختامي: تركيب الخلية' },
+                 { value: 'QZ-SCI-202',  label: 'اختبار تشخيصي: التفاعلات الكيميائية' },
+                 { value: 'QZ-ARAB-301', label: 'اختبار تكويني: عناصر القصة القصيرة' },
+                 { value: 'QZ-ARAB-302', label: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية' },
+               ],
+               get: () => selectedQuiz,
+               set: (v) => selectedQuiz = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="quiz-filter" class="sr-only" x-text="t('qr.filterQuizLabel')"></label>
+          <button type="button" id="quiz-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="quiz-filter-list"
+                  :aria-activedescendant="active > -1 ? 'quiz-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="quiz-filter-list" role="listbox" aria-labelledby="quiz-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'quiz-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر الحالة -->
+        <div class="relative w-full shrink-0 lg:w-44"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qr.filterStatusAll') },
+                 { value: 'passed', label: t('qr.statusPassed') },
+                 { value: 'failed', label: t('qr.statusFailed') },
+                 { value: 'in_progress', label: t('qr.statusInProgress') },
+               ],
+               get: () => selectedStatus,
+               set: (v) => selectedStatus = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="status-filter" class="sr-only" x-text="t('qr.filterStatusLabel')"></label>
+          <button type="button" id="status-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="status-filter-list"
+                  :aria-activedescendant="active > -1 ? 'status-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="status-filter-list" role="listbox" aria-labelledby="status-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'status-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر التاريخ -->
+        <div class="relative w-full shrink-0 lg:w-44"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('qr.dateAll') },
+                 { value: 'today', label: t('qr.dateToday') },
+                 { value: 'week', label: t('qr.dateWeek') },
+                 { value: 'month', label: t('qr.dateMonth') },
+                 { value: 'last30', label: t('qr.date30') },
+               ],
+               get: () => selectedDate,
+               set: (v) => selectedDate = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="date-filter" class="sr-only" x-text="t('qr.filterDateLabel')"></label>
+          <button type="button" id="date-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="date-filter-list"
+                  :aria-activedescendant="active > -1 ? 'date-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="date-filter-list" role="listbox" aria-labelledby="date-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'date-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <button type="button" class="btn btn-outline shrink-0" @click="resetFilters()">
+          <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i>
+          <span x-text="t('qr.resetFilters')"></span>
+        </button>
+      </section>
+
+      <!-- ================= جدول محاولات الاختبار ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="attempts-table-title">
+        <h2 id="attempts-table-title" class="sr-only" x-text="t('qr.title')"></h2>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">رف</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">ريم خالد الفرا</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1042</p>
+              </div>
+              <span class="badge badge-success shrink-0"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusPassed')"></span></span>
+            </div>
+            <p class="mt-3 truncate text-sm font-bold text-ink">اختبار تشخيصي: الأعداد الصحيحة</p>
+            <div class="mt-2 flex items-center justify-between text-xs font-bold">
+              <span class="text-ink tabular-nums">13 / 15</span>
+              <span class="text-success-700 dark:text-success-500 tabular-nums">87%</span>
+            </div>
+            <div class="quota-track mt-1.5"><div class="quota-fill bg-success-500" style="width:87%"></div></div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('qr.colTime')"></span>: 14:52 — 02 مارس 2026</p>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm flex-1" @click="openDetails(attempts[0])">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('qr.actViewDetails')"></span>
+              </button>
+              <a href="quiz-grading.html?attempt=ATT-1042" class="btn btn-outline btn-sm flex-1">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span x-text="t('qr.actGrade')"></span>
+              </a>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">أح</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">أحمد ياسر حمدان</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1077</p>
+              </div>
+              <span class="badge badge-success shrink-0"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusPassed')"></span></span>
+            </div>
+            <p class="mt-3 truncate text-sm font-bold text-ink">اختبار تكويني: خصائص الضرب</p>
+            <div class="mt-2 flex items-center justify-between text-xs font-bold">
+              <span class="text-ink tabular-nums">9 / 10</span>
+              <span class="text-success-700 dark:text-success-500 tabular-nums">90%</span>
+            </div>
+            <div class="quota-track mt-1.5"><div class="quota-fill bg-success-500" style="width:90%"></div></div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('qr.colTime')"></span>: 11:40 — 02 مارس 2026</p>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm flex-1" @click="openDetails(attempts[1])">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('qr.actViewDetails')"></span>
+              </button>
+              <a href="quiz-grading.html?attempt=ATT-1077" class="btn btn-outline btn-sm flex-1">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span x-text="t('qr.actGrade')"></span>
+              </a>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">دق</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">دانة سامي قديح</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1090</p>
+              </div>
+              <span class="badge badge-danger shrink-0"><i class="fa-solid fa-circle-xmark text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusFailed')"></span></span>
+            </div>
+            <p class="mt-3 truncate text-sm font-bold text-ink">اختبار ختامي: تركيب الخلية</p>
+            <div class="mt-2 flex items-center justify-between text-xs font-bold">
+              <span class="text-ink tabular-nums">22 / 50</span>
+              <span class="text-error-700 tabular-nums">44%</span>
+            </div>
+            <div class="quota-track mt-1.5"><div class="quota-fill bg-error-500" style="width:44%"></div></div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('qr.colTime')"></span>: 35:10 — 01 مارس 2026</p>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm flex-1" @click="openDetails(attempts[2])">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('qr.actViewDetails')"></span>
+              </button>
+              <a href="quiz-grading.html?attempt=ATT-1090" class="btn btn-outline btn-sm flex-1">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span x-text="t('qr.actGrade')"></span>
+              </a>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">عو</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">عمر وليد أبو شريعة</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1103</p>
+              </div>
+              <span class="badge badge-warning shrink-0"><i class="fa-solid fa-hourglass-half text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusInProgress')"></span></span>
+            </div>
+            <p class="mt-3 truncate text-sm font-bold text-ink">اختبار تشخيصي: التفاعلات الكيميائية</p>
+            <p class="mt-2 text-xs font-bold text-muted" x-text="t('qr.noScoreYet')"></p>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('qr.startedAt')"></span>: 03 مارس 2026 — 08:12</p>
+            <button type="button" class="btn btn-outline btn-sm mt-3 w-full"
+                    @click="openDetails(attempts[3])">
+              <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('qr.actViewDetails')"></span>
+            </button>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">لح</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">لين ناصر الحلاق</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1121</p>
+              </div>
+              <span class="badge badge-success shrink-0"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusPassed')"></span></span>
+            </div>
+            <p class="mt-3 truncate text-sm font-bold text-ink">اختبار تكويني: عناصر القصة القصيرة</p>
+            <div class="mt-2 flex items-center justify-between text-xs font-bold">
+              <span class="text-ink tabular-nums">7 / 8</span>
+              <span class="text-success-700 dark:text-success-500 tabular-nums">88%</span>
+            </div>
+            <div class="quota-track mt-1.5"><div class="quota-fill bg-success-500" style="width:88%"></div></div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('qr.colTime')"></span>: 08:40 — 28 فبراير 2026</p>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm flex-1" @click="openDetails(attempts[4])">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('qr.actViewDetails')"></span>
+              </button>
+              <a href="quiz-grading.html?attempt=ATT-1121" class="btn btn-outline btn-sm flex-1">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span x-text="t('qr.actGrade')"></span>
+              </a>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">كن</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">كريم باسم النجار</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1134</p>
+              </div>
+              <span class="badge badge-danger shrink-0"><i class="fa-solid fa-circle-xmark text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusFailed')"></span></span>
+            </div>
+            <p class="mt-3 truncate text-sm font-bold text-ink">اختبار ختامي: الوحدة الأولى — النصوص الأدبية</p>
+            <div class="mt-2 flex items-center justify-between text-xs font-bold">
+              <span class="text-ink tabular-nums">28 / 60</span>
+              <span class="text-error-700 tabular-nums">47%</span>
+            </div>
+            <div class="quota-track mt-1.5"><div class="quota-fill bg-error-500" style="width:47%"></div></div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('qr.colTime')"></span>: 40:02 — 25 فبراير 2026</p>
+            <div class="mt-3 flex items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm flex-1" @click="openDetails(attempts[5])">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i> <span x-text="t('qr.actViewDetails')"></span>
+              </button>
+              <a href="quiz-grading.html?attempt=ATT-1134" class="btn btn-outline btn-sm flex-1">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span x-text="t('qr.actGrade')"></span>
+              </a>
+            </div>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1180px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('qr.title')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colStudent')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colQuiz')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qr.colScore')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colStatus')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-center text-xs font-extrabold" x-text="t('qr.colTime')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('qr.colDate')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('qr.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <!-- صف 1: نجاح -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">رف</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">ريم خالد الفرا</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1042</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="course-icon h-9 w-9 bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-square-root-variable text-sm"></i></span>
+                      <div class="min-w-0">
+                        <span class="badge badge-muted font-mono">QZ-MATH-101</span>
+                        <p class="truncate font-bold leading-6">اختبار تشخيصي: الأعداد الصحيحة</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="mx-auto w-28">
+                      <div class="flex items-center justify-between text-xs font-bold">
+                        <span class="text-ink tabular-nums">13 / 15</span>
+                        <span class="text-success-700 dark:text-success-500 tabular-nums">87%</span>
+                      </div>
+                      <div class="quota-track mt-1"><div class="quota-fill bg-success-500" style="width:87%"></div></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusPassed')"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold tabular-nums">14:52</td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">02 مارس 2026 — 10:15</td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openDetails(attempts[0])" :aria-label="t('qr.actViewDetails') + ': ريم خالد الفرا'">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actViewDetails')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                      <a href="quiz-grading.html?attempt=ATT-1042" class="act group relative" :aria-label="t('qr.actGrade') + ': ريم خالد الفرا'">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actGrade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 2: نجاح -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">أح</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">أحمد ياسر حمدان</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1077</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="course-icon h-9 w-9 bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-square-root-variable text-sm"></i></span>
+                      <div class="min-w-0">
+                        <span class="badge badge-muted font-mono">QZ-MATH-102</span>
+                        <p class="truncate font-bold leading-6">اختبار تكويني: خصائص الضرب</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="mx-auto w-28">
+                      <div class="flex items-center justify-between text-xs font-bold">
+                        <span class="text-ink tabular-nums">9 / 10</span>
+                        <span class="text-success-700 dark:text-success-500 tabular-nums">90%</span>
+                      </div>
+                      <div class="quota-track mt-1"><div class="quota-fill bg-success-500" style="width:90%"></div></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusPassed')"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold tabular-nums">11:40</td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">02 مارس 2026 — 14:05</td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openDetails(attempts[1])" :aria-label="t('qr.actViewDetails') + ': أحمد ياسر حمدان'">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actViewDetails')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                      <a href="quiz-grading.html?attempt=ATT-1077" class="act group relative" :aria-label="t('qr.actGrade') + ': أحمد ياسر حمدان'">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actGrade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 3: رسوب -->
+                <tr class="bg-error-500/5 transition hover:bg-error-500/10">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">دق</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">دانة سامي قديح</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1090</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="course-icon h-9 w-9 bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-flask text-sm"></i></span>
+                      <div class="min-w-0">
+                        <span class="badge badge-muted font-mono">QZ-SCI-201</span>
+                        <p class="truncate font-bold leading-6">اختبار ختامي: تركيب الخلية</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="mx-auto w-28">
+                      <div class="flex items-center justify-between text-xs font-bold">
+                        <span class="text-ink tabular-nums">22 / 50</span>
+                        <span class="text-error-700 tabular-nums">44%</span>
+                      </div>
+                      <div class="quota-track mt-1"><div class="quota-fill bg-error-500" style="width:44%"></div></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusFailed')"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold tabular-nums">35:10</td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">01 مارس 2026 — 09:40</td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openDetails(attempts[2])" :aria-label="t('qr.actViewDetails') + ': دانة سامي قديح'">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actViewDetails')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                      <a href="quiz-grading.html?attempt=ATT-1090" class="act group relative" :aria-label="t('qr.actGrade') + ': دانة سامي قديح'">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actGrade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 4: قيد التنفيذ -->
+                <tr class="bg-warning-500/5 transition hover:bg-warning-500/10">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">عو</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">عمر وليد أبو شريعة</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1103</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="course-icon h-9 w-9 bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-flask text-sm"></i></span>
+                      <div class="min-w-0">
+                        <span class="badge badge-muted font-mono">QZ-SCI-202</span>
+                        <p class="truncate font-bold leading-6">اختبار تشخيصي: التفاعلات الكيميائية</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 text-center align-middle font-bold text-muted">—</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning"><i class="fa-solid fa-hourglass-half text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusInProgress')"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold text-muted">—</td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">
+                    <span x-text="t('qr.startedAt')"></span>: 03 مارس 2026 — 08:12
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end">
+                      <button type="button" class="act group relative" @click="openDetails(attempts[3])" :aria-label="t('qr.actViewDetails') + ': عمر وليد أبو شريعة'">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actViewDetails')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 5: نجاح -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">لح</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">لين ناصر الحلاق</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1121</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="course-icon h-9 w-9 bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-book-open text-sm"></i></span>
+                      <div class="min-w-0">
+                        <span class="badge badge-muted font-mono">QZ-ARAB-301</span>
+                        <p class="truncate font-bold leading-6">اختبار تكويني: عناصر القصة القصيرة</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="mx-auto w-28">
+                      <div class="flex items-center justify-between text-xs font-bold">
+                        <span class="text-ink tabular-nums">7 / 8</span>
+                        <span class="text-success-700 dark:text-success-500 tabular-nums">88%</span>
+                      </div>
+                      <div class="quota-track mt-1"><div class="quota-fill bg-success-500" style="width:88%"></div></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><i class="fa-solid fa-circle-check text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusPassed')"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold tabular-nums">08:40</td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">28 فبراير 2026 — 16:20</td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openDetails(attempts[4])" :aria-label="t('qr.actViewDetails') + ': لين ناصر الحلاق'">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actViewDetails')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                      <a href="quiz-grading.html?attempt=ATT-1121" class="act group relative" :aria-label="t('qr.actGrade') + ': لين ناصر الحلاق'">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actGrade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 6: رسوب -->
+                <tr class="bg-error-500/5 transition hover:bg-error-500/10">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true">كن</span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">كريم باسم النجار</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">STU-1134</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2.5">
+                      <span class="course-icon h-9 w-9 bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-book-open text-sm"></i></span>
+                      <div class="min-w-0">
+                        <span class="badge badge-muted font-mono">QZ-ARAB-302</span>
+                        <p class="truncate font-bold leading-6">اختبار ختامي: الوحدة الأولى — النصوص الأدبية</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="mx-auto w-28">
+                      <div class="flex items-center justify-between text-xs font-bold">
+                        <span class="text-ink tabular-nums">28 / 60</span>
+                        <span class="text-error-700 tabular-nums">47%</span>
+                      </div>
+                      <div class="quota-track mt-1"><div class="quota-fill bg-error-500" style="width:47%"></div></div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark text-[10px]" aria-hidden="true"></i> <span x-text="t('qr.statusFailed')"></span></span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-4 text-center align-middle font-bold tabular-nums">40:02</td>
+                  <td class="whitespace-nowrap px-4 py-4 align-middle text-muted">25 فبراير 2026 — 11:03</td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openDetails(attempts[5])" :aria-label="t('qr.actViewDetails') + ': كريم باسم النجار'">
+                        <i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actViewDetails')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </button>
+                      <a href="quiz-grading.html?attempt=ATT-1134" class="act group relative" :aria-label="t('qr.actGrade') + ': كريم باسم النجار'">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qr.actGrade')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ================= تذييل الصفحات (Pagination — ثابت) ================= -->
+          <div class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <p class="text-xs font-bold text-muted">
+              <span x-text="t('qr.showing')"></span> <span class="text-ink">1–6</span> <span x-text="t('qr.of')"></span> <span class="text-ink">1,284</span> <span x-text="t('qr.attemptsWord')"></span>
+            </p>
+            <nav class="flex items-center gap-1.5" :aria-label="t('qr.pagination')">
+              <button type="button" disabled class="act opacity-40" :aria-label="t('qr.prev')">
+                <i class="fa-solid ltr:fa-chevron-left rtl:fa-chevron-right text-xs" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="act font-bold border-transparent bg-primary-500 text-white" aria-current="page">1</button>
+              <button type="button" class="act font-bold">2</button>
+              <button type="button" class="act font-bold">3</button>
+              <span aria-hidden="true" class="inline-grid h-9 w-9 shrink-0 place-items-center text-sm font-bold text-muted">&hellip;</span>
+              <button type="button" class="act font-bold">214</button>
+              <button type="button" class="act" :aria-label="t('qr.next')">
+                <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-xs" aria-hidden="true"></i>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        <!-- تذييل الصفحات للجوال (بطاقات) -->
+        <div class="flex items-center justify-between gap-3 border-t border-line px-4 py-3.5 xl:hidden">
+          <p class="text-xs font-bold text-muted">
+            <span x-text="t('qr.showing')"></span> <span class="text-ink">1–6</span> <span x-text="t('qr.of')"></span> <span class="text-ink">1,284</span>
+          </p>
+          <nav class="flex items-center gap-1.5" :aria-label="t('qr.pagination')">
+            <button type="button" disabled class="act opacity-40" :aria-label="t('qr.prev')">
+              <i class="fa-solid ltr:fa-chevron-left rtl:fa-chevron-right text-xs" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="act" :aria-label="t('qr.next')">
+              <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-xs" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — تفاصيل محاولة الطالب وتصحيح الأسئلة
+     ========================================================================== -->
+<div x-cloak x-show="detailsOpen" x-transition.opacity class="fixed inset-0 z-[60]"
+     role="dialog" aria-modal="true" aria-labelledby="details-title" @keydown.escape.window="closeDetails()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDetails()"></div>
+
+  <div x-show="detailsOpen" x-trap.noscroll="detailsOpen"
+       x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="absolute inset-y-0 end-0 flex w-full max-w-xl flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="details-title" class="text-lg font-extrabold text-ink" x-text="t('qr.detailsTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closeDetails()" :aria-label="t('qr.detailsClose')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5" x-show="detailsTarget">
+
+      <!-- بيانات الطالب والمحاولة -->
+      <div class="flex items-start gap-3">
+        <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-soft text-base font-extrabold text-brand" aria-hidden="true" x-text="detailsTarget && detailsTarget.initials"></span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-lg font-extrabold leading-7 text-ink" x-text="detailsTarget && detailsTarget.studentName"></p>
+          <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right" x-text="detailsTarget && detailsTarget.studentId"></p>
+        </div>
+        <span class="badge shrink-0"
+              :class="detailsTarget && detailsTarget.status === 'passed' ? 'badge-success' : (detailsTarget && detailsTarget.status === 'failed' ? 'badge-danger' : 'badge-warning')">
+          <i class="fa-solid" :class="detailsTarget && detailsTarget.status === 'passed' ? 'fa-circle-check' : (detailsTarget && detailsTarget.status === 'failed' ? 'fa-circle-xmark' : 'fa-hourglass-half')" aria-hidden="true"></i>
+          <span x-text="detailsTarget && t('qr.status' + (detailsTarget.status === 'passed' ? 'Passed' : detailsTarget.status === 'failed' ? 'Failed' : 'InProgress'))"></span>
+        </span>
+      </div>
+
+      <div class="rounded-xl border border-line bg-soft/60 p-3.5">
+        <p class="mb-1.5 text-xs font-extrabold text-muted" x-text="t('qr.detailsQuiz')"></p>
+        <div class="flex items-center gap-1.5">
+          <span class="badge badge-muted font-mono" x-text="detailsTarget && detailsTarget.quizCode"></span>
+        </div>
+        <p class="mt-1.5 text-sm font-bold leading-6 text-ink" x-text="detailsTarget && detailsTarget.quizTitle"></p>
+      </div>
+
+      <!-- ملخص النتيجة -->
+      <div class="grid grid-cols-3 gap-3 text-center" x-show="detailsTarget && detailsTarget.status !== 'in_progress'">
+        <div class="rounded-xl border border-line p-3">
+          <p class="text-xl font-extrabold tabular-nums text-brand" x-text="detailsTarget && (detailsTarget.marksEarned + ' / ' + detailsTarget.marksTotal)"></p>
+          <p class="mt-1 text-xs font-bold text-muted" x-text="t('qr.detailsScore')"></p>
+        </div>
+        <div class="rounded-xl border border-line p-3">
+          <p class="text-xl font-extrabold tabular-nums text-brand" x-text="detailsTarget && (detailsTarget.percentage + '%')"></p>
+          <p class="mt-1 text-xs font-bold text-muted" x-text="t('qr.detailsPercentage')"></p>
+        </div>
+        <div class="rounded-xl border border-line p-3">
+          <p class="text-xl font-extrabold tabular-nums text-brand" x-text="detailsTarget && detailsTarget.timeTaken"></p>
+          <p class="mt-1 text-xs font-bold text-muted" x-text="t('qr.detailsTimeSpent')"></p>
+        </div>
+      </div>
+
+      <p class="rounded-xl border border-dashed border-line-strong/50 bg-page/50 p-3.5 text-xs leading-6 text-muted" x-show="detailsTarget && detailsTarget.status === 'in_progress'">
+        <i class="fa-solid fa-circle-info ms-1" aria-hidden="true"></i>
+        <span x-text="t('qr.inProgressNotice')"></span>
+      </p>
+
+      <!-- تفصيل الإجابات (quiz_answers) -->
+      <div x-show="detailsTarget && detailsTarget.answers && detailsTarget.answers.length">
+        <p class="mb-2.5 flex items-center gap-2 text-sm font-extrabold text-ink">
+          <i class="fa-solid fa-list-check text-brand" aria-hidden="true"></i>
+          <span x-text="t('qr.detailsBreakdownTitle')"></span>
+        </p>
+
+        <ul class="space-y-3" role="list">
+          <template x-for="(a, idx) in (detailsTarget ? detailsTarget.answers : [])" :key="idx">
+            <li class="rounded-xl border border-line p-3.5" :class="a.isCorrect ? 'bg-success-500/5' : 'bg-error-500/5'">
+              <div class="flex items-start gap-3">
+                <span class="ans-indicator" :class="a.isCorrect ? 'bg-success-500/15 text-success-700 dark:text-success-500' : 'bg-error-500/15 text-error-700 dark:text-error-500'" aria-hidden="true">
+                  <i class="fa-solid" :class="a.isCorrect ? 'fa-check' : 'fa-xmark'"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="min-w-0 font-bold leading-6 text-ink">
+                      <span class="text-muted" x-text="t('qr.detailsQuestionLabel') + ' ' + (idx + 1) + ':'"></span>
+                      <span x-text="a.questionAr"></span>
+                    </p>
+                    <span class="badge shrink-0" :class="a.isCorrect ? 'badge-success' : 'badge-danger'" x-text="a.marksEarned + ' / ' + a.marksTotal"></span>
+                  </div>
+
+                  <dl class="mt-2 grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2">
+                    <div class="min-w-0">
+                      <dt class="font-bold text-muted" x-text="t('qr.detailsStudentAnswer')"></dt>
+                      <dd class="truncate font-bold text-ink" x-text="a.studentAnswerAr"></dd>
+                    </div>
+                    <div class="min-w-0" x-show="!a.isCorrect">
+                      <dt class="font-bold text-muted" x-text="t('qr.detailsCorrectAnswer')"></dt>
+                      <dd class="truncate font-bold text-success-700 dark:text-success-500" x-text="a.correctAnswerAr"></dd>
+                    </div>
+                  </dl>
+
+                  <div class="mt-2.5 flex items-start gap-2 rounded-lg bg-accent-500/10 p-2.5">
+                    <i class="fa-solid fa-wand-magic-sparkles mt-0.5 shrink-0 text-xs text-accent-700 dark:text-accent-500" aria-hidden="true"></i>
+                    <p class="text-xs leading-5 text-muted"><span class="font-extrabold text-ink" x-text="t('qr.detailsAiFeedback') + ':'"></span> <span x-text="a.feedbackAr"></span></p>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </template>
+        </ul>
+
+        <p class="mt-3 rounded-xl border border-dashed border-line-strong/50 bg-page/50 p-3 text-xs leading-6 text-muted">
+          <i class="fa-solid fa-circle-info ms-1" aria-hidden="true"></i>
+          <span x-text="t('qr.sampleNotice')"></span>
+        </p>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <a href="quiz-grading.html" class="btn btn-outline" x-show="detailsTarget && detailsTarget.status !== 'in_progress'">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> <span x-text="t('qr.openGrading')"></span>
+      </a>
+      <button type="button" class="btn btn-outline" @click="exportReport('PDF')">
+        <i class="fa-solid fa-file-pdf text-error-600" aria-hidden="true"></i> <span x-text="t('qr.exportPdf')"></span>
+      </button>
+      <button type="button" class="btn btn-primary" @click="closeDetails()" x-text="t('qr.detailsClose')"></button>
+    </footer>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة نتائج الاختبارات ومحاولات الطلبة — مبنية على نفس هيكل "Dashboard Shell" المعتمد
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد (مطابقة quizzes.html).
+   * محاولات الاختبار (quiz_attempts) وتفصيل الإجابات (quiz_answers) أدناه بيانات ثابتة (Static Mock Records) —
+   * عمليات البحث/الفلترة/التصدير الفعلية ستُنفَّذ لاحقًا عبر Livewire + Eloquent.
+   */
+  function quizResultsManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'لوحة التحكم' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { newAttempt: 'طالب جديد أنهى محاولة: «اختبار تكويني: خصائص الضرب»', lowPassRate: 'نسبة النجاح في «اختبار ختامي: تركيب الخلية» أقل من 50%', aiFeedbackReady: 'اكتملت ملاحظات الذكاء الاصطناعي لمحاولة طالب جديدة' },
+
+        qr: {
+          breadcrumbCurrent: 'نتائج الاختبارات',
+          backToQuizzes: 'العودة إلى قائمة الاختبارات', openBuilder: 'فتح منشئ الاختبارات',
+          title: 'نتائج الاختبارات ومحاولات الطلبة', subtitle: 'استعرض جميع محاولات الطلبة على الاختبارات، تابع الدرجات ونسب النجاح والوقت المستغرق، وراجع تفصيل كل إجابة مع ملاحظات الذكاء الاصطناعي.',
+          exportExcel: 'تصدير Excel', exportPdf: 'تصدير PDF',
+          kpiTotalAttempts: 'إجمالي المحاولات', kpiAvgScore: 'متوسط الدرجات', kpiPassRate: 'نسبة النجاح', kpiAvgTime: 'متوسط وقت الحل', minutesUnit: 'دقيقة',
+          searchPlaceholder: 'ابحث باسم الطالب أو رقمه التعريفي…', clearSearch: 'مسح البحث',
+          filterQuizLabel: 'عنوان الاختبار', filterQuizAll: 'كل الاختبارات',
+          filterStatusLabel: 'الحالة', filterStatusAll: 'كل الحالات',
+          statusPassed: 'نجاح', statusFailed: 'رسوب', statusInProgress: 'قيد التنفيذ',
+          filterDateLabel: 'التاريخ', dateAll: 'كل الأوقات', dateToday: 'اليوم', dateWeek: 'هذا الأسبوع', dateMonth: 'هذا الشهر', date30: 'آخر 30 يومًا',
+          resetFilters: 'مسح الفلاتر',
+          colStudent: 'الطالب والرقم التعريفي', colQuiz: 'الاختبار', colScore: 'الدرجة والنسبة', colStatus: 'الحالة', colTime: 'الوقت المستغرق', colDate: 'تاريخ التسليم', colActions: 'إجراءات',
+          actViewDetails: 'عرض التفاصيل', noScoreYet: 'لم تُحتسب الدرجة بعد', startedAt: 'بدأت المحاولة',
+          showing: 'عرض', of: 'من', attemptsWord: 'محاولة', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية',
+          detailsTitle: 'تفاصيل محاولة الطالب', detailsClose: 'إغلاق', detailsQuiz: 'الاختبار', openGrading: 'فتح شاشة التصحيح الكاملة', actGrade: 'التصحيح',
+          detailsScore: 'الدرجة', detailsPercentage: 'النسبة', detailsTimeSpent: 'الوقت المستغرق',
+          detailsBreakdownTitle: 'تفصيل الإجابات (نموذج توضيحي)', detailsQuestionLabel: 'سؤال',
+          detailsStudentAnswer: 'إجابة الطالب', detailsCorrectAnswer: 'الإجابة الصحيحة', detailsAiFeedback: 'ملاحظة الذكاء الاصطناعي',
+          inProgressNotice: 'الطالب لم يُنهِ هذه المحاولة بعد — ستظهر النتيجة والتصحيح التفصيلي فور تسليم الاختبار.',
+          sampleNotice: 'تُعرض أعلاه نماذج توضيحية من الأسئلة لأغراض المعاينة فقط — سيُعرض التصحيح الكامل لجميع الأسئلة عبر الشاشة الكاملة لاحقًا عبر Livewire.',
+          toastExport: 'تم تجهيز تقرير بصيغة {type} بنجاح (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Dashboard' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { newAttempt: 'A student just finished an attempt: "Formative Quiz: Multiplication Properties"', lowPassRate: 'Pass rate for "Summative Quiz: Cell Structure" is below 50%', aiFeedbackReady: 'AI feedback for a new student attempt is ready' },
+
+        qr: {
+          breadcrumbCurrent: 'Quiz Results',
+          backToQuizzes: 'Back to Quizzes List', openBuilder: 'Open Quiz Builder',
+          title: 'Quiz Results & Student Attempts', subtitle: 'Browse every student attempt across your quizzes, track scores, pass rates and time spent, and review each answer with AI-assisted feedback.',
+          exportExcel: 'Export Excel', exportPdf: 'Export PDF',
+          kpiTotalAttempts: 'Total Attempts', kpiAvgScore: 'Average Score', kpiPassRate: 'Pass Rate', kpiAvgTime: 'Avg. Time Spent', minutesUnit: 'min',
+          searchPlaceholder: 'Search by student name or ID…', clearSearch: 'Clear search',
+          filterQuizLabel: 'Quiz Title', filterQuizAll: 'All Quizzes',
+          filterStatusLabel: 'Status', filterStatusAll: 'All Statuses',
+          statusPassed: 'Passed', statusFailed: 'Failed', statusInProgress: 'In Progress',
+          filterDateLabel: 'Date', dateAll: 'All Time', dateToday: 'Today', dateWeek: 'This Week', dateMonth: 'This Month', date30: 'Last 30 Days',
+          resetFilters: 'Reset Filters',
+          colStudent: 'Student & ID', colQuiz: 'Quiz', colScore: 'Score & Percentage', colStatus: 'Status', colTime: 'Time Taken', colDate: 'Submission Date', colActions: 'Actions',
+          actViewDetails: 'View Details', noScoreYet: 'Score not available yet', startedAt: 'Attempt started',
+          showing: 'Showing', of: 'of', attemptsWord: 'attempts', pagination: 'Pagination', prev: 'Previous page', next: 'Next page',
+          detailsTitle: 'Student Attempt Details', detailsClose: 'Close', detailsQuiz: 'Quiz', openGrading: 'Open Full Grading Screen', actGrade: 'Grade',
+          detailsScore: 'Score', detailsPercentage: 'Percentage', detailsTimeSpent: 'Time Spent',
+          detailsBreakdownTitle: 'Answer Breakdown (sample)', detailsQuestionLabel: 'Question',
+          detailsStudentAnswer: "Student's Answer", detailsCorrectAnswer: 'Correct Answer', detailsAiFeedback: 'AI Feedback',
+          inProgressNotice: 'This student has not finished the attempt yet — the score and detailed breakdown will appear once the quiz is submitted.',
+          sampleNotice: 'The questions above are a representative sample for preview purposes only — the full breakdown for all questions will be available on the complete screen via Livewire.',
+          toastExport: 'The {type} report was prepared successfully (preview only)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'quizzes',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'newAttempt', time: '6m', read: false, icon: 'fa-solid fa-circle-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'lowPassRate', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-error-500/15 text-error-700 dark:text-error-500' },
+        { id: 3, key: 'aiFeedbackReady', time: '5h', read: true, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-accent-700 dark:text-accent-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- شريط البحث والفلاتر (عرض فقط — بلا منطق فلترة فعلي؛ سيُنفَّذ عبر Livewire) ---------- */
+      searchQuery: '', selectedQuiz: 'all', selectedStatus: 'all', selectedDate: 'all',
+      resetFilters() {
+        this.searchQuery = ''; this.selectedQuiz = 'all'; this.selectedStatus = 'all'; this.selectedDate = 'all';
+      },
+
+      /* ---------- بيانات محاولات الاختبار الثابتة (quiz_attempts + quiz_answers) ---------- */
+      attempts: [
+        {
+          id: 'ATT-1042', studentName: 'ريم خالد الفرا', studentId: 'STU-1042', initials: 'رف',
+          quizCode: 'QZ-MATH-101', quizTitle: 'اختبار تشخيصي: الأعداد الصحيحة',
+          status: 'passed', marksEarned: 13, marksTotal: 15, percentage: 87, timeTaken: '14:52',
+          answers: [
+            { questionAr: 'أوجد نتيجة: (-7) + 12', studentAnswerAr: '5', correctAnswerAr: '5', isCorrect: true, marksEarned: 3, marksTotal: 3, feedbackAr: 'إجابة صحيحة ومباشرة، تم تطبيق قاعدة جمع الأعداد المختلفة في الإشارة بشكل سليم.' },
+            { questionAr: 'رتب الأعداد تصاعديًا: -3, 5, -8, 0', studentAnswerAr: '-8, -3, 0, 5', correctAnswerAr: '-8, -3, 0, 5', isCorrect: true, marksEarned: 4, marksTotal: 4, feedbackAr: 'ترتيب صحيح تمامًا، ويُظهر فهمًا جيدًا لمحور الأعداد.' },
+            { questionAr: 'احسب: 15 - (-9)', studentAnswerAr: '6', correctAnswerAr: '24', isCorrect: false, marksEarned: 0, marksTotal: 3, feedbackAr: 'خطأ شائع: تم التعامل مع طرح السالب كجمع سالب بدل تحويله إلى عملية جمع. يُنصح بمراجعة قاعدة «طرح السالب = جمع العدد».' },
+          ],
+        },
+        {
+          id: 'ATT-1077', studentName: 'أحمد ياسر حمدان', studentId: 'STU-1077', initials: 'أح',
+          quizCode: 'QZ-MATH-102', quizTitle: 'اختبار تكويني: خصائص الضرب',
+          status: 'passed', marksEarned: 9, marksTotal: 10, percentage: 90, timeTaken: '11:40',
+          answers: [
+            { questionAr: 'ما ناتج 6 × 7؟', studentAnswerAr: '42', correctAnswerAr: '42', isCorrect: true, marksEarned: 2, marksTotal: 2, feedbackAr: 'إجابة صحيحة باستخدام جدول الضرب مباشرة.' },
+            { questionAr: 'ما ناتج (-4) × (-3)؟', studentAnswerAr: '-12', correctAnswerAr: '12', isCorrect: false, marksEarned: 0, marksTotal: 2, feedbackAr: 'خطأ في قاعدة الإشارات: حاصل ضرب سالب في سالب يكون موجبًا دائمًا. يُنصح بمراجعة جدول قواعد الإشارات.' },
+            { questionAr: 'أي خاصية تُستخدم في: 3 × (4 + 2) = (3×4) + (3×2)؟', studentAnswerAr: 'خاصية التوزيع', correctAnswerAr: 'خاصية التوزيع', isCorrect: true, marksEarned: 3, marksTotal: 3, feedbackAr: 'تحديد دقيق لخاصية التوزيع (Distributive Property).' },
+          ],
+        },
+        {
+          id: 'ATT-1090', studentName: 'دانة سامي قديح', studentId: 'STU-1090', initials: 'دق',
+          quizCode: 'QZ-SCI-201', quizTitle: 'اختبار ختامي: تركيب الخلية',
+          status: 'failed', marksEarned: 22, marksTotal: 50, percentage: 44, timeTaken: '35:10',
+          answers: [
+            { questionAr: 'ما الجزء المسؤول عن توليد الطاقة في الخلية؟', studentAnswerAr: 'النواة', correctAnswerAr: 'الميتوكوندريا', isCorrect: false, marksEarned: 0, marksTotal: 5, feedbackAr: 'خلط بين وظيفة النواة (التحكم) والميتوكوندريا (توليد الطاقة/ATP). يُنصح بمراجعة وظائف العضيات الخلوية.' },
+            { questionAr: 'ما الغشاء الذي يُنظّم دخول وخروج المواد من الخلية؟', studentAnswerAr: 'الغشاء البلازمي', correctAnswerAr: 'الغشاء البلازمي', isCorrect: true, marksEarned: 5, marksTotal: 5, feedbackAr: 'إجابة دقيقة لوظيفة الغشاء البلازمي الانتقائي.' },
+            { questionAr: 'اذكر الفرق بين الخلية النباتية والحيوانية من حيث الجدار الخلوي.', studentAnswerAr: 'لا يوجد فرق', correctAnswerAr: 'الخلية النباتية تحتوي على جدار خلوي سليلوزي، والحيوانية لا تحتوي عليه', isCorrect: false, marksEarned: 0, marksTotal: 5, feedbackAr: 'إجابة غير دقيقة — الفرق الجوهري هو وجود الجدار الخلوي السليلوزي في الخلية النباتية فقط. يُنصح بإعادة مراجعة الدرس.' },
+          ],
+        },
+        {
+          id: 'ATT-1103', studentName: 'عمر وليد أبو شريعة', studentId: 'STU-1103', initials: 'عو',
+          quizCode: 'QZ-SCI-202', quizTitle: 'اختبار تشخيصي: التفاعلات الكيميائية',
+          status: 'in_progress', marksEarned: null, marksTotal: 12, percentage: null, timeTaken: null,
+          answers: [],
+        },
+        {
+          id: 'ATT-1121', studentName: 'لين ناصر الحلاق', studentId: 'STU-1121', initials: 'لح',
+          quizCode: 'QZ-ARAB-301', quizTitle: 'اختبار تكويني: عناصر القصة القصيرة',
+          status: 'passed', marksEarned: 7, marksTotal: 8, percentage: 88, timeTaken: '08:40',
+          answers: [
+            { questionAr: 'عدّد عنصرين من عناصر القصة القصيرة.', studentAnswerAr: 'الحدث والشخصية', correctAnswerAr: 'الحدث والشخصية', isCorrect: true, marksEarned: 2, marksTotal: 2, feedbackAr: 'إجابة صحيحة وشاملة لعنصرين أساسيين من عناصر القصة.' },
+            { questionAr: 'ما وظيفة الحبكة في القصة؟', studentAnswerAr: 'ترتيب الأحداث بشكل مشوّق ومنطقي', correctAnswerAr: 'ترتيب الأحداث بشكل مشوّق ومنطقي', isCorrect: true, marksEarned: 3, marksTotal: 3, feedbackAr: 'تعريف دقيق لمفهوم الحبكة الفنية.' },
+            { questionAr: 'من الذي يروي أحداث القصة؟', studentAnswerAr: 'الكاتب فقط', correctAnswerAr: 'الراوي (قد يكون شخصية أو صوتًا خارجيًا)', isCorrect: false, marksEarned: 0, marksTotal: 3, feedbackAr: 'خلط بين الكاتب والراوي كمصطلح أدبي. يُنصح بمراجعة درس زوايا السرد.' },
+          ],
+        },
+        {
+          id: 'ATT-1134', studentName: 'كريم باسم النجار', studentId: 'STU-1134', initials: 'كن',
+          quizCode: 'QZ-ARAB-302', quizTitle: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية',
+          status: 'failed', marksEarned: 28, marksTotal: 60, percentage: 47, timeTaken: '40:02',
+          answers: [
+            { questionAr: 'ما عنصران من عناصر الصورة الشعرية؟', studentAnswerAr: 'التشبيه والاستعارة', correctAnswerAr: 'التشبيه والاستعارة', isCorrect: true, marksEarned: 4, marksTotal: 4, feedbackAr: 'تحديد صحيح لعنصرين من الصورة الشعرية.' },
+            { questionAr: 'ما الغرض من النص الوصفي؟', studentAnswerAr: 'سرد الأحداث بالترتيب الزمني', correctAnswerAr: 'تقديم مشهد حسي دقيق للمكان أو الشخص', isCorrect: false, marksEarned: 0, marksTotal: 4, feedbackAr: 'خلط بين النص الوصفي والنص السردي. يُنصح بمراجعة الفرق بين أنماط الكتابة.' },
+            { questionAr: 'استخرج فعلًا ماضيًا من البيت الشعري المعروض.', studentAnswerAr: 'إجابة مستخرجة بدقة', correctAnswerAr: 'إجابة مستخرجة بدقة', isCorrect: true, marksEarned: 4, marksTotal: 4, feedbackAr: 'استخراج دقيق للفعل الماضي من السياق الشعري.' },
+          ],
+        },
+      ],
+
+      /* ---------- اللوحة الجانبية: تفاصيل المحاولة ---------- */
+      detailsOpen: false, detailsTarget: null,
+      openDetails(attempt) { this.detailsTarget = attempt; this.detailsOpen = true; },
+      closeDetails() { this.detailsOpen = false; this.detailsTarget = null; },
+
+      /* ---------- التصدير (إجراء معاينة فقط) ---------- */
+      exportReport(type) { this.toastSuccess(this.tf('qr.toastExport', { type })); },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        this.detailsOpen = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>منشئ الاختبارات — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+<!-- بيانات تجريبية مشتركة (مقررات/وحدات/دروس/مفاهيم) — تُحذف عند الانتقال إلى Laravel -->
+<script src="../asset/js/firob-mock-data.js"></script>
+<!-- نسخة احتياطية مطابقة: تعمل الصفحة حتى لو لم يُوضع الملف في asset/js -->
+<script>
+window.FIROB_MOCK = window.FIROB_MOCK || {
+  /* إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس شاشة ADM-05 */
+  structure: {
+    units:   { enabled: true, required: true },
+    lessons: { enabled: true, required: true },
+  },
+
+  /* المقررات (Subject) — الصف خاصية على المقرر (subjects.grade_id) */
+  courses: [
+    { id: 'math-g7', ar: 'الرياضيات - الصف السابع',     en: 'Mathematics - Grade 7',     gradeAr: 'السابع الأساسي', gradeEn: 'Grade 7', icon: 'fa-square-root-variable', cls: 'bg-primary-500/10 text-brand' },
+    { id: 'sci-g8',  ar: 'العلوم العامة - الصف الثامن', en: 'General Science - Grade 8', gradeAr: 'الثامن الأساسي', gradeEn: 'Grade 8', icon: 'fa-flask',                cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+    { id: 'arab-g9', ar: 'اللغة العربية - الصف التاسع', en: 'Arabic Language - Grade 9', gradeAr: 'التاسع الأساسي', gradeEn: 'Grade 9', icon: 'fa-book-open',            cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+  ],
+
+  /* الوحدات (Unit — units.subject_id) */
+  units: [
+    { id: 'u101', courseId: 'math-g7', ar: 'الوحدة الأولى: الأعداد الصحيحة',      en: 'Unit 1: Integers' },
+    { id: 'u102', courseId: 'math-g7', ar: 'الوحدة الثانية: الكسور والنسب',       en: 'Unit 2: Fractions & Ratios' },
+    { id: 'u201', courseId: 'sci-g8',  ar: 'الوحدة الأولى: الخلية ومكوناتها',     en: 'Unit 1: The Cell & Its Components' },
+    { id: 'u202', courseId: 'sci-g8',  ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions' },
+    { id: 'u301', courseId: 'arab-g9', ar: 'الوحدة الأولى: النصوص الأدبية',       en: 'Unit 1: Literary Texts' },
+  ],
+
+  /* الدروس (Lesson — lessons.unit_id) */
+  lessons: [
+    { id: 'l1011', unitId: 'u101', ar: 'جمع الأعداد الصحيحة وطرحها',        en: 'Adding & Subtracting Integers' },
+    { id: 'l1012', unitId: 'u101', ar: 'ضرب الأعداد الصحيحة وقسمتها',       en: 'Multiplying & Dividing Integers' },
+    { id: 'l1021', unitId: 'u102', ar: 'تبسيط الكسور',                      en: 'Simplifying Fractions' },
+    { id: 'l1022', unitId: 'u102', ar: 'النسبة والتناسب',                   en: 'Ratio & Proportion' },
+    { id: 'l2011', unitId: 'u201', ar: 'مكونات الخلية النباتية',             en: 'Plant Cell Components' },
+    { id: 'l2012', unitId: 'u201', ar: 'تركيب الخلية النباتية والحيوانية',   en: 'Plant & Animal Cell Structure' },
+    { id: 'l2021', unitId: 'u202', ar: 'أنواع التفاعلات الكيميائية',         en: 'Types of Chemical Reactions' },
+    { id: 'l2022', unitId: 'u202', ar: 'موازنة المعادلات الكيميائية',        en: 'Balancing Chemical Equations' },
+    { id: 'l3011', unitId: 'u301', ar: 'تحليل النص الشعري',                 en: 'Analysing Poetry' },
+    { id: 'l3012', unitId: 'u301', ar: 'عناصر القصة القصيرة',               en: 'Short Story Elements' },
+  ],
+
+  /* المفاهيم (Concept) — links = withCount(['learningObjects', 'questions']) */
+  concepts: [
+    { id: 1,  code: 'CPT-MATH-001', ar: 'الأعداد الصحيحة الموجبة والسالبة', en: 'Positive & Negative Integers',
+      descAr: 'يشرح مفهوم الأعداد الصحيحة الموجبة والسالبة وطرق تمثيلها على خط الأعداد.',
+      descEn: 'Explains positive and negative integers and how to represent them on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', links: { objects: 6, questions: 24 } },
+    { id: 2,  code: 'CPT-MATH-002', ar: 'خاصية الإبدال في الضرب', en: 'Commutative Property of Multiplication',
+      descAr: 'يوضّح أن ترتيب العددين المضروبين لا يغيّر حاصل الضرب.',
+      descEn: 'Shows that the order of the two multiplied numbers does not change the product.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', links: { objects: 3, questions: 10 } },
+    { id: 3,  code: 'CPT-MATH-003', ar: 'القيمة المطلقة للعدد', en: 'Absolute Value of a Number',
+      descAr: 'يعرّف القيمة المطلقة بأنها المسافة بين العدد والصفر على خط الأعداد.',
+      descEn: 'Defines absolute value as the distance between a number and zero on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 4,  code: 'CPT-SCI-004', ar: 'تركيب الخلية النباتية والحيوانية', en: 'Plant & Animal Cell Structure',
+      descAr: 'يقارن بين مكونات الخلية النباتية والخلية الحيوانية ووظائف كل عضو فيها.',
+      descEn: 'Compares the components of plant and animal cells and the function of each organelle.',
+      courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', links: { objects: 4, questions: 12 } },
+    { id: 5,  code: 'CPT-SCI-005', ar: 'موازنة المعادلة الكيميائية', en: 'Balancing Chemical Equations',
+      descAr: 'يشرح كيفية موازنة عدد الذرات في طرفي المعادلة الكيميائية باستخدام المعاملات.',
+      descEn: 'Explains how to balance atom counts on both sides of a chemical equation using coefficients.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: null, links: { objects: 2, questions: 0 } },
+    { id: 6,  code: 'CPT-ARAB-006', ar: 'عناصر القصة القصيرة: الشخصية', en: 'Elements of the Short Story: Character',
+      descAr: 'يتناول دور الشخصية في بناء الحبكة وأنواعها في القصة القصيرة.',
+      descEn: 'Covers the role of character in building the plot and its types within a short story.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', links: { objects: 5, questions: 18 } },
+    { id: 7,  code: 'CPT-UNFL-007', ar: 'الصورة الشعرية', en: 'Poetic Imagery',
+      descAr: 'يعرّف الصورة الشعرية ودورها في تجسيد المعنى وإثراء النص الأدبي.',
+      descEn: 'Defines poetic imagery and its role in embodying meaning and enriching literary text.',
+      courseId: null, unitId: null, lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 8,  code: 'CPT-MATH-008', ar: 'تبسيط الكسور الاعتيادية', en: 'Simplifying Common Fractions',
+      descAr: 'يشرح قسمة البسط والمقام على العامل المشترك الأكبر للوصول إلى أبسط صورة.',
+      descEn: 'Explains dividing numerator and denominator by their GCD to reach the simplest form.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', links: { objects: 2, questions: 8 } },
+    { id: 9,  code: 'CPT-MATH-009', ar: 'النسبة المئوية', en: 'Percentages',
+      descAr: 'يعرّف النسبة المئوية كنسبة من مئة ويطبّقها على مسائل حياتية.',
+      descEn: 'Defines a percentage as a ratio out of one hundred and applies it to everyday problems.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 10, code: 'CPT-SCI-010', ar: 'التفاعلات الطاردة والماصة للحرارة', en: 'Exothermic & Endothermic Reactions',
+      descAr: 'يميّز بين التفاعلات التي تُطلق الحرارة والتي تمتصها مع أمثلة من الحياة اليومية.',
+      descEn: 'Distinguishes reactions that release heat from those that absorb it, with everyday examples.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', links: { objects: 1, questions: 6 } },
+    { id: 11, code: 'CPT-ARAB-011', ar: 'الوزن الشعري', en: 'Poetic Metre',
+      descAr: 'يعرّف الوزن الشعري والتفعيلات الأساسية في الشعر العربي.',
+      descEn: 'Defines poetic metre and the basic feet of Arabic poetry.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3011', links: { objects: 0, questions: 0 } },
+    { id: 12, code: 'CPT-ARAB-012', ar: 'التشبيه', en: 'Simile',
+      descAr: 'يعرّف التشبيه وأركانه الأربعة وأنواعه.',
+      descEn: 'Defines the simile, its four components and its types.',
+      courseId: 'arab-g9', unitId: null, lessonId: null, links: { objects: 3, questions: 0 } },
+  ],
+};
+</script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }  /* كان 1.09:1 في الداكن */
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/60 bg-accent-500/15 text-yellow-900 hover:bg-accent-500/25 dark:text-accent-500; }  /* كان 1.99:1 */
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- بطاقة المفهوم / نوع السؤال (Icon Chip) ---------- */
+    .course-icon { @apply grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg; }
+
+    /* ---------- شريط الإجراءات الثابت (Sticky Action Bar) ---------- */
+    .sticky-actions { @apply sticky z-20 border-line bg-card; }   /* بلا blur: يُعاد رسمه مع كل تمرير */
+    :root { --sticky-top: var(--topbar-h); }
+    @media (min-width: 640px) { :root { --sticky-top: calc(var(--topbar-h) + 2.125rem); } }   /* ارتفاع شريط المسار المقاس */
+    main.qb-main { padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px)); }
+    @media (min-width: 1024px) { main.qb-main { padding-bottom: 2rem; } }
+
+    /* ---------- أقراص الاختيار ---------- */
+    .pill-option { @apply flex cursor-pointer select-none items-center justify-center gap-2 rounded-xl border border-line-strong px-3 py-2.5 text-center text-sm font-bold text-ink transition hover:border-primary-500; }
+    .pill-option.is-checked { @apply border-primary-700 bg-soft text-brand; }
+    .pill-option.is-correct { @apply border-success-700 bg-success-50 text-success-800 dark:border-success-500 dark:bg-success-500/10 dark:text-success-500; }
+    .pill-option:focus-within { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }
+
+    /* ---------- حقل نص الخيار: تركيز مرئي (كان focus:ring-0 + box-shadow:none) ---------- */
+    .opt-input { @apply min-w-0 flex-1 rounded-md bg-transparent px-2 py-1.5 text-sm text-ink placeholder:text-muted; }
+    .opt-input:focus-visible, .opt-input:focus { outline: 2px solid rgb(var(--brand)); outline-offset: 1px; }
+
+    /* ---------- المنزلق ---------- */
+    .range { @apply h-2 w-full cursor-pointer appearance-none rounded-full;
+             background: linear-gradient(to right, rgb(var(--brand)) var(--pct, 50%), rgb(var(--line-strong)) var(--pct, 50%)); }
+    [dir="rtl"] .range { background: linear-gradient(to left, rgb(var(--brand)) var(--pct, 50%), rgb(var(--line-strong)) var(--pct, 50%)); }
+    .range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 1.25rem; width: 1.25rem; border-radius: 9999px; background: rgb(var(--brand)); border: 3px solid rgb(var(--card)); box-shadow: 0 0 0 1px rgb(var(--brand)); }
+    .range::-moz-range-thumb { height: 1.25rem; width: 1.25rem; border-radius: 9999px; background: rgb(var(--brand)); border: 3px solid rgb(var(--card)); box-shadow: 0 0 0 1px rgb(var(--brand)); }
+    .range:focus-visible { outline: 3px solid rgb(var(--brand)); outline-offset: 6px; }
+
+    /* ---------- الأداء + الطبقات ---------- */
+    article.q-card { content-visibility: auto; contain-intrinsic-size: auto 520px; }
+    .overlay-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .overlay-backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      header.app-topbar { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: rgb(var(--card)); }
+    }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="quizBuilder()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="overlay-backdrop fixed inset-0 z-40 bg-primary-900/60 lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="app-topbar sticky top-0 z-30 flex flex-col border-b border-line bg-card/90 backdrop-blur-sm">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li><a href="CoursesManagement.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.coursesManagement')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li><a href="quizzes.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.quizzes')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('qb.breadcrumbCurrent')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= شريط الإجراءات الثابت (سطح المكتب فقط — الجوال له شريط سفلي) ================= -->
+    <div class="sticky-actions hidden border-b lg:block" style="top: var(--sticky-top)">
+      <div class="mx-auto flex w-full max-w-[1400px] flex-wrap items-center justify-between gap-3 px-6 py-3 lg:px-8">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-extrabold text-ink" :lang="locale" x-text="displayTitle"></p>
+          <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+            <span class="badge" :class="statusMeta.cls"><i class="fa-solid text-[9px]" :class="statusMeta.icon" aria-hidden="true"></i> <span x-text="t('qb.status.' + quizForm.status)"></span></span>
+            <span x-show="quizForm.code"><bdi class="font-mono" dir="ltr" x-text="quizForm.code"></bdi> ·</span>
+            <span x-text="saveStateText"></span>
+          </p>
+          <p class="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-bold text-muted">
+            <span x-text="pluralize('questions', questions.length)"></span>
+            <span aria-hidden="true">·</span>
+            <span x-text="tf('qb.totalMarksN', { n: totalMarks })"></span>
+            <span aria-hidden="true">·</span>
+            <span :class="issues.length ? 'text-danger' : 'text-success-700 dark:text-success-500'"
+                  x-text="issues.length ? tf('qb.issuesN', { n: issues.length }) : t('qb.readyToSubmit')"></span>
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <a href="quizzes.html" class="btn btn-outline">
+            <i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i>
+            <span x-text="t('qb.actBack')"></span>
+          </a>
+          <button type="button" class="btn btn-outline" @click="saveDraft()" :disabled="savingDraft" :aria-busy="savingDraft.toString()">
+            <i class="fa-solid" :class="savingDraft ? 'fa-circle-notch motion-safe:animate-spin' : 'fa-floppy-disk'" aria-hidden="true"></i>
+            <span x-text="t('qb.actSaveDraft')"></span>
+          </button>
+          <button type="button" class="btn btn-outline" aria-haspopup="dialog" @click="openPreview($event)">
+            <i class="fa-regular fa-eye" aria-hidden="true"></i>
+            <span x-text="t('qb.actPreview')"></span>
+          </button>
+          <button type="button" class="btn btn-accent" @click="submitForReview()" :disabled="publishing" :aria-busy="publishing.toString()"
+                  :aria-describedby="issues.length ? 'qb-issues' : null">
+            <i class="fa-solid" :class="publishing ? 'fa-circle-notch motion-safe:animate-spin' : 'fa-paper-plane'" aria-hidden="true"></i>
+            <span x-text="t('qb.actSubmit')"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= المحتوى الرئيسي — منشئ الاختبارات ================= -->
+    <main id="main" tabindex="-1" class="qb-main mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-6 px-3 py-4 focus:outline-none sm:p-6 lg:p-8">
+
+      <section class="min-w-0">
+        <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t(mode === 'edit' ? 'qb.titleEdit' : 'qb.titleCreate')"></h1>
+        <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qb.subtitle')"></p>
+      </section>
+
+      <p class="sr-only" role="status" aria-live="polite" x-text="liveMsg"></p>
+
+      <!-- تنبيه تعديل اختبار منشور -->
+      <div x-show="originalStatus === 'published'" x-cloak class="flex items-start gap-3 rounded-2xl border border-warning-500/40 bg-warning-500/10 px-4 py-3 text-sm" role="note">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5 text-warning-800 dark:text-warning-500" aria-hidden="true"></i>
+        <p class="font-bold text-ink" x-text="tf('qb.editPublishedNote', { attempts: pluralize('attempts', attempts) })"></p>
+      </div>
+
+      <!-- ملخص المشكلات بعد محاولة الإرسال -->
+      <div x-show="submitted && issues.length" x-cloak id="qb-issues" class="rounded-2xl border border-error-600/40 bg-error-500/5 p-4" role="alert" tabindex="-1" x-ref="issuesBox">
+        <p class="flex items-center gap-2 font-extrabold text-danger"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="tf('qb.issuesTitle', { n: issues.length })"></span></p>
+        <ul class="mt-2 space-y-1 text-sm" role="list">
+          <template x-for="(is, k) in issues.slice(0, 8)" :key="k">
+            <li><button type="button" class="text-start font-bold text-ink underline underline-offset-2 hover:text-brand" @click="goToIssue(is)" x-text="is.label"></button></li>
+          </template>
+          <li x-show="issues.length > 8" class="text-xs text-muted" x-text="tf('qb.andMore', { n: issues.length - 8 })"></li>
+        </ul>
+      </div>
+
+      <!-- ================= Section 1: بيانات الاختبار ================= -->
+      <section class="panel p-5 sm:p-6" aria-labelledby="section1-title">
+        <div class="mb-5 flex items-center gap-3">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-circle-info"></i></span>
+          <div class="min-w-0">
+            <h2 id="section1-title" class="text-lg font-extrabold text-ink" x-text="t('qb.section1Title')"></h2>
+            <p class="text-xs text-muted sm:text-sm" x-text="t('qb.section1Sub')"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label for="qb-titleAr" class="label"><span x-text="t('qb.fieldTitleAr')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="qb-titleAr" type="text" x-model="quizForm.titleAr" class="field" lang="ar" dir="rtl" aria-required="true" maxlength="150"
+                   :placeholder="t('qb.fieldTitleArPh')" :aria-invalid="(submitted && !!fieldError('titleAr')).toString()" aria-describedby="qb-titleAr-err">
+            <p id="qb-titleAr-err" class="err" x-show="submitted && fieldError('titleAr')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="fieldError('titleAr')"></span></p>
+          </div>
+          <div>
+            <label for="qb-titleEn" class="label"><span x-text="t('qb.fieldTitleEn')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="qb-titleEn" type="text" x-model="quizForm.titleEn" class="field" lang="en" dir="ltr" aria-required="true" maxlength="150"
+                   :placeholder="t('qb.fieldTitleEnPh')" :aria-invalid="(submitted && !!fieldError('titleEn')).toString()" aria-describedby="qb-titleEn-err">
+            <p id="qb-titleEn-err" class="err" x-show="submitted && fieldError('titleEn')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="fieldError('titleEn')"></span></p>
+          </div>
+        </div>
+
+        <fieldset class="mt-4 min-w-0">
+          <legend class="label mb-2" x-text="t('qb.fieldHierarchy')"></legend>
+          <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'qb-course', options: () => courseOpts(), get: () => quizForm.courseId, set: (v) => { setCourse(v) }, placeholder: () => t('qb.coursePh') })"
+                 @click.outside="closeList()">
+              <label id="qb-course-label" for="qb-course" class="label"><span x-text="t('qb.field.course')"></span> <span class="text-danger" aria-hidden="true" x-show="true">*</span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="qb-course" x-ref="btn" role="combobox" aria-haspopup="listbox" :aria-required="(true).toString()" :aria-invalid="(submitted && !!fieldError('course')).toString()" aria-describedby="qb-course-err"
+                        :aria-expanded="open.toString()" aria-controls="qb-course-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="qb-course-list" role="listbox" aria-labelledby="qb-course-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+              <p id="qb-course-err" class="err" x-show="submitted && !!fieldError('course')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="fieldError('course')"></span></p>
+            </div>
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'qb-unit', options: () => unitOpts(), get: () => quizForm.unitId, set: (v) => { setUnit(v) }, placeholder: () => quizForm.courseId ? t('qb.unitPh') : t('qb.pickCourseFirst') })"
+                 @click.outside="closeList()">
+              <label id="qb-unit-label" for="qb-unit" class="label"><span x-text="t('qb.field.unit')"></span> <span class="text-danger" aria-hidden="true" x-show="reqUnit">*</span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="qb-unit" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!quizForm.courseId" :aria-required="(reqUnit).toString()" :aria-invalid="(submitted && !!fieldError('unit')).toString()" aria-describedby="qb-unit-err"
+                        :aria-expanded="open.toString()" aria-controls="qb-unit-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="qb-unit-list" role="listbox" aria-labelledby="qb-unit-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+              <p id="qb-unit-err" class="err" x-show="submitted && !!fieldError('unit')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="fieldError('unit')"></span></p>
+            </div>
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'qb-lesson', options: () => lessonOpts(), get: () => quizForm.lessonId, set: (v) => { quizForm.lessonId = v }, placeholder: () => quizForm.unitId ? t('qb.lessonPh') : t('qb.pickUnitFirst') })"
+                 @click.outside="closeList()">
+              <label id="qb-lesson-label" for="qb-lesson" class="label"><span x-text="t('qb.field.lesson')"></span> <span class="text-danger" aria-hidden="true" x-show="reqLesson">*</span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="qb-lesson" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!quizForm.unitId" :aria-required="(reqLesson).toString()" :aria-invalid="(submitted && !!fieldError('lesson')).toString()" aria-describedby="qb-lesson-err"
+                        :aria-expanded="open.toString()" aria-controls="qb-lesson-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="qb-lesson-list" role="listbox" aria-labelledby="qb-lesson-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+              <p id="qb-lesson-err" class="err" x-show="submitted && !!fieldError('lesson')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="fieldError('lesson')"></span></p>
+            </div>
+          </div>
+          <p class="hint" x-text="t('qb.fieldHierarchyHint')"></p>
+        </fieldset>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'qb-type', options: () => typeOpts(), get: () => quizForm.type, set: (v) => { quizForm.type = v }, placeholder: '—' })"
+                 @click.outside="closeList()">
+              <label id="qb-type-label" for="qb-type" class="label"><span x-text="t('qb.fieldType')"></span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="qb-type" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="qb-type-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="qb-type-list" role="listbox" aria-labelledby="qb-type-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+          <div>
+            <label for="qb-duration" class="label" x-text="t('qb.fieldDuration')"></label>
+            <div class="relative">
+              <input id="qb-duration" type="number" min="1" max="240" inputmode="numeric" x-model.number="quizForm.duration" class="field pe-16"
+                     aria-describedby="qb-duration-unit qb-duration-err" :aria-invalid="(submitted && !!fieldError('duration')).toString()">
+              <span id="qb-duration-unit" class="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-xs font-bold text-muted" x-text="t('qb.minutesSuffix')"></span>
+            </div>
+            <p id="qb-duration-err" class="err" x-show="submitted && fieldError('duration')" x-text="fieldError('duration')"></p>
+          </div>
+          <div>
+            <p id="qb-total-label" class="label" x-text="t('qb.fieldTotalMarks')"></p>
+            <p class="field flex items-center justify-between gap-2 bg-soft font-bold tabular-nums" aria-labelledby="qb-total-label" aria-live="polite">
+              <span x-text="totalMarks"></span>
+              <span class="text-xs font-medium text-muted" x-text="t('qb.autoComputed')"></span>
+            </p>
+          </div>
+          <div>
+            <label for="qb-passing" class="label" x-text="t('qb.fieldPassingScore')"></label>
+            <div class="relative">
+              <input id="qb-passing" type="number" min="0" max="100" inputmode="numeric" x-model.number="quizForm.passingScore" class="field pe-10"
+                     aria-describedby="qb-passing-unit qb-passing-hint">
+              <span id="qb-passing-unit" class="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-xs font-bold text-muted">%</span>
+            </div>
+            <p id="qb-passing-hint" class="hint" x-text="tf('qb.passMarkHint', { n: passMark, total: totalMarks })"></p>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label for="qb-instructions" class="label" x-text="t('qb.fieldInstructions')"></label>
+          <textarea id="qb-instructions" rows="3" x-model="quizForm.instructions" class="field resize-y" lang="ar" dir="auto" maxlength="1000"
+                    :placeholder="t('qb.fieldInstructionsPh')" aria-describedby="qb-instructions-hint"></textarea>
+          <p id="qb-instructions-hint" class="hint" x-text="t('qb.fieldInstructionsHint')"></p>
+        </div>
+      </section>
+
+      <!-- ================= Section 2: أسئلة الاختبار ================= -->
+      <section aria-labelledby="section3-title">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div class="min-w-0">
+            <h2 id="section3-title" class="text-lg font-extrabold text-ink" x-text="t('qb.section3Title')"></h2>
+            <p class="text-xs text-muted sm:text-sm" x-text="tf('qb.section3Sub', { q: pluralize('questions', questions.length), m: totalMarks })"></p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-ai" aria-haspopup="dialog" @click="openAiModal($event)">
+              <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+              <span x-text="t('qb.aiGenerateBtn')"></span>
+            </button>
+            <button type="button" id="qb-add-q" class="btn btn-outline" @click="addQuestion()">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              <span x-text="t('qb.addManualQuestion')"></span>
+            </button>
+          </div>
+        </div>
+
+        <div x-show="!questions.length" class="panel flex flex-col items-center gap-3 border-dashed p-10 text-center">
+          <span class="grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-circle-question text-xl"></i></span>
+          <p class="font-extrabold" x-text="t('qb.emptyTitle')"></p>
+          <p class="max-w-sm text-sm text-muted" x-text="t('qb.emptySub')"></p>
+        </div>
+
+        <ol class="space-y-4" role="list">
+          <template x-for="(q, i) in questions" :key="q.uid">
+            <li>
+              <article class="q-card panel p-5" :data-q="q.uid" :aria-labelledby="'ql-' + q.uid"
+                       :class="submitted && questionErrors(q).length && 'ring-2 ring-error-600/40'">
+                <header class="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+                  <h3 :id="'ql-' + q.uid" class="flex flex-wrap items-center gap-2">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-500/10 text-sm font-extrabold text-brand tabular-nums" aria-hidden="true" x-text="i + 1"></span>
+                    <span class="sr-only" x-text="tf('qb.questionN', { n: i + 1 })"></span>
+                    <span class="badge" :class="TYPE_CLS[q.type]" x-text="t('qb.qType.' + q.type)"></span>
+                    <span class="badge badge-muted tabular-nums" x-text="tf('qb.marksN', { n: q.marks || 0 })"></span>
+                    <span x-show="q.source === 'ai'" class="badge badge-accent"><i class="fa-solid fa-wand-magic-sparkles text-[10px]" aria-hidden="true"></i> <span x-text="t('qb.srcAi')"></span></span>
+                    <span x-show="submitted && questionErrors(q).length" class="badge badge-danger"><i class="fa-solid fa-circle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('qb.needsFix')"></span></span>
+                  </h3>
+                  <div class="flex items-center gap-1.5">
+                    <button type="button" data-act="up" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" :disabled="i === 0" @click="move(i, -1)" :aria-label="t('qb.act.up') + ' — ' + tf('qb.questionN', { n: i + 1 })"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qb.act.up')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" data-act="down" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" :disabled="i === questions.length - 1" @click="move(i, 1)" :aria-label="t('qb.act.down') + ' — ' + tf('qb.questionN', { n: i + 1 })"><i class="fa-solid fa-arrow-down" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qb.act.down')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" data-act="duplicate" class="act group relative disabled:cursor-not-allowed disabled:opacity-40" @click="duplicate(i)" :aria-label="t('qb.act.duplicate') + ' — ' + tf('qb.questionN', { n: i + 1 })"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qb.act.duplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    <button type="button" data-act="delete" class="act group relative disabled:cursor-not-allowed disabled:opacity-40 !text-danger hover:!bg-error-500/10" @click="remove(i)" :aria-label="t('qb.act.delete') + ' — ' + tf('qb.questionN', { n: i + 1 })"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('qb.act.delete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                  </div>
+                </header>
+
+                <!-- نوع السؤال (أقراص — أخف من قائمة لكل بطاقة) -->
+                <fieldset class="min-w-0">
+                  <legend class="label" x-text="t('qb.qTypeLabel')"></legend>
+                  <div class="grid grid-cols-3 gap-2">
+                    <template x-for="ty in ['mcq', 'tf', 'essay']" :key="ty">
+                      <label class="pill-option" :class="q.type === ty && 'is-checked'">
+                        <input type="radio" class="sr-only" :name="'type-' + q.uid" :value="ty" :checked="q.type === ty" @change="changeType(q, ty, $event)">
+                        <i class="fa-solid text-xs" :class="TYPE_ICON[ty]" aria-hidden="true"></i>
+                        <span x-text="t('qb.qType.' + ty)"></span>
+                      </label>
+                    </template>
+                  </div>
+                </fieldset>
+
+                <!-- نص السؤال -->
+                <div class="mt-4">
+                  <label :for="'q-text-' + q.uid" class="label"><span x-text="t('qb.qTextLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                  <textarea :id="'q-text-' + q.uid" rows="2" x-model="q.text" class="field resize-y" lang="ar" dir="auto" aria-required="true" maxlength="2000"
+                            :aria-invalid="(submitted && qErr(q, 'text')).toString()" :aria-describedby="'q-text-err-' + q.uid"></textarea>
+                  <p :id="'q-text-err-' + q.uid" class="err" x-show="submitted && qErr(q, 'text')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('qb.v.text')"></span></p>
+                </div>
+
+                <!-- خيارات الاختيار من متعدد -->
+                <fieldset x-show="q.type === 'mcq'" class="mt-4 min-w-0" :aria-describedby="'q-opt-err-' + q.uid">
+                  <legend class="label" x-text="t('qb.optionsLegend')"></legend>
+                  <div class="space-y-2">
+                    <template x-for="(op, oi) in q.options" :key="oi">
+                      <div class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors"
+                           :class="q.correct === oi ? 'border-success-700 bg-success-50 dark:border-success-500 dark:bg-success-500/10' : 'border-line-strong/60'">
+                        <input type="radio" class="h-5 w-5 shrink-0 cursor-pointer accent-success-700" :name="'correct-' + q.uid" :checked="q.correct === oi"
+                               @change="q.correct = oi" :aria-label="tf('qb.markCorrectN', { n: oi + 1 })">
+                        <input type="text" :id="'q-opt-' + q.uid + '-' + oi" class="opt-input" x-model="q.options[oi]" lang="ar" dir="auto" maxlength="300"
+                               :aria-label="tf('qb.optionN', { n: oi + 1 })" :placeholder="tf('qb.optionN', { n: oi + 1 })">
+                        <span x-show="q.correct === oi" class="badge badge-success shrink-0"><i class="fa-solid fa-check text-[10px]" aria-hidden="true"></i> <span class="hidden sm:inline" x-text="t('qb.correctAnswer')"></span></span>
+                        <button type="button" class="act shrink-0 disabled:cursor-not-allowed disabled:opacity-40" :disabled="q.options.length <= 2"
+                                @click="removeOption(q, oi)" :aria-label="tf('qb.deleteOptionN', { n: oi + 1 })"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                      </div>
+                    </template>
+                  </div>
+                  <p :id="'q-opt-err-' + q.uid" class="err" x-show="submitted && (qErr(q, 'options') || qErr(q, 'optionsDup'))">
+                    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t(qErr(q, 'options') ? 'qb.v.options' : 'qb.v.optionsDup')"></span>
+                  </p>
+                  <button type="button" class="btn btn-outline btn-sm mt-3" @click="addOption(q)" :disabled="q.options.length >= 6">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i> <span x-text="t('qb.addOption')"></span>
+                  </button>
+                </fieldset>
+
+                <!-- صح / خطأ -->
+                <fieldset x-show="q.type === 'tf'" class="mt-4 min-w-0">
+                  <legend class="label" x-text="t('qb.correctAnswer')"></legend>
+                  <div class="grid grid-cols-2 gap-2">
+                    <template x-for="v in [true, false]" :key="String(v)">
+                      <label class="pill-option" :class="q.answer === v && 'is-checked is-correct'">
+                        <input type="radio" class="sr-only" :name="'tf-' + q.uid" :checked="q.answer === v" @change="q.answer = v">
+                        <i class="fa-solid text-xs" :class="v ? 'fa-check' : 'fa-xmark'" aria-hidden="true"></i>
+                        <span x-text="t(v ? 'qb.trueLabel' : 'qb.falseLabel')"></span>
+                      </label>
+                    </template>
+                  </div>
+                </fieldset>
+
+                <!-- مقالي -->
+                <div x-show="q.type === 'essay'" class="mt-4 space-y-3">
+                  <p class="rounded-xl border border-dashed border-line-strong/60 bg-page/50 p-3.5 text-xs leading-6 text-muted">
+                    <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i><span x-text="t('qb.essayNote')"></span>
+                  </p>
+                  <div>
+                    <label :for="'q-model-' + q.uid" class="label"><span x-text="t('qb.modelAnswerLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                    <textarea :id="'q-model-' + q.uid" rows="2" x-model="q.modelAnswer" class="field resize-y" lang="ar" dir="auto" maxlength="3000"
+                              :placeholder="t('qb.modelAnswerPh')" :aria-invalid="(submitted && qErr(q, 'modelAnswer')).toString()" :aria-describedby="'q-model-err-' + q.uid"></textarea>
+                    <p :id="'q-model-err-' + q.uid" class="err" x-show="submitted && qErr(q, 'modelAnswer')"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('qb.v.modelAnswer')"></span></p>
+                  </div>
+                </div>
+
+                <!-- الدرجة + الصعوبة + بلوم -->
+                <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label :for="'q-marks-' + q.uid" class="label"><span x-text="t('qb.marksLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+                    <input :id="'q-marks-' + q.uid" type="number" min="0.5" max="100" step="0.5" inputmode="decimal" x-model.number="q.marks" class="field"
+                           :aria-invalid="(submitted && qErr(q, 'marks')).toString()" :aria-describedby="'q-marks-err-' + q.uid">
+                    <p :id="'q-marks-err-' + q.uid" class="err" x-show="submitted && qErr(q, 'marks')" x-text="t('qb.v.marks')"></p>
+                  </div>
+                  <div>
+                    <label :for="'q-diff-' + q.uid" class="label" x-text="t('qb.difficultyLabel')"></label>
+                    <select :id="'q-diff-' + q.uid" x-model="q.difficulty" class="field">
+                      <template x-for="d in ['easy', 'medium', 'hard']" :key="d"><option :value="d" :selected="q.difficulty === d" x-text="t('qb.diff.' + d)"></option></template>
+                    </select>
+                  </div>
+                  <div>
+                    <label :for="'q-bloom-' + q.uid" class="label" x-text="t('qb.bloomLabel')"></label>
+                    <select :id="'q-bloom-' + q.uid" x-model="q.bloom" class="field">
+                      <template x-for="b in BLOOMS" :key="b"><option :value="b" :selected="q.bloom === b" x-text="t('qb.bloom.' + b)"></option></template>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="mt-4">
+                  <label :for="'q-explain-' + q.uid" class="label" x-text="t(q.type === 'essay' ? 'qb.rubricLabel' : 'qb.explanationLabel')"></label>
+                  <textarea :id="'q-explain-' + q.uid" rows="2" x-model="q.explanation" class="field resize-y" lang="ar" dir="auto" maxlength="2000"
+                            :placeholder="t(q.type === 'essay' ? 'qb.rubricPh' : 'qb.explanationPh')"></textarea>
+                </div>
+              </article>
+            </li>
+          </template>
+        </ol>
+
+        <div x-show="questions.length" class="mt-4 flex flex-wrap justify-center gap-2">
+          <button type="button" class="btn btn-outline" @click="addQuestion()">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i> <span x-text="t('qb.addManualQuestion')"></span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ================= شريط الإجراءات السفلي (الجوال/التابلت فقط) — صف واحد ================= -->
+<div class="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-card p-3 lg:hidden"
+     style="padding-bottom: max(.75rem, env(safe-area-inset-bottom, 0px));">
+  <p class="mb-2 flex items-center justify-center gap-x-2 text-xs font-bold text-muted">
+    <span x-text="pluralize('questions', questions.length)"></span><span aria-hidden="true">·</span>
+    <span x-text="tf('qb.totalMarksN', { n: totalMarks })"></span><span aria-hidden="true">·</span>
+    <span :class="issues.length ? 'text-danger' : 'text-success-700 dark:text-success-500'" x-text="issues.length ? tf('qb.issuesN', { n: issues.length }) : saveStateText"></span>
+  </p>
+  <div class="flex items-center gap-2">
+    <button type="button" class="btn btn-outline flex-1" @click="saveDraft()" :disabled="savingDraft">
+      <i class="fa-solid" :class="savingDraft ? 'fa-circle-notch motion-safe:animate-spin' : 'fa-floppy-disk'" aria-hidden="true"></i>
+      <span x-text="t('qb.actSaveDraftShort')"></span>
+    </button>
+    <button type="button" class="btn btn-outline" aria-haspopup="dialog" @click="openPreview($event)" :aria-label="t('qb.actPreview')">
+      <i class="fa-regular fa-eye" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="btn btn-accent flex-[2]" @click="submitForReview()" :disabled="publishing">
+      <i class="fa-solid" :class="publishing ? 'fa-circle-notch motion-safe:animate-spin' : 'fa-paper-plane'" aria-hidden="true"></i>
+      <span x-text="t('qb.actSubmitShort')"></span>
+    </button>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     معاينة الاختبار كما يراه الطالب (قراءة فقط)
+     ========================================================================== -->
+<div x-cloak x-show="previewOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closePreview()" aria-hidden="true"></div>
+  <div x-show="previewOpen" x-trap.noscroll.noreturn="previewOpen" role="dialog" aria-modal="true" aria-labelledby="pv-title"
+       @keydown.escape.stop.prevent="closePreview()"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel sm:max-w-2xl">
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <div class="min-w-0">
+        <p class="text-xs font-bold text-muted" x-text="t('qb.previewKicker')"></p>
+        <h2 id="pv-title" class="truncate text-lg font-extrabold text-ink" :lang="locale" x-text="displayTitle"></h2>
+      </div>
+      <button type="button" class="icon-btn" @click="closePreview()" :aria-label="t('qb.previewClose')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5">
+      <dl class="grid grid-cols-3 gap-3 text-center">
+        <div class="flex flex-col-reverse rounded-xl border border-line p-3"><dt class="mt-1 text-xs font-bold text-muted" x-text="t('qb.minutesSuffix')"></dt><dd class="text-xl font-extrabold tabular-nums text-brand" x-text="quizForm.duration || '—'"></dd></div>
+        <div class="flex flex-col-reverse rounded-xl border border-line p-3"><dt class="mt-1 text-xs font-bold text-muted" x-text="t('qb.fieldTotalMarks')"></dt><dd class="text-xl font-extrabold tabular-nums text-brand" x-text="totalMarks"></dd></div>
+        <div class="flex flex-col-reverse rounded-xl border border-line p-3"><dt class="mt-1 text-xs font-bold text-muted" x-text="t('qb.fieldPassingScore')"></dt><dd class="text-xl font-extrabold tabular-nums text-brand" x-text="passMark"></dd></div>
+      </dl>
+      <p x-show="quizForm.instructions.trim()" class="whitespace-pre-line rounded-xl bg-soft p-3.5 text-sm leading-6" lang="ar" dir="auto" x-text="quizForm.instructions"></p>
+      <ol class="space-y-3" role="list">
+        <template x-for="(q, i) in questions" :key="q.uid">
+          <li class="rounded-xl border border-line p-4" lang="ar" dir="auto">
+            <p class="flex items-start justify-between gap-3 font-bold leading-7">
+              <span><span class="text-muted" x-text="(i + 1) + '. '"></span><span x-text="q.text || '—'"></span></span>
+              <span class="badge badge-muted shrink-0 tabular-nums" x-text="tf('qb.marksN', { n: q.marks || 0 })"></span>
+            </p>
+            <ul x-show="q.type === 'mcq'" class="mt-2 space-y-1.5" role="list">
+              <template x-for="(op, oi) in q.options" :key="oi">
+                <li class="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm"><i class="fa-regular fa-circle text-muted" aria-hidden="true"></i><span x-text="op || '—'"></span></li>
+              </template>
+            </ul>
+            <div x-show="q.type === 'tf'" class="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <span class="rounded-lg border border-line px-3 py-2 text-center" x-text="t('qb.trueLabel')"></span>
+              <span class="rounded-lg border border-line px-3 py-2 text-center" x-text="t('qb.falseLabel')"></span>
+            </div>
+            <div x-show="q.type === 'essay'" class="mt-2 h-20 rounded-lg border border-dashed border-line-strong/60 bg-page/50" aria-hidden="true"></div>
+          </li>
+        </template>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     توليد أسئلة بالذكاء الاصطناعي — مرتبط بمقرر/درس الاختبار، والإضافة حقيقية
+     ========================================================================== -->
+<div x-cloak x-show="aiModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4">
+  <div class="overlay-backdrop absolute inset-0 bg-primary-900/60" @click="closeAiModal()" aria-hidden="true"></div>
+
+  <div x-show="aiModalOpen" x-trap.noscroll.noreturn="aiModalOpen" role="dialog" aria-modal="true" aria-labelledby="ai-title"
+       @keydown.escape.stop.prevent="closeAiModal()"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel sm:max-w-xl">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="ai-title" class="flex items-center gap-2.5 text-lg font-extrabold text-ink">
+        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-yellow-900 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+        <span x-text="t('qb.aiModalTitle')"></span>
+      </h2>
+      <button type="button" class="icon-btn" :disabled="aiBusy" @click="closeAiModal()" :aria-label="t('qb.aiCancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <!-- ---- النموذج ---- -->
+    <form x-show="!aiResults.length" novalidate @submit.prevent="generateWithAI()" class="flex min-h-0 flex-1 flex-col">
+      <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+        <p class="text-sm leading-6 text-muted" x-text="aiContextText"></p>
+        <p x-show="!quizForm.courseId" class="rounded-lg bg-warning-500/10 px-3 py-2.5 text-sm font-bold text-warning-800 dark:text-warning-500" x-text="t('qb.aiNeedCourse')"></p>
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'ai-concept', options: () => aiConceptOpts(), get: () => aiForm.concept, set: (v) => { aiForm.concept = v }, placeholder: '—' })"
+                 @click.outside="closeList()">
+              <label id="ai-concept-label" for="ai-concept" class="label"><span x-text="t('qb.aiFieldConcept')"></span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="ai-concept" x-ref="btn" role="combobox" aria-haspopup="listbox" :disabled="!quizForm.courseId"
+                        :aria-expanded="open.toString()" aria-controls="ai-concept-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-concept-list" role="listbox" aria-labelledby="ai-concept-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+        <div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'ai-bloom', options: () => aiBloomOpts(), get: () => aiForm.bloom, set: (v) => { aiForm.bloom = v }, placeholder: '—' })"
+                 @click.outside="closeList()">
+              <label id="ai-bloom-label" for="ai-bloom" class="label"><span x-text="t('qb.aiFieldBloom')"></span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="ai-bloom" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="ai-bloom-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-bloom-list" role="listbox" aria-labelledby="ai-bloom-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+            <div class="min-w-0"
+                 x-data="selectDropdown({ id: 'ai-qtype', options: () => aiTypeOpts(), get: () => aiForm.qtype, set: (v) => { aiForm.qtype = v }, placeholder: '—' })"
+                 @click.outside="closeList()">
+              <label id="ai-qtype-label" for="ai-qtype" class="label"><span x-text="t('qb.aiFieldQType')"></span></label>
+              <div class="relative" data-combo-anchor>
+                <button type="button" id="ai-qtype" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                        :aria-expanded="open.toString()" aria-controls="ai-qtype-list"
+                        :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                        class="field flex min-h-[2.75rem] w-full items-center justify-between gap-2 text-start font-bold"
+                        @click="toggleList()" @keydown="onKey($event)">
+                  <span class="truncate" :class="!selectedItem && 'font-medium text-muted'" x-text="triggerLabel"></span>
+                  <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+                </button>
+                <ul x-show="open" x-cloak x-ref="list" id="ai-qtype-list" role="listbox" aria-labelledby="ai-qtype-label"
+                    x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+                  <template x-for="(item, idx) in items" :key="item.value">
+                    <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                        class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                        @click="choose(item)" @mousemove="active = idx">
+                      <span class="truncate" x-text="item.label"></span>
+                      <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </div>
+        </div>
+        <fieldset class="min-w-0">
+          <legend class="label" x-text="t('qb.difficultyLabel')"></legend>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <template x-for="d in ['easy', 'medium', 'hard', 'mixed']" :key="d">
+              <label class="pill-option" :class="aiForm.difficulty === d && 'is-checked'">
+                <input type="radio" name="ai-difficulty" :value="d" x-model="aiForm.difficulty" class="sr-only">
+                <span x-text="t('qb.diff.' + d)"></span>
+              </label>
+            </template>
+          </div>
+        </fieldset>
+        <div>
+          <label for="ai-count" class="label flex items-center justify-between gap-2">
+            <span x-text="t('qb.aiFieldCount')"></span>
+            <output for="ai-count" class="font-mono text-brand" aria-hidden="true" x-text="aiForm.count"></output>
+          </label>
+          <input id="ai-count" type="range" min="1" max="10" step="1" class="range" x-model.number="aiForm.count"
+                 :style="`--pct:${(aiForm.count - 1) / 9 * 100}%`" :aria-valuetext="pluralize('questions', aiForm.count)">
+          <div class="mt-1 flex justify-between text-xs tabular-nums text-muted" aria-hidden="true"><span>1</span><span>10</span></div>
+        </div>
+        <p class="flex items-center justify-between gap-2 text-xs font-bold text-muted">
+          <span><i class="fa-solid fa-coins me-1" aria-hidden="true"></i> <span x-text="t('qb.aiEstimate')"></span></span>
+          <span class="tabular-nums" dir="ltr" x-text="'≈ ' + fmt(aiEstimate) + ' ' + t('qb.tokens')"></span>
+        </p>
+      </div>
+      <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" :disabled="aiBusy" @click="closeAiModal()" x-text="t('qb.aiCancel')"></button>
+        <button type="submit" class="btn btn-accent" :disabled="aiBusy || !quizForm.courseId" :aria-busy="aiBusy.toString()">
+          <i class="fa-solid" :class="aiBusy ? 'fa-circle-notch motion-safe:animate-spin' : 'fa-wand-magic-sparkles'" aria-hidden="true"></i>
+          <span x-text="aiBusy ? t('qb.aiGenerating') : t('qb.aiSubmit')"></span>
+        </button>
+      </footer>
+    </form>
+
+    <!-- ---- النتائج ---- -->
+    <div x-show="aiResults.length" x-cloak class="flex min-h-0 flex-1 flex-col">
+      <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+        <p x-ref="aiResultsHead" tabindex="-1" class="flex items-center gap-2 text-sm font-bold text-success-700 focus:outline-none dark:text-success-500">
+          <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+          <span x-text="tf('qb.aiResultsReady', { q: pluralize('questions', aiResults.length) })"></span>
+        </p>
+        <template x-for="(r, ri) in aiResults" :key="r.uid">
+          <div class="rounded-xl border p-4" :class="r.added ? 'border-success-500/50 bg-success-500/5' : 'border-line'">
+            <div class="mb-2 flex items-start justify-between gap-3">
+              <p class="text-sm font-bold leading-6 text-ink" lang="ar" dir="rtl" x-text="r.text"></p>
+              <span class="badge shrink-0" :class="TYPE_CLS[r.type]" x-text="t('qb.qType.' + r.type)"></span>
+            </div>
+            <ul x-show="r.type === 'mcq'" class="mb-3 space-y-1 text-xs text-muted" lang="ar" dir="rtl" role="list">
+              <template x-for="(op, oi) in r.options || []" :key="oi">
+                <li class="flex items-center gap-1.5" :class="oi === r.correct && 'font-bold text-success-700 dark:text-success-500'">
+                  <i class="fa-regular" :class="oi === r.correct ? 'fa-circle-dot' : 'fa-circle'" aria-hidden="true"></i>
+                  <span x-text="op"></span><span x-show="oi === r.correct" class="sr-only" x-text="' — ' + t('qb.correctAnswer')"></span>
+                </li>
+              </template>
+            </ul>
+            <p x-show="r.type === 'tf'" class="mb-3 text-xs font-bold text-success-700 dark:text-success-500" x-text="t('qb.correctAnswer') + ': ' + t(r.answer ? 'qb.trueLabel' : 'qb.falseLabel')"></p>
+            <p x-show="r.type === 'essay'" class="mb-3 text-xs leading-5 text-muted" lang="ar" dir="rtl" x-text="t('qb.rubricLabel') + ': ' + (r.explanation || '')"></p>
+            <button type="button" class="btn btn-sm w-full" :class="r.added ? 'btn-outline' : 'btn-primary'" :disabled="r.added" @click="addGenerated(r)"
+                    :aria-label="(r.added ? t('qb.aiAdded') : t('qb.aiAddToQuiz')) + ': ' + r.text">
+              <i class="fa-solid" :class="r.added ? 'fa-check' : 'fa-plus'" aria-hidden="true"></i>
+              <span x-text="r.added ? t('qb.aiAdded') : t('qb.aiAddToQuiz')"></span>
+            </button>
+          </div>
+        </template>
+      </div>
+      <footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-line bg-page/40 p-4">
+        <button type="button" class="btn btn-outline" @click="aiResults = []; $nextTick(() => document.getElementById('ai-concept')?.focus())" x-text="t('qb.aiRegenerate')"></button>
+        <div class="flex gap-2">
+          <button type="button" class="btn btn-outline" @click="addAllGenerated()" :disabled="aiResults.every(r => r.added)" x-text="t('qb.aiAddAll')"></button>
+          <button type="button" class="btn btn-primary" @click="closeAiModal()" x-text="t('qb.aiDone')"></button>
+        </div>
+      </footer>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Select-only Combobox — نمط ARIA APG).
+   * options: () => [{ value, label }] | get: () => القيمة | set: (v) => تحديث
+   * لوحة المفاتيح: ↑↓ Home End Enter Space Esc Tab + البحث بالكتابة (type-ahead).
+   * Esc يوقف الانتشار حتى لا يُغلق اللوحة الجانبية/النافذة الأم (C5).
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : (typeof placeholder === 'function' ? placeholder() : placeholder); },  // placeholder تفاعلي مع اللغة
+      optId(item) { return this.id + '-opt-' + (item.value === '' ? 'none' : item.value); },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة منشئ الاختبارات.
+   * — الأسئلة حالة فعلية (x-for + x-model): إضافة/نسخ/حذف مع تراجع/نقل مع إعلان وتتبّع التركيز/تحويل النوع بتأكيد.
+   * — الدرجة الكلية محسوبة من مجموع درجات الأسئلة؛ التحقق يمنع الإرسال ويعرض قائمة مشكلات قابلة للنقر.
+   * — «إرسال للمراجعة» بدل النشر المباشر: الحالة in_review ← طابور المراجعة (نفس مسار المولّد والطابور).
+   * — حفظ تلقائي بعد 4 ثوانٍ من آخر تعديل + تحذير عند المغادرة بتغييرات غير محفوظة.
+   * — الهيكل الأكاديمي والمفاهيم من window.FIROB_MOCK.
+   * — في Livewire: QuizBuilder + QuizForm + $questions[] + saveDraft()/submitForReview() داخل DB::transaction مع version.
+   */
+  function quizBuilder() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const M = window.FIROB_MOCK;
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    let uidSeq = 0;
+    const uid = () => 'q' + (++uidSeq) + '-' + Date.now().toString(36);
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    const AR = /[؀-ۿ]/;
+    const BLOOMS = ['remembering', 'understanding', 'applying', 'analyzing', 'evaluating', 'creating'];
+    const DIFFS = ['easy', 'medium', 'hard'];
+    const CODE_PREFIX = { 'math-g7': 'MATH', 'sci-g8': 'SCI', 'arab-g9': 'ARAB' };
+
+    /* بنك أسئلة تجريبي مشترك مع مولّد المحتوى (يُحذف مع مزوّد AI حقيقي) */
+    const QBANK = {
+      'math-g7': {
+        mcq: [
+          { text: 'ما نتيجة ضرب (-4) × (-3)؟', options: ['12', '-12', '7', '-7'], correct: 0, explanation: 'حاصل ضرب عددين سالبين موجب دائمًا؛ لذلك (-4) × (-3) = 12.' },
+          { text: 'ما ناتج (-15) ÷ 5؟', options: ['3', '-3', '-20', '-10'], correct: 1, explanation: 'قسمة عدد سالب على عدد موجب تعطي ناتجًا سالبًا.' },
+          { text: 'أيّ الأعداد التالية هو الأصغر؟', options: ['-2', '0', '-9', '4'], correct: 2, explanation: 'كلما ابتعد العدد السالب عن الصفر صغرت قيمته.' },
+        ],
+        tf: [
+          { text: 'كل عدد صحيح موجب أكبر من أي عدد صحيح سالب.', answer: true, explanation: 'الأعداد الموجبة تقع يمين الصفر على خط الأعداد والسالبة يساره.' },
+          { text: 'ناتج جمع عددين سالبين يكون موجبًا دائمًا.', answer: false, explanation: 'جمع عددين سالبين يعطي عددًا سالبًا، مثل (-2) + (-5) = -7.' },
+          { text: 'القيمة المطلقة للعدد صفر تساوي صفرًا.', answer: true, explanation: 'المسافة بين الصفر ونفسه صفر.' },
+        ],
+        fill: [
+          { text: 'القيمة المطلقة للعدد (-9) تساوي ____.', answer: '9', explanation: 'القيمة المطلقة هي المسافة بين العدد والصفر.' },
+          { text: 'ناتج (-6) + 10 = ____.', answer: '4', explanation: 'نطرح القيمتين المطلقتين ونأخذ إشارة العدد الأكبر قيمةً مطلقة.' },
+          { text: 'المعكوس الجمعي للعدد 8 هو ____.', answer: '-8', explanation: 'مجموع العدد ومعكوسه الجمعي يساوي صفرًا.' },
+        ],
+        essay: [
+          { text: 'وضّح الفرق بين القيمة المطلقة لعدد صحيح موجب وعدد صحيح سالب له المقدار نفسه، مع ذكر مثال.', explanation: 'تعريف القيمة المطلقة (2) · المقارنة الصحيحة (2) · مثال مناسب (1).' },
+          { text: 'اشرح بالخطوات كيف تحسب ناتج (-3) × 4 + (-2) × (-5).', explanation: 'ترتيب العمليات (2) · قواعد الإشارات (2) · الناتج الصحيح −2 (1).' },
+          { text: 'اكتب موقفًا حياتيًا تُستخدم فيه الأعداد السالبة، ثم مثّله على خط الأعداد.', explanation: 'موقف واقعي (2) · تمثيل صحيح (2) · وضوح التعبير (1).' },
+        ],
+      },
+      'sci-g8': {
+        mcq: [
+          { text: 'أيّ العضيات التالية توجد في الخلية النباتية ولا توجد في الحيوانية؟', options: ['البلاستيدات الخضراء', 'الميتوكوندريا', 'النواة', 'الغشاء البلازمي'], correct: 0, explanation: 'البلاستيدات الخضراء مسؤولة عن البناء الضوئي في النبات.' },
+          { text: 'ما وظيفة الميتوكوندريا في الخلية؟', options: ['إنتاج الطاقة', 'تخزين الماء', 'صنع الجدار الخلوي', 'حماية النواة'], correct: 0, explanation: 'تُعرف الميتوكوندريا بـ«بيت الطاقة» لأنها تُنتج ATP.' },
+          { text: 'في المعادلة 2H₂ + O₂ → 2H₂O، كم ذرة هيدروجين في المتفاعلات؟', options: ['2', '4', '6', '1'], correct: 1, explanation: 'المعامل 2 × الرقم السفلي 2 = 4 ذرات.' },
+        ],
+        tf: [
+          { text: 'للخلية الحيوانية جدار خلوي يحيط بالغشاء البلازمي.', answer: false, explanation: 'الجدار الخلوي يوجد في الخلية النباتية فقط.' },
+          { text: 'في التفاعل الطارد للحرارة تنطلق طاقة إلى الوسط المحيط.', answer: true, explanation: 'تكون طاقة النواتج أقل من طاقة المتفاعلات.' },
+          { text: 'تتغير أعداد الذرات عند موازنة المعادلة الكيميائية.', answer: false, explanation: 'الموازنة تحافظ على عدد الذرات وفق قانون حفظ الكتلة.' },
+        ],
+        fill: [
+          { text: 'العضية التي تتحكم في أنشطة الخلية هي ____.', answer: 'النواة', explanation: 'تحتوي النواة على المادة الوراثية DNA.' },
+          { text: 'يُسمّى التفاعل الذي يمتص الحرارة تفاعلًا ____.', answer: 'ماصًّا للحرارة', explanation: 'يمتص الطاقة من الوسط المحيط فتنخفض حرارته.' },
+          { text: 'الأرقام التي توضع قبل الصيغ لموازنة المعادلة تُسمّى ____.', answer: 'المعاملات', explanation: 'لا نغيّر الأرقام السفلية في الصيغ الكيميائية.' },
+        ],
+        essay: [
+          { text: 'قارن بين الخلية النباتية والخلية الحيوانية من حيث الشكل والعضيات.', explanation: 'ثلاثة فروق صحيحة (3) · تنظيم المقارنة (2).' },
+          { text: 'اشرح كيف تُوازن المعادلة: Fe + O₂ → Fe₂O₃.', explanation: 'خطوات الموازنة (3) · المعادلة الموزونة 4Fe + 3O₂ → 2Fe₂O₃ (2).' },
+          { text: 'اذكر مثالين من حياتك اليومية لتفاعل طارد وآخر ماص للحرارة مع التعليل.', explanation: 'مثالان صحيحان (2) · التعليل (3).' },
+        ],
+      },
+      'arab-g9': {
+        mcq: [
+          { text: 'ما نوع الصورة في قولنا: «العلمُ نورٌ»؟', options: ['تشبيه بليغ', 'استعارة مكنية', 'كناية', 'طباق'], correct: 0, explanation: 'حُذفت أداة التشبيه ووجه الشبه فصار تشبيهًا بليغًا.' },
+          { text: 'ما العنصر القصصي الذي يُحدِّد زمان الأحداث ومكانها؟', options: ['البيئة', 'الحبكة', 'العقدة', 'الحوار'], correct: 0, explanation: 'البيئة (الزمان والمكان) إطار تجري فيه الأحداث.' },
+          { text: 'كم ركنًا للتشبيه؟', options: ['أربعة', 'ثلاثة', 'اثنان', 'خمسة'], correct: 0, explanation: 'المشبّه والمشبّه به والأداة ووجه الشبه.' },
+        ],
+        tf: [
+          { text: 'الشخصية النامية تتطور وتتغير بتطور أحداث القصة.', answer: true, explanation: 'بخلاف الشخصية الثابتة التي لا تتغير.' },
+          { text: 'يُشترط ذكر أداة التشبيه في كل تشبيه.', answer: false, explanation: 'قد تُحذف الأداة كما في التشبيه المؤكَّد والبليغ.' },
+          { text: 'البحر الشعري هو الوزن الذي يُبنى عليه البيت.', answer: true, explanation: 'لكل بحر تفعيلات خاصة به.' },
+        ],
+        fill: [
+          { text: 'التشبيه الذي حُذفت منه الأداة ووجه الشبه يُسمّى تشبيهًا ____.', answer: 'بليغًا', explanation: 'وهو أقوى أنواع التشبيه.' },
+          { text: 'لحظة التأزّم في القصة تُسمّى ____.', answer: 'العقدة', explanation: 'تليها لحظة الانفراج أو الحل.' },
+          { text: 'العلم الذي يُعرف به صحيح أوزان الشعر من فاسدها هو علم ____.', answer: 'العروض', explanation: 'وضعه الخليل بن أحمد الفراهيدي.' },
+        ],
+        essay: [
+          { text: 'حلّل دور الشخصية الرئيسة في قصة قصيرة درستها، مبيّنًا نوعها.', explanation: 'تحديد الشخصية ونوعها (2) · تحليل الدور (2) · الشواهد (1).' },
+          { text: 'استخرج صورتين فنيتين من نص شعري درسته، واشرح أثرهما في المعنى.', explanation: 'استخراج صحيح (2) · الشرح (2) · الأثر (1).' },
+          { text: 'وضّح الفرق بين التشبيه المرسل والتشبيه البليغ مع مثال لكل منهما.', explanation: 'التعريفان (2) · مثالان (2) · الدقة (1).' },
+        ],
+      },
+    };
+
+    /* فهرس الاختبارات (نفس بيانات quizzes.html) لفتح ?code=…&mode=edit */
+    const QUIZ_INDEX = [
+      { code: 'QZ-MATH-101', ar: 'اختبار تشخيصي: الأعداد الصحيحة', en: 'Diagnostic Quiz: Integers', type: 'diagnostic', status: 'published', courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', duration: 20, attempts: 142 },
+      { code: 'QZ-MATH-102', ar: 'اختبار تكويني: خصائص الضرب', en: 'Formative Quiz: Multiplication Properties', type: 'formative', status: 'published', courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', duration: 15, attempts: 96 },
+      { code: 'QZ-MATH-103', ar: 'اختبار تكويني: تبسيط الكسور', en: 'Formative Quiz: Simplifying Fractions', type: 'formative', status: 'draft', courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', duration: 10, attempts: 0 },
+      { code: 'QZ-SCI-201', ar: 'اختبار ختامي: تركيب الخلية', en: 'Summative Quiz: Cell Structure', type: 'summative', status: 'draft', courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', duration: 40, attempts: 0 },
+      { code: 'QZ-SCI-202', ar: 'اختبار تشخيصي: موازنة المعادلات الكيميائية', en: 'Diagnostic Quiz: Balancing Chemical Equations', type: 'diagnostic', status: 'draft', courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2022', duration: 20, attempts: 0 },
+      { code: 'QZ-SCI-088', ar: 'اختبار قصير: أنواع التفاعلات الكيميائية', en: 'Short Quiz: Types of Chemical Reactions', type: 'formative', status: 'in_review', courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', duration: 15, attempts: 0 },
+      { code: 'QZ-ARAB-301', ar: 'اختبار تكويني: عناصر القصة القصيرة', en: 'Formative Quiz: Elements of the Short Story', type: 'formative', status: 'published', courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', duration: 10, attempts: 61 },
+      { code: 'QZ-ARAB-302', ar: 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية', en: 'Summative Quiz: Unit 1 — Literary Texts', type: 'summative', status: 'archived', courseId: 'arab-g9', unitId: 'u301', lessonId: null, duration: 45, attempts: 310 },
+      { code: 'QZ-MATH-104', ar: 'اختبار ختامي: النسبة والتناسب', en: 'Summative Quiz: Ratio & Proportion', type: 'summative', status: 'published', courseId: 'math-g7', unitId: 'u102', lessonId: 'l1022', duration: 35, attempts: 0 },
+    ];
+    const DEMO_102 = [
+      { type: 'mcq', bloom: 'understanding', difficulty: 'medium', marks: 5, text: 'ما نتيجة ضرب (-4) × (-3)؟', options: ['12', '-12', '7', '-7'], correct: 0, explanation: 'حاصل ضرب عددين سالبين موجب دائمًا؛ لذلك (-4) × (-3) = 12.' },
+      { type: 'tf', bloom: 'remembering', difficulty: 'easy', marks: 2, text: 'حاصل جمع عددين صحيحين سالبين هو دائمًا عدد سالب.', answer: true, explanation: 'العبارة صحيحة؛ مثل (-2) + (-5) = -7.' },
+      { type: 'essay', bloom: 'applying', difficulty: 'hard', marks: 8, text: 'اشرح باستخدام مثال عملي كيف تُستخدم الأعداد الصحيحة السالبة لتمثيل حالات حياتية حقيقية (مثل درجات الحرارة أو الديون).',
+        modelAnswer: 'درجة حرارة -5° تعني 5 درجات تحت الصفر، والدين بقيمة -200 يعني أن الشخص مدين بهذا المبلغ.', explanation: 'مثال صحيح (3) · تفسير الإشارة (3) · وضوح التعبير (2).' },
+    ];
+    const normalize = (q) => ({ uid: uid(), type: 'mcq', bloom: 'understanding', difficulty: 'medium', marks: 1, text: '', options: ['', ''], correct: 0,
+                                answer: true, modelAnswer: '', explanation: '', source: 'human', ...clone(q) });
+
+    const I18N = {
+      ar: {
+        docTitle: 'منشئ الاختبارات — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد المحتوى والأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { published: 'تم نشر اختبار جديد: «اختبار تكويني: خصائص الضرب»', review: 'أُعيد اختبار من طابور المراجعة مع ملاحظات', aiReady: 'اكتمل توليد مسودة أسئلة بالذكاء الاصطناعي بنجاح' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          questions: { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: '{n} أسئلة', many: '{n} سؤالًا', other: '{n} سؤال' },
+          attempts:  { zero: 'لا محاولات', one: 'محاولة واحدة', two: 'محاولتان', few: '{n} محاولات', many: '{n} محاولةً', other: '{n} محاولة' },
+        },
+
+        qb: {
+          breadcrumbCurrent: 'منشئ الاختبار',
+          titleCreate: 'إنشاء اختبار جديد', titleEdit: 'تعديل اختبار',
+          subtitle: 'حدّد بيانات الاختبار وموضعه الأكاديمي، ثم أضف الأسئلة يدويًا أو بمساعدة الذكاء الاصطناعي، وأرسله للمراجعة قبل وصوله للطلاب.',
+          untitled: 'اختبار بلا عنوان',
+          status: { draft: 'مسودة', in_review: 'قيد المراجعة', published: 'منشور', archived: 'مؤرشف' },
+          notSaved: 'لم يُحفظ بعد', unsaved: 'تغييرات غير محفوظة', saving: 'جارِ الحفظ…', savedAgo: 'حُفظ {t}', justNow: 'الآن',
+          totalMarksN: 'الدرجة الكلية: {n}', issuesN: '{n} بحاجة لإصلاح', readyToSubmit: 'جاهز للإرسال',
+          actBack: 'الاختبارات', actSaveDraft: 'حفظ كمسودة', actPreview: 'معاينة الطالب', actSubmit: 'إرسال للمراجعة',
+          actSaveDraftShort: 'حفظ', actSubmitShort: 'إرسال للمراجعة',
+          editPublishedNote: 'هذا الاختبار منشور ولديه {attempts}. حفظ التعديلات يُنشئ نسخة مسودة، وإرسالها للمراجعة لا يمسّ نتائج المحاولات السابقة.',
+          issuesTitle: 'لا يمكن الإرسال قبل إصلاح {n}:', andMore: '… و{n} أخرى',
+
+          section1Title: 'بيانات الاختبار الأساسية', section1Sub: 'العنوانان، الموضع داخل الهيكل الأكاديمي، النوع والمدة ودرجة النجاح.',
+          fieldTitleAr: 'عنوان الاختبار (عربي)', fieldTitleArPh: 'مثال: اختبار تكويني: خصائص الضرب',
+          fieldTitleEn: 'عنوان الاختبار (إنجليزي)', fieldTitleEnPh: 'e.g. Formative Quiz: Multiplication Properties',
+          fieldHierarchy: 'الموضع الأكاديمي', fieldHierarchyHint: 'يربط الاختبار بمحتوى الدرس، ويُشترط اكتماله وفق إعدادات الهيكل الأكاديمي.',
+          field: { course: 'المقرر', unit: 'الوحدة', lesson: 'الدرس' },
+          coursePh: 'اختر المقرر…', unitPh: 'اختر الوحدة…', lessonPh: 'اختر الدرس…', pickCourseFirst: 'اختر المقرر أولًا', pickUnitFirst: 'اختر الوحدة أولًا',
+          fieldType: 'نوع الاختبار', type: { formative: 'تكويني', summative: 'ختامي', diagnostic: 'تشخيصي' },
+          fieldDuration: 'المدة', minutesSuffix: 'دقيقة',
+          fieldTotalMarks: 'الدرجة الكلية', autoComputed: 'تُحسب تلقائيًا', fieldPassingScore: 'درجة النجاح', passMarkHint: '= {n} من {total}',
+          fieldInstructions: 'تعليمات الاختبار', fieldInstructionsPh: 'اكتب التعليمات التي تظهر للطالب قبل بدء الاختبار…',
+          fieldInstructionsHint: 'تظهر في الشاشة التمهيدية؛ المدة والدرجة تُعرضان تلقائيًا فلا داعي لكتابتهما هنا.',
+
+          section3Title: 'أسئلة الاختبار', section3Sub: '{q} · مجموع الدرجات {m}',
+          aiGenerateBtn: 'توليد أسئلة بالذكاء الاصطناعي', addManualQuestion: 'إضافة سؤال',
+          emptyTitle: 'لا أسئلة بعد', emptySub: 'أضف سؤالًا يدويًا أو ولّد أسئلة بالذكاء الاصطناعي من الدرس المحدد.',
+          questionN: 'السؤال {n}', marksN: '{n} درجة', srcAi: 'مولّد بالذكاء الاصطناعي', needsFix: 'بحاجة لإصلاح',
+          qTypeLabel: 'نوع السؤال', qType: { mcq: 'اختيار من متعدد', tf: 'صح / خطأ', essay: 'مقالي' },
+          qTextLabel: 'نص السؤال', optionsLegend: 'الخيارات — حدّد الإجابة الصحيحة', optionN: 'الخيار {n}', markCorrectN: 'اعتماد الخيار {n} إجابةً صحيحة',
+          deleteOptionN: 'حذف الخيار {n}', addOption: 'إضافة خيار', correctAnswer: 'الإجابة الصحيحة', trueLabel: 'صحيح', falseLabel: 'خاطئ',
+          essayNote: 'سؤال مقالي: يُجيب الطالب بنص مفتوح ويُصحَّح يدويًا وفق الإجابة النموذجية ومعايير التصحيح.',
+          modelAnswerLabel: 'الإجابة النموذجية (للمصحّح)', modelAnswerPh: 'إجابة مرجعية تُستخدم عند التصحيح اليدوي…',
+          marksLabel: 'الدرجة', difficultyLabel: 'الصعوبة', bloomLabel: 'مستوى بلوم',
+          diff: { easy: 'سهل', medium: 'متوسط', hard: 'صعب', mixed: 'متنوّع' },
+          bloom: { remembering: 'التذكر', understanding: 'الفهم', applying: 'التطبيق', analyzing: 'التحليل', evaluating: 'التقييم', creating: 'الإبداع', mixed: 'متنوّع (كل المستويات)' },
+          explanationLabel: 'التفسير (يظهر للطالب بعد الإجابة)', explanationPh: 'وضّح لماذا هذه الإجابة صحيحة…',
+          rubricLabel: 'معايير التصحيح', rubricPh: 'مثال: الفكرة الرئيسة (3) · الأمثلة (3) · اللغة (2)',
+          act: { up: 'نقل للأعلى', down: 'نقل للأسفل', duplicate: 'نسخ السؤال', delete: 'حذف السؤال' },
+
+          v: {
+            titleAr: 'العنوان العربي مطلوب.', titleArLang: 'يجب أن يحتوي العنوان العربي على حروف عربية.',
+            titleEn: 'العنوان الإنجليزي مطلوب.', titleEnLang: 'استخدم حروفًا لاتينية فقط في العنوان الإنجليزي.',
+            course: 'اختر المقرر.', unit: 'اختر الوحدة (إلزامي وفق الإعدادات).', lesson: 'اختر الدرس (إلزامي وفق الإعدادات).',
+            duration: 'المدة بين 1 و240 دقيقة.', noQuestions: 'أضف سؤالًا واحدًا على الأقل.',
+            text: 'نص السؤال مطلوب.', options: 'املأ خيارين على الأقل دون خيارات فارغة.', optionsDup: 'الخيارات يجب أن تكون مختلفة.',
+            correct: 'حدّد الإجابة الصحيحة.', marks: 'الدرجة يجب أن تكون أكبر من صفر.', modelAnswer: 'الإجابة النموذجية مطلوبة للأسئلة المقالية.',
+          },
+          issueQ: 'السؤال {n}: {msg}',
+
+          movedTo: 'نُقل السؤال إلى الموضع {n}.', added: 'أُضيف السؤال {n}.', duplicated: 'نُسخ السؤال إلى الموضع {n}.', deleted: 'حُذف السؤال {n}.', undo: 'تراجع', undone: 'تم التراجع.',
+          confirmTypeTitle: 'تغيير نوع السؤال؟', confirmTypeText: 'ستُفقد الخيارات أو الإجابة النموذجية الحالية لهذا السؤال.', confirmYes: 'تغيير النوع', confirmNo: 'إلغاء',
+          toastSaved: 'حُفظ الاختبار كمسودة.', codeAssigned: 'خُصّص الرمز {code}.', toastSubmitted: 'أُرسل «{name}» إلى طابور المراجعة.',
+
+          previewKicker: 'معاينة كما يراها الطالب', previewClose: 'إغلاق المعاينة',
+
+          aiModalTitle: 'توليد أسئلة بالذكاء الاصطناعي', aiContext: 'ستُولَّد الأسئلة من: {path}. راجعها ثم أضفها؛ تُرسل مع الاختبار للمراجعة.',
+          aiNeedCourse: 'حدّد مقرر الاختبار أولًا (والوحدة والدرس) ليُولَّد المحتوى من الموضع الصحيح.',
+          aiFieldConcept: 'المفهوم المستهدف', aiAllConcepts: 'كل مفاهيم الموضع المحدد', aiFieldBloom: 'مستوى بلوم', aiFieldQType: 'نوع السؤال', aiFieldCount: 'عدد الأسئلة',
+          aiEstimate: 'التكلفة التقديرية', tokens: 'توكن',
+          aiCancel: 'إلغاء', aiSubmit: 'توليد الأسئلة', aiGenerating: 'جارِ التوليد…',
+          aiResultsReady: 'وُلِّد {q} — راجعها ثم أضفها إلى الاختبار', aiAddToQuiz: 'إضافة إلى الاختبار', aiAdded: 'أُضيف', aiAddAll: 'إضافة الكل', aiRegenerate: 'تعديل المعطيات', aiDone: 'تم',
+        },
+      },
+      en: {
+        docTitle: 'Quiz Builder — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Home' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Content & Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { published: 'A new quiz was published: "Formative Quiz: Multiplication Properties"', review: 'A quiz came back from the review queue with notes', aiReady: 'AI question draft generation completed successfully' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          questions: { zero: 'no questions', one: '{n} question', other: '{n} questions' },
+          attempts:  { zero: 'no attempts', one: '{n} attempt', other: '{n} attempts' },
+        },
+
+        qb: {
+          breadcrumbCurrent: 'Quiz Builder',
+          titleCreate: 'Create a New Quiz', titleEdit: 'Edit Quiz',
+          subtitle: 'Set the quiz details and academic position, add questions manually or with AI, then submit it for review before it reaches students.',
+          untitled: 'Untitled quiz',
+          status: { draft: 'Draft', in_review: 'In review', published: 'Published', archived: 'Archived' },
+          notSaved: 'Not saved yet', unsaved: 'Unsaved changes', saving: 'Saving…', savedAgo: 'Saved {t}', justNow: 'just now',
+          totalMarksN: 'Total marks: {n}', issuesN: '{n} to fix', readyToSubmit: 'Ready to submit',
+          actBack: 'Quizzes', actSaveDraft: 'Save draft', actPreview: 'Student preview', actSubmit: 'Submit for review',
+          actSaveDraftShort: 'Save', actSubmitShort: 'Submit for review',
+          editPublishedNote: 'This quiz is published and has {attempts}. Saving changes creates a draft version; submitting it for review does not affect previous attempt results.',
+          issuesTitle: 'Fix {n} before submitting:', andMore: '… and {n} more',
+
+          section1Title: 'Basic Quiz Settings', section1Sub: 'Both titles, academic position, type, duration and passing score.',
+          fieldTitleAr: 'Quiz title (Arabic)', fieldTitleArPh: 'مثال: اختبار تكويني: خصائص الضرب',
+          fieldTitleEn: 'Quiz title (English)', fieldTitleEnPh: 'e.g. Formative Quiz: Multiplication Properties',
+          fieldHierarchy: 'Academic position', fieldHierarchyHint: 'Links the quiz to the lesson content; completeness follows the academic structure settings.',
+          field: { course: 'Course', unit: 'Unit', lesson: 'Lesson' },
+          coursePh: 'Select a course…', unitPh: 'Select a unit…', lessonPh: 'Select a lesson…', pickCourseFirst: 'Select a course first', pickUnitFirst: 'Select a unit first',
+          fieldType: 'Quiz type', type: { formative: 'Formative', summative: 'Summative', diagnostic: 'Diagnostic' },
+          fieldDuration: 'Duration', minutesSuffix: 'min',
+          fieldTotalMarks: 'Total marks', autoComputed: 'Auto-calculated', fieldPassingScore: 'Passing score', passMarkHint: '= {n} of {total}',
+          fieldInstructions: 'Quiz instructions', fieldInstructionsPh: 'Write the instructions shown to the student before starting…',
+          fieldInstructionsHint: 'Shown on the intro screen; duration and marks are displayed automatically, so no need to type them here.',
+
+          section3Title: 'Quiz Questions', section3Sub: '{q} · total marks {m}',
+          aiGenerateBtn: 'Generate questions with AI', addManualQuestion: 'Add question',
+          emptyTitle: 'No questions yet', emptySub: 'Add a question manually or generate questions with AI from the selected lesson.',
+          questionN: 'Question {n}', marksN: '{n} marks', srcAi: 'AI-generated', needsFix: 'Needs fixing',
+          qTypeLabel: 'Question type', qType: { mcq: 'Multiple choice', tf: 'True / False', essay: 'Essay' },
+          qTextLabel: 'Question text', optionsLegend: 'Options — mark the correct answer', optionN: 'Option {n}', markCorrectN: 'Mark option {n} as correct',
+          deleteOptionN: 'Delete option {n}', addOption: 'Add option', correctAnswer: 'Correct answer', trueLabel: 'True', falseLabel: 'False',
+          essayNote: 'Essay question: the student answers in open text, graded manually against the model answer and rubric.',
+          modelAnswerLabel: 'Model answer (for the grader)', modelAnswerPh: 'A reference answer used for manual grading…',
+          marksLabel: 'Marks', difficultyLabel: 'Difficulty', bloomLabel: "Bloom's level",
+          diff: { easy: 'Easy', medium: 'Medium', hard: 'Hard', mixed: 'Mixed' },
+          bloom: { remembering: 'Remembering', understanding: 'Understanding', applying: 'Applying', analyzing: 'Analyzing', evaluating: 'Evaluating', creating: 'Creating', mixed: 'Mixed (all levels)' },
+          explanationLabel: 'Explanation (shown to the student after answering)', explanationPh: 'Explain why this answer is correct…',
+          rubricLabel: 'Marking rubric', rubricPh: 'e.g. Main idea (3) · Examples (3) · Language (2)',
+          act: { up: 'Move up', down: 'Move down', duplicate: 'Duplicate question', delete: 'Delete question' },
+
+          v: {
+            titleAr: 'The Arabic title is required.', titleArLang: 'The Arabic title must contain Arabic letters.',
+            titleEn: 'The English title is required.', titleEnLang: 'Use Latin letters only in the English title.',
+            course: 'Select a course.', unit: 'Select a unit (required by settings).', lesson: 'Select a lesson (required by settings).',
+            duration: 'Duration must be between 1 and 240 minutes.', noQuestions: 'Add at least one question.',
+            text: 'Question text is required.', options: 'Fill in at least two options with no empty ones.', optionsDup: 'Options must be different.',
+            correct: 'Mark the correct answer.', marks: 'Marks must be greater than zero.', modelAnswer: 'Essay questions need a model answer.',
+          },
+          issueQ: 'Question {n}: {msg}',
+
+          movedTo: 'Question moved to position {n}.', added: 'Question {n} added.', duplicated: 'Question duplicated to position {n}.', deleted: 'Question {n} deleted.', undo: 'Undo', undone: 'Undone.',
+          confirmTypeTitle: 'Change question type?', confirmTypeText: "This question's current options or model answer will be lost.", confirmYes: 'Change type', confirmNo: 'Cancel',
+          toastSaved: 'Quiz saved as draft.', codeAssigned: 'Code {code} assigned.', toastSubmitted: '"{name}" was sent to the review queue.',
+
+          previewKicker: 'Preview as the student sees it', previewClose: 'Close preview',
+
+          aiModalTitle: 'Generate Questions with AI', aiContext: 'Questions will be generated from: {path}. Review them, then add; they are submitted for review with the quiz.',
+          aiNeedCourse: "Set the quiz's course first (and unit and lesson) so content is generated from the right place.",
+          aiFieldConcept: 'Target concept', aiAllConcepts: 'All concepts in the selected position', aiFieldBloom: "Bloom's level", aiFieldQType: 'Question type', aiFieldCount: 'Number of questions',
+          aiEstimate: 'Estimated cost', tokens: 'tokens',
+          aiCancel: 'Cancel', aiSubmit: 'Generate questions', aiGenerating: 'Generating…',
+          aiResultsReady: '{q} generated — review, then add to the quiz', aiAddToQuiz: 'Add to quiz', aiAdded: 'Added', aiAddAll: 'Add all', aiRegenerate: 'Change parameters', aiDone: 'Done',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'quizzes',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return ((n === 0 && forms.zero) || forms[cat] || forms.other).replace('{n}', this.fmt(n));
+      },
+      fmt(n) { return Number(n).toLocaleString('en-US'); },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 14 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      notifications: [
+        { id: 1, key: 'published', time: '15m', read: false, icon: 'fa-solid fa-circle-check', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+        { id: 2, key: 'review', time: '3h', read: false, icon: 'fa-solid fa-comment-dots', tone: 'bg-warning-500/15 text-warning-800 dark:text-warning-500' },
+        { id: 3, key: 'aiReady', time: '1d', read: true, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- بيانات الاختبار ---------- */
+      mode: 'create', originalStatus: 'draft', attempts: 0,
+      quizForm: { code: '', titleAr: '', titleEn: '', type: 'formative', status: 'draft', courseId: '', unitId: '', lessonId: '',
+                  duration: 15, passingScore: 60, instructions: 'اقرأ كل سؤال بعناية قبل الإجابة، ويمكنك مراجعة إجاباتك قبل التسليم النهائي.' },
+      questions: [],
+      TYPE_CLS: { mcq: 'badge-primary', tf: 'badge-info', essay: 'badge-accent' },
+      TYPE_ICON: { mcq: 'fa-list-ol', tf: 'fa-check-double', essay: 'fa-pen-nib' },
+      BLOOMS,
+      get structure() { return M.structure; },
+      get displayTitle() { return (this.locale === 'en' ? this.quizForm.titleEn : this.quizForm.titleAr).trim() || this.quizForm.titleAr.trim() || this.t('qb.untitled'); },
+      get statusMeta() {
+        return { draft: { cls: 'badge-warning', icon: 'fa-pen' }, in_review: { cls: 'badge-info', icon: 'fa-hourglass-half' },
+                 published: { cls: 'badge-success', icon: 'fa-circle-check' }, archived: { cls: 'badge-muted', icon: 'fa-box-archive' } }[this.quizForm.status];
+      },
+      get totalMarks() { return Math.round(this.questions.reduce((s, q) => s + (+q.marks > 0 ? +q.marks : 0), 0) * 10) / 10; },
+      get passMark() { return Math.ceil(this.totalMarks * (+this.quizForm.passingScore || 0) / 100 * 10) / 10; },
+
+      /* ---------- الهيكل الأكاديمي المتسلسل ---------- */
+      courseOpts() { return M.courses.map(c => ({ value: c.id, label: c[this.locale] })); },
+      unitOpts() { return M.units.filter(u => u.courseId === this.quizForm.courseId).map(u => ({ value: u.id, label: u[this.locale] })); },
+      lessonOpts() { return M.lessons.filter(l => l.unitId === this.quizForm.unitId).map(l => ({ value: l.id, label: l[this.locale] })); },
+      typeOpts() { return ['formative', 'summative', 'diagnostic'].map(v => ({ value: v, label: this.t('qb.type.' + v) })); },
+      get reqUnit() { return this.structure.units.enabled && this.structure.units.required; },
+      get reqLesson() { return this.structure.lessons.enabled && this.structure.lessons.required; },
+      setCourse(v) { if (v === this.quizForm.courseId) return; this.quizForm.courseId = v; this.quizForm.unitId = ''; this.quizForm.lessonId = ''; },
+      setUnit(v) { if (v === this.quizForm.unitId) return; this.quizForm.unitId = v; this.quizForm.lessonId = ''; },
+      pathLabels() {
+        const L = this.locale, f = this.quizForm;
+        return [M.courses.find(c => c.id === f.courseId), M.units.find(u => u.id === f.unitId), M.lessons.find(l => l.id === f.lessonId)].filter(Boolean).map(o => o[L]);
+      },
+
+      /* ---------- التحقق ---------- */
+      submitted: false,
+      fieldError(k) {
+        const f = this.quizForm, v = (x) => this.t('qb.v.' + x);
+        switch (k) {
+          case 'titleAr': return !f.titleAr.trim() ? v('titleAr') : (!AR.test(f.titleAr) ? v('titleArLang') : '');
+          case 'titleEn': return !f.titleEn.trim() ? v('titleEn') : (AR.test(f.titleEn) || !/[A-Za-z]/.test(f.titleEn) ? v('titleEnLang') : '');
+          case 'course': return !f.courseId ? v('course') : '';
+          case 'unit': return this.reqUnit && !f.unitId ? v('unit') : '';
+          case 'lesson': return this.reqLesson && !f.lessonId ? v('lesson') : '';
+          case 'duration': return !(f.duration >= 1 && f.duration <= 240) ? v('duration') : '';
+          default: return '';
+        }
+      },
+      questionErrors(q) {
+        const e = [];
+        if (!q.text.trim()) e.push('text');
+        if (q.type === 'mcq') {
+          const ops = q.options.map(o => o.trim());
+          if (ops.length < 2 || ops.some(o => !o)) e.push('options');
+          else if (new Set(ops).size !== ops.length) e.push('optionsDup');
+          if (!(q.correct >= 0 && q.correct < ops.length)) e.push('correct');
+        }
+        if (q.type === 'tf' && typeof q.answer !== 'boolean') e.push('correct');
+        if (q.type === 'essay' && !q.modelAnswer.trim()) e.push('modelAnswer');
+        if (!(+q.marks > 0)) e.push('marks');
+        return e;
+      },
+      qErr(q, k) { return this.questionErrors(q).includes(k); },
+      get issues() {
+        const out = [];
+        const FIELD_ID = { titleAr: 'qb-titleAr', titleEn: 'qb-titleEn', course: 'qb-course', unit: 'qb-unit', lesson: 'qb-lesson', duration: 'qb-duration' };
+        Object.keys(FIELD_ID).forEach(k => { const m = this.fieldError(k); if (m) out.push({ label: m, target: FIELD_ID[k] }); });
+        if (!this.questions.length) out.push({ label: this.t('qb.v.noQuestions'), target: 'qb-add-q' });
+        this.questions.forEach((q, i) => this.questionErrors(q).forEach(k => {
+          const target = { text: 'q-text-', options: 'q-opt-', optionsDup: 'q-opt-', correct: 'q-opt-', marks: 'q-marks-', modelAnswer: 'q-model-' }[k] + q.uid
+                         + (['options', 'optionsDup', 'correct'].includes(k) && q.type === 'mcq' ? '-0' : '');
+          out.push({ label: this.tf('qb.issueQ', { n: i + 1, msg: this.t('qb.v.' + k) }), target: k === 'correct' && q.type === 'tf' ? 'q-text-' + q.uid : target });
+        }));
+        return out;
+      },
+      goToIssue(is) {
+        const el = document.getElementById(is.target);
+        if (!el) return;
+        el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        el.focus({ preventScroll: true });
+      },
+
+      /* ---------- إدارة الأسئلة ---------- */
+      liveMsg: '',
+      announce(msg) { this.liveMsg = ''; this.$nextTick(() => { this.liveMsg = msg; }); },
+      focusIn(qid, sel) { this.$nextTick(() => document.querySelector(`[data-q="${qid}"] ${sel}`)?.focus()); },
+      addQuestion() {
+        const q = normalize({ type: 'mcq', marks: 1, options: ['', '', '', ''] });
+        this.questions.push(q);
+        this.announce(this.tf('qb.added', { n: this.questions.length }));
+        this.$nextTick(() => { const el = document.getElementById('q-text-' + q.uid); el?.scrollIntoView({ block: 'center' }); el?.focus({ preventScroll: true }); });
+      },
+      move(i, d) {
+        const j = i + d;
+        if (j < 0 || j >= this.questions.length) return;
+        const q = this.questions[i];
+        this.questions.splice(i, 1);
+        this.questions.splice(j, 0, q);
+        this.announce(this.tf('qb.movedTo', { n: j + 1 }));
+        const act = (d < 0 && j === 0) ? 'down' : (d > 0 && j === this.questions.length - 1) ? 'up' : (d < 0 ? 'up' : 'down');
+        this.focusIn(q.uid, `[data-act=${act}]`);
+      },
+      duplicate(i) {
+        const c = { ...clone(this.questions[i]), uid: uid() };
+        this.questions.splice(i + 1, 0, c);
+        this.announce(this.tf('qb.duplicated', { n: i + 2 }));
+        this.focusIn(c.uid, '[data-act=duplicate]');
+      },
+      remove(i) {
+        const [q] = this.questions.splice(i, 1);
+        const next = this.questions[i] || this.questions[i - 1];
+        if (next) this.focusIn(next.uid, '[data-act=delete]'); else this.$nextTick(() => document.getElementById('qb-add-q')?.focus());
+        this.toastUndo(this.tf('qb.deleted', { n: i + 1 }), () => { this.questions.splice(i, 0, q); this.focusIn(q.uid, '[data-act=delete]'); });
+      },
+      addOption(q) {
+        if (q.options.length >= 6) return;
+        q.options.push('');
+        this.$nextTick(() => document.getElementById(`q-opt-${q.uid}-${q.options.length - 1}`)?.focus());
+      },
+      removeOption(q, oi) {
+        if (q.options.length <= 2) return;
+        q.options.splice(oi, 1);
+        if (q.correct === oi) q.correct = 0; else if (q.correct > oi) q.correct--;
+        this.$nextTick(() => document.getElementById(`q-opt-${q.uid}-${Math.min(oi, q.options.length - 1)}`)?.focus());
+      },
+      async changeType(q, ty, ev) {
+        if (q.type === ty) return;
+        const lossy = (q.type === 'mcq' && q.options.some(o => o.trim())) || (q.type === 'essay' && q.modelAnswer.trim());
+        if (lossy && !(await this.confirmDialog(this.t('qb.confirmTypeTitle'), this.t('qb.confirmTypeText')))) {
+          ev.target.checked = false;
+          this.$nextTick(() => document.querySelector(`[data-q="${q.uid}"] input[name="type-${q.uid}"][value="${q.type}"]`)?.focus());
+          return;
+        }
+        Object.assign(q, { type: ty, options: ty === 'mcq' ? ['', '', '', ''] : q.options, correct: 0,
+                           answer: true, modelAnswer: ty === 'essay' ? q.modelAnswer : '' });
+        if (ty !== 'mcq') q.options = ['', ''];
+      },
+
+      /* ---------- الحفظ والإرسال ---------- */
+      dirty: false, lastSavedAt: null, savingDraft: false, publishing: false, now: Date.now(), _ready: false, _t: null,
+      get saveStateText() {
+        if (this.savingDraft) return this.t('qb.saving');
+        if (this.dirty) return this.t('qb.unsaved');
+        if (!this.lastSavedAt) return this.t('qb.notSaved');
+        const s = Math.round((this.now - this.lastSavedAt) / 1000);
+        const rel = s < 45 ? this.t('qb.justNow') : new Intl.RelativeTimeFormat(this.locale, { numeric: 'auto' }).format(-Math.max(1, Math.round(s / 60)), 'minute');
+        return this.tf('qb.savedAgo', { t: rel });
+      },
+      markDirty() {
+        if (!this._ready) return;
+        this.dirty = true;
+        clearTimeout(this._t);
+        this._t = setTimeout(() => { if (this.dirty) this.saveDraft({ silent: true }); }, 4000);   // حفظ تلقائي
+      },
+      nextCode() {
+        const prefix = 'QZ-' + (CODE_PREFIX[this.quizForm.courseId] || 'GEN');
+        const nums = QUIZ_INDEX.filter(q => q.code.startsWith(prefix + '-')).map(q => +q.code.split('-').pop());
+        return prefix + '-' + String((nums.length ? Math.max(...nums) : 100) + 1).padStart(3, '0');
+      },
+      async saveDraft({ silent = false } = {}) {
+        if (this.savingDraft) return;
+        clearTimeout(this._t);
+        this.savingDraft = true;
+        await sleep(500);                                           // Livewire: $wire.saveDraft()
+        let assigned = '';
+        this._ready = false;                                        // تغييرات الحفظ نفسها لا تُعلِّم النموذج كمعدَّل
+        if (!this.quizForm.code && this.quizForm.courseId) { this.quizForm.code = this.nextCode(); assigned = this.quizForm.code; }
+        if (this.quizForm.status !== 'in_review') this.quizForm.status = 'draft';
+        this.savingDraft = false;
+        this.$nextTick(() => { this.dirty = false; clearTimeout(this._t); this._ready = true; });   // بعد مراقبي التغييرات
+        this.lastSavedAt = Date.now(); this.now = Date.now();
+        if (!silent) this.toastSuccess(this.t('qb.toastSaved') + (assigned ? ' ' + this.tf('qb.codeAssigned', { code: assigned }) : ''));
+      },
+      async submitForReview() {
+        this.submitted = true;
+        if (this.issues.length) {
+          this.announce(this.tf('qb.issuesTitle', { n: this.issues.length }));
+          this.$nextTick(() => { this.$refs.issuesBox?.scrollIntoView({ block: 'center' }); this.$refs.issuesBox?.focus({ preventScroll: true }); });
+          return;
+        }
+        this.publishing = true;
+        await this.saveDraft({ silent: true });
+        await sleep(500);                                           // Livewire: $wire.submitForReview() → ReviewRequest
+        this._ready = false;
+        this.quizForm.status = 'in_review';
+        this.publishing = false;
+        this.dirty = false;
+        this.toastSuccess(this.tf('qb.toastSubmitted', { name: this.displayTitle }));
+        setTimeout(() => { window.location.href = 'quizzes.html'; }, 1400);
+      },
+
+      /* ---------- المعاينة ---------- */
+      previewOpen: false, _pvReturn: null,
+      openPreview(ev) { this._pvReturn = ev?.currentTarget || null; this.previewOpen = true; },
+      closePreview() { this.previewOpen = false; this.$nextTick(() => this._pvReturn?.focus()); },
+
+      /* ---------- التوليد بالذكاء الاصطناعي ---------- */
+      aiModalOpen: false, aiBusy: false, aiResults: [], _aiReturn: null,
+      aiForm: { concept: '', bloom: 'mixed', qtype: 'mcq', difficulty: 'medium', count: 5 },
+      aiConceptOpts() {
+        const f = this.quizForm;
+        const list = M.concepts.filter(c => c.courseId === f.courseId && (!f.unitId || c.unitId === f.unitId) && (!f.lessonId || !c.lessonId || c.lessonId === f.lessonId));
+        return [{ value: '', label: this.t('qb.aiAllConcepts') }, ...list.map(c => ({ value: c.code, label: c[this.locale] }))];
+      },
+      aiBloomOpts() { return ['mixed', ...BLOOMS].map(b => ({ value: b, label: this.t('qb.bloom.' + b) })); },
+      aiTypeOpts() { return ['mcq', 'tf', 'essay'].map(v => ({ value: v, label: this.t('qb.qType.' + v) })); },
+      get aiContextText() { return this.quizForm.courseId ? this.tf('qb.aiContext', { path: this.pathLabels().join(' › ') }) : ''; },
+      get aiEstimate() { return 120 + this.aiForm.count * (this.aiForm.qtype === 'essay' ? 220 : 160); },
+      openAiModal(ev) {
+        this._aiReturn = ev?.currentTarget || null;
+        this.aiResults = [];
+        this.aiModalOpen = true;
+        this.$nextTick(() => setTimeout(() => document.getElementById('ai-concept')?.focus(), 60));
+      },
+      closeAiModal() { if (this.aiBusy) return; this.aiModalOpen = false; this.$nextTick(() => this._aiReturn?.focus()); },
+      async generateWithAI() {
+        if (!this.quizForm.courseId || this.aiBusy) return;
+        this.aiBusy = true;
+        await sleep(1100);                                          // Livewire: AiGenerationRun + Job (نفس مسار المولّد)
+        const f = this.aiForm, pool = (QBANK[this.quizForm.courseId] || {})[f.qtype] || [];
+        const seed = Math.floor(Math.random() * 3);
+        this.aiResults = Array.from({ length: f.count }, (_, i) => {
+          const src = clone(pool[(seed + i) % pool.length]);
+          const difficulty = f.difficulty === 'mixed' ? DIFFS[i % 3] : f.difficulty;
+          return { uid: uid(), type: f.qtype, bloom: f.bloom === 'mixed' ? BLOOMS[i % BLOOMS.length] : f.bloom, difficulty,
+                   marks: f.qtype === 'essay' ? 5 : { easy: 1, medium: 2, hard: 3 }[difficulty], added: false, ...src };
+        });
+        this.aiBusy = false;
+        this.$nextTick(() => this.$refs.aiResultsHead?.focus());
+      },
+      addGenerated(r) {
+        if (r.added) return;
+        r.added = true;
+        const { added, ...rest } = clone(r);
+        const q = normalize({ ...rest, source: 'ai', modelAnswer: '', options: r.type === 'mcq' ? rest.options : ['', ''] });
+        this.questions.push(q);
+        this.announce(this.tf('qb.added', { n: this.questions.length }));
+      },
+      addAllGenerated() { this.aiResults.filter(r => !r.added).forEach(r => this.addGenerated(r)); },
+
+      /* ---------- حوارات وتنبيهات ---------- */
+      async confirmDialog(title, text) {
+        if (!window.Swal) return window.confirm(text);
+        const r = await Swal.fire({ icon: 'warning', title, text, showCancelButton: true, focusCancel: true, reverseButtons: this.locale === 'ar',
+                                    confirmButtonText: this.t('qb.confirmYes'), cancelButtonText: this.t('qb.confirmNo'), buttonsStyling: false,
+                                    customClass: { popup: 'firob-swal', confirmButton: 'btn btn-primary', cancelButton: 'btn btn-outline' } });
+        return r.isConfirmed;
+      },
+      toastSuccess(msg) {
+        this.announce(msg);
+        if (!window.Swal) return;
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: msg, showConfirmButton: false, timer: 3000, customClass: { popup: 'firob-swal firob-toast' } });
+      },
+      toastUndo(msg, undo) {
+        this.announce(msg);
+        if (!window.Swal) return;
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: msg, timer: 6000, timerProgressBar: true,
+                    showConfirmButton: true, confirmButtonText: this.t('qb.undo'), customClass: { popup: 'firob-swal firob-toast' } })
+          .then(r => { if (r.isConfirmed) { undo(); this.announce(this.t('qb.undone')); } });
+      },
+
+      /* ---------- التهيئة ---------- */
+      loadFromUrl() {
+        const p = new URLSearchParams(window.location.search);
+        const meta = QUIZ_INDEX.find(q => q.code === p.get('code'));
+        if (!meta) { this.questions = [normalize({ type: 'mcq', marks: 1, options: ['', '', '', ''] })]; return; }
+        this.mode = 'edit';
+        this.originalStatus = meta.status; this.attempts = meta.attempts;
+        Object.assign(this.quizForm, { code: meta.code, titleAr: meta.ar, titleEn: meta.en, type: meta.type, status: meta.status,
+                                       courseId: meta.courseId, unitId: meta.unitId || '', lessonId: meta.lessonId || '', duration: meta.duration });
+        const bank = QBANK[meta.courseId] || {};
+        const seedQs = meta.code === 'QZ-MATH-102' ? DEMO_102
+          : [['mcq', 2], ['tf', 1], ['essay', 5]].filter(([ty]) => bank[ty]).map(([ty, marks]) => ({ type: ty, marks, ...clone(bank[ty][0]),
+              modelAnswer: ty === 'essay' ? 'إجابة نموذجية تجريبية يكتبها المعلّم.' : '' }));
+        this.questions = seedQs.map(normalize);
+        this.lastSavedAt = Date.now() - 3600e3;
+      },
+      init() {
+        this.loadFromUrl();
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        this.$watch('quizForm', () => this.markDirty());
+        this.$watch('questions', () => this.markDirty());
+        this.$nextTick(() => { this._ready = true; });
+        setInterval(() => { this.now = Date.now(); }, 30000);
+        window.addEventListener('beforeunload', (e) => { if (this.dirty || this.savingDraft) { e.preventDefault(); e.returnValue = ''; } });
+      },
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); this.saveDraft(); return; }   // Ctrl+S: حفظ
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          if (g && g.offsetParent !== null) g.focus();
+        }
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — النوافذ تعالج Esc بنفسها
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>

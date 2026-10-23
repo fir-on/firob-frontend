@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>تفاصيل محاولة وتصحيح — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 90 104 125;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-ai      { @apply border border-accent-500/50 bg-accent-500/10 text-yellow-900 hover:bg-accent-500/20 dark:text-accent-500; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مؤشر صحة/خطأ الإجابة (AnswerIndicator) ---------- */
+    .ans-indicator { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm; }
+
+    /* ---------- حقل الدرجة اليدوية (ScoreInput) ---------- */
+    .score-input { @apply h-11 w-24 rounded-lg border border-line-strong bg-field px-3 text-center text-sm font-extrabold tabular-nums text-ink transition; }
+    .score-input:hover { @apply border-primary-500; }
+    .score-input:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .score-input[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .score-input:read-only, .field:read-only { @apply cursor-default bg-soft text-ink; }
+  }
+
+    /* ---------- [SA shell fixes] ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-card opacity-0 shadow-xl transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-[opacity,transform] duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+    .combo-option.is-active.is-selected { @apply ring-1 ring-inset ring-brand/40; }
+    @media (max-width: 640px), (prefers-reduced-transparency: reduce) {
+      .backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    }
+
+    /* ---------- [layout: full-height sidebar + bottom footer] ---------- */
+    html, body { min-height: 100%; }
+    body { margin: 0; }
+    .app-col { min-height: 100vh; min-height: 100dvh; }
+    @media (min-width: 1024px) {
+      #sidebar { height: 100vh; height: 100dvh; }
+      .app-col { margin-inline-start: 18rem; transition: margin-inline-start .3s ease; }
+      .app-col.is-collapsed { margin-inline-start: 5rem; }
+      .save-bar { inset-inline-start: 18rem; transition: inset-inline-start .3s ease; }
+      .save-bar.is-collapsed { inset-inline-start: 5rem; }
+    }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.14.5"></script>
+</head>
+
+<body x-data="quizGradingManager()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); return; } onKey($event)"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': mobileNav && mobile }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="locale === 'ar' ? 'القائمة الرئيسية' : 'Main menu'"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="locale === 'ar' ? 'التنقل الرئيسي' : 'Main navigation'">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="item.live && expanded && pendingTotal"
+                        class="shrink-0 rounded-full bg-accent-500 px-2 text-xs font-extrabold text-onaccent"
+                        x-text="num(pendingTotal)"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'fa-angles-right rtl:-scale-x-100' : 'fa-angles-left rtl:-scale-x-100'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="app-col flex min-w-0 flex-1 flex-col" :class="collapsed && 'is-collapsed'">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex"><bdi dir="ltr">Ctrl K</bdi></kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="notifText(n)"></p>
+                      <p class="text-xs text-muted"><time :datetime="n.at" x-text="relTime(n.at)"></time></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true" x-text="L(teacher.initials)"></span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="L(teacher.name)"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleTeacher')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="locale === 'ar' ? 'قائمة الحساب' : 'Account menu'">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="locale === 'ar' ? 'مسار التنقل' : 'Breadcrumb'">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.portal')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li><a :href="resultsHref" class="hover:text-brand hover:underline" x-text="t('breadcrumb.results')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" aria-current="page" x-text="t('qg.breadcrumbCurrent')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — تصحيح محاولة واحدة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1100px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- مناطق الإعلان لقارئ الشاشة -->
+      <p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+      <p class="sr-only" aria-live="polite" x-text="totalsMsg"></p>
+
+      <!-- العنوان + روابط التنقّل (تحمل سياق الاختبار) -->
+      <section class="flex flex-col gap-4">
+        <div class="min-w-0">
+          <div class="mb-2 flex flex-wrap items-center gap-2">
+            <a :href="resultsHref" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i>
+              <span x-text="t('qg.backToResults')"></span>
+            </a>
+            <span class="text-muted" aria-hidden="true">·</span>
+            <a href="quizzes.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-muted transition hover:text-brand hover:underline">
+              <i class="fa-solid fa-clipboard-question" aria-hidden="true"></i>
+              <span x-text="t('qg.backToQuizzes')"></span>
+            </a>
+          </div>
+          <h1 id="page-title" tabindex="-1" class="text-2xl font-extrabold text-brand focus:outline-none sm:text-3xl" x-text="t('qg.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('qg.subtitle')"></p>
+        </div>
+      </section>
+
+      <!-- ================= حالة الخطأ (معرّف غير معروف / لا محاولات بانتظار التصحيح) ================= -->
+      <template x-if="loadError">
+        <section class="panel p-6 text-center sm:p-10" role="alert" aria-labelledby="load-error-title">
+          <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl text-xl"
+                :class="loadError === 'notFound' ? 'bg-error-500/15 text-error-700 dark:text-red-300' : 'bg-success-500/15 text-success-700 dark:text-success-500'" aria-hidden="true">
+            <i class="fa-solid" :class="loadError === 'notFound' ? 'fa-file-circle-xmark' : 'fa-circle-check'"></i>
+          </span>
+          <h2 id="load-error-title" class="mt-4 text-lg font-extrabold text-ink" x-text="loadError === 'notFound' ? t('qg.notFoundTitle') : t('qg.noPendingTitle')"></h2>
+          <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
+            <span x-text="loadError === 'notFound' ? t('qg.notFoundText') : t('qg.noPendingText')"></span>
+            <template x-if="loadError === 'notFound'">
+              <bdi dir="ltr" class="font-mono font-bold text-ink" x-text="requestedId"></bdi>
+            </template>
+          </p>
+          <a href="quiz-results.html" class="btn btn-primary mt-5">
+            <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+            <span x-text="t('qg.goToResults')"></span>
+          </a>
+        </section>
+      </template>
+
+      <template x-if="attempt && work">
+        <div class="space-y-4 sm:space-y-6">
+
+          <!-- تنبيه: فُتحت أول محاولة بانتظار التصحيح لأن الرابط بلا معرّف -->
+          <div x-show="autoPicked" class="flex items-start gap-2.5 rounded-xl border border-info-500/40 bg-info-50 p-3.5 text-sm font-bold text-info-700 dark:bg-info-500/10 dark:text-blue-300" role="status">
+            <i class="fa-solid fa-circle-info mt-0.5" aria-hidden="true"></i>
+            <span x-text="t('qg.autoPicked')"></span>
+          </div>
+          <!-- تنبيه: استُعيدت مسودة محفوظة محليًا -->
+          <div x-show="restoredAt" class="flex items-start gap-2.5 rounded-xl border border-line bg-soft/60 p-3.5 text-sm font-bold text-ink" role="status">
+            <i class="fa-solid fa-clock-rotate-left mt-0.5 text-brand" aria-hidden="true"></i>
+            <span x-text="tf('qg.restored', { time: relTime(restoredAt) })"></span>
+          </div>
+          <!-- تنبيه: المحاولة للقراءة فقط -->
+          <div x-show="!editable" class="flex items-start gap-2.5 rounded-xl border border-line bg-soft/60 p-3.5 text-sm font-bold text-ink" role="status">
+            <i class="fa-solid fa-lock mt-0.5 text-muted" aria-hidden="true"></i>
+            <span x-text="attempt.status === 'in_progress' ? t('qg.readOnlyInProgress') : t('qg.readOnlyPublished')"></span>
+          </div>
+
+          <!-- ================= بيانات الطالب والمحاولة ================= -->
+          <section class="panel p-4 sm:p-6" aria-labelledby="attempt-heading">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div class="flex min-w-0 items-start gap-3.5">
+                <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-soft text-lg font-extrabold text-brand" aria-hidden="true">
+                  <i x-show="anonymous" class="fa-solid fa-user-secret"></i>
+                  <span x-show="!anonymous" x-text="studentInitials"></span>
+                </span>
+                <div class="min-w-0">
+                  <h2 id="attempt-heading" tabindex="-1" class="truncate text-lg font-extrabold leading-7 text-ink focus:outline-none" x-text="studentLabel"></h2>
+                  <p class="truncate text-start text-xs text-muted" x-show="!anonymous">
+                    <span x-text="t('qg.studentNo')"></span>:
+                    <bdi dir="ltr" class="font-mono" x-text="student ? student.studentNo : '—'"></bdi>
+                  </p>
+                  <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span class="badge badge-muted font-mono"><span class="sr-only" x-text="t('qg.quizCode') + ':'"></span><bdi dir="ltr" x-text="quiz.code"></bdi></span>
+                    <span class="badge badge-muted font-mono"><span class="sr-only" x-text="t('qg.attemptId') + ':'"></span><bdi dir="ltr" x-text="attempt.id"></bdi></span>
+                  </div>
+                  <p class="mt-1.5 text-sm font-bold leading-6 text-ink" x-text="L(quiz.title)"></p>
+                </div>
+              </div>
+
+              <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                <span class="badge text-sm" :class="statusMeta.badge">
+                  <i class="fa-solid" :class="statusMeta.icon" aria-hidden="true"></i>
+                  <span x-text="statusLabel"></span>
+                </span>
+                <!-- التصحيح المجهول -->
+                <button type="button" role="switch" :aria-checked="anonymous.toString()" @click="toggleAnonymous()"
+                        class="inline-flex items-center gap-2 rounded-xl px-2 py-1.5 text-xs font-bold text-ink transition hover:bg-soft">
+                  <span class="flex h-5 w-9 shrink-0 items-center rounded-full px-0.5 transition"
+                        :class="anonymous ? 'justify-end bg-primary-500' : 'justify-start bg-neutral-300 dark:bg-soft-2'" aria-hidden="true">
+                    <span class="h-4 w-4 rounded-full bg-white shadow"></span>
+                  </span>
+                  <span x-text="t('qg.anonymous')"></span>
+                </button>
+              </div>
+            </div>
+
+            <dl class="mt-5 grid grid-cols-2 gap-3 border-t border-line pt-4 text-xs sm:grid-cols-4">
+              <div>
+                <dt class="font-bold text-muted" x-text="t('qg.submittedAt')"></dt>
+                <dd class="mt-1 font-bold text-ink">
+                  <template x-if="attempt.submittedAt">
+                    <time :datetime="attempt.submittedAt" x-text="date(attempt.submittedAt)"></time>
+                  </template>
+                  <span x-show="!attempt.submittedAt" x-text="t('qg.notSubmitted')"></span>
+                </dd>
+              </div>
+              <div>
+                <dt class="font-bold text-muted" x-text="t('qg.timeTaken')"></dt>
+                <dd class="mt-1 font-bold tabular-nums text-ink" x-text="timeTaken"></dd>
+              </div>
+              <div>
+                <dt class="font-bold text-muted" x-text="t('qg.score')"></dt>
+                <dd class="mt-1 font-extrabold tabular-nums text-brand" x-text="num(summary.earned) + ' / ' + num(summary.total)"></dd>
+              </div>
+              <div>
+                <dt class="font-bold text-muted" x-text="t('qg.percentage')"></dt>
+                <dd class="mt-1 font-extrabold tabular-nums text-brand" x-text="pct(summary.percent)"></dd>
+              </div>
+            </dl>
+
+            <!-- تقدّم التصحيح في هذا الاختبار + التنقّل بين المحاولات المعلّقة -->
+            <div class="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p class="flex items-center gap-2 text-sm font-bold text-ink">
+                <i class="fa-solid fa-layer-group text-brand" aria-hidden="true"></i>
+                <span x-text="progressText"></span>
+              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" class="btn btn-outline btn-sm" :disabled="!prevPending" @click="goPrev()"
+                        :aria-keyshortcuts="isRtl ? 'Alt+ArrowRight' : 'Alt+ArrowLeft'">
+                  <i class="fa-solid fa-arrow-left rtl:-scale-x-100" aria-hidden="true"></i>
+                  <span x-text="t('qg.prevPending')"></span>
+                </button>
+                <button type="button" class="btn btn-outline btn-sm" :disabled="!nextPending" @click="goNext()"
+                        :aria-keyshortcuts="isRtl ? 'Alt+ArrowLeft' : 'Alt+ArrowRight'">
+                  <span x-text="t('qg.nextPending')"></span>
+                  <i class="fa-solid fa-arrow-right rtl:-scale-x-100" aria-hidden="true"></i>
+                </button>
+                <!-- اختصارات لوحة المفاتيح -->
+                <div class="relative" @click.outside="helpOpen = false">
+                  <button type="button" x-ref="helpBtn" class="icon-btn h-9 w-9 border border-line" @click="helpOpen = !helpOpen"
+                          :aria-expanded="helpOpen.toString()" aria-controls="shortcut-help" :aria-label="t('qg.shortcutsTitle')">
+                    <i class="fa-regular fa-keyboard" aria-hidden="true"></i>
+                  </button>
+                  <div id="shortcut-help" x-cloak x-show="helpOpen" x-transition.opacity role="region" :aria-label="t('qg.shortcutsTitle')"
+                       @keydown.escape.stop="helpOpen = false; $refs.helpBtn.focus()"
+                       class="absolute end-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-card p-4 text-start shadow-pop">
+                    <p class="mb-2 text-sm font-extrabold text-ink" x-text="t('qg.shortcutsTitle')"></p>
+                    <dl class="space-y-2 text-xs">
+                      <div class="flex items-center justify-between gap-3">
+                        <dt class="text-muted" x-text="t('qg.scSave')"></dt>
+                        <dd><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-bold text-ink"><bdi dir="ltr">Alt + S</bdi></kbd></dd>
+                      </div>
+                      <div class="flex items-center justify-between gap-3">
+                        <dt class="text-muted" x-text="t('qg.scNext')"></dt>
+                        <dd><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-bold text-ink"><bdi dir="ltr" x-text="isRtl ? 'Alt + ←' : 'Alt + →'"></bdi></kbd></dd>
+                      </div>
+                      <div class="flex items-center justify-between gap-3">
+                        <dt class="text-muted" x-text="t('qg.scPrev')"></dt>
+                        <dd><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-bold text-ink"><bdi dir="ltr" x-text="isRtl ? 'Alt + →' : 'Alt + ←'"></bdi></kbd></dd>
+                      </div>
+                    </dl>
+                    <p class="mt-3 text-[11px] leading-5 text-muted" x-text="t('qg.scNote')"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= تفصيل الإجابات والتصحيح ================= -->
+          <section class="panel p-4 sm:p-6" aria-labelledby="answers-title">
+            <h2 id="answers-title" class="mb-4 flex items-center gap-2 text-base font-extrabold text-ink">
+              <i class="fa-solid fa-list-check text-brand" aria-hidden="true"></i>
+              <span x-text="t('qg.answersTitle')"></span>
+            </h2>
+
+            <ol class="space-y-4" role="list">
+              <template x-for="r in rows" :key="attempt.id + ':' + r.uid">
+                <li class="rounded-xl border border-line p-4" :id="'q-' + r.uid" :aria-labelledby="'q-title-' + r.uid">
+
+                  <!-- رأس السؤال -->
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <h3 :id="'q-title-' + r.uid" class="min-w-0 flex-1 font-bold leading-6 text-ink">
+                      <span class="text-muted" x-text="tf('qg.questionN', { n: num(r.n) }) + ':'"></span>
+                      <span x-text="L(r.q.text)"></span>
+                    </h3>
+                    <div class="flex shrink-0 flex-wrap items-center gap-1.5">
+                      <span class="badge" :class="r.auto ? 'badge-info' : 'badge-accent'">
+                        <i class="fa-solid" :class="r.auto ? 'fa-robot' : 'fa-pen-to-square'" aria-hidden="true"></i>
+                        <span x-text="r.auto ? t('qg.gradedAuto') : t('qg.gradedManual')"></span>
+                      </span>
+                      <span class="badge" :class="rowBadge(r).cls">
+                        <i class="fa-solid" :class="rowBadge(r).icon" aria-hidden="true"></i>
+                        <span x-text="rowBadge(r).text"></span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- ========== تصحيح تلقائي (MCQ / صح-خطأ) — للقراءة فقط ========== -->
+                  <template x-if="r.auto">
+                    <div class="mt-3 flex items-start gap-3">
+                      <span class="ans-indicator" :class="r.isCorrect ? 'bg-success-500/15 text-success-700 dark:text-success-500' : 'bg-error-500/15 text-error-700 dark:text-red-300'">
+                        <i class="fa-solid" :class="r.isCorrect ? 'fa-check' : 'fa-xmark'" aria-hidden="true"></i>
+                        <span class="sr-only" x-text="r.isCorrect ? t('qg.correct') : t('qg.incorrect')"></span>
+                      </span>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold" :class="r.isCorrect ? 'text-success-700 dark:text-success-500' : 'text-error-700 dark:text-red-300'" aria-hidden="true"
+                           x-text="r.isCorrect ? t('qg.correct') : (r.ans.choiceUid ? t('qg.incorrect') : t('qg.unanswered'))"></p>
+                        <ul class="mt-2 space-y-1.5" role="list" :aria-label="t('qg.options')">
+                          <template x-for="o in r.q.options" :key="o.uid">
+                            <li class="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                                :class="o.correct ? 'border-success-500/50 bg-success-500/5' : (o.uid === r.ans.choiceUid ? 'border-error-500/50 bg-error-500/5' : 'border-line')">
+                              <bdi class="min-w-0 flex-1 text-ink" x-text="L(o.text)"></bdi>
+                              <span x-show="o.uid === r.ans.choiceUid" class="badge badge-primary">
+                                <i class="fa-solid fa-hand-pointer" aria-hidden="true"></i>
+                                <span x-text="t('qg.studentChoice')"></span>
+                              </span>
+                              <span x-show="o.correct" class="badge badge-success">
+                                <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                <span x-text="t('qg.correctAnswer')"></span>
+                              </span>
+                            </li>
+                          </template>
+                        </ul>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- ========== تصحيح يدوي (مقالي / إجابة قصيرة) ========== -->
+                  <template x-if="!r.auto">
+                    <div class="mt-3 space-y-3">
+                      <div>
+                        <p class="mb-1.5 text-xs font-bold text-muted" x-text="t('qg.studentAnswer')"></p>
+                        <p x-show="r.ans.text" class="whitespace-pre-wrap rounded-lg border border-line bg-soft/60 p-3 text-sm leading-6 text-ink" x-text="L(r.ans.text)"></p>
+                        <p x-show="!r.ans.text" class="rounded-lg border border-dashed border-line p-3 text-sm italic text-muted" x-text="t('qg.noAnswer')"></p>
+                      </div>
+
+                      <details x-show="r.q.modelAnswer" class="rounded-lg border border-line">
+                        <summary class="cursor-pointer px-3 py-2 text-xs font-bold text-brand" x-text="t('qg.modelAnswer')"></summary>
+                        <p class="border-t border-line p-3 text-sm leading-6 text-ink" x-text="L(r.q.modelAnswer)"></p>
+                      </details>
+
+                      <!-- اقتراح الذكاء الاصطناعي (اقتراح فقط؛ ما يُخزَّن هو درجة المعلّم) -->
+                      <div x-show="r.ans.aiSuggested != null" class="flex flex-wrap items-center gap-3 rounded-lg border border-accent-500/50 bg-accent-500/10 p-3 text-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles text-yellow-900 dark:text-accent-500" aria-hidden="true"></i>
+                        <div class="min-w-0 flex-1">
+                          <p class="font-bold text-ink">
+                            <span x-text="t('qg.aiSuggested') + ':'"></span>
+                            <span class="tabular-nums" x-text="num(r.ans.aiSuggested) + ' / ' + num(r.marks)"></span>
+                          </p>
+                          <p class="text-xs text-muted" x-text="t('qg.aiNote')"></p>
+                        </div>
+                        <button type="button" class="btn btn-ai btn-sm" :disabled="!editable || (r.ans.marksEarned === r.ans.aiSuggested && !errors[r.uid])"
+                                @click="applySuggestion(r)" :aria-label="tf('qg.applySuggestionFor', { n: num(r.n) })">
+                          <i class="fa-solid fa-check-double" aria-hidden="true"></i>
+                          <span x-text="t('qg.applySuggestion')"></span>
+                        </button>
+                      </div>
+
+                      <div class="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr] sm:items-start">
+                        <div>
+                          <label class="label" :for="'score-' + r.uid" x-text="tf('qg.scoreFor', { n: num(r.n), max: num(r.marks) })"></label>
+                          <div class="flex items-center gap-2">
+                            <input type="text" inputmode="decimal" autocomplete="off" :id="'score-' + r.uid" class="score-input"
+                                   :value="inputs[r.uid]" @input="setScore(r, $event.target.value)" :readonly="!editable"
+                                   :aria-invalid="(!!errors[r.uid]).toString()"
+                                   :aria-describedby="'score-hint-' + r.uid + (errors[r.uid] ? ' score-err-' + r.uid : '')">
+                            <span class="shrink-0 text-sm font-bold text-muted" aria-hidden="true" x-text="'/ ' + num(r.marks)"></span>
+                          </div>
+                          <p :id="'score-hint-' + r.uid" class="hint" x-text="tf('qg.scoreHint', { max: num(r.marks) })"></p>
+                          <template x-if="errors[r.uid]">
+                            <p :id="'score-err-' + r.uid" class="err" role="alert">
+                              <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                              <span x-text="scoreError(r)"></span>
+                            </p>
+                          </template>
+                          <!-- درجات سريعة (سلّم مبسّط) -->
+                          <div x-show="editable" class="mt-2 flex flex-wrap gap-1.5" role="group" :aria-label="tf('qg.quickScoresFor', { n: num(r.n) })">
+                            <button type="button" class="rounded-full border border-line px-2.5 py-1 text-xs font-bold text-ink transition hover:bg-soft" @click="rubric(r, 'full')" x-text="tf('qg.rubricFull', { v: num(r.marks) })"></button>
+                            <button type="button" class="rounded-full border border-line px-2.5 py-1 text-xs font-bold text-ink transition hover:bg-soft" @click="rubric(r, 'half')" x-text="tf('qg.rubricHalf', { v: num(r.marks / 2) })"></button>
+                            <button type="button" class="rounded-full border border-line px-2.5 py-1 text-xs font-bold text-ink transition hover:bg-soft" @click="rubric(r, 'none')" x-text="tf('qg.rubricNone', { v: num(0) })"></button>
+                          </div>
+                        </div>
+                        <div class="min-w-0">
+                          <label class="label" :for="'feedback-' + r.uid" x-text="tf('qg.feedbackFor', { n: num(r.n) })"></label>
+                          <textarea :id="'feedback-' + r.uid" class="field" rows="3" :lang="locale" :readonly="!editable"
+                                    :value="feedbackValue(r)" @input="setFeedback(r, $event.target.value)"
+                                    :placeholder="t('qg.teacherNotePlaceholder')" :aria-describedby="'fb-hint-' + r.uid"></textarea>
+                          <p :id="'fb-hint-' + r.uid" class="hint" x-text="t('qg.feedbackLangHint')"></p>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </li>
+              </template>
+            </ol>
+          </section>
+
+          <!-- ================= الملاحظة العامة والنتيجة الحيّة ================= -->
+          <section class="panel grid grid-cols-1 gap-5 p-4 sm:p-6 lg:grid-cols-[1fr_18rem]" :aria-label="t('qg.finalGrade')">
+            <div class="min-w-0">
+              <label class="label" for="general-comment" x-text="t('qg.generalComment')"></label>
+              <textarea id="general-comment" class="field" rows="4" :lang="locale" :readonly="!editable"
+                        :value="(work.generalComment && work.generalComment[locale]) || ''" @input="setGeneralComment($event.target.value)"
+                        :placeholder="t('qg.generalCommentPlaceholder')" aria-describedby="general-comment-hint"></textarea>
+              <p id="general-comment-hint" class="hint" x-text="t('qg.generalCommentHint') + ' ' + t('qg.feedbackLangHint')"></p>
+            </div>
+
+            <div class="rounded-xl border border-line bg-soft/60 p-4 text-center">
+              <p class="text-xs font-bold text-muted" x-text="t('qg.finalGrade')"></p>
+              <p class="mt-1.5 text-3xl font-extrabold tabular-nums text-brand" x-text="num(summary.earned) + ' / ' + num(summary.total)"></p>
+              <p class="mt-0.5 text-sm font-bold tabular-nums text-muted" x-text="pct(summary.percent)"></p>
+              <span class="badge mt-3" :class="summary.passed === null ? 'badge-warning' : (summary.passed ? 'badge-success' : 'badge-danger')">
+                <i class="fa-solid" :class="summary.passed === null ? 'fa-hourglass-half' : (summary.passed ? 'fa-circle-check' : 'fa-circle-xmark')" aria-hidden="true"></i>
+                <span x-text="resultLabel"></span>
+              </span>
+              <p class="mt-3 text-[11px] leading-5 text-muted" x-text="tf('qg.passMarkNotice', { mark: pct(quiz.passMark) })"></p>
+            </div>
+          </section>
+
+          <!-- ================= الحفظ والنشر ================= -->
+          <section class="panel space-y-3 p-4 sm:p-5" :aria-label="t('qg.actionsLabel')">
+            <!-- ملخّص أخطاء النشر -->
+            <div x-show="publishErrors.length" id="publish-errors" tabindex="-1" role="alert"
+                 class="rounded-xl border border-error-500/40 bg-error-50 p-3.5 text-sm text-error-700 focus:outline-none dark:bg-error-500/10 dark:text-red-300">
+              <p class="flex items-center gap-2 font-bold">
+                <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+                <span x-text="publishErrorText"></span>
+              </p>
+              <ul class="mt-2 flex flex-wrap gap-2" role="list">
+                <template x-for="e in publishErrors" :key="e.uid">
+                  <li><a :href="'#score-' + e.uid" class="font-bold underline underline-offset-2" @click.prevent="focusScore(e.uid)" x-text="tf('qg.questionN', { n: num(e.n) })"></a></li>
+                </template>
+              </ul>
+            </div>
+
+            <!-- بعد النشر: عرض المحاولة التالية (بلا إعادة توجيه) -->
+            <div x-show="justPublished" id="published-panel" tabindex="-1" role="status"
+                 class="flex flex-col gap-3 rounded-xl border border-success-500/40 bg-success-50 p-3.5 text-sm font-bold text-success-800 focus:outline-none dark:bg-success-500/10 dark:text-success-500 sm:flex-row sm:items-center sm:justify-between">
+              <p class="flex items-center gap-2">
+                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                <span x-text="tf('qg.publishedDone', { who: studentLabel })"></span>
+              </p>
+              <template x-if="nextAfterPublish">
+                <button type="button" class="btn btn-primary btn-sm" @click="goTo(nextAfterPublish.id)">
+                  <span x-text="nextAfterPublish.quizCode === attempt.quizCode ? t('qg.nextPendingAttempt') : t('qg.nextPendingOtherQuiz')"></span>
+                  <i class="fa-solid fa-arrow-right rtl:-scale-x-100" aria-hidden="true"></i>
+                </button>
+              </template>
+              <template x-if="!nextAfterPublish">
+                <a :href="resultsHref" class="btn btn-outline btn-sm">
+                  <span x-text="t('qg.allGraded')"></span>
+                </a>
+              </template>
+            </div>
+
+            <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <p class="me-auto flex items-center gap-2 text-xs font-bold" :class="dirty ? 'text-warning-800 dark:text-warning-500' : 'text-muted'">
+                <i class="fa-solid" :class="dirty ? 'fa-pen' : 'fa-floppy-disk'" aria-hidden="true"></i>
+                <span x-text="saveStateText"></span>
+              </p>
+              <button type="button" class="btn btn-outline" @click="saveDraft()" :disabled="!editable" aria-keyshortcuts="Alt+S">
+                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                <span x-text="t('qg.saveDraft')"></span>
+              </button>
+              <button type="button" class="btn btn-primary" @click="publish()" :disabled="!editable || publishing" :aria-busy="publishing.toString()">
+                <i class="fa-solid" :class="publishing ? 'fa-spinner fa-spin' : 'fa-paper-plane'" aria-hidden="true"></i>
+                <span x-text="attempt.status === 'published' ? t('qg.published') : t('qg.publishResult')"></span>
+              </button>
+            </div>
+            <p class="text-xs text-muted" x-text="t('qg.actionsHint')"></p>
+          </section>
+        </div>
+      </template>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1100px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-muted" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<script>
+  /* ==========================================================================
+   FirOb — بيانات المعلم المشتركة (Teacher shared mock data) — global `TC`
+   مصدر واحد متّسق لكل صفحات المعلم: المقررات، المفاهيم، العناصر التعليمية،
+   الاختبارات وأسئلتها، الطلبة، المحاولات، استهلاك الذكاء الاصطناعي، طلبات المراجعة.
+   - كل الطوابع الزمنية محسوبة نسبةً إلى لحظة التحميل (إزاحات ثابتة، بلا عشوائية).
+   - البيانات للقراءة؛ انسخها نسخًا عميقًا (TC.clone) قبل تعديلها في حالة الصفحة.
+   ========================================================================== */
+const TC = (() => {
+  'use strict';
+
+  /* ---------------- الوقت والمساعدات الأساسية ---------------- */
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  const LOAD = new Date(); LOAD.setSeconds(0, 0);
+  const now = () => new Date();
+  const addMinutes = (d, m) => new Date(new Date(d).getTime() + m * 60000);
+  const addDays = (d, n) => addMinutes(d, n * 1440);
+  /** Date → 'YYYY-MM-DDTHH:mm' بالتوقيت المحلي (لحقول datetime-local) */
+  const isoLocal = (d) => { d = new Date(d); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  /** 'YYYY-MM-DDTHH:mm' (محلي) → Date | null */
+  const parseLocal = (s) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(String(s || '').trim());
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+    return isNaN(d) ? null : d;
+  };
+  const at = (days, minutes = 0) => addMinutes(addDays(LOAD, days), minutes).toISOString();
+  const bi = (ar, en) => ({ ar, en: en === undefined ? ar : en });
+  const clone = (o) => (typeof structuredClone === 'function' ? structuredClone(o) : JSON.parse(JSON.stringify(o)));
+
+  /* ---------------- المعلم ---------------- */
+  const TEACHER = {
+    id: 'TCH-0007',
+    name: bi('أحمد محمود الشريف', 'Ahmad Mahmoud Al-Sharif'),
+    firstName: bi('أحمد', 'Ahmad'),
+    initials: bi('أش', 'AS'),
+    email: 'a.alsharif@school.firob.example',
+  };
+
+  const SUBJECTS = {
+    math: bi('الرياضيات', 'Mathematics'),
+    science: bi('العلوم العامة', 'General Science'),
+    arabic: bi('اللغة العربية', 'Arabic Language'),
+    english: bi('اللغة الإنجليزية', 'English Language'),
+  };
+
+  /* ---------------- المقررات المسندة (الوحدات والدروس؛ الأعداد مشتقّة) ---------------- */
+  const L = (id, ar, en) => ({ id, title: bi(ar, en) });
+  const COURSES = [
+    {
+      id: 'CRS-MATH-G7', code: 'MATH-G7', subject: 'math', color: 'primary', icon: 'fa-square-root-variable',
+      title: bi('الرياضيات - الصف السابع', 'Mathematics - Grade 7'), grade: bi('الصف السابع', 'Grade 7'),
+      units: [
+        { id: 'U101', title: bi('الوحدة الأولى: الأعداد الصحيحة', 'Unit 1: Integers'), lessons: [
+          L('L1011', 'جمع الأعداد الصحيحة وطرحها', 'Adding and Subtracting Integers'),
+          L('L1012', 'ضرب الأعداد الصحيحة وقسمتها', 'Multiplying and Dividing Integers'),
+          L('L1013', 'خصائص الأعداد الصحيحة', 'Properties of Integers'),
+        ] },
+        { id: 'U102', title: bi('الوحدة الثانية: الكسور والنسب', 'Unit 2: Fractions and Ratios'), lessons: [
+          L('L1021', 'تبسيط الكسور', 'Simplifying Fractions'),
+          L('L1022', 'النسبة والتناسب', 'Ratio and Proportion'),
+        ] },
+        { id: 'U103', title: bi('الوحدة الثالثة: المقادير الجبرية', 'Unit 3: Algebraic Expressions'), lessons: [
+          L('L1031', 'المتغيرات والمقادير', 'Variables and Expressions'),
+          L('L1032', 'حل المعادلات الخطية', 'Solving Linear Equations'),
+        ] },
+      ],
+    },
+    {
+      id: 'CRS-SCI-G8', code: 'SCI-G8', subject: 'science', color: 'success', icon: 'fa-flask',
+      title: bi('العلوم العامة - الصف الثامن', 'General Science - Grade 8'), grade: bi('الصف الثامن', 'Grade 8'),
+      units: [
+        { id: 'U201', title: bi('الوحدة الأولى: الخلية ومكوناتها', 'Unit 1: The Cell and Its Components'), lessons: [
+          L('L2011', 'المجهر وأنواعه', 'Microscopes and Their Types'),
+          L('L2012', 'تركيب الخلية النباتية والحيوانية', 'Plant and Animal Cell Structure'),
+          L('L2013', 'عضيات الخلية ووظائفها', 'Cell Organelles and Their Functions'),
+        ] },
+        { id: 'U202', title: bi('الوحدة الثانية: التفاعلات الكيميائية', 'Unit 2: Chemical Reactions'), lessons: [
+          L('L2021', 'أنواع التفاعلات الكيميائية', 'Types of Chemical Reactions'),
+          L('L2022', 'موازنة المعادلات الكيميائية', 'Balancing Chemical Equations'),
+        ] },
+      ],
+    },
+    {
+      id: 'CRS-ARAB-G9', code: 'ARAB-G9', subject: 'arabic', color: 'accent', icon: 'fa-book-open',
+      title: bi('اللغة العربية - الصف التاسع', 'Arabic Language - Grade 9'), grade: bi('الصف التاسع', 'Grade 9'),
+      units: [
+        { id: 'U301', title: bi('الوحدة الأولى: النصوص الأدبية', 'Unit 1: Literary Texts'), lessons: [
+          L('L3011', 'تحليل النص الشعري', 'Analysing a Poem'),
+          L('L3012', 'عناصر القصة القصيرة', 'Elements of the Short Story'),
+        ] },
+        { id: 'U302', title: bi('الوحدة الثانية: النحو والإعراب', 'Unit 2: Grammar and Parsing'), lessons: [
+          L('L3021', 'الإعراب بالحركات', 'Case Endings with Short Vowels'),
+          L('L3022', 'الفعل الماضي والمضارع', 'Past and Present Verbs'),
+        ] },
+      ],
+    },
+    {
+      id: 'CRS-ENG-G7', code: 'ENG-G7', subject: 'english', color: 'info', icon: 'fa-language',
+      title: bi('اللغة الإنجليزية - الصف السابع', 'English Language - Grade 7'), grade: bi('الصف السابع', 'Grade 7'),
+      units: [
+        { id: 'U401', title: bi('الوحدة الأولى: أساسيات القواعد', 'Unit 1: Grammar Essentials'), lessons: [
+          L('L4011', 'المضارع البسيط والمضارع المستمر', 'Present Simple vs Present Continuous'),
+          L('L4012', 'توافق الفاعل والفعل', 'Subject-Verb Agreement'),
+        ] },
+        { id: 'U402', title: bi('الوحدة الثانية: مهارات القراءة', 'Unit 2: Reading Skills'), lessons: [
+          L('L4021', 'تحديد الفكرة الرئيسة', 'Finding the Main Idea'),
+        ] },
+      ],
+    },
+  ];
+
+  /* ---------------- المفاهيم ---------------- */
+  const K = (id, code, courseId, unitId, lessonId, ar, en, bloom, difficulty, prerequisites, status = 'active', classified = true) =>
+    ({ id, code, courseId, unitId, lessonId, name: bi(ar, en), bloom, difficulty, prerequisites, classified, status });
+  const M = 'CRS-MATH-G7', S = 'CRS-SCI-G8', A = 'CRS-ARAB-G9', E = 'CRS-ENG-G7';
+  const CONCEPTS = [
+    K('K01', 'CPT-MATH-001', M, 'U101', 'L1011', 'الأعداد الصحيحة الموجبة والسالبة', 'Positive and Negative Integers', 'understand', 'easy', []),
+    K('K02', 'CPT-MATH-002', M, 'U101', 'L1013', 'خاصية الإبدال في الضرب', 'Commutative Property of Multiplication', 'remember', 'easy', ['K01']),
+    K('K03', 'CPT-MATH-003', M, 'U101', 'L1011', 'القيمة المطلقة للعدد', 'Absolute Value of a Number', 'understand', 'medium', ['K01'], 'draft'),
+    K('K04', 'CPT-MATH-008', M, 'U101', 'L1011', 'جمع الأعداد الصحيحة وطرحها', 'Adding and Subtracting Integers', 'apply', 'medium', ['K01', 'K03']),
+    K('K05', 'CPT-MATH-009', M, 'U101', 'L1012', 'قواعد إشارات الضرب', 'Sign Rules for Multiplication', 'apply', 'medium', ['K01']),
+    K('K06', 'CPT-MATH-010', M, 'U102', 'L1021', 'تبسيط الكسور الاعتيادية', 'Simplifying Common Fractions', 'apply', 'easy', [], 'review'),
+    K('K07', 'CPT-MATH-018', M, 'U102', 'L1022', 'النسبة والتناسب الطردي', 'Ratio and Direct Proportion', 'analyze', 'hard', ['K06'], 'review'),
+    K('K08', 'CPT-MATH-012', M, 'U101', 'L1013', 'خاصية التوزيع', 'Distributive Property', 'understand', 'medium', ['K05']),
+    K('K09', 'CPT-SCI-004', S, 'U201', 'L2012', 'تركيب الخلية النباتية والحيوانية', 'Plant and Animal Cell Structure', 'understand', 'medium', []),
+    K('K10', 'CPT-SCI-005', S, 'U202', 'L2022', 'موازنة المعادلة الكيميائية', 'Balancing a Chemical Equation', 'apply', 'hard', ['K15']),
+    K('K11', 'CPT-SCI-011', S, 'U201', 'L2013', 'الميتوكوندريا وإنتاج الطاقة', 'Mitochondria and Energy Production', 'understand', 'medium', ['K09']),
+    K('K12', 'CPT-SCI-013', S, 'U201', 'L2013', 'الغشاء البلازمي', 'The Plasma Membrane', 'remember', 'easy', ['K09']),
+    K('K13', 'CPT-SCI-014', S, 'U201', 'L2011', 'أنواع المجاهر', 'Types of Microscopes', 'remember', 'easy', [], 'draft'),
+    K('K14', 'CPT-SCI-015', S, 'U201', 'L2013', 'النواة والمادة الوراثية', 'The Nucleus and Genetic Material', 'understand', 'medium', ['K09']),
+    K('K15', 'CPT-SCI-016', S, 'U202', 'L2021', 'أنواع التفاعلات الكيميائية', 'Types of Chemical Reactions', 'understand', 'medium', []),
+    K('K16', 'CPT-ARAB-006', A, 'U301', 'L3012', 'عناصر القصة القصيرة: الشخصية', 'Short Story Elements: Character', 'analyze', 'medium', []),
+    K('K17', 'CPT-UNFL-007', A, 'U301', null, 'الصورة الشعرية', 'Poetic Imagery', 'analyze', 'hard', [], 'active', false),
+    K('K18', 'CPT-ARAB-019', A, 'U301', 'L3012', 'الحبكة والسرد', 'Plot and Narration', 'understand', 'medium', ['K16']),
+    K('K19', 'CPT-ARAB-021', A, 'U302', 'L3021', 'علامات الإعراب الأصلية', 'Primary Case-Ending Marks', 'apply', 'medium', [], 'review'),
+    K('K20', 'CPT-ARAB-022', A, 'U301', 'L3011', 'الرمزية في النص الأدبي', 'Symbolism in Literary Texts', 'evaluate', 'hard', ['K17']),
+    K('K21', 'CPT-ENG-030', E, 'U401', 'L4011', 'المضارع البسيط مقابل المستمر', 'Present Simple vs Continuous', 'apply', 'easy', []),
+    K('K22', 'CPT-ENG-031', E, 'U401', null, 'توافق الفاعل والفعل', 'Subject-Verb Agreement', 'apply', 'medium', ['K21'], 'draft', false)  /* غير مصنّف: لم يُربط بدرس بعد */,
+  ];
+
+  /* ---------------- العناصر التعليمية ---------------- */
+  const MB = 1024 * 1024;
+  const LO = (id, code, ar, en, type, courseId, unitId, lessonId, conceptIds, status, visibility, owner, sizeMB, updDays, usedIn) =>
+    ({ id, code, title: bi(ar, en), type, courseId, unitId, lessonId, conceptIds, status, visibility, owner, sizeBytes: Math.round(sizeMB * MB), updatedAt: at(updDays, -95), usedIn });
+  const LEARNING_OBJECTS = [
+    LO('LO01', 'LO-SCORM-001', 'مقدّمة في الكسور الاعتيادية', 'Intro to Common Fractions', 'scorm', M, 'U102', 'L1021', ['K06'], 'active', 'tenant', 'me', 18.4, -12, 3),
+    LO('LO02', 'LO-HTML5-014', 'تجربة التحليل الكهربائي للماء', 'Water Electrolysis Lab', 'interactive', S, 'U202', 'L2021', ['K15'], 'active', 'private', 'me', 6.2, -5, 1),
+    LO('LO03', 'LO-VID-027', 'فيديو شرح الإعراب بالحركات', 'Arabic Grammar: Case Endings', 'video', A, 'U302', 'L3021', ['K19'], 'review', 'tenant', 'me', 142.5, -2, 0),
+    LO('LO04', 'LO-PDF-009', 'بطاقة مراجعة عضيات الخلية', 'Cell Organelles Review Card', 'pdf', S, 'U201', 'L2013', ['K11', 'K12', 'K14'], 'active', 'central', 'shared', 2.3, -40, 5),
+    LO('LO05', 'LO-SCORM-033', 'محاكاة معادلة احتراق الميثان', 'Methane Combustion Simulation', 'scorm', S, 'U202', 'L2022', ['K10'], 'review', 'tenant', 'me', 24.8, -3, 0),
+    LO('LO06', 'LO-HTML5-019', 'خط الأعداد التفاعلي', 'Interactive Number Line', 'interactive', M, 'U101', 'L1011', ['K01', 'K03'], 'active', 'tenant', 'me', 4.1, -20, 4),
+    LO('LO07', 'LO-VID-102', 'فيديو: ضرب الأعداد الصحيحة', 'Video: Multiplying Integers', 'video', M, 'U101', 'L1012', ['K05'], 'active', 'central', 'me', 96.0, -9, 2),
+    LO('LO08', 'LO-SIM-045', 'محاكاة استخدام المجهر الضوئي', 'Light Microscope Simulation', 'simulation', S, 'U201', 'L2011', ['K13'], 'rejected', 'private', 'me', 31.7, -6, 0),
+    LO('LO09', 'LO-PDF-077', 'ورقة عمل: عناصر القصة القصيرة', 'Worksheet: Short Story Elements', 'pdf', A, 'U301', 'L3012', ['K16', 'K18'], 'active', 'central_pending', 'me', 1.6, -4, 2),
+    LO('LO10', 'LO-H5P-033', 'نشاط سحب وإفلات: الصورة الشعرية', 'Drag & Drop: Poetic Imagery', 'h5p', A, 'U301', 'L3011', ['K17', 'K20'], 'draft', 'private', 'me', 3.4, -1, 0),
+    LO('LO11', 'LO-VID-041', 'فيديو: مقارنة الخلية النباتية والحيوانية', 'Video: Plant vs Animal Cells', 'video', S, 'U201', 'L2012', ['K09'], 'active', 'central', 'shared', 120.2, -55, 6),
+    LO('LO12', 'LO-H5P-052', 'بطاقات تفاعلية: النسبة والتناسب', 'Flashcards: Ratio and Proportion', 'h5p', M, 'U102', 'L1022', ['K07'], 'draft', 'private', 'me', 2.9, -2, 0),
+    LO('LO13', 'LO-PDF-061', 'دليل الأزمنة المضارعة', 'Present Tenses Guide', 'pdf', E, 'U401', 'L4011', ['K21'], 'active', 'tenant', 'me', 0.9, -15, 2),
+    LO('LO14', 'LO-SIM-070', 'محاكاة موازنة المعادلات', 'Equation Balancing Simulation', 'simulation', S, 'U202', 'L2022', ['K10', 'K15'], 'active', 'central', 'shared', 12.6, -70, 4),
+    LO('LO15', 'LO-VID-088', 'فيديو: خاصية التوزيع', 'Video: The Distributive Property', 'video', M, 'U101', 'L1013', ['K08', 'K02'], 'active', 'tenant', 'me', 78.3, -18, 1),
+    LO('LO16', 'LO-H5P-090', 'تمرين تفاعلي: توافق الفاعل والفعل', 'Interactive: Subject-Verb Agreement', 'h5p', E, 'U401', 'L4012', ['K22'], 'draft', 'private', 'me', 2.2, -1, 0),
+  ];
+
+  /* ---------------- منشئات الأسئلة ---------------- */
+  const LET = 'ABCDEF';
+  const txt = (v) => (Array.isArray(v) ? bi(v[0], v[1]) : bi(String(v)));
+  const mcq = (uid, ar, en, opts, correct, marks, bloom, difficulty, conceptId, expl, extra = {}) => ({
+    uid, type: 'mcq', text: bi(ar, en),
+    options: opts.map((o, i) => ({ uid: uid + '-' + LET[i], text: txt(o), correct: i === correct })),
+    marks, bloom, difficulty, conceptId, explanation: bi(expl[0], expl[1]), modelAnswer: null, ...extra,
+  });
+  const tf = (uid, ar, en, isTrue, marks, bloom, difficulty, conceptId, expl) => ({
+    uid, type: 'tf', text: bi(ar, en),
+    options: [{ uid: uid + '-T', text: bi('صح', 'True'), correct: !!isTrue }, { uid: uid + '-F', text: bi('خطأ', 'False'), correct: !isTrue }],
+    marks, bloom, difficulty, conceptId, explanation: bi(expl[0], expl[1]), modelAnswer: null,
+  });
+  const essay = (uid, ar, en, marks, bloom, difficulty, conceptId, expl, model, type = 'essay') => ({
+    uid, type, text: bi(ar, en), options: [], marks, bloom, difficulty, conceptId,
+    explanation: bi(expl[0], expl[1]), modelAnswer: bi(model[0], model[1]),
+  });
+  const Q = (code, ar, en, courseId, unitId, lessonId, type, status, win, cfg, questions) => ({
+    code, title: bi(ar, en), courseId, unitId, lessonId, type, status,
+    opensAt: win ? at(win[0]) : null, closesAt: win ? at(win[1]) : null, timezone: 'Asia/Gaza',
+    durationMin: cfg[0], attemptsAllowed: cfg[1], passMark: cfg[2], shuffle: cfg[3], showResults: cfg[4],
+    createdAt: at(win ? win[0] - 6 : -3, -240), updatedAt: at(win ? win[0] - 1 : -1, -60),
+    questions,
+  });
+
+  /* ---------------- الاختبارات ---------------- */
+  const QUIZZES = [
+    Q('QZ-MATH-101', 'اختبار تشخيصي: الأعداد الصحيحة', 'Diagnostic Quiz: Integers', M, 'U101', 'L1011', 'quiz', 'closed', [-21, -14], [20, 1, 50, true, 'after_close'], [
+      mcq('M101-Q1', 'أوجد ناتج: (-7) + 12', 'Find: (-7) + 12', ['5', '-5', '19', '-19'], 0, 3, 'apply', 'easy', 'K04',
+        ['عند جمع عددين مختلفين في الإشارة نطرح القيمتين المطلقتين (12 - 7 = 5) ونأخذ إشارة الأكبر قيمة مطلقة (موجب).', 'With different signs, subtract the absolute values (12 - 7 = 5) and keep the sign of the larger absolute value (positive).']),
+      mcq('M101-Q2', 'رتّب الأعداد تصاعديًا: -3، 5، -8، 0', 'Order ascending: -3, 5, -8, 0', ['-3, -8, 0, 5', '-8, -3, 0, 5', '0, -3, 5, -8', '5, 0, -3, -8'], 1, 4, 'understand', 'medium', 'K01',
+        ['كلما زادت القيمة المطلقة للعدد السالب صغُر، لذا الترتيب: -8، -3، 0، 5.', 'The larger a negative number\'s absolute value, the smaller it is, so the order is -8, -3, 0, 5.']),
+      mcq('M101-Q3', 'احسب: 15 - (-9)', 'Calculate: 15 - (-9)', ['6', '24', '-24', '-6'], 1, 3, 'apply', 'medium', 'K04',
+        ['طرح العدد السالب يساوي جمع معكوسه: 15 + 9 = 24.', 'Subtracting a negative equals adding its opposite: 15 + 9 = 24.']),
+      essay('M101-Q4', 'اشرح بمثال كيف نطرح عددين صحيحين مختلفين في الإشارة.', 'Explain with an example how to subtract two integers with different signs.', 5, 'understand', 'medium', 'K04',
+        ['تُقيَّم الإجابة على صحة القاعدة ووضوح المثال.', 'Graded on the correct rule and a clear example.'],
+        ['نحوّل الطرح إلى جمع المعكوس، مثل: 5 - (-2) = 5 + 2 = 7.', 'Turn subtraction into adding the opposite, e.g. 5 - (-2) = 5 + 2 = 7.']),
+    ]),
+    Q('QZ-MATH-102', 'اختبار تكويني: خصائص الضرب', 'Formative Quiz: Multiplication Properties', M, 'U101', 'L1012', 'quiz', 'open', [-2, 3], [15, 2, 60, true, 'immediately'], [
+      mcq('M102-Q1', 'ما ناتج (-6) × 7؟', 'What is (-6) × 7?', ['-42', '42', '-13', '13'], 0, 2, 'remember', 'easy', 'K05',
+        ['حاصل ضرب عدد سالب في موجب سالب: -42.', 'A negative times a positive is negative: -42.']),
+      mcq('M102-Q2', 'ما ناتج (-4) × (-3)؟', 'What is (-4) × (-3)?', ['-12', '12', '-7', '7'], 1, 2, 'apply', 'medium', 'K05',
+        ['حاصل ضرب سالب في سالب موجب: 12.', 'A negative times a negative is positive: 12.']),
+      mcq('M102-Q3', 'أي خاصية تُستخدم في: 3 × (4 + 2) = (3 × 4) + (3 × 2)؟', 'Which property is used in 3 × (4 + 2) = (3 × 4) + (3 × 2)?',
+        [['خاصية الإبدال', 'Commutative'], ['خاصية التجميع', 'Associative'], ['خاصية التوزيع', 'Distributive'], ['العنصر المحايد', 'Identity']], 2, 3, 'understand', 'medium', 'K08',
+        ['توزيع الضرب على الجمع هو خاصية التوزيع.', 'Distributing multiplication over addition is the distributive property.']),
+      tf('M102-Q4', 'حاصل ضرب عددين سالبين يكون سالبًا.', 'The product of two negative numbers is negative.', false, 1, 'remember', 'easy', 'K05',
+        ['خطأ؛ حاصل ضرب عددين سالبين يكون موجبًا.', 'False; the product of two negatives is positive.']),
+      essay('M102-Q5', 'وضّح خاصية الإبدال في الضرب بمثال عددي.', 'Illustrate the commutative property of multiplication with a numeric example.', 2, 'understand', 'easy', 'K02',
+        ['يكفي مثال صحيح مع ذكر الخاصية.', 'A correct example naming the property is enough.'],
+        ['ترتيب العوامل لا يغيّر الناتج: 4 × 5 = 5 × 4 = 20.', 'Order of factors does not change the product: 4 × 5 = 5 × 4 = 20.']),
+    ]),
+    Q('QZ-MATH-103', 'واجب منزلي: الكسور والنسب', 'Homework: Fractions and Ratios', M, 'U102', 'L1021', 'homework', 'scheduled', [2, 9], [30, 3, 50, false, 'immediately'], [
+      mcq('M103-Q1', 'ما أبسط صورة للكسر 12/18؟', 'What is 12/18 in simplest form?', ['2/3', '3/4', '6/9', '4/6'], 0, 2, 'apply', 'easy', 'K06',
+        ['نقسم البسط والمقام على العامل المشترك الأكبر 6 فنحصل على 2/3.', 'Divide numerator and denominator by the GCF 6 to get 2/3.']),
+      mcq('M103-Q2', 'أي نسبة تكافئ 4 : 6؟', 'Which ratio is equivalent to 4 : 6?', ['3 : 2', '2 : 3', '4 : 3', '1 : 2'], 1, 2, 'understand', 'medium', 'K07',
+        ['بقسمة الحدّين على 2 نحصل على 2 : 3.', 'Dividing both terms by 2 gives 2 : 3.']),
+      tf('M103-Q3', 'الكسران 6/8 و 3/4 متكافئان.', 'The fractions 6/8 and 3/4 are equivalent.', true, 1, 'remember', 'easy', 'K06',
+        ['صحيح؛ 6/8 بعد القسمة على 2 تساوي 3/4.', 'True; 6/8 divided by 2 over 2 equals 3/4.']),
+      essay('M103-Q4', 'إذا كان ثمن 3 دفاتر 12 شيكلًا، فكم ثمن 7 دفاتر؟ وضّح خطوات الحل.', 'If 3 notebooks cost 12 shekels, how much do 7 cost? Show your steps.', 5, 'analyze', 'hard', 'K07',
+        ['تُمنح الدرجة على إعداد التناسب والحساب الصحيح.', 'Marks for setting up the proportion and computing correctly.'],
+        ['ثمن الدفتر 12 ÷ 3 = 4، إذن 7 × 4 = 28 شيكلًا.', 'One notebook costs 12 ÷ 3 = 4, so 7 × 4 = 28 shekels.']),
+    ]),
+    Q('QZ-MATH-104', 'امتحان الوحدة الأولى: الأعداد الصحيحة', 'Unit 1 Exam: Integers', M, 'U101', null, 'exam', 'archived', [-75, -70], [45, 1, 50, true, 'manual'], [
+      mcq('M104-Q1', 'ما قيمة |-9|؟', 'What is |-9|?', ['-9', '9', '0', '81'], 1, 2, 'remember', 'easy', 'K03',
+        ['القيمة المطلقة هي البعد عن الصفر، وهي 9.', 'Absolute value is the distance from zero, which is 9.']),
+      mcq('M104-Q2', 'ما ناتج (-3) × 5؟', 'What is (-3) × 5?', ['15', '-15', '-8', '2'], 1, 2, 'apply', 'easy', 'K05',
+        ['سالب × موجب = سالب: -15.', 'Negative × positive = negative: -15.']),
+      tf('M104-Q3', 'الصفر عدد صحيح موجب.', 'Zero is a positive integer.', false, 2, 'remember', 'easy', 'K01',
+        ['خطأ؛ الصفر ليس موجبًا ولا سالبًا.', 'False; zero is neither positive nor negative.']),
+      mcq('M104-Q4', 'أي مما يلي يساوي 4 × (5 + 2)؟', 'Which equals 4 × (5 + 2)?', ['4 × 5 + 2', '4 × 5 + 4 × 2', '4 + 5 × 2', '(4 + 5) × 2'], 1, 2, 'understand', 'medium', 'K08',
+        ['بحسب خاصية التوزيع: 4 × 5 + 4 × 2 = 28.', 'By the distributive property: 4 × 5 + 4 × 2 = 28.']),
+      essay('M104-Q5', 'سجّلت درجة الحرارة -4 صباحًا وارتفعت 11 درجة ظهرًا. احسب درجة الحرارة ظهرًا مع التوضيح.', 'The temperature was -4 in the morning and rose 11 degrees by noon. Find the noon temperature and explain.', 4, 'apply', 'medium', 'K04',
+        ['تُقيَّم صياغة العملية والناتج.', 'Graded on the operation and the result.'],
+        ['-4 + 11 = 7 درجات.', '-4 + 11 = 7 degrees.']),
+    ]),
+    Q('QZ-SCI-201', 'اختبار ختامي: تركيب الخلية', 'Summative Exam: Cell Structure', S, 'U201', 'L2012', 'exam', 'closed', [-9, -2], [40, 1, 50, false, 'manual'], [
+      mcq('S201-Q1', 'أي عضية مسؤولة عن توليد الطاقة (ATP) داخل الخلية؟', 'Which organelle produces energy (ATP) in the cell?',
+        [['النواة', 'Nucleus'], ['الميتوكوندريا', 'Mitochondria'], ['الرايبوسوم', 'Ribosome'], ['الفجوة العصارية', 'Vacuole']], 1, 5, 'remember', 'easy', 'K11',
+        ['الميتوكوندريا هي مركز التنفس الخلوي وإنتاج ATP.', 'Mitochondria are the site of cellular respiration and ATP production.']),
+      tf('S201-Q2', 'الغشاء البلازمي يُنظّم دخول المواد وخروجها من الخلية.', 'The plasma membrane regulates what enters and leaves the cell.', true, 5, 'understand', 'easy', 'K12',
+        ['صحيح؛ الغشاء البلازمي شبه منفذ ويتحكم في مرور المواد.', 'True; the plasma membrane is selectively permeable.']),
+      essay('S201-Q3', 'اذكر الفرق بين الخلية النباتية والخلية الحيوانية من حيث الجدار الخلوي.', 'State the difference between plant and animal cells regarding the cell wall.', 25, 'analyze', 'medium', 'K09',
+        ['يجب ذكر وجود الجدار في النباتية فقط ومكوّنه ووظيفته.', 'Must state only plant cells have a wall, its material and its function.'],
+        ['الخلية النباتية لها جدار خلوي من السليلوز يمنحها الدعامة والشكل الثابت، بينما لا تملك الخلية الحيوانية جدارًا خلويًا.', 'Plant cells have a cellulose cell wall giving support and fixed shape; animal cells have no cell wall.']),
+      essay('S201-Q4', 'اشرح كيف تساهم الميتوكوندريا والنواة معًا في الحفاظ على نشاط الخلية.', 'Explain how the mitochondria and the nucleus work together to keep the cell active.', 15, 'understand', 'hard', 'K14',
+        ['تُقيَّم الإجابة على الربط بين وظيفتي العضيتين.', 'Graded on linking the two organelles\' functions.'],
+        ['النواة توجّه تصنيع البروتينات عبر المادة الوراثية، والميتوكوندريا تزوّد هذه العمليات بالطاقة (ATP).', 'The nucleus directs protein synthesis via DNA; mitochondria supply the ATP these processes need.']),
+    ]),
+    Q('QZ-SCI-202', 'اختبار تشخيصي: التفاعلات الكيميائية', 'Diagnostic Quiz: Chemical Reactions', S, 'U202', 'L2022', 'quiz', 'draft', null, [20, 1, 50, true, 'after_close'], [
+      mcq('S202-Q1', 'ما المعادلة الموزونة لتكوّن الماء؟', 'Which is the balanced equation for forming water?',
+        ['H2 + O2 → H2O', '2H2 + O2 → 2H2O', 'H2 + 2O2 → H2O', '2H2 + 2O2 → 2H2O'], 1, 3, 'apply', 'hard', 'K10',
+        ['في 2H2 + O2 → 2H2O عدد ذرات الهيدروجين (4) والأكسجين (2) متساوٍ في الطرفين.', 'In 2H2 + O2 → 2H2O hydrogen (4) and oxygen (2) atoms are equal on both sides.']),
+      mcq('S202-Q2', 'التفاعل AB → A + B هو تفاعل:', 'The reaction AB → A + B is a:',
+        [['اتحاد', 'Synthesis'], ['تفكك', 'Decomposition'], ['إحلال بسيط', 'Single replacement'], ['احتراق', 'Combustion']], 1, 3, 'understand', 'medium', 'K15',
+        ['مركّب واحد يتفكك إلى مادتين أبسط.', 'One compound breaks into two simpler substances.']),
+      // مسودة غير مكتملة عمدًا: لا يوجد خيار صحيح بعد (لاختبار التحقق في منشئ الاختبار)
+      mcq('S202-Q3', 'ما المعامل اللازم أمام Fe في: Fe + O2 → Fe2O3؟', 'Which coefficient is needed before Fe in: Fe + O2 → Fe2O3?', ['1', '2', '3', '4'], -1, 2, 'apply', 'hard', 'K10',
+        ['', ''], { draft: true }),
+    ]),
+    Q('QZ-ARAB-301', 'اختبار تكويني: عناصر القصة القصيرة', 'Formative Quiz: Elements of the Short Story', A, 'U301', 'L3012', 'quiz', 'closed', [-12, -6], [15, 1, 60, false, 'after_close'], [
+      mcq('A301-Q1', 'الشخصية التي تتطور وتتغير مع أحداث القصة هي الشخصية:', 'A character who develops and changes through the story is:',
+        [['المسطّحة', 'Flat'], ['النامية', 'Round (developing)'], ['الثانوية', 'Secondary'], ['الرمزية', 'Symbolic']], 1, 3, 'understand', 'medium', 'K16',
+        ['الشخصية النامية تتغير وتتطور مع الأحداث.', 'A round character changes and develops with events.']),
+      mcq('A301-Q2', 'ما وظيفة الحبكة في القصة؟', 'What is the function of the plot in a story?',
+        [['ترتيب الأحداث ترتيبًا مشوّقًا ومنطقيًا', 'Arranging events in an engaging, logical order'], ['وصف المكان فقط', 'Describing the setting only'], ['تحديد اسم الكاتب', 'Naming the author'], ['تلخيص القصة', 'Summarising the story']], 0, 2, 'remember', 'easy', 'K18',
+        ['وظيفة الحبكة: ترتيب الأحداث ترتيبًا مشوّقًا ومنطقيًا.', 'The plot\'s function is arranging events in an engaging, logical order.']),
+      essay('A301-Q3', 'من الذي يروي أحداث القصة؟ وضّح دور الراوي.', 'Who narrates the story? Explain the narrator\'s role.', 3, 'analyze', 'medium', 'K16',
+        ['يجب التمييز بين الكاتب والراوي.', 'Must distinguish the author from the narrator.'],
+        ['الراوي قد يكون شخصية داخل القصة أو صوتًا خارجيًا، وينقل الأحداث من زاوية نظر معينة.', 'The narrator may be a character or an outside voice, relaying events from a specific point of view.']),
+    ]),
+    Q('QZ-ARAB-302', 'اختبار ختامي: الوحدة الأولى — النصوص الأدبية', 'Summative Exam: Unit 1 — Literary Texts', A, 'U301', null, 'exam', 'closed', [-30, -25], [45, 1, 50, false, 'manual'], [
+      mcq('A302-Q1', 'ما الزمن الغالب على سرد النصوص القصصية في هذه الوحدة؟', 'Which tense dominates the narrative texts in this unit?',
+        [['الماضي', 'Past'], ['المضارع', 'Present'], ['المستقبل', 'Future'], ['الأمر', 'Imperative']], 0, 5, 'remember', 'easy', 'K18',
+        ['السرد القصصي يعتمد غالبًا على الفعل الماضي.', 'Narration mostly relies on the past tense.']),
+      tf('A302-Q2', 'الرمز الأدبي يحمل معنى ظاهرًا ومعنى باطنًا.', 'A literary symbol carries both a surface and a deeper meaning.', true, 5, 'understand', 'medium', 'K20',
+        ['صحيح؛ الرمز يتجاوز المعنى الحرفي إلى دلالة أعمق.', 'True; a symbol goes beyond the literal meaning.']),
+      essay('A302-Q3', 'حلّل النص الأدبي الأول موضحًا الرمزية المستخدمة فيه.', 'Analyse the first literary text, explaining the symbolism it uses.', 25, 'evaluate', 'hard', 'K20',
+        ['تُقيَّم الإجابة على تحديد الرموز وتفسير دلالتها بشواهد.', 'Graded on identifying symbols and interpreting them with evidence.'],
+        ['يرمز الشاعر بالزيتونة إلى الصمود والانتماء، وبالنهر إلى استمرار الحياة، مع الاستشهاد بالأبيات.', 'The olive tree symbolises steadfastness and belonging, the river the continuity of life, with quoted lines.']),
+      essay('A302-Q4', 'ما العلاقة بين الصور الشعرية في النصوص المدروسة في هذه الوحدة؟', 'How are the poetic images in this unit\'s texts related?', 25, 'analyze', 'hard', 'K17',
+        ['يجب ذكر الموضوع المشترك وأمثلة من نصين على الأقل.', 'Must state the shared theme with examples from at least two texts.'],
+        ['تشترك الصور في استلهام الطبيعة للتعبير عن الوطن، كالتشبيه بالشجر والمطر.', 'The images share nature-inspired expressions of homeland, such as trees and rain.']),
+    ]),
+    Q('QZ-ARAB-303', 'واجب منزلي: علامات الإعراب', 'Homework: Case-Ending Marks', A, 'U302', 'L3021', 'homework', 'draft', null, [25, 2, 50, false, 'immediately'], [
+      mcq('A303-Q1', 'ما علامة رفع الاسم المفرد؟', 'What marks the nominative of a singular noun?',
+        [['الضمة', 'Damma'], ['الفتحة', 'Fatha'], ['الكسرة', 'Kasra'], ['السكون', 'Sukun']], 0, 2, 'remember', 'easy', 'K19',
+        ['الاسم المفرد يُرفع بالضمة.', 'A singular noun takes damma in the nominative.']),
+      tf('A303-Q2', 'المفعول به منصوب دائمًا.', 'The direct object is always in the accusative.', true, 2, 'understand', 'easy', 'K19',
+        ['صحيح؛ المفعول به من المنصوبات.', 'True; the direct object is accusative.']),
+      essay('A303-Q3', 'أعرب: «قرأ الطالبُ الدرسَ».', 'Parse: "qara\'a at-taalibu ad-darsa".', 4, 'apply', 'medium', 'K19',
+        ['تُمنح درجة لكل كلمة معربة إعرابًا صحيحًا.', 'One mark per correctly parsed word.'],
+        ['قرأ: فعل ماضٍ مبني على الفتح، الطالبُ: فاعل مرفوع بالضمة، الدرسَ: مفعول به منصوب بالفتحة.', 'qara\'a: past verb; at-taalibu: subject (damma); ad-darsa: object (fatha).']),
+    ]),
+    Q('QZ-ENG-401', 'اختبار قصير: الأزمنة المضارعة', 'Quick Quiz: Present Tenses', E, 'U401', 'L4011', 'quiz', 'open', [-3, 4], [15, 1, 60, true, 'immediately'], [
+      mcq('E401-Q1', 'اختر الفعل المناسب: She ___ to school every day.', 'Choose the correct verb: She ___ to school every day.', ['go', 'goes', 'going', 'gone'], 1, 2, 'apply', 'easy', 'K21',
+        ['العادات اليومية بالمضارع البسيط، ومع she نضيف s: goes.', 'Daily habits use present simple; with "she" add -s: goes.']),
+      mcq('E401-Q2', 'اختر الفعل المناسب: Look! The children ___ in the garden.', 'Choose the correct verb: Look! The children ___ in the garden.', ['play', 'plays', 'are playing', 'played'], 2, 2, 'apply', 'medium', 'K21',
+        ['كلمة Look! تدل على حدث يجري الآن، فنستخدم المضارع المستمر.', '"Look!" signals an action happening now, so use the present continuous: are playing.']),
+      mcq('E401-Q3', 'اختر الفعل المناسب: The list of items ___ on the desk.', 'Choose the correct verb: The list of items ___ on the desk.', ['is', 'are', 'be', 'were'], 0, 2, 'apply', 'medium', 'K22',
+        ['الفاعل الحقيقي هو The list (مفرد) فنستخدم is.', 'The real subject is "The list" (singular), so use "is".']),
+      tf('E401-Q4', 'نستخدم المضارع المستمر للتعبير عن العادات اليومية.', 'We use the present continuous for daily routines.', false, 2, 'understand', 'easy', 'K21',
+        ['خطأ؛ العادات اليومية تُعبَّر عنها بالمضارع البسيط.', 'False; daily routines use the present simple.']),
+      essay('E401-Q5', 'اكتب صيغة -ing من الفعل swim.', 'Write the -ing form of "swim".', 2, 'remember', 'easy', 'K21',
+        ['يُضاعف الحرف الأخير بعد حرف علة قصير.', 'Double the final consonant after a short vowel.'],
+        ['swimming', 'swimming'], 'short'),
+    ]),
+  ];
+
+  /* ---------------- الطلبة ---------------- */
+  const ST = (id, ar, en, courseIds) => ({ id, studentNo: '2026' + id.slice(4), name: bi(ar, en), courseIds });
+  const G7 = [M, E], G8 = [S], G9 = [A];
+  const STUDENTS = [
+    ST('STU-1042', 'ريم خالد الفرا', 'Reem Khaled Al-Farra', G7),
+    ST('STU-1077', 'أحمد ياسر حمدان', 'Ahmad Yaser Hamdan', G7),
+    ST('STU-1151', 'يوسف عمر عاشور', 'Youssef Omar Ashour', G7),
+    ST('STU-1158', 'سارة الحلو', 'Sara Al-Helou', G7),
+    ST('STU-1163', 'تامر سليم شاهين', 'Tamer Salim Shaheen', G7),
+    ST('STU-1090', 'دانة سامي قديح', 'Dana Sami Qudaih', G8),
+    ST('STU-1103', 'عمر وليد أبو شريعة', 'Omar Walid Abu Shariah', G8),
+    ST('STU-1166', 'محمد نصار', 'Mohammad Nassar', G8),
+    ST('STU-1172', 'نور حسن البيطار', 'Nour Hasan Al-Bitar', G8),
+    ST('STU-1178', 'هالة رامي عيد', 'Hala Rami Eid', G8),
+    ST('STU-1121', 'لين ناصر الحلاق', 'Leen Nasser Al-Hallaq', G9),
+    ST('STU-1134', 'كريم باسم النجار', 'Kareem Basem Al-Najjar', G9),
+    ST('STU-1185', 'لينا أبو عودة', 'Lina Abu Odeh', G9),
+    ST('STU-1190', 'محمود إياد صيام', 'Mahmoud Iyad Siam', G9),
+  ];
+
+  /* ---------------- المحاولات ----------------
+     spec لكل سؤال بالترتيب: حرف الخيار ('A'..'D' أو 'T'/'F') أو null للتخطي؛
+     وللمقالي/القصير: { m: درجة|null, ai: اقتراح|null, t: [ar,en], fb: [ar,en]|null }.
+     درجات الأسئلة الموضوعية تُحسب تلقائيًا من مفتاح الإجابة. */
+  const qByCode = (code) => QUIZZES.find((q) => q.code === code);
+  const ATT = (id, quizCode, studentId, startH, takenMin, status, spec) => {
+    const qz = qByCode(quizCode);
+    const inProgress = status === 'in_progress';
+    const started = inProgress ? addMinutes(LOAD, -startH) : addMinutes(new Date(qz.opensAt), startH * 60);
+    const answers = qz.questions.map((q, i) => {
+      const s = spec[i];
+      if (q.type === 'mcq' || q.type === 'tf') {
+        const choiceUid = s ? q.uid + '-' + s : null;
+        const opt = q.options.find((o) => o.uid === choiceUid);
+        return { qUid: q.uid, choiceUid, text: null, marksEarned: inProgress ? null : (opt && opt.correct ? q.marks : 0), aiSuggested: null, feedback: null };
+      }
+      if (!s) return { qUid: q.uid, choiceUid: null, text: null, marksEarned: inProgress ? null : 0, aiSuggested: null, feedback: null };
+      return { qUid: q.uid, choiceUid: null, text: bi(s.t[0], s.t[1]), marksEarned: inProgress ? null : (s.m ?? null), aiSuggested: s.ai ?? null, feedback: s.fb ? bi(s.fb[0], s.fb[1]) : null };
+    });
+    return {
+      id, quizCode, studentId, startedAt: started.toISOString(),
+      submittedAt: inProgress ? null : addMinutes(started, takenMin).toISOString(),
+      status, answers,
+      gradedAt: (status === 'graded' || status === 'published') ? addMinutes(started, takenMin + 600).toISOString() : null,
+      publishedAt: status === 'published' ? addMinutes(started, takenMin + 720).toISOString() : null,
+    };
+  };
+  const ES = (m, ai, t, fb) => ({ m, ai, t, fb });
+  const ATTEMPTS = [
+    /* QZ-MATH-101 (مغلق) */
+    ATT('ATT-1042', 'QZ-MATH-101', 'STU-1042', 26, 14, 'published', ['A', 'B', 'A', ES(4, 4, ['نحوّل الطرح إلى جمع المعكوس، مثل 5 - (-2) = 5 + 2 = 7.', 'We turn subtraction into adding the opposite, e.g. 5 - (-2) = 5 + 2 = 7.'], ['شرح صحيح، لكن راجع السؤال الثالث: طرح السالب يعني جمع الموجب.', 'Correct explanation, but review Q3: subtracting a negative means adding.'])]),
+    ATT('ATT-1048', 'QZ-MATH-101', 'STU-1077', 29, 12, 'published', ['A', 'B', 'B', ES(4, 5, ['الطرح يصبح جمعًا للمعكوس: 3 - (-4) = 7.', 'Subtraction becomes adding the opposite: 3 - (-4) = 7.'], ['ممتاز، أضف خطوة توضيحية أكثر.', 'Excellent; add one more explanatory step.'])]),
+    ATT('ATT-1055', 'QZ-MATH-101', 'STU-1151', 50, 18, 'published', ['A', 'C', 'B', ES(2, 2, ['نطرح الأعداد عادي ونضع إشارة الأكبر.', 'We subtract normally and use the bigger sign.'], ['القاعدة ناقصة؛ لم تذكر تحويل الطرح إلى جمع.', 'Rule incomplete; you did not mention converting to addition.'])]),
+    ATT('ATT-1061', 'QZ-MATH-101', 'STU-1158', 74, 19, 'graded', ['B', 'A', 'A', ES(1, 1, ['لا أعرف بالضبط، ربما نجمعهم.', 'Not sure, maybe we add them.'], ['راجعي درس جمع الأعداد الصحيحة وطرحها.', 'Please review the lesson on adding and subtracting integers.'])]),
+    ATT('ATT-1066', 'QZ-MATH-101', 'STU-1163', 98, 16, 'pending_grading', ['A', 'B', 'A', ES(null, 3, ['نغيّر إشارة العدد الثاني ثم نجمع، مثل 8 - (-3) = 11.', 'Change the sign of the second number then add, e.g. 8 - (-3) = 11.'], null)]),
+    /* QZ-MATH-102 (مفتوح) */
+    ATT('ATT-1077', 'QZ-MATH-102', 'STU-1077', 3, 11, 'published', ['A', 'A', 'C', 'F', ES(2, 2, ['3 × 4 = 4 × 3 = 12، الترتيب لا يغيّر الناتج.', '3 × 4 = 4 × 3 = 12; order does not change the product.'], ['إجابة صحيحة. راجع قاعدة سالب × سالب.', 'Correct. Review the negative × negative rule.'])]),
+    ATT('ATT-1081', 'QZ-MATH-102', 'STU-1042', 20, 9, 'pending_grading', ['A', 'B', 'C', 'F', ES(null, 2, ['خاصية الإبدال: 2 × 9 = 9 × 2 = 18.', 'Commutative property: 2 × 9 = 9 × 2 = 18.'], null)]),
+    ATT('ATT-1084', 'QZ-MATH-102', 'STU-1151', 12, 0, 'in_progress', ['A', 'B', null, null, null]),
+    ATT('ATT-1087', 'QZ-MATH-102', 'STU-1158', 26, 13, 'graded', ['B', 'B', 'A', 'T', ES(1, 1, ['5 × 2 = 10', '5 × 2 = 10'], ['المثال ناقص؛ يجب إظهار تبديل العوامل.', 'Incomplete; show the factors swapped.'])]),
+    /* QZ-SCI-201 (مغلق) */
+    ATT('ATT-1090', 'QZ-SCI-201', 'STU-1090', 2, 35, 'pending_grading', ['A', 'T',
+      ES(null, 3, ['لا يوجد فرق بينهما، كلتاهما تحتويان على جدار خلوي بالشكل نفسه.', 'There is no difference; both have the same cell wall.'], null),
+      ES(null, 14, ['النواة تتحكم في كل أعمال الخلية وتحتوي على المادة الوراثية التي توجّه تصنيع البروتينات، بينما تقوم الميتوكوندريا بتوليد الطاقة اللازمة لهذه العمليات عبر التنفس الخلوي.', 'The nucleus controls all cell activity and holds the genetic material that directs protein synthesis, while mitochondria generate the energy these processes need through cellular respiration.'], null)]),
+    ATT('ATT-1094', 'QZ-SCI-201', 'STU-1103', 27, 38, 'pending_grading', ['B', 'T',
+      ES(null, 18, ['الخلية النباتية لها جدار خلوي يحميها، والحيوانية ليس لها جدار.', 'Plant cells have a protective wall; animal cells do not.'], null),
+      ES(null, 9, ['الميتوكوندريا تعطي الطاقة والنواة هي المركز.', 'Mitochondria give energy and the nucleus is the center.'], null)]),
+    ATT('ATT-1097', 'QZ-SCI-201', 'STU-1166', 49, 33, 'published', ['B', 'T',
+      ES(20, 21, ['للخلية النباتية جدار من السليلوز يعطيها شكلًا ثابتًا، ولا يوجد جدار في الحيوانية.', 'Plant cells have a cellulose wall giving a fixed shape; animal cells have none.'], ['إجابة دقيقة؛ أضف وظيفة الدعامة.', 'Accurate; add the support function.']),
+      ES(12, 12, ['النواة تصدر الأوامر لصنع البروتين والميتوكوندريا تنتج ATP لتنفيذها.', 'The nucleus orders protein production and mitochondria make ATP to carry it out.'], ['ربط جيد بين العضيتين.', 'Good link between the organelles.'])]),
+    ATT('ATT-1099', 'QZ-SCI-201', 'STU-1172', 73, 40, 'published', ['C', 'F',
+      ES(10, 9, ['الخلية النباتية أكبر من الحيوانية.', 'Plant cells are bigger than animal cells.'], ['لم تتطرقي إلى الجدار الخلوي.', 'You did not address the cell wall.']),
+      ES(6, 6, ['كلاهما مهم للخلية.', 'Both are important for the cell.'], ['الإجابة عامة جدًا؛ اذكري وظيفة كل عضية.', 'Too general; state each organelle\'s function.'])]),
+    ATT('ATT-1101', 'QZ-SCI-201', 'STU-1178', 97, 36, 'graded', ['B', 'T',
+      ES(18, 19, ['الجدار الخلوي موجود في النبات فقط ويحميه.', 'The cell wall exists only in plants and protects them.'], ['جيد؛ اذكري مادة السليلوز.', 'Good; mention cellulose.']),
+      ES(10, 11, ['النواة فيها DNA والميتوكوندريا تنتج الطاقة.', 'The nucleus has DNA and mitochondria produce energy.'], ['اربطي بين الوظيفتين بشكل أوضح.', 'Link the two functions more clearly.'])]),
+    /* QZ-ARAB-301 (مغلق) */
+    ATT('ATT-1121', 'QZ-ARAB-301', 'STU-1121', 4, 9, 'published', ['B', 'A', ES(2, 2, ['الكاتب فقط هو من يروي الأحداث.', 'Only the author narrates the events.'], ['الراوي قد يكون شخصية أو صوتًا خارجيًا، وليس الكاتب بالضرورة.', 'The narrator may be a character or outside voice, not necessarily the author.'])]),
+    ATT('ATT-1125', 'QZ-ARAB-301', 'STU-1134', 30, 12, 'published', ['A', 'A', ES(1, 1, ['الراوي هو البطل.', 'The narrator is the hero.'], ['ليس دائمًا؛ وضّح أنواع الراوي.', 'Not always; explain the narrator types.'])]),
+    ATT('ATT-1128', 'QZ-ARAB-301', 'STU-1185', 52, 10, 'published', ['B', 'C', ES(3, 3, ['الراوي قد يكون شخصية في القصة أو راويًا عليمًا من الخارج ينقل الأحداث.', 'The narrator may be a character or an omniscient outside voice relaying events.'], ['إجابة نموذجية.', 'Model answer.'])]),
+    ATT('ATT-1130', 'QZ-ARAB-301', 'STU-1190', 76, 14, 'pending_grading', ['B', 'A', ES(null, 2, ['يروي القصة شخص يعرف الأحداث، وقد يكون أحد أبطالها.', 'Someone who knows the events tells the story; it may be one of the characters.'], null)]),
+    /* QZ-ARAB-302 (مغلق) */
+    ATT('ATT-1134', 'QZ-ARAB-302', 'STU-1134', 3, 40, 'published', ['C', 'T',
+      ES(13, 12, ['النص يتحدث عن الطبيعة ويصف الأشجار والأنهار بشكل عام.', 'The text talks about nature, describing trees and rivers in general.'], ['التحليل سطحي؛ لم تحدّد الرموز ودلالاتها.', 'Superficial; you did not identify the symbols and their meaning.']),
+      ES(10, 10, ['كلها نصوص أدبية قديمة.', 'They are all old literary texts.'], ['إجابة مقتضبة؛ اذكر الموضوع المشترك وأمثلة.', 'Too brief; give the shared theme and examples.'])]),
+    ATT('ATT-1137', 'QZ-ARAB-302', 'STU-1121', 26, 42, 'published', ['A', 'T',
+      ES(20, 21, ['الزيتونة رمز للصمود، والنهر رمز للحياة المستمرة، كما في البيت الثاني.', 'The olive tree symbolises steadfastness and the river continuing life, as in line two.'], ['تحليل جيد مدعوم بالشواهد.', 'Good analysis with evidence.']),
+      ES(18, 18, ['تستلهم النصوص الطبيعة للتعبير عن حب الوطن كالمطر والشجر.', 'The texts draw on nature—rain and trees—to express love of homeland.'], ['ربط موفّق.', 'Well connected.'])]),
+    ATT('ATT-1140', 'QZ-ARAB-302', 'STU-1185', 50, 44, 'graded', ['A', 'F',
+      ES(15, 16, ['الرموز في النص هي الشجرة والنهر وتعني الوطن.', 'The symbols are the tree and river, meaning homeland.'], ['حدّدتِ الرموز؛ وسّعي في التفسير.', 'Symbols identified; expand the interpretation.']),
+      ES(12, 13, ['كل النصوص عن الوطن.', 'All the texts are about the homeland.'], ['أضيفي أمثلة من نصين.', 'Add examples from two texts.'])]),
+    ATT('ATT-1143', 'QZ-ARAB-302', 'STU-1190', 74, 39, 'published', ['A', 'T',
+      ES(22, 22, ['يوظّف الشاعر الزيتونة رمزًا للثبات والنهر رمزًا للعطاء، ويستشهد بالبيتين الأول والثالث.', 'The poet uses the olive tree for constancy and the river for giving, citing lines one and three.'], ['تحليل متميز.', 'Outstanding analysis.']),
+      ES(21, 20, ['الصور كلها مستمدة من الطبيعة وتعبّر عن الانتماء، كالمطر في النص الثاني والشجر في الأول.', 'All images come from nature and express belonging, like rain in text two and trees in text one.'], ['ممتاز.', 'Excellent.'])]),
+    /* QZ-ENG-401 (مفتوح) */
+    ATT('ATT-1150', 'QZ-ENG-401', 'STU-1042', 5, 8, 'published', ['B', 'C', 'A', 'F', ES(2, 2, ['swimming', 'swimming'], ['صحيح.', 'Correct.'])]),
+    ATT('ATT-1153', 'QZ-ENG-401', 'STU-1077', 22, 10, 'published', ['B', 'A', 'B', 'F', ES(1, 1, ['swiming', 'swiming'], ['ضاعف حرف m: swimming.', 'Double the m: swimming.'])]),
+    ATT('ATT-1156', 'QZ-ENG-401', 'STU-1163', 44, 7, 'pending_grading', ['B', 'C', 'A', 'T', ES(null, 2, ['swimming', 'swimming'], null)]),
+    ATT('ATT-1159', 'QZ-ENG-401', 'STU-1151', 50, 12, 'published', ['A', 'C', 'A', 'F', ES(0, 0, ['swims', 'swims'], ['المطلوب صيغة -ing: swimming.', 'The -ing form is required: swimming.'])]),
+  ];
+
+  /* ---------------- استهلاك الذكاء الاصطناعي (هذا المعلم فقط) ---------------- */
+  const monthStart = new Date(LOAD.getFullYear(), LOAD.getMonth(), 1);
+  const nextMonth = new Date(LOAD.getFullYear(), LOAD.getMonth() + 1, 1);
+  const elapsed = LOAD.getTime() - monthStart.getTime();
+  const inMonth = (f) => new Date(monthStart.getTime() + Math.floor(elapsed * f)).toISOString();
+  const AI_LOGS = [
+    { id: 'AIG-5012', at: inMonth(0.08), quizCode: 'QZ-ARAB-302', count: 6, tokens: 4200, model: 'Claude Sonnet 4.5', kind: 'questions' },
+    { id: 'AIG-5019', at: inMonth(0.27), quizCode: 'QZ-MATH-101', count: 10, tokens: 6800, model: 'Claude Sonnet 4.5', kind: 'questions' },
+    { id: 'AIG-5025', at: inMonth(0.41), quizCode: null, count: 5, tokens: 3100, model: 'Claude Haiku 4.5', kind: 'concepts' },
+    { id: 'AIG-5031', at: inMonth(0.58), quizCode: 'QZ-SCI-201', count: 8, tokens: 7400, model: 'Claude Sonnet 4.5', kind: 'feedback' },
+    { id: 'AIG-5038', at: inMonth(0.77), quizCode: 'QZ-MATH-103', count: 8, tokens: 5200, model: 'Claude Sonnet 4.5', kind: 'questions' },
+    { id: 'AIG-5044', at: inMonth(0.95), quizCode: 'QZ-ARAB-303', count: 6, tokens: 5300, model: 'Claude Haiku 4.5', kind: 'questions' },
+  ];
+  const AI_USAGE = {
+    teacherMonthlyLimit: 50000,
+    used: AI_LOGS.reduce((s, l) => s + l.tokens, 0),
+    resetsOn: nextMonth.toISOString(),
+    logs: AI_LOGS,
+  };
+
+  /* ---------------- طلبات المراجعة المرسلة من المعلم ---------------- */
+  const RV = (id, kind, refId, ar, en, subDays, status, reviewer, reason, decDays) => ({
+    id, kind, refId, title: bi(ar, en), submittedAt: at(subDays, -130), status,
+    reviewer: reviewer ? bi(reviewer[0], reviewer[1]) : null,
+    reason: reason ? bi(reason[0], reason[1]) : null,
+    decidedAt: decDays == null ? null : at(decDays, -40),
+  });
+  const REVIEWER = ['د. سامر عودة', 'Dr. Samer Odeh'];
+  const REVIEWER2 = ['أ. منى الخطيب', 'Ms. Mona Al-Khatib'];
+  const REVIEW_ITEMS = [
+    RV('REV-301', 'concept', 'K06', 'تبسيط الكسور الاعتيادية', 'Simplifying Common Fractions', -3, 'pending', null, null, null),
+    RV('REV-302', 'concept', 'K07', 'النسبة والتناسب الطردي', 'Ratio and Direct Proportion', -2, 'pending', null, null, null),
+    RV('REV-303', 'concept', 'K13', 'أنواع المجاهر', 'Types of Microscopes', -8, 'changes_requested', REVIEWER, ['أضف أمثلة على المجهر الإلكتروني واربط المفهوم بدرس المجهر.', 'Add electron-microscope examples and link the concept to the microscope lesson.'], -6),
+    RV('REV-304', 'concept', 'K19', 'علامات الإعراب الأصلية', 'Primary Case-Ending Marks', -1, 'pending', null, null, null),
+    RV('REV-305', 'learning_object', 'LO03', 'فيديو شرح الإعراب بالحركات', 'Arabic Grammar: Case Endings', -2, 'pending', null, null, null),
+    RV('REV-306', 'learning_object', 'LO05', 'محاكاة معادلة احتراق الميثان', 'Methane Combustion Simulation', -3, 'pending', null, null, null),
+    RV('REV-307', 'learning_object', 'LO07', 'فيديو: ضرب الأعداد الصحيحة', 'Video: Multiplying Integers', -14, 'approved', REVIEWER2, null, -10),
+    RV('REV-308', 'learning_object', 'LO08', 'محاكاة استخدام المجهر الضوئي', 'Light Microscope Simulation', -9, 'rejected', REVIEWER, ['الملف لا يعمل على الأجهزة اللوحية، ويحتوي نصوصًا إنجليزية بلا ترجمة.', 'The package does not run on tablets and has untranslated English text.'], -6),
+    RV('REV-309', 'question', 'M103-Q4', 'إذا كان ثمن 3 دفاتر 12 شيكلًا…', 'If 3 notebooks cost 12 shekels…', -5, 'approved', REVIEWER2, null, -4),
+    RV('REV-310', 'question', 'A303-Q3', 'أعرب: «قرأ الطالبُ الدرسَ»', 'Parse: "qara\'a at-taalibu ad-darsa"', -1, 'pending', null, null, null),
+  ];
+
+  /* ==================== المساعدات (دوال نقية) ==================== */
+  const course = (id) => COURSES.find((c) => c.id === id || c.code === id) || null;
+  const unit = (courseId, unitId) => {
+    if (unitId === undefined) { unitId = courseId; for (const c of COURSES) { const u = c.units.find((x) => x.id === unitId); if (u) return u; } return null; }
+    const c = course(courseId); return (c && c.units.find((u) => u.id === unitId)) || null;
+  };
+  const lesson = (courseId, unitId, lessonId) => {
+    if (unitId === undefined && lessonId === undefined) { lessonId = courseId; for (const c of COURSES) for (const u of c.units) { const l = u.lessons.find((x) => x.id === lessonId); if (l) return l; } return null; }
+    const u = unit(courseId, unitId); return (u && u.lessons.find((l) => l.id === lessonId)) || null;
+  };
+  const quiz = (code) => QUIZZES.find((q) => q.code === code) || null;
+  const question = (uid) => { for (const q of QUIZZES) { const x = q.questions.find((y) => y.uid === uid); if (x) return x; } return null; };
+  const student = (id) => STUDENTS.find((s) => s.id === id) || null;
+  const attempt = (id) => ATTEMPTS.find((a) => a.id === id) || null;
+  const concept = (id) => CONCEPTS.find((k) => k.id === id || k.code === id) || null;
+  const learningObject = (id) => LEARNING_OBJECTS.find((o) => o.id === id || o.code === id) || null;
+  const studentsOf = (courseId) => STUDENTS.filter((s) => s.courseIds.includes(courseId));
+  const loc = (obj, locale) => (obj == null ? '' : typeof obj === 'string' ? obj : (obj[locale] ?? obj.ar ?? obj.en ?? ''));
+
+  const quizTotal = (qz) => (qz ? qz.questions.reduce((s, q) => s + (+q.marks || 0), 0) : 0);
+  const attemptsOf = (quizCode) => ATTEMPTS.filter((a) => a.quizCode === quizCode);
+  const round1 = (x) => Math.round(x * 10) / 10;
+
+  /** {earned, total, percent, pending, passed} — pending = عدد الإجابات بلا درجة */
+  const attemptScore = (att) => {
+    const qz = att && quiz(att.quizCode);
+    const total = quizTotal(qz);
+    if (!att || !qz) return { earned: 0, total, percent: 0, pending: 0, passed: null };
+    let earned = 0, pending = 0;
+    for (const q of qz.questions) {
+      const a = att.answers.find((x) => x.qUid === q.uid);
+      if (!a || a.marksEarned == null) { pending++; continue; }
+      earned += a.marksEarned;
+    }
+    const percent = total ? round1((earned / total) * 100) : 0;
+    const passed = att.status === 'in_progress' || pending > 0 ? null : percent >= qz.passMark;
+    return { earned, total, percent, pending, passed };
+  };
+
+  /** الحالة الفعلية لاختبار (scheduled/open/closed تُشتق من النافذة الزمنية) */
+  const quizStatus = (qz, nowDate) => {
+    if (!qz) return null;
+    if (!['scheduled', 'open', 'closed'].includes(qz.status) || !qz.opensAt || !qz.closesAt) return qz.status;
+    const t = (nowDate ? new Date(nowDate) : new Date()).getTime();
+    if (t < Date.parse(qz.opensAt)) return 'scheduled';
+    if (t > Date.parse(qz.closesAt)) return 'closed';
+    return 'open';
+  };
+
+  /** إحصاءات نسب مئوية: {n, mean, median, passRate (0..100), bins[10]} — 100% في الخانة الأخيرة */
+  const stats = (percents, passMark = 50) => {
+    const xs = (percents || []).filter((x) => typeof x === 'number' && isFinite(x)).slice().sort((a, b) => a - b);
+    const n = xs.length;
+    const bins = new Array(10).fill(0);
+    xs.forEach((p) => { bins[Math.max(0, Math.min(9, Math.floor(p / 10)))]++; });
+    if (!n) return { n: 0, mean: null, median: null, passRate: null, min: null, max: null, bins };
+    const mean = round1(xs.reduce((s, x) => s + x, 0) / n);
+    const median = round1(n % 2 ? xs[(n - 1) / 2] : (xs[n / 2 - 1] + xs[n / 2]) / 2);
+    const passRate = round1((xs.filter((x) => x >= passMark).length / n) * 100);
+    return { n, mean, median, passRate, min: xs[0], max: xs[n - 1], bins };
+  };
+
+  /** المحاولات المكتملة التصحيح (graded/published) */
+  const scoredAttempts = (quizCode) => attemptsOf(quizCode).filter((a) => a.status === 'graded' || a.status === 'published');
+
+  /** تحليل الفقرات: لكل سؤال {uid, n, pCorrect (0..1), discrimination (-1..1)|null} — مجموعتا 27% العليا والدنيا */
+  const itemAnalysis = (quizCode) => {
+    const qz = quiz(quizCode); if (!qz) return [];
+    const atts = scoredAttempts(quizCode).map((a) => ({ a, p: attemptScore(a).percent })).sort((x, y) => y.p - x.p);
+    const n = atts.length;
+    const k = n >= 2 ? Math.max(1, Math.round(n * 0.27)) : 0;
+    const frac = (a, q) => { const ans = a.answers.find((x) => x.qUid === q.uid); return ans && ans.marksEarned != null && q.marks ? ans.marksEarned / q.marks : 0; };
+    const avg = (arr, q) => (arr.length ? arr.reduce((s, r) => s + frac(r.a, q), 0) / arr.length : 0);
+    return qz.questions.map((q) => ({
+      uid: q.uid, type: q.type, n,
+      pCorrect: n ? Math.round(avg(atts, q) * 100) / 100 : null,
+      discrimination: k ? Math.round((avg(atts.slice(0, k), q) - avg(atts.slice(n - k), q)) * 100) / 100 : null,
+    }));
+  };
+
+  const BLOOMS = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'];
+  /** الأداء حسب مستوى بلوم عبر المحاولات المصحّحة: [{bloom, earned, possible, percent}] */
+  const bloomBreakdown = (quizCode) => {
+    const qz = quiz(quizCode); if (!qz) return [];
+    const atts = scoredAttempts(quizCode);
+    const acc = {};
+    for (const q of qz.questions) {
+      const r = acc[q.bloom] || (acc[q.bloom] = { bloom: q.bloom, earned: 0, possible: 0 });
+      for (const a of atts) { const ans = a.answers.find((x) => x.qUid === q.uid); if (ans && ans.marksEarned != null) { r.earned += ans.marksEarned; r.possible += q.marks; } }
+    }
+    return BLOOMS.filter((b) => acc[b]).map((b) => ({ ...acc[b], percent: acc[b].possible ? round1((acc[b].earned / acc[b].possible) * 100) : null }));
+  };
+
+  const courseCounts = (id) => {
+    const c = course(id); if (!c) return { units: 0, lessons: 0, concepts: 0, los: 0, quizzes: 0 };
+    return {
+      units: c.units.length,
+      lessons: c.units.reduce((s, u) => s + u.lessons.length, 0),
+      concepts: CONCEPTS.filter((k) => k.courseId === c.id).length,
+      los: LEARNING_OBJECTS.filter((o) => o.courseId === c.id).length,
+      quizzes: QUIZZES.filter((q) => q.courseId === c.id).length,
+      students: studentsOf(c.id).length,
+    };
+  };
+
+  /* ---------------- التنسيق (Intl) ---------------- */
+  const intlLocale = (locale) => (String(locale || 'ar').startsWith('ar') ? 'ar-u-nu-latn' : 'en');
+  const relTime = (iso, locale = 'ar', base) => {
+    const d = Date.parse(iso); if (isNaN(d)) return '';
+    const diff = (d - (base ? new Date(base).getTime() : Date.now())) / 1000;
+    const a = Math.abs(diff);
+    const rtf = new Intl.RelativeTimeFormat(intlLocale(locale), { numeric: 'auto' });
+    if (a < 45) return rtf.format(0, 'second');
+    if (a < 3600) return rtf.format(Math.round(diff / 60), 'minute');
+    if (a < 86400) return rtf.format(Math.round(diff / 3600), 'hour');
+    if (a < 86400 * 30) return rtf.format(Math.round(diff / 86400), 'day');
+    if (a < 86400 * 365) return rtf.format(Math.round(diff / (86400 * 30)), 'month');
+    return rtf.format(Math.round(diff / (86400 * 365)), 'year');
+  };
+  const fmtDate = (iso, locale = 'ar', opts) => {
+    if (!iso) return '';
+    const d = new Date(iso); if (isNaN(d)) return '';
+    return new Intl.DateTimeFormat(intlLocale(locale), opts || { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
+  };
+  const fmtNum = (n, locale = 'ar', opts) => (n == null || isNaN(n) ? '—' : new Intl.NumberFormat(intlLocale(locale), opts).format(n));
+  /** v بالنسبة المئوية (0..100) */
+  const fmtPct = (v, locale = 'ar', digits = 0) => (v == null || isNaN(v) ? '—' : new Intl.NumberFormat(intlLocale(locale), { style: 'percent', maximumFractionDigits: digits }).format(v / 100));
+  const fmtBytes = (b, locale = 'ar') => {
+    const u = ['byte', 'kilobyte', 'megabyte', 'gigabyte']; let i = 0, v = +b || 0;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return new Intl.NumberFormat(intlLocale(locale), { style: 'unit', unit: u[i], unitDisplay: 'short', maximumFractionDigits: 1 }).format(v);
+  };
+
+  /** تطبيع للبحث: إزالة التشكيل والتطويل، توحيد الألف/التاء المربوطة/الألف المقصورة، أحرف صغيرة */
+  const normalize = (str) => String(str ?? '')
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+
+  /** CSV مع BOM، اقتباس، وتحييد حقن الصيغ (= + - @ \t \r) */
+  const csvCell = (v) => {
+    if (v == null) return '';
+    let s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return /[",\r\n]/.test(s) || /^\s|\s$/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const csv = (rows) => '﻿' + (rows || []).map((r) => r.map(csvCell).join(',')).join('\r\n');
+
+  let uidSeq = 0;
+  const uid = (prefix = 'id') => {
+    let r = '';
+    const c = typeof globalThis !== 'undefined' && globalThis.crypto;
+    if (c && typeof c.getRandomValues === 'function') { const b = new Uint8Array(6); c.getRandomValues(b); r = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''); }
+    else r = (Date.now().toString(36) + (++uidSeq).toString(36));
+    return prefix + '-' + r;
+  };
+
+  return {
+    LOADED_AT: LOAD.toISOString(),
+    TEACHER, SUBJECTS, COURSES, CONCEPTS, LEARNING_OBJECTS, QUIZZES, STUDENTS, ATTEMPTS, AI_USAGE, REVIEW_ITEMS, BLOOMS,
+    pad, isoLocal, parseLocal, addDays, addMinutes, now, clone, loc,
+    course, unit, lesson, quiz, question, student, attempt, concept, learningObject, studentsOf,
+    quizTotal, attemptScore, attemptsOf, scoredAttempts, quizStatus, stats, itemAnalysis, bloomBreakdown, courseCounts,
+    relTime, fmtDate, fmtNum, fmtPct, fmtBytes, normalize, csv, uid,
+  };
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = TC;
+
+  /**
+   * تصحيح محاولة واحدة (quiz_attempts + quiz_answers) — البيانات من TC المشترك (نسخة عميقة قابلة للتعديل).
+   * - ?attempt=ID يحدد المحاولة؛ بلا معرّف تُفتح أول محاولة بانتظار التصحيح؛ معرّف مجهول → حالة خطأ صريحة.
+   * - المسودة تُحفظ فعليًا في المحاولة داخل الذاكرة + localStorage بالمفتاح firob-grades:<ATT>.
+   * - النشر يغيّر الحالة إلى published ويُحفظ؛ لا إعادة توجيه.
+   */
+  function quizGradingManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const LS_PREFIX = 'firob-grades:';
+    const LS_ANON = 'firob-grading-anon';
+    const AUTO_TYPES = ['mcq', 'tf'];
+    const EDITABLE = ['pending_grading', 'graded'];
+    const STATUS_META = {
+      pending_grading: { badge: 'badge-warning', icon: 'fa-hourglass-half' },
+      graded: { badge: 'badge-info', icon: 'fa-clipboard-check' },
+      published: { badge: 'badge-success', icon: 'fa-circle-check' },
+      in_progress: { badge: 'badge-muted', icon: 'fa-spinner' },
+    };
+    const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+    const bySubmitted = (a, b) => String(a.submittedAt || '').localeCompare(String(b.submittedAt || '')) || a.id.localeCompare(b.id);
+
+    /** تحليل درجة مُدخلة: '' → null (غير مصحّح)، وإلا رقم بين 0 والحد الأقصى بخطوة 0.5. يقبل الأرقام العربية والفاصلة العشرية العربية. */
+    const parseScore = (raw, max) => {
+      if (raw === null || raw === undefined) return { value: null, error: null };
+      let s = String(raw).trim();
+      if (s === '') return { value: null, error: null };
+      s = s.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+           .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+           .replace(/[٫,]/g, '.').replace(/^[−–]/, '-');
+      if (!/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return { value: null, error: 'nan' };
+      const n = Number(s);
+      if (!isFinite(n)) return { value: null, error: 'nan' };
+      if (n < 0) return { value: null, error: 'min' };
+      if (n > max) return { value: null, error: 'max' };
+      if (Math.abs(n * 2 - Math.round(n * 2)) > 1e-9) return { value: null, error: 'step' };
+      return { value: n, error: null };
+    };
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'بوابة المعلم',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء', viewAllNotif: 'عرض جميع الإشعارات',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        systemStatus: 'حالات النظام والأخطاء', roleTeacher: 'معلم',
+        breadcrumb: { home: 'الرئيسية', portal: 'بوابة المعلم', results: 'نتائج الاختبارات' },
+        navGroups: { main: 'الرئيسية', teaching: 'التعليم', assessment: 'التقييم والمحتوى', grading: 'التصحيح والنتائج' },
+        navItems: {
+          teacherDashboard: 'لوحة المعلم',
+          myCourses: 'مقرراتي الدراسية', conceptsTree: 'شجرة المفاهيم',
+          quizBank: 'بنك الأسئلة والاختبارات', learningObjects: 'مكتبة العناصر التعليمية', aiStudio: 'استوديو الذكاء الاصطناعي',
+          reviewQueue: 'قائمة المراجعة والتصحيح', studentResults: 'نتائج وتقارير طلبتي',
+        },
+        notif: {
+          newAttempt: 'محاولة جديدة بانتظار التصحيح في «{quiz}»',
+          lowPassRate: 'نسبة النجاح في «{quiz}» أقل من 50%',
+          aiFeedbackReady: 'اكتملت اقتراحات الذكاء الاصطناعي لتصحيح «{quiz}»',
+        },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل',
+          screenMap: 'خريطة الشاشات', help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام',
+          systemsOk: 'الأنظمة تعمل',
+        },
+        qg: {
+          pageTitle: 'تصحيح محاولة', breadcrumbCurrent: 'تصحيح محاولة',
+          backToResults: 'العودة إلى نتائج الاختبار', backToQuizzes: 'العودة إلى قائمة الاختبارات',
+          title: 'تفاصيل محاولة الطالب وتصحيحها', subtitle: 'راجع إجابات الطالب سؤالًا بسؤال، صحّح الأسئلة المقالية يدويًا، وأضف ملاحظاتك قبل اعتماد النشر.',
+          notFoundTitle: 'تعذّر العثور على المحاولة', notFoundText: 'لا توجد محاولة ضمن اختباراتك بهذا المعرّف:',
+          noPendingTitle: 'لا محاولات بانتظار التصحيح', noPendingText: 'لم يُحدَّد معرّف محاولة في الرابط، ولا توجد حاليًا أي محاولة بانتظار التصحيح اليدوي.',
+          goToResults: 'الذهاب إلى نتائج الاختبارات',
+          autoPicked: 'لم يُحدَّد معرّف محاولة في الرابط، لذا فُتحت أول محاولة بانتظار التصحيح.',
+          restored: 'استُعيدت مسودة التصحيح المحفوظة على هذا الجهاز ({time}).',
+          readOnlyPublished: 'نُشرت نتيجة هذه المحاولة للطالب؛ الدرجات والملاحظات للقراءة فقط.',
+          readOnlyInProgress: 'ما زال الطالب يؤدي هذه المحاولة؛ لا يمكن تصحيحها قبل التسليم.',
+          studentNo: 'الرقم الجامعي', quizCode: 'رمز الاختبار', attemptId: 'رقم المحاولة',
+          anonymous: 'تصحيح مجهول الهوية', anonStudent: 'طالب #{n}', anonOn: 'تم إخفاء هوية الطالب.', anonOff: 'تم إظهار هوية الطالب.',
+          status: { pending_grading: 'بانتظار التصحيح', graded: 'مصحّحة — غير منشورة', published: 'منشورة للطالب', in_progress: 'قيد التنفيذ' },
+          submittedAt: 'وقت التسليم', notSubmitted: 'لم تُسلَّم بعد', timeTaken: 'الوقت المستغرق', score: 'الدرجة', percentage: 'النسبة',
+          progressOf: 'المحاولة {k} من {n} بانتظار التصحيح في هذا الاختبار',
+          progressOthers: 'هذه المحاولة ليست بانتظار التصحيح — {n} محاولة معلّقة في هذا الاختبار',
+          progressNone: 'لا توجد محاولات أخرى بانتظار التصحيح في هذا الاختبار',
+          prevPending: 'المحاولة المعلّقة السابقة', nextPending: 'المحاولة المعلّقة التالية',
+          shortcutsTitle: 'اختصارات لوحة المفاتيح', scSave: 'حفظ المسودة', scNext: 'المحاولة المعلّقة التالية', scPrev: 'المحاولة المعلّقة السابقة',
+          scNote: 'أسهم التنقل لا تعمل أثناء الكتابة داخل حقل.',
+          answersTitle: 'تفصيل الإجابات والتصحيح', questionN: 'سؤال {n}',
+          gradedAuto: 'تصحيح تلقائي', gradedManual: 'تصحيح يدوي', pendingGrading: 'بانتظار التصحيح',
+          correct: 'إجابة صحيحة', incorrect: 'إجابة خاطئة', unanswered: 'لم يُجب الطالب', options: 'الخيارات',
+          studentChoice: 'اختيار الطالب', correctAnswer: 'الإجابة الصحيحة',
+          studentAnswer: 'إجابة الطالب', noAnswer: 'لم يكتب الطالب إجابة.', modelAnswer: 'الإجابة النموذجية',
+          aiSuggested: 'الدرجة المقترحة من الذكاء الاصطناعي', aiNote: 'اقتراح فقط — الدرجة التي تُدخلها أنت هي المعتمدة.',
+          applySuggestion: 'تطبيق الاقتراح', applySuggestionFor: 'تطبيق الدرجة المقترحة على السؤال {n}',
+          appliedSuggestion: 'طُبّقت الدرجة المقترحة على السؤال {n}.',
+          scoreFor: 'درجة السؤال {n} (من {max})',
+          scoreHint: 'من 0 إلى {max} بخطوات 0.5، اتركه فارغًا إن لم يُصحَّح بعد.',
+          err: {
+            nan: 'أدخل رقمًا صحيحًا مثل 2 أو 2.5.',
+            min: 'لا يمكن أن تكون الدرجة أقل من 0.',
+            max: 'لا يمكن أن تتجاوز الدرجة {max}.',
+            step: 'استخدم مضاعفات 0.5 فقط (مثل 2 أو 2.5).',
+          },
+          quickScoresFor: 'درجات سريعة للسؤال {n}', rubricFull: 'كاملة ({v})', rubricHalf: 'جزئية ({v})', rubricNone: 'صفر ({v})',
+          feedbackFor: 'ملاحظة المعلّم على السؤال {n}', teacherNotePlaceholder: 'أضف ملاحظة توضّح سبب الدرجة الممنوحة للطالب…',
+          feedbackLangHint: 'تُحفظ الملاحظة بلغة الواجهة الحالية (العربية)؛ بدّل اللغة لكتابة النسخة الإنجليزية.',
+          generalComment: 'ملاحظات المعلّم العامة', generalCommentPlaceholder: 'ملاحظة عامة على أداء الطالب في هذه المحاولة…',
+          generalCommentHint: 'تظهر هذه الملاحظة للطالب عند اعتماد النشر.',
+          finalGrade: 'الدرجة النهائية', passMarkNotice: 'الحد الأدنى للنجاح {mark} من الدرجة الكلية.',
+          resultPassed: 'ناجح', resultFailed: 'راسب', resultPending: '{n} سؤال بانتظار درجة',
+          totalsLive: 'المجموع {earned} من {total} ({pct})، {result}.',
+          actionsLabel: 'الحفظ والنشر',
+          actionsHint: 'لن تُنشر الدرجة للطالب إلا بعد الضغط على «اعتماد النشر». الحفظ يُبقي المحاولة بانتظار التصحيح.',
+          saveDraft: 'حفظ المسودة', publishResult: 'اعتماد النشر للطالب', published: 'منشورة للطالب',
+          unsaved: 'تغييرات غير محفوظة', notSavedYet: 'لا توجد تغييرات', savedAtLabel: 'حُفظت المسودة {time}',
+          saved: 'تم حفظ المسودة.', savedMemoryOnly: 'حُفظت المسودة في هذه الجلسة فقط؛ تعذّر الحفظ على هذا الجهاز.',
+          savedWithInvalid: 'تم حفظ المسودة؛ الدرجات غير الصالحة حُفظت كغير مصحّحة.',
+          cannotEdit: 'هذه المحاولة للقراءة فقط.',
+          publishBlocked: 'لا يمكن النشر بعد: يلزم إدخال درجة صالحة للأسئلة: {list}.',
+          confirmPublishTitle: 'اعتماد نشر النتيجة؟',
+          confirmPublishText: '{who} — الدرجة {earned} من {total} ({pct}) — {result}. سيتلقى الطالب إشعارًا ويرى درجته وملاحظاتك، ولن تعود المحاولة قابلة للتعديل.',
+          confirmPublishBtn: 'نشر وإشعار الطالب', cancel: 'إلغاء', publishCancelled: 'أُلغي النشر.',
+          publishedDone: 'نُشرت النتيجة، وسيُشعَر {who}.',
+          nextPendingAttempt: 'المحاولة المعلّقة التالية', nextPendingOtherQuiz: 'محاولة معلّقة في اختبار آخر',
+          allGraded: 'لا محاولات معلّقة — العودة إلى النتائج',
+          leaveTitle: 'لديك درجات غير محفوظة', leaveText: 'هل تريد حفظ المسودة قبل الانتقال إلى محاولة أخرى؟',
+          leaveSave: 'حفظ ثم انتقال', leaveDiscard: 'تجاهل التغييرات', leaveStay: 'البقاء هنا',
+          opened: 'فُتحت محاولة {who} ({id}).',
+          noPrev: 'لا توجد محاولة معلّقة سابقة.', noNext: 'لا توجد محاولة معلّقة تالية.',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Teacher Portal',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read', viewAllNotif: 'View all notifications',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        systemStatus: 'System Status & Errors', roleTeacher: 'Teacher',
+        breadcrumb: { home: 'Home', portal: 'Teacher Portal', results: 'Quiz Results' },
+        navGroups: { main: 'Main', teaching: 'Teaching', assessment: 'Assessment & Content', grading: 'Grading & Results' },
+        navItems: {
+          teacherDashboard: 'Teacher Dashboard',
+          myCourses: 'My Assigned Courses', conceptsTree: 'Concepts Tree',
+          quizBank: 'Quiz Bank & Builder', learningObjects: 'My Learning Objects', aiStudio: 'AI Generator Studio',
+          reviewQueue: 'Review & Grading Queue', studentResults: 'Student Performance & Results',
+        },
+        notif: {
+          newAttempt: 'New attempt awaiting grading in "{quiz}"',
+          lowPassRate: 'Pass rate for "{quiz}" is below 50%',
+          aiFeedbackReady: 'AI grading suggestions are ready for "{quiz}"',
+        },
+        footer: {
+          tagline: 'Central Learning Repository', rights: 'All rights reserved', navLabel: 'Footer links',
+          screenMap: 'Screen map', help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use',
+          systemsOk: 'All systems operational',
+        },
+        qg: {
+          pageTitle: 'Grade Attempt', breadcrumbCurrent: 'Grade Attempt',
+          backToResults: 'Back to quiz results', backToQuizzes: 'Back to quizzes list',
+          title: 'Student Attempt Details & Grading', subtitle: "Review the student's answers question by question, manually grade essay questions, and add your notes before publishing the result.",
+          notFoundTitle: 'Attempt not found', notFoundText: 'None of your quizzes has an attempt with this ID:',
+          noPendingTitle: 'Nothing awaiting grading', noPendingText: 'No attempt ID was given in the link, and no attempts are currently awaiting manual grading.',
+          goToResults: 'Go to quiz results',
+          autoPicked: 'No attempt ID was given in the link, so the first attempt awaiting grading was opened.',
+          restored: 'Restored the grading draft saved on this device ({time}).',
+          readOnlyPublished: 'This result has been published to the student; scores and feedback are read-only.',
+          readOnlyInProgress: 'The student is still taking this attempt; it cannot be graded before submission.',
+          studentNo: 'Student no.', quizCode: 'Quiz code', attemptId: 'Attempt ID',
+          anonymous: 'Anonymous grading', anonStudent: 'Student #{n}', anonOn: 'Student identity hidden.', anonOff: 'Student identity shown.',
+          status: { pending_grading: 'Awaiting grading', graded: 'Graded — not published', published: 'Published to student', in_progress: 'In progress' },
+          submittedAt: 'Submitted at', notSubmitted: 'Not submitted yet', timeTaken: 'Time taken', score: 'Score', percentage: 'Percentage',
+          progressOf: 'Attempt {k} of {n} pending in this quiz',
+          progressOthers: 'This attempt is not pending — {n} attempt(s) still pending in this quiz',
+          progressNone: 'No other attempts are pending in this quiz',
+          prevPending: 'Previous pending attempt', nextPending: 'Next pending attempt',
+          shortcutsTitle: 'Keyboard shortcuts', scSave: 'Save draft', scNext: 'Next pending attempt', scPrev: 'Previous pending attempt',
+          scNote: 'Arrow shortcuts are ignored while typing in a field.',
+          answersTitle: 'Answer Breakdown & Grading', questionN: 'Question {n}',
+          gradedAuto: 'Auto-graded', gradedManual: 'Manual grading', pendingGrading: 'Awaiting grading',
+          correct: 'Correct answer', incorrect: 'Incorrect answer', unanswered: 'Not answered', options: 'Options',
+          studentChoice: "Student's choice", correctAnswer: 'Correct answer',
+          studentAnswer: "Student's answer", noAnswer: 'The student did not write an answer.', modelAnswer: 'Model answer',
+          aiSuggested: 'AI suggested score', aiNote: 'Suggestion only — the score you enter is the one stored.',
+          applySuggestion: 'Apply suggestion', applySuggestionFor: 'Apply the suggested score to question {n}',
+          appliedSuggestion: 'Suggested score applied to question {n}.',
+          scoreFor: 'Score for question {n} (max {max})',
+          scoreHint: '0 to {max} in steps of 0.5; leave empty if not graded yet.',
+          err: {
+            nan: 'Enter a number such as 2 or 2.5.',
+            min: 'The score cannot be below 0.',
+            max: 'The score cannot exceed {max}.',
+            step: 'Use multiples of 0.5 only (e.g. 2 or 2.5).',
+          },
+          quickScoresFor: 'Quick scores for question {n}', rubricFull: 'Full ({v})', rubricHalf: 'Partial ({v})', rubricNone: 'None ({v})',
+          feedbackFor: 'Teacher feedback on question {n}', teacherNotePlaceholder: "Add a note explaining the student's awarded mark…",
+          feedbackLangHint: 'Feedback is saved in the current interface language (English); switch language to write the Arabic version.',
+          generalComment: 'Overall teacher feedback', generalCommentPlaceholder: "A general note on the student's performance in this attempt…",
+          generalCommentHint: 'This note is shown to the student once the result is published.',
+          finalGrade: 'Final grade', passMarkNotice: 'The minimum passing mark is {mark} of the total grade.',
+          resultPassed: 'Passed', resultFailed: 'Failed', resultPending: '{n} question(s) awaiting a score',
+          totalsLive: 'Total {earned} of {total} ({pct}), {result}.',
+          actionsLabel: 'Save and publish',
+          actionsHint: 'The grade is not visible to the student until you publish it. Saving keeps the attempt awaiting grading.',
+          saveDraft: 'Save draft', publishResult: 'Publish result to student', published: 'Published to student',
+          unsaved: 'Unsaved changes', notSavedYet: 'No changes', savedAtLabel: 'Draft saved {time}',
+          saved: 'Draft saved.', savedMemoryOnly: 'Draft kept for this session only; it could not be stored on this device.',
+          savedWithInvalid: 'Draft saved; invalid scores were stored as not graded.',
+          cannotEdit: 'This attempt is read-only.',
+          publishBlocked: 'Cannot publish yet: enter a valid score for question(s) {list}.',
+          confirmPublishTitle: 'Publish this result?',
+          confirmPublishText: '{who} — score {earned} of {total} ({pct}) — {result}. The student will be notified and will see the score and your feedback; the attempt will no longer be editable.',
+          confirmPublishBtn: 'Publish & notify student', cancel: 'Cancel', publishCancelled: 'Publishing cancelled.',
+          publishedDone: 'Result published; {who} will be notified.',
+          nextPendingAttempt: 'Next pending attempt', nextPendingOtherQuiz: 'Pending attempt in another quiz',
+          allGraded: 'Nothing pending — back to results',
+          leaveTitle: 'You have unsaved grades', leaveText: 'Save the draft before moving to another attempt?',
+          leaveSave: 'Save and continue', leaveDiscard: 'Discard changes', leaveStay: 'Stay here',
+          opened: 'Opened the attempt of {who} ({id}).',
+          noPrev: 'No previous pending attempt.', noNext: 'No next pending attempt.',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'reviewQueue',
+      teacher: TC.TEACHER,
+      get expanded() { return this.mobile || !this.collapsed; },
+      get isRtl() { return this.locale === 'ar'; },
+
+      /* ---------- الترجمة والتنسيق ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      L(obj) { return TC.loc(obj, this.locale); },
+      num(n) { return TC.fmtNum(n, this.locale, { maximumFractionDigits: 2 }); },
+      pct(p) { return TC.fmtPct(p, this.locale, 1); },
+      date(iso) { return TC.fmtDate(iso, this.locale); },
+      relTime(iso) { return TC.relTime(iso, this.locale); },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+        this.updateTitle();
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+      updateTitle() {
+        const id = this.attempt ? ' ' + this.attempt.id : '';
+        document.title = this.t('qg.pageTitle') + id + ' — FirOb';
+      },
+
+      /* ---------- التنقل (Teacher Portal) ---------- */
+      nav: [
+        { group: 'main', items: [
+          { key: 'teacherDashboard', icon: 'fa-solid fa-gauge-high', href: 'teacher-dashboard.html' },
+        ]},
+        { group: 'teaching', items: [
+          { key: 'myCourses', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'conceptsTree', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+        ]},
+        { group: 'assessment', items: [
+          { key: 'quizBank', icon: 'fa-solid fa-list-check', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'aiStudio', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+        ]},
+        { group: 'grading', items: [
+          { key: 'reviewQueue', icon: 'fa-solid fa-clipboard-check', href: 'ReviewQueue.html' },
+          { key: 'studentResults', icon: 'fa-solid fa-chart-line', href: 'quiz-results.html', live: true },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (من البيانات المشتركة، أوقات نسبية) ---------- */
+      notifications: (() => {
+        const pend = TC.ATTEMPTS.filter(a => a.status === 'pending_grading').slice().sort(bySubmitted).pop();
+        const ai = TC.AI_USAGE.logs.filter(l => l.kind === 'feedback').slice(-1)[0];
+        const list = [];
+        if (pend) list.push({ id: 1, key: 'newAttempt', quizCode: pend.quizCode, at: pend.submittedAt, read: false, icon: 'fa-solid fa-inbox', tone: 'bg-warning-500/15 text-warning-800 dark:text-warning-500' });
+        list.push({ id: 2, key: 'lowPassRate', quizCode: 'QZ-SCI-201', at: TC.addDays(TC.LOADED_AT, -1).toISOString(), read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-error-500/15 text-error-700 dark:text-red-300' });
+        if (ai) list.push({ id: 3, key: 'aiFeedbackReady', quizCode: ai.quizCode, at: ai.at, read: true, icon: 'fa-solid fa-wand-magic-sparkles', tone: 'bg-accent-500/20 text-yellow-900 dark:text-accent-500' });
+        return list;
+      })(),
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+      notifText(n) {
+        const q = TC.quiz(n.quizCode);
+        const quiz = q ? this.L(q.title) : '';
+        if (n.key === 'newAttempt') return this.tf('notif.newAttempt', { quiz });
+        if (n.key === 'lowPassRate') return this.tf('notif.lowPassRate', { quiz });
+        return this.tf('notif.aiFeedbackReady', { quiz });
+      },
+
+      /* ---------- حالة التصحيح ---------- */
+      attempts: [],          // نسخة عميقة من TC.ATTEMPTS + المسودات المستعادة
+      attemptId: null,
+      requestedId: null,
+      loadError: null,       // 'notFound' | 'noPending'
+      autoPicked: false,
+      restoredMap: {},       // id → وقت المسودة المستعادة
+      work: null,            // نسخة العمل: { answers, generalComment }
+      inputs: {},            // النص الخام لكل حقل درجة
+      errors: {},            // مفتاح خطأ لكل حقل درجة
+      dirty: false,
+      savedAt: null,
+      saving: false,
+      publishing: false,
+      navigating: false,
+      justPublished: false,
+      publishErrors: [],
+      anonymous: false,
+      helpOpen: false,
+      liveMsg: '',
+      totalsMsg: '',
+      _totalsTimer: null,
+
+      get attempt() { return this.attempts.find(a => a.id === this.attemptId) || null; },
+      get quiz() { return this.attempt ? TC.quiz(this.attempt.quizCode) : null; },
+      get student() { return this.attempt ? TC.student(this.attempt.studentId) : null; },
+      get editable() { return !!this.attempt && EDITABLE.includes(this.attempt.status); },
+      get restoredAt() { return this.attempt ? this.restoredMap[this.attempt.id] || null : null; },
+      get statusMeta() { return STATUS_META[this.attempt?.status] || STATUS_META.pending_grading; },
+      get statusLabel() { return this.attempt ? this.t('qg.status.' + this.attempt.status) : ''; },
+      get resultsHref() { return this.quiz ? 'quiz-results.html?quiz=' + encodeURIComponent(this.quiz.code) : 'quiz-results.html'; },
+      get pendingTotal() { return this.attempts.filter(a => a.status === 'pending_grading').length; },
+
+      /** رقم مجهول ثابت للطالب داخل الاختبار (ترتيب بدء المحاولات) */
+      get anonNumber() {
+        if (!this.attempt) return 0;
+        const list = this.attempts.filter(a => a.quizCode === this.attempt.quizCode)
+          .slice().sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
+        return list.findIndex(a => a.id === this.attempt.id) + 1;
+      },
+      get studentLabel() {
+        if (!this.attempt) return '';
+        if (this.anonymous || !this.student) return this.tf('qg.anonStudent', { n: this.num(this.anonNumber) });
+        return this.L(this.student.name);
+      },
+      get studentInitials() {
+        const name = this.student ? this.L(this.student.name) : '';
+        const parts = name.split(/\s+/).filter(Boolean);
+        return parts.length ? (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')) : '?';
+      },
+      get timeTaken() {
+        const a = this.attempt;
+        if (!a || !a.submittedAt) return '—';
+        const min = Math.max(0, Math.round((Date.parse(a.submittedAt) - Date.parse(a.startedAt)) / 60000));
+        return TC.fmtNum(min, this.locale, { style: 'unit', unit: 'minute', unitDisplay: 'long' });
+      },
+
+      /** صفوف الأسئلة: السؤال + إجابة نسخة العمل */
+      get rows() {
+        if (!this.quiz || !this.work) return [];
+        return this.quiz.questions.map((q, i) => {
+          const ans = this.work.answers.find(x => x.qUid === q.uid);
+          const auto = AUTO_TYPES.includes(q.type);
+          const opt = auto ? q.options.find(o => o.uid === ans.choiceUid) : null;
+          return { n: i + 1, uid: q.uid, q, ans, auto, marks: +q.marks || 0, isCorrect: auto ? !!(opt && opt.correct) : null };
+        });
+      },
+      rowBadge(r) {
+        const m = r.ans.marksEarned;
+        if (m == null || this.errors[r.uid]) return { cls: 'badge-warning', icon: 'fa-hourglass-half', text: this.t('qg.pendingGrading') };
+        const full = m >= r.marks, zero = m === 0;
+        return { cls: full ? 'badge-success' : (zero ? 'badge-danger' : 'badge-accent'), icon: full ? 'fa-circle-check' : (zero ? 'fa-circle-xmark' : 'fa-circle-half-stroke'), text: this.num(m) + ' / ' + this.num(r.marks) };
+      },
+
+      /** المجاميع الحيّة */
+      get summary() {
+        const rows = this.rows;
+        const total = rows.reduce((s, r) => s + r.marks, 0);
+        let earned = 0, pending = 0;
+        rows.forEach(r => {
+          if (r.ans.marksEarned == null || this.errors[r.uid]) pending++;
+          else earned += r.ans.marksEarned;
+        });
+        const percent = total ? Math.round((earned / total) * 1000) / 10 : 0;
+        const passed = pending > 0 || !this.quiz ? null : percent >= this.quiz.passMark;
+        return { earned, total, percent, pending, passed };
+      },
+      get resultLabel() {
+        const s = this.summary;
+        if (s.passed === null) return this.tf('qg.resultPending', { n: this.num(s.pending) });
+        return s.passed ? this.t('qg.resultPassed') : this.t('qg.resultFailed');
+      },
+      announceTotals() {
+        clearTimeout(this._totalsTimer);
+        this._totalsTimer = setTimeout(() => {
+          const s = this.summary;
+          this.totalsMsg = this.tf('qg.totalsLive', { earned: this.num(s.earned), total: this.num(s.total), pct: this.pct(s.percent), result: this.resultLabel });
+        }, 700);
+      },
+
+      /* ---------- ترتيب المحاولات المعلّقة في الاختبار ---------- */
+      get quizOrder() {
+        if (!this.attempt) return [];
+        return this.attempts.filter(a => a.quizCode === this.attempt.quizCode && a.submittedAt).slice().sort(bySubmitted);
+      },
+      get pendingInQuiz() { return this.quizOrder.filter(a => a.status === 'pending_grading'); },
+      get prevPending() {
+        const order = this.quizOrder, i = order.findIndex(a => a.id === this.attemptId);
+        if (i < 0) return null;
+        for (let j = i - 1; j >= 0; j--) if (order[j].status === 'pending_grading') return order[j];
+        return null;
+      },
+      get nextPending() {
+        const order = this.quizOrder, i = order.findIndex(a => a.id === this.attemptId);
+        if (i < 0) return this.pendingInQuiz[0] || null;
+        for (let j = i + 1; j < order.length; j++) if (order[j].status === 'pending_grading') return order[j];
+        return null;
+      },
+      get nextAfterPublish() {
+        return this.nextPending || this.prevPending
+          || this.attempts.filter(a => a.status === 'pending_grading' && a.id !== this.attemptId).slice().sort(bySubmitted)[0] || null;
+      },
+      get progressText() {
+        const list = this.pendingInQuiz, k = list.findIndex(a => a.id === this.attemptId);
+        if (k >= 0) return this.tf('qg.progressOf', { k: this.num(k + 1), n: this.num(list.length) });
+        if (list.length) return this.tf('qg.progressOthers', { n: this.num(list.length) });
+        return this.t('qg.progressNone');
+      },
+
+      /* ---------- الحالة المحفوظة ---------- */
+      get saveStateText() {
+        if (this.dirty) return this.t('qg.unsaved');
+        const at = this.attempt && this.attempt.savedAt;
+        return at ? this.tf('qg.savedAtLabel', { time: this.relTime(at) }) : this.t('qg.notSavedYet');
+      },
+      get publishErrorText() {
+        return this.tf('qg.publishBlocked', { list: this.publishErrors.map(e => this.num(e.n)).join(this.locale === 'ar' ? '، ' : ', ') });
+      },
+
+      /* ---------- التحميل ---------- */
+      restoreDraft(a) {
+        const raw = lsGet(LS_PREFIX + a.id);
+        if (!raw || a.status === 'in_progress') return a;
+        let d;
+        try { d = JSON.parse(raw); } catch (e) { return a; }
+        if (!d || d.v !== 1 || !Array.isArray(d.answers)) return a;
+        const qz = TC.quiz(a.quizCode);
+        if (!qz) return a;
+        d.answers.forEach(x => {
+          const q = qz.questions.find(qq => qq.uid === x.qUid);
+          const ans = a.answers.find(y => y.qUid === x.qUid);
+          if (!q || !ans || AUTO_TYPES.includes(q.type)) return;
+          const p = parseScore(x.marksEarned == null ? '' : x.marksEarned, q.marks);
+          if (!p.error) ans.marksEarned = p.value;
+          if (x.feedback && typeof x.feedback === 'object') ans.feedback = { ar: String(x.feedback.ar || ''), en: String(x.feedback.en || '') };
+        });
+        if (d.generalComment && typeof d.generalComment === 'object') a.generalComment = { ar: String(d.generalComment.ar || ''), en: String(d.generalComment.en || '') };
+        if (EDITABLE.concat('published').includes(d.status)) a.status = d.status;
+        ['savedAt', 'gradedAt', 'publishedAt'].forEach(k => { if (d[k] && !isNaN(Date.parse(d[k]))) a[k] = d[k]; });
+        if (d.savedAt) this.restoredMap[a.id] = d.savedAt;
+        return a;
+      },
+      load(id) {
+        this.requestedId = id;
+        this.helpOpen = false;
+        const att = this.attempts.find(a => a.id === id);
+        if (!att || !TC.quiz(att.quizCode)) {
+          this.loadError = 'notFound'; this.attemptId = null; this.work = null;
+          this.updateTitle();
+          return false;
+        }
+        this.loadError = null;
+        this.attemptId = id;
+        const answers = TC.quiz(att.quizCode).questions.map(q => TC.clone(att.answers.find(x => x.qUid === q.uid)
+          || { qUid: q.uid, choiceUid: null, text: null, marksEarned: null, aiSuggested: null, feedback: null }));
+        this.work = { answers, generalComment: TC.clone(att.generalComment || { ar: '', en: '' }) };
+        const inputs = {};
+        this.work.answers.forEach(a => { inputs[a.qUid] = a.marksEarned == null ? '' : String(a.marksEarned); });
+        this.inputs = inputs;
+        this.errors = {};
+        this.dirty = false;
+        this.publishErrors = [];
+        this.justPublished = false;
+        this.updateTitle();
+        return true;
+      },
+      syncUrl(id) {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set('attempt', id);
+          history.replaceState(null, '', url.pathname + url.search + url.hash);
+        } catch (e) {}
+      },
+      pickInitial() {
+        const id = (new URLSearchParams(window.location.search).get('attempt') || '').trim();
+        if (id) return this.load(id);
+        const first = this.attempts.filter(a => a.status === 'pending_grading').slice().sort(bySubmitted)[0];
+        if (!first) { this.loadError = 'noPending'; this.attemptId = null; this.work = null; this.updateTitle(); return false; }
+        this.load(first.id);
+        this.autoPicked = true;
+        this.syncUrl(first.id);
+        this.liveMsg = this.t('qg.autoPicked');
+        return true;
+      },
+
+      /* ---------- إدخال الدرجات والملاحظات ---------- */
+      rowOf(r) { return typeof r === 'string' ? this.rows.find(x => x.uid === r) : r; },
+      setScore(r, raw) {
+        r = this.rowOf(r);
+        if (!r || r.auto || !this.editable) return { value: null, error: 'readonly' };
+        const res = parseScore(raw, r.marks);
+        this.inputs[r.uid] = raw == null ? '' : String(raw);
+        r.ans.marksEarned = res.error ? null : res.value;
+        if (res.error) this.errors[r.uid] = res.error; else delete this.errors[r.uid];
+        this.errors = { ...this.errors };
+        this.dirty = true;
+        if (this.publishErrors.length) this.publishErrors = this.missingScores();
+        this.announceTotals();
+        return res;
+      },
+      scoreError(r) {
+        const k = this.errors[r.uid];
+        return k ? this.tf('qg.err.' + k, { max: this.num(r.marks) }) : '';
+      },
+      applySuggestion(r) {
+        r = this.rowOf(r);
+        if (!r || r.ans.aiSuggested == null) return;
+        this.setScore(r, String(r.ans.aiSuggested));
+        this.liveMsg = this.tf('qg.appliedSuggestion', { n: this.num(r.n) });
+      },
+      rubric(r, kind) {
+        r = this.rowOf(r);
+        if (!r) return;
+        const v = kind === 'full' ? r.marks : kind === 'half' ? Math.floor(r.marks) / 2 : 0;
+        this.setScore(r, String(v));
+      },
+      feedbackValue(r) { return (r.ans.feedback && r.ans.feedback[this.locale]) || ''; },
+      setFeedback(r, value) {
+        r = this.rowOf(r);
+        if (!r || !this.editable) return;
+        r.ans.feedback = { ar: '', en: '', ...(r.ans.feedback || {}), [this.locale]: String(value) };
+        this.dirty = true;
+      },
+      setGeneralComment(value) {
+        if (!this.editable) return;
+        this.work.generalComment = { ar: '', en: '', ...(this.work.generalComment || {}), [this.locale]: String(value) };
+        this.dirty = true;
+      },
+      missingScores() {
+        return this.rows.filter(r => r.ans.marksEarned == null || this.errors[r.uid]).map(r => ({ uid: r.uid, n: r.n }));
+      },
+      focusScore(uid) {
+        const el = document.getElementById('score-' + uid);
+        if (el) { el.focus(); if (el.scrollIntoView) el.scrollIntoView({ block: 'center' }); }
+      },
+
+      /* ---------- الحفظ والنشر ---------- */
+      serialize(att) {
+        return {
+          v: 1, attemptId: att.id, status: att.status,
+          answers: att.answers.map(a => ({ qUid: a.qUid, marksEarned: a.marksEarned, feedback: a.feedback || null })),
+          generalComment: att.generalComment || null,
+          savedAt: att.savedAt || null, gradedAt: att.gradedAt || null, publishedAt: att.publishedAt || null,
+        };
+      },
+      commit() {
+        const att = this.attempt;
+        att.answers = TC.clone(this.work.answers);
+        att.generalComment = TC.clone(this.work.generalComment);
+        att.savedAt = new Date().toISOString();
+        return lsSet(LS_PREFIX + att.id, JSON.stringify(this.serialize(att)));
+      },
+      saveDraft() {
+        if (!this.attempt) return false;
+        if (!this.editable) { this.liveMsg = this.t('qg.cannotEdit'); return false; }
+        if (this.saving) return false;
+        this.saving = true;
+        try {
+          const hadInvalid = Object.keys(this.errors).length > 0;
+          const stored = this.commit();
+          this.dirty = false;
+          this.liveMsg = !stored ? this.t('qg.savedMemoryOnly') : hadInvalid ? this.t('qg.savedWithInvalid') : this.t('qg.saved');
+          return true;
+        } finally { this.saving = false; }
+      },
+      async confirmDialog(opts) {
+        if (typeof Swal === 'undefined') return { isConfirmed: window.confirm ? window.confirm(opts.text) : false };
+        return Swal.fire({ customClass: { popup: 'firob-swal' }, buttonsStyling: true, ...opts });
+      },
+      async publish() {
+        if (!this.attempt || !this.editable || this.publishing) return false;
+        const missing = this.missingScores();
+        if (missing.length) {
+          this.publishErrors = missing;
+          this.liveMsg = this.publishErrorText;
+          this.$nextTick(() => this.focusScore(missing[0].uid));
+          return false;
+        }
+        this.publishErrors = [];
+        this.publishing = true;
+        try {
+          const s = this.summary;
+          const res = await this.confirmDialog({
+            titleText: this.t('qg.confirmPublishTitle'),
+            text: this.tf('qg.confirmPublishText', { who: this.studentLabel, earned: this.num(s.earned), total: this.num(s.total), pct: this.pct(s.percent), result: this.resultLabel }),
+            icon: 'question', showCancelButton: true, focusCancel: true,
+            confirmButtonText: this.t('qg.confirmPublishBtn'), cancelButtonText: this.t('qg.cancel'),
+          });
+          if (!res || !res.isConfirmed) { this.liveMsg = this.t('qg.publishCancelled'); return false; }
+          const att = this.attempt;
+          const now = new Date().toISOString();
+          att.status = 'published';
+          att.gradedAt = att.gradedAt || now;
+          att.publishedAt = now;
+          const stored = this.commit();
+          this.dirty = false;
+          this.justPublished = true;
+          this.liveMsg = this.tf('qg.publishedDone', { who: this.studentLabel }) + (stored ? '' : ' ' + this.t('qg.savedMemoryOnly'));
+          this.$nextTick(() => document.getElementById('published-panel')?.focus());
+          return true;
+        } finally { this.publishing = false; }
+      },
+
+      /* ---------- التنقل بين المحاولات ---------- */
+      async goTo(id) {
+        if (!id || this.navigating || id === this.attemptId) return false;
+        this.navigating = true;
+        try {
+          if (this.dirty && this.editable) {
+            const res = await this.confirmDialog({
+              titleText: this.t('qg.leaveTitle'), text: this.t('qg.leaveText'), icon: 'warning',
+              showCancelButton: true, showDenyButton: true,
+              confirmButtonText: this.t('qg.leaveSave'), denyButtonText: this.t('qg.leaveDiscard'), cancelButtonText: this.t('qg.leaveStay'),
+            });
+            if (res && res.isConfirmed) this.saveDraft();
+            else if (!(res && res.isDenied)) return false;
+          }
+          this.autoPicked = false;
+          if (!this.load(id)) return false;
+          this.syncUrl(id);
+          this.liveMsg = this.tf('qg.opened', { who: this.studentLabel, id });
+          this.$nextTick(() => document.getElementById('attempt-heading')?.focus());
+          return true;
+        } finally { this.navigating = false; }
+      },
+      goNext() { if (this.nextPending) return this.goTo(this.nextPending.id); this.liveMsg = this.t('qg.noNext'); return Promise.resolve(false); },
+      goPrev() { if (this.prevPending) return this.goTo(this.prevPending.id); this.liveMsg = this.t('qg.noPrev'); return Promise.resolve(false); },
+
+      /* ---------- لوحة المفاتيح: Alt+S حفظ، Alt+أسهم (حسب الاتجاه) تنقّل ---------- */
+      onKey(e) {
+        if (!e || !e.altKey || e.ctrlKey || e.metaKey || !this.attempt) return;
+        if (e.code === 'KeyS' || (e.key && e.key.toLowerCase() === 's')) { e.preventDefault(); this.saveDraft(); return; }
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        const tg = e.target, tag = tg && tg.tagName ? tg.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || (tg && tg.isContentEditable)) return;
+        e.preventDefault();
+        const forward = this.isRtl ? 'ArrowLeft' : 'ArrowRight';
+        return e.key === forward ? this.goNext() : this.goPrev();
+      },
+
+      toggleAnonymous() {
+        this.anonymous = !this.anonymous;
+        lsSet(LS_ANON, this.anonymous ? '1' : '0');
+        this.liveMsg = this.anonymous ? this.t('qg.anonOn') : this.t('qg.anonOff');
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        this.anonymous = lsGet(LS_ANON) === '1';
+        this.attempts = TC.clone(TC.ATTEMPTS).map(a => this.restoreDraft(a));
+        this.pickInitial();
+        window.addEventListener('beforeunload', (e) => {
+          if (this.dirty) { e.preventDefault(); e.returnValue = ''; return ''; }
+        });
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; this.helpOpen = false;
+      },
+    };
+  }
+</script>
+</body>
+</html>

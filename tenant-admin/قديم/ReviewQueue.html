@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>طابور المراجعة — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-white/10 bg-slate-900/90 px-2.5 py-1 text-xs font-medium tracking-wide text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 ease-out;
+      @apply dark:border-slate-800/20 dark:bg-slate-100 dark:text-slate-900;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-slate-900/90 opacity-0 transition-all duration-200 ease-out;
+      @apply dark:border-t-slate-100;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+    .btn-success { @apply bg-success-500 text-white hover:bg-success-700; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- تبويبات نوع العنصر (Segmented Tabs) ---------- */
+    .seg-tab { @apply inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .seg-tab[aria-selected="true"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600 hover:text-white; }
+    .seg-tab .seg-count { @apply inline-grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-black/10 px-1 text-[11px] font-extrabold; }
+    .seg-tab[aria-selected="true"] .seg-count { @apply bg-white/25; }
+
+    /* ---------- سلسلة التصنيف الأكاديمي (Breadcrumb Chip) ---------- */
+    .class-chain { @apply flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-bold text-muted; }
+    .class-chain i { @apply text-[9px] text-line-strong; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="reviewQueueManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="openMenuId = null" @resize.window="openMenuId = null"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || rejectModalOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('navGroups.content')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.reviewQueue')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — طابور المراجعة ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('rq.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('rq.subtitle')"></p>
+        </div>
+      </section>
+
+      <!-- ================= بطاقات مؤشرات الأداء (KPI) ================= -->
+      <section aria-label="KPIs" class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rq.kpiPending')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-hourglass-half"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">12</p>
+          <p class="mt-1 text-xs text-muted" x-text="t('rq.kpiPendingHint')"></p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rq.kpiApprovedToday')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">8</p>
+          <p class="mt-1 text-xs text-muted" x-text="t('rq.kpiApprovedTodayHint')"></p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('rq.kpiRejected')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-error-500/15 text-error-700 dark:text-error-500" aria-hidden="true"><i class="fa-solid fa-circle-xmark"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">3</p>
+          <p class="mt-1 text-xs text-muted" x-text="t('rq.kpiRejectedHint')"></p>
+        </div>
+      </section>
+
+      <!-- ================= تبويبات نوع العنصر ================= -->
+      <section class="panel p-2 sm:p-3" aria-label="فلترة نوع العنصر">
+        <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="نوع العنصر">
+          <button type="button" role="tab" class="seg-tab" :aria-selected="(activeTab === 'concepts').toString()" @click="activeTab = 'concepts'">
+            <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
+            <span x-text="t('rq.tabConcepts')"></span>
+            <span class="seg-count">4</span>
+          </button>
+          <button type="button" role="tab" class="seg-tab" :aria-selected="(activeTab === 'learningObjects').toString()" @click="activeTab = 'learningObjects'">
+            <i class="fa-solid fa-cubes" aria-hidden="true"></i>
+            <span x-text="t('rq.tabLearningObjects')"></span>
+            <span class="seg-count">4</span>
+          </button>
+          <button type="button" role="tab" class="seg-tab" :aria-selected="(activeTab === 'quizzes').toString()" @click="activeTab = 'quizzes'">
+            <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+            <span x-text="t('rq.tabQuizzes')"></span>
+            <span class="seg-count">4</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= المفاهيم (Concepts) ================= -->
+      <section x-show="activeTab === 'concepts'" x-cloak class="panel overflow-hidden" aria-labelledby="rq-concepts-title">
+        <h2 id="rq-concepts-title" class="sr-only" x-text="t('rq.tabConcepts')"></h2>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">الأعداد الصحيحة الموجبة والسالبة</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-MATH-010</p>
+              </div>
+              <span class="badge badge-primary shrink-0" x-text="t('rq.typeConcept')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>رياضيات 7</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>الأعداد</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">الأعداد الصحيحة</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+              <span>محمد خالد يوسف · 05 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'CPT-MATH-010', title: 'الأعداد الصحيحة الموجبة والسالبة' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-MATH-010', title: 'الأعداد الصحيحة الموجبة والسالبة' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">دورة الماء في الطبيعة</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-SCI-014</p>
+              </div>
+              <span class="badge badge-primary shrink-0" x-text="t('rq.typeConcept')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>العلوم 5</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>الأرض والفضاء</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">الغلاف الجوي</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">نح</span>
+              <span>نور حسن عودة · 06 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'CPT-SCI-014', title: 'دورة الماء في الطبيعة' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-SCI-014', title: 'دورة الماء في الطبيعة' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">الصورة الشعرية</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-ARAB-021</p>
+              </div>
+              <span class="badge badge-primary shrink-0" x-text="t('rq.typeConcept')"></span>
+            </div>
+            <div class="mt-3">
+              <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.statusIncomplete')"></span></span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">لع</span>
+              <span>ليان عمر الشريف · 07 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="group relative inline-block">
+                <button type="button" class="btn btn-sm btn-success" disabled aria-describedby="rq-c3-hint">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                </button>
+                <span id="rq-c3-hint" class="tooltip-bubble" x-text="t('rq.incompleteBlockHint')" role="tooltip"></span>
+                <span class="tooltip-arrow" aria-hidden="true"></span>
+              </span>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-ARAB-021', title: 'الصورة الشعرية' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">خاصية التوزيع في الضرب</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-MATH-018</p>
+              </div>
+              <span class="badge badge-primary shrink-0" x-text="t('rq.typeConcept')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>رياضيات 6</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>العمليات الحسابية</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">الضرب والقسمة</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">سم</span>
+              <span>سارة أحمد المصري · 08 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'CPT-MATH-018', title: 'خاصية التوزيع في الضرب' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-MATH-018', title: 'خاصية التوزيع في الضرب' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1040px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('rq.tabConcepts')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colItem')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colType')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colClassification')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colSubmitted')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('rq.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">الأعداد الصحيحة الموجبة والسالبة</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-MATH-010</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-primary" x-text="t('rq.typeConcept')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>رياضيات 7</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>الأعداد</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">الأعداد الصحيحة</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">محمد خالد يوسف</p>
+                        <p class="truncate text-xs text-muted">05 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'CPT-MATH-010', title: 'الأعداد الصحيحة الموجبة والسالبة' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-MATH-010', title: 'الأعداد الصحيحة الموجبة والسالبة' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">دورة الماء في الطبيعة</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-SCI-014</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-primary" x-text="t('rq.typeConcept')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>العلوم 5</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>الأرض والفضاء</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">الغلاف الجوي</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">نح</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">نور حسن عودة</p>
+                        <p class="truncate text-xs text-muted">06 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'CPT-SCI-014', title: 'دورة الماء في الطبيعة' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-SCI-014', title: 'دورة الماء في الطبيعة' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">الصورة الشعرية</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-ARAB-021</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-primary" x-text="t('rq.typeConcept')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.statusIncomplete')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">لع</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">ليان عمر الشريف</p>
+                        <p class="truncate text-xs text-muted">07 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <span class="group relative inline-block">
+                        <button type="button" class="btn btn-sm btn-success" disabled aria-describedby="rq-c3t-hint">
+                          <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                        </button>
+                        <span id="rq-c3t-hint" class="tooltip-bubble" x-text="t('rq.incompleteBlockHint')" role="tooltip"></span>
+                        <span class="tooltip-arrow" aria-hidden="true"></span>
+                      </span>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-ARAB-021', title: 'الصورة الشعرية' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">خاصية التوزيع في الضرب</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">CPT-MATH-018</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-primary" x-text="t('rq.typeConcept')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>رياضيات 6</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>العمليات الحسابية</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">الضرب والقسمة</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">سارة أحمد المصري</p>
+                        <p class="truncate text-xs text-muted">08 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'CPT-MATH-018', title: 'خاصية التوزيع في الضرب' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'CPT-MATH-018', title: 'خاصية التوزيع في الضرب' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= العناصر التعليمية (Learning Objects) ================= -->
+      <section x-show="activeTab === 'learningObjects'" x-cloak class="panel overflow-hidden" aria-labelledby="rq-lo-title">
+        <h2 id="rq-lo-title" class="sr-only" x-text="t('rq.tabLearningObjects')"></h2>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">فيديو: مراحل التمثيل الضوئي</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-VID-102</p>
+              </div>
+              <span class="badge badge-info shrink-0" x-text="t('rq.typeLearningObject')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>العلوم 8</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>الأحياء</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">التغذية في النبات</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">يإ</span>
+              <span>يوسف إبراهيم النجار · 03 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'LO-VID-102', title: 'فيديو: مراحل التمثيل الضوئي' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-VID-102', title: 'فيديو: مراحل التمثيل الضوئي' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">محاكاة: دارة كهربائية بسيطة</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-SIM-045</p>
+              </div>
+              <span class="badge badge-info shrink-0" x-text="t('rq.typeLearningObject')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>الفيزياء 9</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>الكهرباء</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">الدارات الكهربائية</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">سم</span>
+              <span>سارة أحمد المصري · 04 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'LO-SIM-045', title: 'محاكاة: دارة كهربائية بسيطة' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-SIM-045', title: 'محاكاة: دارة كهربائية بسيطة' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">ورقة عمل: الأشكال الهندسية</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-DOC-077</p>
+              </div>
+              <span class="badge badge-info shrink-0" x-text="t('rq.typeLearningObject')"></span>
+            </div>
+            <div class="mt-3">
+              <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.statusIncomplete')"></span></span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+              <span>محمد خالد يوسف · 05 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="group relative inline-block">
+                <button type="button" class="btn btn-sm btn-success" disabled aria-describedby="rq-lo3-hint">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                </button>
+                <span id="rq-lo3-hint" class="tooltip-bubble" x-text="t('rq.incompleteBlockHint')" role="tooltip"></span>
+                <span class="tooltip-arrow" aria-hidden="true"></span>
+              </span>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-DOC-077', title: 'ورقة عمل: الأشكال الهندسية' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">صورة توضيحية: الجهاز الهضمي</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-IMG-033</p>
+              </div>
+              <span class="badge badge-info shrink-0" x-text="t('rq.typeLearningObject')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>الأحياء 10</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>جسم الإنسان</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">الجهاز الهضمي</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">نح</span>
+              <span>نور حسن عودة · 06 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'LO-IMG-033', title: 'صورة توضيحية: الجهاز الهضمي' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-IMG-033', title: 'صورة توضيحية: الجهاز الهضمي' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1040px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('rq.tabLearningObjects')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colItem')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colType')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colClassification')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colSubmitted')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('rq.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">فيديو: مراحل التمثيل الضوئي</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-VID-102</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('rq.typeLearningObject')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>العلوم 8</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>الأحياء</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">التغذية في النبات</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">يإ</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">يوسف إبراهيم النجار</p>
+                        <p class="truncate text-xs text-muted">03 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'LO-VID-102', title: 'فيديو: مراحل التمثيل الضوئي' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-VID-102', title: 'فيديو: مراحل التمثيل الضوئي' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">محاكاة: دارة كهربائية بسيطة</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-SIM-045</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('rq.typeLearningObject')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>الفيزياء 9</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>الكهرباء</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">الدارات الكهربائية</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">سارة أحمد المصري</p>
+                        <p class="truncate text-xs text-muted">04 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'LO-SIM-045', title: 'محاكاة: دارة كهربائية بسيطة' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-SIM-045', title: 'محاكاة: دارة كهربائية بسيطة' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">ورقة عمل: الأشكال الهندسية</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-DOC-077</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('rq.typeLearningObject')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.statusIncomplete')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">محمد خالد يوسف</p>
+                        <p class="truncate text-xs text-muted">05 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <span class="group relative inline-block">
+                        <button type="button" class="btn btn-sm btn-success" disabled aria-describedby="rq-lo3t-hint">
+                          <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                        </button>
+                        <span id="rq-lo3t-hint" class="tooltip-bubble" x-text="t('rq.incompleteBlockHint')" role="tooltip"></span>
+                        <span class="tooltip-arrow" aria-hidden="true"></span>
+                      </span>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-DOC-077', title: 'ورقة عمل: الأشكال الهندسية' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">صورة توضيحية: الجهاز الهضمي</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-IMG-033</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-info" x-text="t('rq.typeLearningObject')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>الأحياء 10</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>جسم الإنسان</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">الجهاز الهضمي</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">نح</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">نور حسن عودة</p>
+                        <p class="truncate text-xs text-muted">06 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'LO-IMG-033', title: 'صورة توضيحية: الجهاز الهضمي' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'LO-IMG-033', title: 'صورة توضيحية: الجهاز الهضمي' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= الاختبارات والأسئلة (Quizzes) ================= -->
+      <section x-show="activeTab === 'quizzes'" x-cloak class="panel overflow-hidden" aria-labelledby="rq-quiz-title">
+        <h2 id="rq-quiz-title" class="sr-only" x-text="t('rq.tabQuizzes')"></h2>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">اختبار: الكسور والأعداد العشرية</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-MATH-210</p>
+              </div>
+              <span class="badge badge-accent shrink-0" x-text="t('rq.typeQuiz')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>رياضيات 6</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>الكسور</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">جمع وطرح الكسور</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">لع</span>
+              <span>ليان عمر الشريف · 02 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'QZ-MATH-210', title: 'اختبار: الكسور والأعداد العشرية' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-MATH-210', title: 'اختبار: الكسور والأعداد العشرية' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">سؤال مقالي: دورة حياة الفراشة</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-SCI-087</p>
+              </div>
+              <span class="badge badge-accent shrink-0" x-text="t('rq.typeQuiz')"></span>
+            </div>
+            <div class="mt-3">
+              <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.statusIncomplete')"></span></span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">يإ</span>
+              <span>يوسف إبراهيم النجار · 03 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="group relative inline-block">
+                <button type="button" class="btn btn-sm btn-success" disabled aria-describedby="rq-q2-hint">
+                  <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                </button>
+                <span id="rq-q2-hint" class="tooltip-bubble" x-text="t('rq.incompleteBlockHint')" role="tooltip"></span>
+                <span class="tooltip-arrow" aria-hidden="true"></span>
+              </span>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-SCI-087', title: 'سؤال مقالي: دورة حياة الفراشة' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">اختبار قصير: قواعد النحو</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-ARAB-056</p>
+              </div>
+              <span class="badge badge-accent shrink-0" x-text="t('rq.typeQuiz')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>اللغة العربية 7</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>النحو</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">الجملة الاسمية</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">نح</span>
+              <span>نور حسن عودة · 04 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'QZ-ARAB-056', title: 'اختبار قصير: قواعد النحو' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-ARAB-056', title: 'اختبار قصير: قواعد النحو' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-extrabold leading-6">بنك أسئلة: Present Simple Tense</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-ENG-033</p>
+              </div>
+              <span class="badge badge-accent shrink-0" x-text="t('rq.typeQuiz')"></span>
+            </div>
+            <div class="class-chain mt-3">
+              <span>English 5</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span>Grammar</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+              <span class="text-ink">Verb Tenses</span>
+            </div>
+            <p class="mt-2.5 flex items-center gap-2 text-xs text-muted">
+              <span class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">سم</span>
+              <span>سارة أحمد المصري · 05 أكتوبر 2026</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'QZ-ENG-033', title: 'بنك أسئلة: Present Simple Tense' })">
+                <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-ENG-033', title: 'بنك أسئلة: Present Simple Tense' })">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[1040px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('rq.tabQuizzes')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colItem')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colType')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colClassification')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('rq.colSubmitted')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('rq.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">اختبار: الكسور والأعداد العشرية</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-MATH-210</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('rq.typeQuiz')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>رياضيات 6</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>الكسور</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">جمع وطرح الكسور</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">لع</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">ليان عمر الشريف</p>
+                        <p class="truncate text-xs text-muted">02 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'QZ-MATH-210', title: 'اختبار: الكسور والأعداد العشرية' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-MATH-210', title: 'اختبار: الكسور والأعداد العشرية' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">سؤال مقالي: دورة حياة الفراشة</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-SCI-087</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('rq.typeQuiz')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('rq.statusIncomplete')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">يإ</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">يوسف إبراهيم النجار</p>
+                        <p class="truncate text-xs text-muted">03 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <span class="group relative inline-block">
+                        <button type="button" class="btn btn-sm btn-success" disabled aria-describedby="rq-q2t-hint">
+                          <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                        </button>
+                        <span id="rq-q2t-hint" class="tooltip-bubble" x-text="t('rq.incompleteBlockHint')" role="tooltip"></span>
+                        <span class="tooltip-arrow" aria-hidden="true"></span>
+                      </span>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-SCI-087', title: 'سؤال مقالي: دورة حياة الفراشة' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">اختبار قصير: قواعد النحو</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-ARAB-056</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('rq.typeQuiz')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>اللغة العربية 7</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>النحو</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">الجملة الاسمية</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">نح</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">نور حسن عودة</p>
+                        <p class="truncate text-xs text-muted">04 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'QZ-ARAB-056', title: 'اختبار قصير: قواعد النحو' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-ARAB-056', title: 'اختبار قصير: قواعد النحو' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <p class="truncate font-extrabold leading-6">بنك أسئلة: Present Simple Tense</p>
+                    <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">QZ-ENG-033</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle"><span class="badge badge-accent" x-text="t('rq.typeQuiz')"></span></td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="class-chain">
+                      <span>English 5</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span>Grammar</span><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left" aria-hidden="true"></i>
+                      <span class="text-ink">Verb Tenses</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <div class="flex items-center gap-2">
+                      <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[10px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink">سارة أحمد المصري</p>
+                        <p class="truncate text-xs text-muted">05 أكتوبر 2026</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      <button type="button" class="btn btn-sm btn-success" @click="approveItem({ id: 'QZ-ENG-033', title: 'بنك أسئلة: Present Simple Tense' })">
+                        <i class="fa-solid fa-check" aria-hidden="true"></i> <span x-text="t('rq.actApprove')"></span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline !text-danger hover:!bg-error-500/10" @click="openReject({ id: 'QZ-ENG-033', title: 'بنك أسئلة: Present Simple Tense' })">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i> <span x-text="t('rq.actReject')"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — رفض عنصر (يتطلب سبب الرفض إلزاميًا)
+     ========================================================================== -->
+<div x-cloak x-show="rejectModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="rj-title" @keydown.escape.window="closeRejectModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeRejectModal()"></div>
+
+  <form @submit.prevent="confirmReject()" x-show="rejectModalOpen" x-trap.noscroll="rejectModalOpen"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="rj-title" class="text-lg font-extrabold text-ink" x-text="t('rq.rejectTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closeRejectModal()" :disabled="busy" :aria-label="t('rq.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+      <p class="text-sm text-muted">
+        <span x-text="t('rq.rejectDesc')"></span>
+        <span class="font-bold text-ink" x-text="rejectTarget && rejectTarget.title"></span>
+      </p>
+
+      <div>
+        <label for="rj-reason" class="label"><span x-text="t('rq.rejectReasonLabel')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <textarea id="rj-reason" x-model.trim="rejectReason" required rows="4" class="field resize-none"
+                  :placeholder="t('rq.rejectReasonPlaceholder')" :aria-invalid="(rejectSubmitted && !rejectReason).toString()"></textarea>
+        <p class="err" x-show="rejectSubmitted && !rejectReason"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('rq.rejectReasonRequired')"></span></p>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeRejectModal()" x-text="t('rq.cancel')"></button>
+      <button type="submit" class="btn btn-danger" :disabled="busy" :aria-busy="busy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('rq.rejecting') : t('rq.rejectConfirm')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<script>
+  /**
+   * حالة واجهة طابور المراجعة — مبنية على نفس هيكل "Dashboard Shell"
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد.
+   * العناصر في الجدول ثابتة (Static Mock Rows) — عمليات الاعتماد/الرفض الفعلية
+   * ستُنفَّذ لاحقًا عبر Livewire + Eloquent؛ هنا تُكتفى بإشعار Toast فقط.
+   */
+  function reviewQueueManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'لوحة التحكم', org: 'إدارة المؤسسة' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+
+        rq: {
+          title: 'طابور المراجعة', subtitle: 'راجع المفاهيم والعناصر التعليمية والأسئلة المُرسلة من المعلمين والمحررين، ثم اعتمدها أو ارفضها مع توضيح السبب.',
+          kpiPending: 'في انتظار المراجعة', kpiPendingHint: 'عناصر بانتظار إجراء المراجع',
+          kpiApprovedToday: 'تم اعتمادها اليوم', kpiApprovedTodayHint: 'عناصر اعتُمدت خلال آخر 24 ساعة',
+          kpiRejected: 'مرفوضة مع السبب', kpiRejectedHint: 'عناصر أُعيدت إلى المُرسل مع ملاحظات',
+          tabConcepts: 'المفاهيم', tabLearningObjects: 'العناصر التعليمية', tabQuizzes: 'الاختبارات والأسئلة',
+          typeConcept: 'مفهوم', typeLearningObject: 'عنصر تعليمي', typeQuiz: 'اختبار / سؤال',
+          colItem: 'العنوان والرمز', colType: 'النوع', colClassification: 'التصنيف الأكاديمي', colSubmitted: 'مُرسل بواسطة', colActions: 'إجراءات المراجعة',
+          statusIncomplete: 'ناقص التصنيف',
+          incompleteBlockHint: 'يمنع إرسال/اعتماد المفهوم ناقص التصنيف',
+          actApprove: 'اعتماد', actReject: 'رفض',
+          rejectTitle: 'رفض العنصر', rejectDesc: 'يرجى توضيح سبب الرفض ليتم إرساله إلى معدّ المحتوى عن:',
+          rejectReasonLabel: 'سبب الرفض', rejectReasonPlaceholder: 'اكتب سبب الرفض بوضوح…', rejectReasonRequired: 'سبب الرفض مطلوب.',
+          cancel: 'إلغاء', rejectConfirm: 'تأكيد الرفض', rejecting: 'جارٍ الرفض',
+          toastApprove: 'تم اعتماد «{title}» بنجاح (معاينة فقط)',
+          toastReject: 'تم رفض «{title}» وإرسال السبب إلى المُرسل (معاينة فقط)',
+          toastBlocked: 'لا يمكن الاعتماد: العنصر ناقص التصنيف',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Dashboard', org: 'Organization Admin' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'Seat quota is nearing its limit (83%)', reset: 'Password reset link was sent successfully' },
+
+        rq: {
+          title: 'Review Queue', subtitle: 'Review concepts, learning objects, and quiz questions submitted by teachers and editors, then approve or reject them with a clear reason.',
+          kpiPending: 'Pending Reviews', kpiPendingHint: 'Items awaiting reviewer action',
+          kpiApprovedToday: 'Approved Today', kpiApprovedTodayHint: 'Items approved in the last 24 hours',
+          kpiRejected: 'Rejected Items', kpiRejectedHint: 'Items sent back to the submitter with notes',
+          tabConcepts: 'Concepts', tabLearningObjects: 'Learning Objects', tabQuizzes: 'Quizzes / Questions',
+          typeConcept: 'Concept', typeLearningObject: 'Learning Object', typeQuiz: 'Quiz / Question',
+          colItem: 'Title & Code', colType: 'Type', colClassification: 'Academic Classification', colSubmitted: 'Submitted By', colActions: 'Review Actions',
+          statusIncomplete: 'Incomplete Classification',
+          incompleteBlockHint: 'Sending/approving a concept with incomplete classification is not allowed',
+          actApprove: 'Approve', actReject: 'Reject',
+          rejectTitle: 'Reject Item', rejectDesc: 'Please state the rejection reason to send it to the content author for:',
+          rejectReasonLabel: 'Rejection Reason', rejectReasonPlaceholder: 'Write the rejection reason clearly…', rejectReasonRequired: 'Rejection reason is required.',
+          cancel: 'Cancel', rejectConfirm: 'Confirm Rejection', rejecting: 'Rejecting',
+          toastApprove: '"{title}" was approved successfully (preview only)',
+          toastReject: '"{title}" was rejected and the reason was sent to the submitter (preview only)',
+          toastBlocked: 'Cannot approve: item has incomplete classification',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'reviewQueue',
+
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 12 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- تبويبات نوع العنصر ---------- */
+      activeTab: 'concepts',
+
+      /* ---------- اعتماد عنصر (Approve) ---------- */
+      approveItem(item) {
+        this.toastSuccess(this.tf('rq.toastApprove', { title: item.title }));
+      },
+
+      /* ---------- رفض عنصر (Reject) — يتطلّب سببًا إلزاميًا ---------- */
+      rejectModalOpen: false, rejectTarget: null, rejectReason: '', rejectSubmitted: false, busy: false,
+      openReject(item) {
+        this.rejectTarget = item;
+        this.rejectReason = '';
+        this.rejectSubmitted = false;
+        this.rejectModalOpen = true;
+      },
+      closeRejectModal() {
+        if (!this.busy) { this.rejectModalOpen = false; this.rejectTarget = null; }
+      },
+      async confirmReject() {
+        this.rejectSubmitted = true;
+        if (!this.rejectReason.trim()) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 450));
+        this.busy = false;
+        this.toastSuccess(this.tf('rq.toastReject', { title: this.rejectTarget.title }));
+        this.rejectModalOpen = false;
+        this.rejectTarget = null;
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        if (!this.busy) { this.rejectModalOpen = false; }
+      },
+    };
+  }
+</script>
+</body>
+</html>

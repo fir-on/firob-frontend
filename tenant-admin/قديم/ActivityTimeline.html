@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>سجل النشاطات والتدقيق — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  { @apply bg-accent-500/25 text-accent-700 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- مقطع أزرار / شرائح الفلترة (Segmented / Pills) ---------- */
+    .seg { @apply inline-flex flex-wrap items-center gap-1 rounded-xl border border-line bg-card p-1; }
+    .seg-btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold text-muted transition; }
+    .seg-btn[aria-pressed="true"], .seg-btn[aria-selected="true"] { @apply bg-primary-500 text-white shadow; }
+    .pill { @apply inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition select-none; }
+    .pill[aria-pressed="false"] { @apply border-line bg-card text-muted hover:border-line-strong hover:text-ink; }
+    .pill[aria-pressed="true"]  { @apply border-primary-500 bg-primary-500/10 text-brand; }
+
+    /* ---------- خط زمني (Timeline) ---------- */
+    .tl-dot { @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm ring-4 ring-page; }
+    .tl-card { @apply min-w-0 flex-1 rounded-xl border border-line bg-card p-4 text-start transition hover:-translate-y-0.5 hover:border-primary-500 hover:shadow-card; }
+
+    /* ---------- اللوحة المنبثقة الجانبية (Slide-over Drawer) ---------- */
+    .drawer-panel { @apply absolute inset-y-0 flex w-full max-w-xl flex-col border-line bg-card shadow-pop; inset-inline-end: 0; border-inline-start-width: 1px; }
+    .diff-cell { @apply min-w-0 rounded-lg border p-3 text-xs leading-6; }
+    .diff-old { @apply border-error-500/30 bg-error-500/5 text-error-700 dark:text-error-500; }
+    .diff-new { @apply border-success-500/30 bg-success-500/5 text-success-700 dark:text-success-500; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل الدرج الجانبي) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || drawerOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); } else { mobileNav = false; }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <a href="TenantSettingsForm.html" role="menuitem" class="menu-item"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></a>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.activityLog')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-06: سجل النشاطات والتدقيق (activity_log) ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- ================= العنوان ================= -->
+      <section class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('al.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('al.subtitle')"></p>
+        </div>
+        <span class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-line bg-card px-3.5 py-2 text-xs font-bold text-muted shadow-card">
+          <i class="fa-solid fa-lock text-brand" aria-hidden="true"></i>
+          <span x-text="t('al.readOnlyPill')"></span>
+        </span>
+      </section>
+
+      <!-- ================= بانر إشعار الأمان ================= -->
+      <section role="note" class="flex items-start gap-3 rounded-2xl border border-line border-s-4 border-s-primary-500 bg-soft/60 p-4 text-sm">
+        <i class="fa-solid fa-shield-halved mt-0.5 shrink-0 text-brand" aria-hidden="true"></i>
+        <p class="text-ink"><span class="font-extrabold" x-text="t('al.notice.title')"></span> — <span class="text-muted" x-text="t('al.notice.body')"></span></p>
+      </section>
+
+      <!-- ================= بطاقات المؤشرات (KPIs) ================= -->
+      <section aria-label="مؤشرات سجل النشاط" class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('al.kpi.totalToday')"></p>
+              <p class="mt-2 truncate text-2xl font-extrabold tabular-nums sm:text-3xl">47</p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-500/15 text-brand" aria-hidden="true"><i class="fa-solid fa-bolt"></i></span>
+          </div>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('al.kpi.activeUsers')"></p>
+              <p class="mt-2 truncate text-2xl font-extrabold tabular-nums sm:text-3xl">9</p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-user-check"></i></span>
+          </div>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('al.kpi.securityEvents')"></p>
+              <p class="mt-2 truncate text-2xl font-extrabold tabular-nums sm:text-3xl">3</p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span>
+          </div>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-muted" x-text="t('al.kpi.contentMods')"></p>
+              <p class="mt-2 truncate text-2xl font-extrabold tabular-nums sm:text-3xl">18</p>
+            </div>
+            <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-sliders"></i></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر (عرض فقط — بلا منطق فلترة فعلي؛ سيُنفَّذ عبر Livewire) ================= -->
+      <section class="panel space-y-3.5 p-3.5 sm:p-4">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <form role="search" class="relative min-w-0 flex-1" @submit.prevent>
+            <label for="al-q" class="sr-only" x-text="t('al.toolbar.searchPlaceholder')"></label>
+            <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+            <input id="al-q" type="search" x-model="search" :placeholder="t('al.toolbar.searchPlaceholder')"
+                   class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-3 ps-10 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          </form>
+
+          <!-- فلتر الفترة الزمنية (محاكاة منتقي التاريخ) -->
+          <div class="relative shrink-0 lg:w-56"
+               x-data="selectDropdown({
+                 options: () => [
+                   { value: 'today', label: t('al.toolbar.dateRange.today') },
+                   { value: 'yesterday', label: t('al.toolbar.dateRange.yesterday') },
+                   { value: 'last7', label: t('al.toolbar.dateRange.last7') },
+                   { value: 'last30', label: t('al.toolbar.dateRange.last30') },
+                   { value: 'custom', label: t('al.toolbar.dateRange.custom') },
+                 ],
+                 get: () => dateRange,
+                 set: (val) => dateRange = val,
+               })"
+               @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+            <button type="button" id="al-daterange-btn" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="al-daterange-list"
+                    :aria-activedescendant="active > -1 ? 'al-daterange-opt-' + items[active].value : null"
+                    class="field flex w-full items-center justify-between gap-2 text-start"
+                    @click="toggleList()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                    @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()" @keydown.space.prevent="toggleList()">
+              <span class="flex items-center gap-2 truncate"><i class="fa-regular fa-calendar text-muted" aria-hidden="true"></i><span class="truncate" x-text="triggerLabel"></span></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="al-daterange-list" role="listbox" aria-labelledby="al-daterange-btn"
+                x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="'al-daterange-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+          </div>
+
+          <button type="button" class="btn btn-outline shrink-0" @click="resetFilters()">
+            <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i><span x-text="t('al.toolbar.resetFilters')"></span>
+          </button>
+        </div>
+
+        <!-- نطاق تاريخ مخصّص (تظهر عند اختيار "فترة مخصّصة") -->
+        <div x-show="dateRange === 'custom'" x-cloak class="grid grid-cols-1 gap-2.5 border-t border-line pt-3.5 sm:grid-cols-2 lg:w-1/2">
+          <div>
+            <label for="al-from" class="label" x-text="t('al.toolbar.dateRangeVals.from')"></label>
+            <input id="al-from" type="date" class="field" dir="ltr" x-model="customFrom">
+          </div>
+          <div>
+            <label for="al-to" class="label" x-text="t('al.toolbar.dateRangeVals.to')"></label>
+            <input id="al-to" type="date" class="field" dir="ltr" x-model="customTo">
+          </div>
+        </div>
+
+        <!-- شرائح نوع الحدث (Event Type Pills) -->
+        <div class="flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+          <span class="shrink-0 text-xs font-extrabold text-line-strong" x-text="t('al.toolbar.eventTypeLabel')"></span>
+          <button type="button" class="pill" :aria-pressed="(eventType === 'all').toString()" @click="eventType = 'all'" x-text="t('al.toolbar.eventTypes.all')"></button>
+          <button type="button" class="pill" :aria-pressed="(eventType === 'auth').toString()" @click="eventType = 'auth'" x-text="t('al.toolbar.eventTypes.auth')"></button>
+          <button type="button" class="pill" :aria-pressed="(eventType === 'content').toString()" @click="eventType = 'content'" x-text="t('al.toolbar.eventTypes.content')"></button>
+          <button type="button" class="pill" :aria-pressed="(eventType === 'users').toString()" @click="eventType = 'users'" x-text="t('al.toolbar.eventTypes.users')"></button>
+          <button type="button" class="pill" :aria-pressed="(eventType === 'settings').toString()" @click="eventType = 'settings'" x-text="t('al.toolbar.eventTypes.settings')"></button>
+        </div>
+
+        <!-- شارات فئة الإجراء (Action Category legend / filter) -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="shrink-0 text-xs font-extrabold text-line-strong" x-text="t('al.toolbar.actionLabel')"></span>
+          <button type="button" class="badge" :class="actionFilter === 'created' ? 'badge-success ring-2 ring-success-500/40' : 'badge-success'" @click="actionFilter = (actionFilter === 'created' ? null : 'created')" x-text="t('al.action.created')"></button>
+          <button type="button" class="badge" :class="actionFilter === 'updated' ? 'badge-info ring-2 ring-info-500/40' : 'badge-info'" @click="actionFilter = (actionFilter === 'updated' ? null : 'updated')" x-text="t('al.action.updated')"></button>
+          <button type="button" class="badge" :class="actionFilter === 'deleted' ? 'badge-danger ring-2 ring-error-500/40' : 'badge-danger'" @click="actionFilter = (actionFilter === 'deleted' ? null : 'deleted')" x-text="t('al.action.deleted')"></button>
+          <button type="button" class="badge" :class="actionFilter === 'logged_in' ? 'badge-primary ring-2 ring-primary-500/40' : 'badge-primary'" @click="actionFilter = (actionFilter === 'logged_in' ? null : 'logged_in')" x-text="t('al.action.loggedIn')"></button>
+          <button type="button" class="badge" :class="actionFilter === 'exported' ? 'badge-accent ring-2 ring-accent-500/40' : 'badge-accent'" @click="actionFilter = (actionFilter === 'exported' ? null : 'exported')" x-text="t('al.action.exported')"></button>
+        </div>
+      </section>
+
+      <!-- ================= تذييل سياسة الاحتفاظ + عداد النتائج ================= -->
+      <p class="px-1 text-xs font-bold text-muted sm:px-0" x-text="t('al.resultsHint')"></p>
+
+      <!-- ================= الخط الزمني الرئيسي للنشاطات ================= -->
+      <section class="panel p-4 sm:p-6" aria-labelledby="al-feed-title">
+        <h2 id="al-feed-title" class="sr-only" x-text="t('al.title')"></h2>
+
+        <!-- ========== مجموعة: اليوم ========== -->
+        <div class="mb-2 flex items-center gap-3">
+          <p class="shrink-0 text-xs font-extrabold uppercase tracking-wide text-line-strong" x-text="t('al.groups.today')"></p>
+          <span class="h-px flex-1 bg-line" aria-hidden="true"></span>
+        </div>
+        <ul class="space-y-0" role="list">
+
+          <!-- #1 — تسجيل دخول ناجح -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-primary-500 text-white" aria-hidden="true"><i class="fa-solid fa-right-to-bracket"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'logged_in', badge: 'badge-primary', actionLabel: t('al.action.loggedIn'),
+                      title_ar: 'تسجيل دخول ناجح', title_en: 'Successful login',
+                      causer_name: 'سارة أحمد المصري', causer_initial: 'سم', causer_email: 'sara.ahmed@alaqsa.edu.ps', causer_role: t('al.roles.tenantAdmin'), causer_id: 12,
+                      subject_type: 'AuthSession', subject_id: null, subject_label_ar: 'جلسة تسجيل دخول', subject_label_en: 'Login session',
+                      time_rel_ar: 'منذ 6 دقائق', time_rel_en: '6 minutes ago', time_full: '2026-10-04 09:42:11',
+                      ip: '197.23.104.12', browser: 'Chrome 128', os: 'Windows 10',
+                      ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                      diff: [], old: null, attrs: { method: '2fa', device_trusted: true },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">سم</span>
+                    <p class="font-extrabold leading-6">سارة أحمد المصري</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.loggedIn')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> AuthSession</span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-primary" x-text="t('al.action.loggedIn')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'منذ 6 دقائق' : '6 minutes ago'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>197.23.104.12</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 128 · Windows 10</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #2 — إنشاء مفهوم جديد -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-success-500 text-white" aria-hidden="true"><i class="fa-solid fa-circle-plus"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'created', badge: 'badge-success', actionLabel: t('al.action.created'),
+                      title_ar: 'إنشاء مفهوم جديد', title_en: 'Created a new concept',
+                      causer_name: 'محمد خالد يوسف', causer_initial: 'مخ', causer_email: 'm.khaled@alaqsa.edu.ps', causer_role: t('al.roles.contentReviewer'), causer_id: 27,
+                      subject_type: 'Concept', subject_id: 211, subject_label_ar: 'مفهوم #211 — التفاضل والتكامل', subject_label_en: 'Concept #211 — Differentiation & Integration',
+                      time_rel_ar: 'منذ 32 دقيقة', time_rel_en: '32 minutes ago', time_full: '2026-10-04 09:16:48',
+                      ip: '41.216.10.44', browser: 'Safari 17', os: 'macOS 14',
+                      ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+                      diff: [], old: null, attrs: { title: 'التفاضل والتكامل', subject: 'الرياضيات', status: 'draft' },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                    <p class="font-extrabold leading-6">محمد خالد يوسف</p>
+                    <span class="badge badge-info" x-text="t('al.roles.contentReviewer')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.createdConcept')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">Concept #211</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-success" x-text="t('al.action.created')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'منذ 32 دقيقة' : '32 minutes ago'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>41.216.10.44</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i>Safari 17 · macOS 14</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #3 — تحديث إعداد المؤسسة -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-info-500 text-white" aria-hidden="true"><i class="fa-solid fa-pen"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'updated', badge: 'badge-info', actionLabel: t('al.action.updated'),
+                      title_ar: 'تحديث إعداد المؤسسة', title_en: 'Updated a tenant setting',
+                      causer_name: 'إيمان قلاب', causer_initial: 'إق', causer_email: 'emankullab@gmail.com', causer_role: t('al.roles.tenantAdmin'), causer_id: 4,
+                      subject_type: 'TenantSetting', subject_id: 'publishing.max_file_size', subject_label_ar: 'إعدادات المؤسسة — الحد الأقصى لحجم الملف', subject_label_en: 'Tenant Setting — Max File Size',
+                      time_rel_ar: 'منذ 51 دقيقة', time_rel_en: '51 minutes ago', time_full: '2026-10-04 08:57:03',
+                      ip: '82.212.77.9', browser: 'Chrome 127', os: 'Linux',
+                      ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                      diff: [ { field: 'max_file_size_mb', oldVal: '10', newVal: '25' } ], old: { max_file_size_mb: 10 }, attrs: { max_file_size_mb: 25 },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">إق</span>
+                    <p class="font-extrabold leading-6">إيمان قلاب</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.updatedSetting')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">TenantSetting: max_file_size</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-info" x-text="t('al.action.updated')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'منذ 51 دقيقة' : '51 minutes ago'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>82.212.77.9</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 127 · Linux</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #4 — محاولة تسجيل دخول فاشلة (أمان) -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-warning-500 text-onaccent" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'security', badge: 'badge-warning', actionLabel: t('al.action.security'),
+                      title_ar: 'محاولة تسجيل دخول فاشلة', title_en: 'Failed login attempt',
+                      causer_name: t('al.unknownUser'), causer_initial: '?', causer_email: 'unknown@—', causer_role: t('al.roles.none'), causer_id: null,
+                      subject_type: 'AuthSession', subject_id: null, subject_label_ar: 'جلسة تسجيل دخول', subject_label_en: 'Login session',
+                      time_rel_ar: 'منذ ساعة ونصف', time_rel_en: '1.5 hours ago', time_full: '2026-10-04 08:11:27',
+                      ip: '154.239.12.3', browser: 'Chrome 128', os: 'Android 14',
+                      ua: 'Mozilla/5.0 (Linux; Android 14; SM-A536) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
+                      diff: [], old: null, attrs: { reason: 'invalid_password', attempts: 4, locked: false },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-warning-500/20 text-[11px] font-extrabold text-warning-700 dark:text-warning-500" aria-hidden="true">؟</span>
+                    <p class="font-extrabold leading-6" x-text="t('al.unknownUser')"></p>
+                    <span class="badge badge-muted" x-text="t('al.roles.none')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.failedLogin')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i> AuthSession</span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-warning" x-text="t('al.action.security')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'منذ ساعة ونصف' : '1.5 hours ago'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>154.239.12.3</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i>Chrome 128 · Android 14</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #5 — تصدير تقرير المستخدمين -->
+          <li class="relative flex gap-3">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-accent-500 text-onaccent" aria-hidden="true"><i class="fa-solid fa-file-export"></i></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'exported', badge: 'badge-accent', actionLabel: t('al.action.exported'),
+                      title_ar: 'تصدير تقرير المستخدمين', title_en: 'Exported users report',
+                      causer_name: 'إيمان قلاب', causer_initial: 'إق', causer_email: 'emankullab@gmail.com', causer_role: t('al.roles.tenantAdmin'), causer_id: 4,
+                      subject_type: 'Report', subject_id: 'users_csv', subject_label_ar: 'تقرير — قائمة المستخدمين (CSV)', subject_label_en: 'Report — Users list (CSV)',
+                      time_rel_ar: 'منذ 3 ساعات', time_rel_en: '3 hours ago', time_full: '2026-10-04 06:58:40',
+                      ip: '82.212.77.9', browser: 'Chrome 127', os: 'Linux',
+                      ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                      diff: [], old: null, attrs: { format: 'csv', rows: 124, scope: 'all_users' },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">إق</span>
+                    <p class="font-extrabold leading-6">إيمان قلاب</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.exportedUsers')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">Report: users_csv</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-accent" x-text="t('al.action.exported')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'منذ 3 ساعات' : '3 hours ago'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>82.212.77.9</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 127 · Linux</span>
+              </div>
+            </button>
+          </li>
+        </ul>
+
+        <!-- ========== مجموعة: الأمس ========== -->
+        <div class="mb-2 mt-7 flex items-center gap-3">
+          <p class="shrink-0 text-xs font-extrabold uppercase tracking-wide text-line-strong" x-text="t('al.groups.yesterday')"></p>
+          <span class="h-px flex-1 bg-line" aria-hidden="true"></span>
+        </div>
+        <ul class="space-y-0" role="list">
+
+          <!-- #6 — تغيير دور مستخدم -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-info-500 text-white" aria-hidden="true"><i class="fa-solid fa-user-shield"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'updated', badge: 'badge-info', actionLabel: t('al.action.updated'),
+                      title_ar: 'تغيير دور مستخدم', title_en: 'Changed a user role',
+                      causer_name: 'إيمان قلاب', causer_initial: 'إق', causer_email: 'emankullab@gmail.com', causer_role: t('al.roles.tenantAdmin'), causer_id: 4,
+                      subject_type: 'User', subject_id: 58, subject_label_ar: 'مستخدم #58 — ليان عمر الشريف', subject_label_en: 'User #58 — Layan Omar Al-Sharif',
+                      time_rel_ar: 'أمس، 16:20', time_rel_en: 'Yesterday, 4:20 PM', time_full: '2026-10-03 16:20:09',
+                      ip: '82.212.77.9', browser: 'Chrome 127', os: 'Linux',
+                      ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                      diff: [ { field: 'role', oldVal: 'editor', newVal: 'reviewer' } ], old: { role: 'editor' }, attrs: { role: 'reviewer' },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">إق</span>
+                    <p class="font-extrabold leading-6">إيمان قلاب</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.changedRole')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">User #58</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-info" x-text="t('al.action.updated')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'أمس، 16:20' : 'Yesterday, 4:20 PM'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>82.212.77.9</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 127 · Linux</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #7 — حذف مفهوم -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-error-600 text-white" aria-hidden="true"><i class="fa-solid fa-trash"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'deleted', badge: 'badge-danger', actionLabel: t('al.action.deleted'),
+                      title_ar: 'حذف مفهوم', title_en: 'Deleted a concept',
+                      causer_name: 'محمد خالد يوسف', causer_initial: 'مخ', causer_email: 'm.khaled@alaqsa.edu.ps', causer_role: t('al.roles.contentReviewer'), causer_id: 27,
+                      subject_type: 'Concept', subject_id: 104, subject_label_ar: 'مفهوم #104 — الأعداس المركبة (مكرر)', subject_label_en: 'Concept #104 — Complex Numbers (duplicate)',
+                      time_rel_ar: 'أمس، 11:05', time_rel_en: 'Yesterday, 11:05 AM', time_full: '2026-10-03 11:05:52',
+                      ip: '41.216.10.44', browser: 'Safari 17', os: 'macOS 14',
+                      ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+                      diff: [], old: { status: 'draft', subject: 'الرياضيات' }, attrs: null,
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">مخ</span>
+                    <p class="font-extrabold leading-6">محمد خالد يوسف</p>
+                    <span class="badge badge-info" x-text="t('al.roles.contentReviewer')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.deletedConcept')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">Concept #104</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-danger" x-text="t('al.action.deleted')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'أمس، 11:05' : 'Yesterday, 11:05 AM'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>41.216.10.44</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-mobile-screen" aria-hidden="true"></i>Safari 17 · macOS 14</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #8 — إضافة مستخدم جديد -->
+          <li class="relative flex gap-3">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-success-500 text-white" aria-hidden="true"><i class="fa-solid fa-user-plus"></i></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'created', badge: 'badge-success', actionLabel: t('al.action.created'),
+                      title_ar: 'إضافة مستخدم جديد', title_en: 'Added a new user',
+                      causer_name: 'إيمان قلاب', causer_initial: 'إق', causer_email: 'emankullab@gmail.com', causer_role: t('al.roles.tenantAdmin'), causer_id: 4,
+                      subject_type: 'User', subject_id: 61, subject_label_ar: 'مستخدم #61 — يوسف إبراهيم النجار', subject_label_en: 'User #61 — Yousef Ibrahim Al-Najjar',
+                      time_rel_ar: 'أمس، 09:48', time_rel_en: 'Yesterday, 9:48 AM', time_full: '2026-10-03 09:48:31',
+                      ip: '82.212.77.9', browser: 'Chrome 127', os: 'Linux',
+                      ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                      diff: [], old: null, attrs: { role: 'editor', status: 'active', invited_by: 'emankullab@gmail.com' },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">إق</span>
+                    <p class="font-extrabold leading-6">إيمان قلاب</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.addedUser')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">User #61</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-success" x-text="t('al.action.created')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'أمس، 09:48' : 'Yesterday, 9:48 AM'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>82.212.77.9</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 127 · Linux</span>
+              </div>
+            </button>
+          </li>
+        </ul>
+
+        <!-- ========== مجموعة: سابقًا هذا الأسبوع ========== -->
+        <div class="mb-2 mt-7 flex items-center gap-3">
+          <p class="shrink-0 text-xs font-extrabold uppercase tracking-wide text-line-strong" x-text="t('al.groups.earlierWeek')"></p>
+          <span class="h-px flex-1 bg-line" aria-hidden="true"></span>
+        </div>
+        <ul class="space-y-0" role="list">
+
+          <!-- #9 — تحديث شعار المؤسسة -->
+          <li class="relative flex gap-3 pb-5 sm:gap-4">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-info-500 text-white" aria-hidden="true"><i class="fa-solid fa-palette"></i></span>
+              <span class="mt-1 w-0.5 flex-1 bg-line" aria-hidden="true"></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'updated', badge: 'badge-info', actionLabel: t('al.action.updated'),
+                      title_ar: 'تحديث هوية المؤسسة', title_en: 'Updated organization branding',
+                      causer_name: 'إيمان قلاب', causer_initial: 'إق', causer_email: 'emankullab@gmail.com', causer_role: t('al.roles.tenantAdmin'), causer_id: 4,
+                      subject_type: 'TenantSetting', subject_id: 'branding.color_primary', subject_label_ar: 'إعدادات المؤسسة — لون العلامة الأساسي', subject_label_en: 'Tenant Setting — Primary Brand Color',
+                      time_rel_ar: 'الاثنين، 14:10', time_rel_en: 'Monday, 2:10 PM', time_full: '2026-09-30 14:10:02',
+                      ip: '82.212.77.9', browser: 'Chrome 127', os: 'Linux',
+                      ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                      diff: [ { field: 'color_primary', oldVal: '#0B6680', newVal: '#0E80A1' } ], old: { color_primary: '#0B6680' }, attrs: { color_primary: '#0E80A1' },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">إق</span>
+                    <p class="font-extrabold leading-6">إيمان قلاب</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.updatedBranding')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">TenantSetting: color_primary</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-info" x-text="t('al.action.updated')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'الاثنين، 14:10' : 'Monday, 2:10 PM'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>82.212.77.9</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 127 · Linux</span>
+              </div>
+            </button>
+          </li>
+
+          <!-- #10 — تعطيل حساب مستخدم -->
+          <li class="relative flex gap-3">
+            <div class="relative flex flex-col items-center">
+              <span class="tl-dot bg-error-600 text-white" aria-hidden="true"><i class="fa-solid fa-user-slash"></i></span>
+            </div>
+            <button type="button" class="tl-card"
+                    @click="openDrawer({
+                      action: 'deleted', badge: 'badge-danger', actionLabel: t('al.action.deleted'),
+                      title_ar: 'تعطيل حساب مستخدم', title_en: 'Deactivated a user account',
+                      causer_name: 'إيمان قلاب', causer_initial: 'إق', causer_email: 'emankullab@gmail.com', causer_role: t('al.roles.tenantAdmin'), causer_id: 4,
+                      subject_type: 'User', subject_id: 39, subject_label_ar: 'مستخدم #39 — رامي سمير عودة', subject_label_en: 'User #39 — Rami Sameer Odeh',
+                      time_rel_ar: 'الأحد، 10:30', time_rel_en: 'Sunday, 10:30 AM', time_full: '2026-09-29 10:30:44',
+                      ip: '82.212.77.9', browser: 'Chrome 127', os: 'Linux',
+                      ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                      diff: [ { field: 'status', oldVal: 'active', newVal: 'disabled' } ], old: { status: 'active' }, attrs: { status: 'disabled' },
+                    })">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-soft text-[11px] font-extrabold text-brand" aria-hidden="true">إق</span>
+                    <p class="font-extrabold leading-6">إيمان قلاب</p>
+                    <span class="badge badge-primary" x-text="t('al.roles.tenantAdmin')"></span>
+                  </div>
+                  <p class="mt-1.5 font-bold text-ink" x-text="t('al.events.deactivatedUser')"></p>
+                  <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i><bdi dir="ltr">User #39</bdi></span>
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="badge badge-danger" x-text="t('al.action.deleted')"></span>
+                  <span class="text-xs font-bold tabular-nums text-muted" dir="ltr" x-text="locale === 'ar' ? 'الأحد، 10:30' : 'Sunday, 10:30 AM'"></span>
+                </div>
+              </div>
+              <div class="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-[11px] font-bold text-muted">
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5" dir="ltr"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>82.212.77.9</span>
+                <span class="inline-flex items-center gap-1 rounded-full bg-page/70 px-2 py-0.5"><i class="fa-solid fa-desktop" aria-hidden="true"></i>Chrome 127 · Linux</span>
+              </div>
+            </button>
+          </li>
+        </ul>
+
+        <!-- ================= تذييل الترقيم المؤشّري (Cursor Pagination) ================= -->
+        <div class="mt-6 flex flex-col items-center gap-2 border-t border-line pt-5">
+          <button type="button" class="btn btn-outline" :disabled="loadingMore" @click="loadOlder()">
+            <i class="fa-solid fa-spinner animate-spin" x-show="loadingMore" x-cloak aria-hidden="true"></i>
+            <i class="fa-solid fa-angles-down" x-show="!loadingMore" aria-hidden="true"></i>
+            <span x-text="loadingMore ? t('al.pagination.loading') : t('al.pagination.loadOlder')"></span>
+          </button>
+          <p class="text-xs font-bold text-muted" x-text="t('al.pagination.cursorHint')"></p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     الدرج الجانبي — فاحص الحدث (قراءة فقط): نظرة عامة + مُقارن التغييرات + JSON الخام
+     ========================================================================== -->
+<div x-show="drawerOpen" x-cloak class="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="drawer-title" @keydown.escape.window="closeDrawer()">
+  <div x-show="drawerOpen" x-transition.opacity class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDrawer()"></div>
+
+  <div x-show="drawerOpen" x-trap.noscroll="drawerOpen"
+       x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition-transform duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+       class="drawer-panel">
+
+    <template x-if="selectedEvent">
+      <div class="flex h-full min-h-0 flex-col">
+        <!-- رأس الدرج -->
+        <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4 sm:p-5">
+          <div class="min-w-0">
+            <h2 id="drawer-title" class="text-lg font-extrabold text-brand" x-text="t('al.drawer.title')"></h2>
+            <p class="mt-1 line-clamp-2 text-sm text-muted" x-text="locale === 'ar' ? selectedEvent.title_ar : selectedEvent.title_en"></p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <span class="badge" :class="selectedEvent.badge" x-text="selectedEvent.actionLabel"></span>
+              <span class="badge badge-muted"><i class="fa-solid fa-lock" aria-hidden="true"></i><span x-text="t('al.drawer.readOnly')"></span></span>
+            </div>
+          </div>
+          <button type="button" class="icon-btn shrink-0" @click="closeDrawer()" :aria-label="t('al.drawer.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </header>
+
+        <!-- تبويبات -->
+        <div class="shrink-0 border-b border-line px-4 pt-3 sm:px-5">
+          <div class="seg" role="tablist" :aria-label="t('al.drawer.title')">
+            <button type="button" role="tab" class="seg-btn" :aria-selected="(drawerTab === 'overview').toString()" @click="drawerTab = 'overview'">
+              <i class="fa-regular fa-id-card" aria-hidden="true"></i><span x-text="t('al.drawer.tabs.overview')"></span>
+            </button>
+            <button type="button" role="tab" class="seg-btn" :aria-selected="(drawerTab === 'diff').toString()" @click="drawerTab = 'diff'">
+              <i class="fa-solid fa-code-compare" aria-hidden="true"></i><span x-text="t('al.drawer.tabs.diff')"></span>
+            </button>
+            <button type="button" role="tab" class="seg-btn" :aria-selected="(drawerTab === 'raw').toString()" @click="drawerTab = 'raw'">
+              <i class="fa-solid fa-code" aria-hidden="true"></i><span x-text="t('al.drawer.tabs.raw')"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- محتوى التبويبات -->
+        <div class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+
+          <!-- نظرة عامة -->
+          <div x-show="drawerTab === 'overview'" class="space-y-5">
+            <div class="rounded-xl border border-line p-4">
+              <p class="mb-3 text-xs font-extrabold uppercase tracking-wide text-line-strong" x-text="t('al.drawer.meta.causer')"></p>
+              <div class="flex items-center gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" x-text="selectedEvent.causer_initial"></span>
+                <div class="min-w-0">
+                  <p class="truncate font-extrabold" x-text="selectedEvent.causer_name"></p>
+                  <p class="truncate text-xs text-muted" dir="ltr" style="text-align:start" x-text="selectedEvent.causer_email"></p>
+                </div>
+                <span class="badge badge-primary ms-auto shrink-0" x-text="selectedEvent.causer_role"></span>
+              </div>
+              <p class="mt-3 text-xs text-muted"><span class="font-bold" x-text="t('al.drawer.meta.userId')"></span>: <bdi dir="ltr" x-text="selectedEvent.causer_id ?? '—'"></bdi></p>
+            </div>
+
+            <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.subject')"></dt>
+                <dd class="mt-1 font-bold" x-text="locale === 'ar' ? selectedEvent.subject_label_ar : selectedEvent.subject_label_en"></dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.timestamp')"></dt>
+                <dd class="mt-1 font-bold tabular-nums" dir="ltr" style="text-align:start" x-text="selectedEvent.time_full"></dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.ip')"></dt>
+                <dd class="mt-1 font-bold tabular-nums" dir="ltr" style="text-align:start" x-text="selectedEvent.ip"></dd>
+              </div>
+              <div class="rounded-xl border border-line p-3.5">
+                <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.browser')"></dt>
+                <dd class="mt-1 font-bold" x-text="selectedEvent.browser + ' — ' + selectedEvent.os"></dd>
+              </div>
+            </dl>
+
+            <div class="rounded-xl border border-line p-3.5">
+              <dt class="text-xs font-bold text-muted" x-text="t('al.drawer.meta.userAgent')"></dt>
+              <dd class="mt-1.5 break-all rounded-lg bg-page/60 p-2.5 font-mono text-[11px] leading-5 text-muted" dir="ltr" x-text="selectedEvent.ua"></dd>
+            </div>
+          </div>
+
+          <!-- مُقارن التغييرات -->
+          <div x-show="drawerTab === 'diff'">
+            <template x-if="selectedEvent.diff && selectedEvent.diff.length">
+              <div class="space-y-2.5">
+                <div class="grid grid-cols-2 gap-2.5 text-xs font-extrabold text-muted">
+                  <p x-text="t('al.drawer.diff.old')"></p>
+                  <p x-text="t('al.drawer.diff.new')"></p>
+                </div>
+                <template x-for="row in selectedEvent.diff" :key="row.field">
+                  <div>
+                    <p class="mb-1 text-[11px] font-bold text-line-strong" x-text="row.field"></p>
+                    <div class="grid grid-cols-2 gap-2.5">
+                      <p class="diff-cell diff-old" dir="ltr" style="text-align:start" x-text="row.oldVal"></p>
+                      <p class="diff-cell diff-new" dir="ltr" style="text-align:start" x-text="row.newVal"></p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <div x-show="!selectedEvent.diff || !selectedEvent.diff.length" class="py-10 text-center text-sm text-muted">
+              <i class="fa-regular fa-file-circle-question mb-2 block text-2xl" aria-hidden="true"></i>
+              <span x-text="t('al.drawer.diff.noChanges')"></span>
+            </div>
+          </div>
+
+          <!-- JSON الخام -->
+          <div x-show="drawerTab === 'raw'" class="space-y-3">
+            <div class="flex items-center justify-end">
+              <button type="button" class="btn btn-outline btn-sm" @click="copyRawJson()">
+                <i class="fa-regular" :class="copied ? 'fa-circle-check text-success-700 dark:text-success-500' : 'fa-copy'" aria-hidden="true"></i>
+                <span x-text="copied ? t('al.drawer.raw.copied') : t('al.drawer.raw.copy')"></span>
+              </button>
+            </div>
+            <pre class="max-h-[60dvh] overflow-auto rounded-xl border border-line bg-page/60 p-3.5 font-mono text-[11px] leading-5 text-ink" dir="ltr" x-text="rawJson"></pre>
+          </div>
+        </div>
+
+        <!-- تذييل القراءة فقط -->
+        <div class="shrink-0 border-t border-line p-4 text-center text-xs font-bold text-muted sm:p-5">
+          <i class="fa-solid fa-ban me-1.5 text-line-strong" aria-hidden="true"></i><span x-text="t('al.drawer.immutableNote')"></span>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار
+   * في الصفحة: زر مُحفّز + قائمة عائمة + علامة اختيار + تنقّل بالكيبورد.
+   * عرض فقط — تخزّن القيمة المختارة محليًا، ولا تُنفّذ أي استعلام أو تصفية فعلية.
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة قشرة الصفحة (Shell) — Tenant Admin
+   * تحتوي فقط على حالة واجهة محلية (ثيم/لغة/قوائم/درج) طبقًا لقواعد النموذج
+   * الأولي: بلا أي فلترة أو ترقيم صفحات فعلي، إذ ستُنفَّذ بالكامل عبر
+   * Laravel + Livewire (cursor pagination على نموذج activity_log).
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاطات',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+
+        al: {
+          title: 'سجل النشاطات والتدقيق', subtitle: 'تتبّع كل حدث مؤثر داخل منظمتك — من قام به، ومتى، وماذا تغيّر بالضبط. سجلّ ثابت للقراءة فقط.',
+          readOnlyPill: 'للقراءة فقط — غير قابل للتعديل',
+          notice: { title: 'ملاحظة أمنية', body: 'سجلات النشاط غير قابلة للتعديل أو الحذف، ويحتفظ بها النظام لمدة 90 يومًا لأغراض الأمان والتدقيق والامتثال.' },
+          kpi: {
+            totalToday: 'إجمالي أحداث اليوم', activeUsers: 'المستخدمون النشطون اليوم',
+            securityEvents: 'أحداث الأمان والمصادقة', contentMods: 'تعديلات المحتوى والإعدادات',
+          },
+          toolbar: {
+            searchPlaceholder: 'ابحث بالوصف، اسم المُنفِّذ، أو رقم العنصر المستهدف…',
+            dateRange: { today: 'اليوم', yesterday: 'أمس', last7: 'آخر 7 أيام', last30: 'آخر 30 يومًا', custom: 'فترة مخصّصة' },
+            dateRangeVals: { from: 'من تاريخ', to: 'إلى تاريخ' },
+            resetFilters: 'مسح الفلاتر',
+            eventTypeLabel: 'نوع الحدث:',
+            eventTypes: { all: 'كل الأحداث', auth: 'المصادقة (دخول/خروج)', content: 'إدارة المحتوى', users: 'المستخدمون والأدوار', settings: 'إعدادات المؤسسة' },
+            actionLabel: 'فئة الإجراء:',
+          },
+          groups: { today: 'اليوم', yesterday: 'الأمس', earlierWeek: 'سابقًا هذا الأسبوع' },
+          resultsHint: 'عرض آخر 10 أحداث من أصل 54+ — رتّب تصاعديًا حسب الوقت (الأحدث أولًا).',
+          action: { created: 'إنشاء', updated: 'تحديث', deleted: 'حذف', loggedIn: 'تسجيل دخول', exported: 'تصدير', security: 'تنبيه أمني' },
+          roles: { tenantAdmin: 'مسؤول المؤسسة', contentReviewer: 'مراجع محتوى', none: '—' },
+          unknownUser: 'مستخدم غير معروف',
+          events: {
+            loggedIn: 'تسجيل دخول ناجح إلى لوحة التحكم', createdConcept: 'إنشاء مفهوم جديد: "التفاضل والتكامل"',
+            updatedSetting: 'تحديث إعداد المؤسسة: الحد الأقصى لحجم الملف', failedLogin: 'محاولة تسجيل دخول فاشلة (كلمة مرور غير صحيحة)',
+            exportedUsers: 'تصدير قائمة المستخدمين بصيغة CSV', changedRole: 'تغيير دور المستخدم «ليان عمر الشريف» إلى مراجع محتوى',
+            deletedConcept: 'حذف مفهوم مكرر: "الأعداد المركبة"', addedUser: 'إضافة مستخدم جديد: «يوسف إبراهيم النجار»',
+            updatedBranding: 'تحديث لون العلامة الأساسي للمنظمة', deactivatedUser: 'تعطيل حساب المستخدم «رامي سمير عودة»',
+          },
+          pagination: { loadOlder: 'تحميل نشاطات أقدم', loading: 'جارٍ التحميل…', cursorHint: 'ترقيم مؤشّري (Cursor Pagination) — يُنفَّذ بالكامل عبر Livewire' },
+          drawer: {
+            title: 'تفاصيل الحدث', close: 'إغلاق', readOnly: 'قراءة فقط',
+            tabs: { overview: 'نظرة عامة', diff: 'مُقارن التغييرات', raw: 'JSON الخام' },
+            meta: { causer: 'المُنفِّذ للعملية', userId: 'رقم المستخدم', subject: 'العنصر المستهدف', timestamp: 'التوقيت الدقيق', ip: 'عنوان IP', browser: 'المتصفح ونظام التشغيل', userAgent: 'بصمة المتصفح (User Agent)' },
+            diff: { old: 'الحالة السابقة', new: 'الحالة الجديدة', noChanges: 'لا توجد تغييرات تفصيلية مسجّلة لهذا الحدث' },
+            raw: { copy: 'نسخ JSON الخام', copied: 'تم النسخ' },
+            immutableNote: 'هذا السجل غير قابل للتعديل أو الحذف من الواجهة.',
+          },
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', org: 'Organization Management' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity & Audit Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'User seat quota is nearing its limit (83%)', reset: 'A password reset link was sent successfully' },
+
+        al: {
+          title: 'Activity & Audit Log', subtitle: "Track every consequential event inside your organization — who did it, when, and exactly what changed. An immutable, read-only record.",
+          readOnlyPill: 'Read-only — cannot be edited',
+          notice: { title: 'Security notice', body: 'Activity logs cannot be edited or deleted, and are retained by the system for 90 days for security, audit, and compliance purposes.' },
+          kpi: {
+            totalToday: 'Total Events Today', activeUsers: 'Active Users Today',
+            securityEvents: 'Security & Auth Events', contentMods: 'Content / Setting Modifications',
+          },
+          toolbar: {
+            searchPlaceholder: 'Search by description, causer name, or target subject ID…',
+            dateRange: { today: 'Today', yesterday: 'Yesterday', last7: 'Last 7 Days', last30: 'Last 30 Days', custom: 'Custom Range' },
+            dateRangeVals: { from: 'From', to: 'To' },
+            resetFilters: 'Reset Filters',
+            eventTypeLabel: 'Event type:',
+            eventTypes: { all: 'All Events', auth: 'Authentication (Logins/Logouts)', content: 'Content Management', users: 'User & Role Changes', settings: 'Tenant Settings' },
+            actionLabel: 'Action category:',
+          },
+          groups: { today: 'Today', yesterday: 'Yesterday', earlierWeek: 'Earlier This Week' },
+          resultsHint: 'Showing the latest 10 of 54+ events — sorted newest first.',
+          action: { created: 'Created', updated: 'Updated', deleted: 'Deleted', loggedIn: 'Logged In', exported: 'Exported', security: 'Security Alert' },
+          roles: { tenantAdmin: 'Tenant Admin', contentReviewer: 'Content Reviewer', none: '—' },
+          unknownUser: 'Unknown user',
+          events: {
+            loggedIn: 'Successful login to the dashboard', createdConcept: 'Created a new concept: "Differentiation & Integration"',
+            updatedSetting: 'Updated tenant setting: Max file size', failedLogin: 'Failed login attempt (invalid password)',
+            exportedUsers: 'Exported the users list as CSV', changedRole: 'Changed user "Layan Omar Al-Sharif" role to Content Reviewer',
+            deletedConcept: 'Deleted a duplicate concept: "Complex Numbers"', addedUser: 'Added a new user: "Yousef Ibrahim Al-Najjar"',
+            updatedBranding: "Updated the organization's primary brand color", deactivatedUser: 'Deactivated user account "Rami Sameer Odeh"',
+          },
+          pagination: { loadOlder: 'Load Older Activities', loading: 'Loading…', cursorHint: 'Cursor pagination — fully implemented via Livewire' },
+          drawer: {
+            title: 'Event Details', close: 'Close', readOnly: 'Read-only',
+            tabs: { overview: 'Overview', diff: 'Changes Diff', raw: 'Raw JSON' },
+            meta: { causer: 'Operator', userId: 'User ID', subject: 'Target Subject', timestamp: 'Exact Timestamp', ip: 'IP Address', browser: 'Browser & OS', userAgent: 'User Agent Signature' },
+            diff: { old: 'Previous State', new: 'New State', noChanges: 'No detailed changes recorded for this event' },
+            raw: { copy: 'Copy Raw JSON', copied: 'Copied' },
+            immutableNote: 'This record cannot be edited or deleted from this interface.',
+          },
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'activityLog',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; this.drawerOpen = false; },
+
+      /* ================= ADM-06: سجل النشاطات (activity_log) — حالة واجهة فقط ================= */
+      /* شريط البحث والفلاتر: حالة عرض محلية بلا منطق فلترة/ترقيم فعلي — تُستبدل بالكامل بـ Livewire */
+      search: '', dateRange: 'last30', customFrom: '', customTo: '', eventType: 'all', actionFilter: null,
+      resetFilters() { this.search = ''; this.dateRange = 'last30'; this.customFrom = ''; this.customTo = ''; this.eventType = 'all'; this.actionFilter = null; },
+
+      /* محاكاة مرئية لتحميل صفحة أقدم من السجل (Cursor Pagination) — بلا استرجاع بيانات فعلي */
+      loadingMore: false,
+      loadOlder() {
+        if (this.loadingMore) return;
+        this.loadingMore = true;
+        setTimeout(() => { this.loadingMore = false; }, 900);
+      },
+
+      /* ---------- الدرج الجانبي: فاحص الحدث (قراءة فقط) ---------- */
+      drawerOpen: false,
+      drawerTab: 'overview',
+      selectedEvent: null,
+      copied: false,
+      openDrawer(evt) { this.selectedEvent = evt; this.drawerTab = 'overview'; this.copied = false; this.drawerOpen = true; },
+      closeDrawer() { this.drawerOpen = false; },
+
+      get rawJson() {
+        if (!this.selectedEvent) return '';
+        const e = this.selectedEvent;
+        const record = {
+          action: e.action, description: this.locale === 'ar' ? e.title_ar : e.title_en,
+          subject_type: e.subject_type, subject_id: e.subject_id,
+          causer_type: 'User', causer_id: e.causer_id, causer_email: e.causer_email,
+          properties: { old: e.old, attributes: e.attrs },
+          ip_address: e.ip, user_agent: e.ua, created_at: e.time_full,
+        };
+        return JSON.stringify(record, null, 2);
+      },
+      copyRawJson() {
+        navigator.clipboard.writeText(this.rawJson).then(() => {
+          this.copied = true;
+          setTimeout(() => { this.copied = false; }, 2200);
+        });
+      },
+    };
+  }
+</script>
+</body>
+</html>

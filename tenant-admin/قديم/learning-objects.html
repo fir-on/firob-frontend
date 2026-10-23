@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>العناصر التعليمية — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: none; box-shadow: var(--ring); }
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft focus-visible:ring-2; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-white/10 bg-slate-900/90 px-2.5 py-1 text-xs font-medium tracking-wide text-white opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 ease-out;
+      @apply dark:border-slate-800/20 dark:bg-slate-100 dark:text-slate-900;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-slate-900/90 opacity-0 transition-all duration-200 ease-out;
+      @apply dark:border-t-slate-100;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-info-500; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-error-500; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-line-strong; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مفتاح التبديل (Settings Switch) — is_public ---------- */
+    .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-line-strong/30 bg-line transition-colors duration-200; }
+    .switch-track[aria-checked="true"] { @apply border-transparent bg-primary-500; }
+    .switch-track:disabled, .switch-track[aria-disabled="true"] { @apply cursor-not-allowed opacity-50; }
+    .switch-knob { @apply inline-block h-5 w-5 translate-x-0.5 rounded-full bg-card shadow transition-transform duration-200 ltr:translate-x-0.5 rtl:-translate-x-0.5; }
+    .switch-track[aria-checked="true"] .switch-knob { @apply ltr:translate-x-5 rtl:-translate-x-5; }
+
+    /* ---------- منطقة رفع الملفات (Dropzone) ---------- */
+    .dropzone { @apply flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong bg-field px-4 py-7 text-center transition; }
+    .dropzone:hover, .dropzone.is-drag { @apply border-primary-500 bg-soft; }
+    .dropzone:focus-within { box-shadow: var(--ring); }
+    .dropzone[data-invalid='true'] { @apply border-error-600 bg-error-500/10; }
+
+    /* ---------- أيقونة تنسيق الملف (Format Icon Chip) ---------- */
+    .format-icon { @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl text-base; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ إضافة Focus لحصر التركيز داخل النوافذ المنبثقة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="notifOpen = false; profileOpen = false" @resize.window="notifOpen = false; profileOpen = false"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || panelOpen || modal }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" aria-label="القائمة الرئيسية"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <span class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </span>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" aria-label="التنقل الرئيسي">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-line-strong" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid" :class="collapsed ? 'ltr:fa-angles-right rtl:fa-angles-left' : 'ltr:fa-angles-left rtl:fa-angles-right'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand focus-visible:ring-2"
+                  @click="toggleLocale()" role="switch" :aria-checked="(locale === 'en').toString()"
+                  :aria-label="t('languageLabel') + ': ' + (locale === 'ar' ? 'العربية' : 'English')"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    aria-haspopup="true" :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="locale === 'ar' ? 'عرض جميع الإشعارات' : 'View all notifications'"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft focus-visible:ring-2 md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" aria-label="Account menu">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted">Tenant Admin</span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" aria-label="Account menu">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="locale === 'ar' ? 'حالات النظام والأخطاء' : 'System Status &amp; Errors'"></span></a>
+              <div class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav aria-label="Breadcrumb">
+          <ol class="flex items-center gap-2" role="list">
+            <li x-text="t('breadcrumb.home')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.content')"></li>
+            <li aria-hidden="true"><i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.learningObjects')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — CNT-05: العناصر التعليمية ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء الرفع -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('lo.title')"></h1>
+          <p class="mt-1 text-sm text-muted sm:text-base" x-text="t('lo.subtitle')"></p>
+        </div>
+        <button type="button" class="btn btn-accent" @click="openUpload()">
+          <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
+          <span x-text="t('lo.uploadNew')"></span>
+        </button>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPI) ================= -->
+      <section aria-label="KPIs" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('lo.kpiTotal')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-cubes"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">86</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('lo.kpiScorm')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-box-archive"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">34</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('lo.kpiHtml5')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-code"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">41</p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('lo.kpiPublic')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-earth-americas"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">52</p>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر ================= -->
+      <section class="panel flex flex-col gap-3 p-4 lg:flex-row lg:items-center sm:p-5">
+        <div class="relative min-w-0 flex-1">
+          <label for="lo-search" class="sr-only" x-text="t('lo.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="lo-search" type="search" x-model="search" :placeholder="t('lo.searchPlaceholder')"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line bg-field ps-10 pe-3 text-sm text-ink placeholder:text-line-strong focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+        </div>
+
+        <!-- فلتر التنسيق / النوع -->
+        <div class="relative w-full shrink-0 lg:w-56"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('lo.formatAll') },
+                 { value: 'scorm12', label: t('lo.formatScorm12') },
+                 { value: 'scorm2004', label: t('lo.formatScorm2004') },
+                 { value: 'html5', label: t('lo.formatHtml5') },
+                 { value: 'video', label: t('lo.formatVideo') },
+                 { value: 'pdf', label: t('lo.formatPdf') },
+               ],
+               get: () => formatFilter,
+               set: (v) => formatFilter = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="format-filter" class="sr-only" x-text="t('lo.colFormat')"></label>
+          <button type="button" id="format-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="format-filter-list"
+                  :aria-activedescendant="active > -1 ? 'format-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="format-filter-list" role="listbox" aria-labelledby="format-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'format-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر الهيكل الأكاديمي (مقرر > وحدة > درس) -->
+        <div class="relative w-full shrink-0 lg:w-64"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('lo.hierarchyAll') },
+                 { value: 'h1', label: 'الرياضيات ▸ الوحدة الأولى ▸ الكسور' },
+                 { value: 'h2', label: 'العلوم ▸ وحدة المادة ▸ الدرس الثالث' },
+                 { value: 'h3', label: 'اللغة العربية ▸ القواعد ▸ الإعراب' },
+                 { value: 'h4', label: 'العلوم ▸ الخلية ▸ تركيب الخلية' },
+               ],
+               get: () => hierarchyFilter,
+               set: (v) => hierarchyFilter = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="hierarchy-filter" class="sr-only" x-text="t('lo.colHierarchy')"></label>
+          <button type="button" id="hierarchy-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="hierarchy-filter-list"
+                  :aria-activedescendant="active > -1 ? 'hierarchy-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="hierarchy-filter-list" role="listbox" aria-labelledby="hierarchy-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'hierarchy-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- فلتر الظهور (is_public) -->
+        <div class="relative w-full shrink-0 lg:w-48"
+             x-data="selectDropdown({
+               options: () => [
+                 { value: 'all', label: t('lo.visibilityAll') },
+                 { value: 'public', label: t('lo.visibilityPublic') },
+                 { value: 'private', label: t('lo.visibilityPrivate') },
+               ],
+               get: () => visibilityFilter,
+               set: (v) => visibilityFilter = v,
+             })"
+             @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+          <label for="visibility-filter" class="sr-only" x-text="t('lo.colVisibility')"></label>
+          <button type="button" id="visibility-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="visibility-filter-list"
+                  :aria-activedescendant="active > -1 ? 'visibility-filter-opt-' + items[active].value : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                  @keydown.space.prevent="toggleList()">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="visibility-filter-list" role="listbox" aria-labelledby="visibility-filter"
+              x-transition.origin.top.duration.150ms
+              class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="'visibility-filter-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <button type="button" class="btn btn-outline shrink-0" @click="resetFilters()">
+          <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i>
+          <span x-text="t('lo.resetFilters')"></span>
+        </button>
+      </section>
+
+      <!-- ================= جدول / بطاقات العناصر التعليمية ================= -->
+      <section class="panel overflow-hidden" aria-labelledby="lo-table-title">
+        <h2 id="lo-table-title" class="sr-only" x-text="t('lo.title')"></h2>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+
+          <!-- بطاقة 1 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="format-icon bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-box-archive"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">مقدّمة في الكسور الاعتيادية</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-SCORM-001 · 24.5 MB</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-info">SCORM 1.2</span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPublic')"></span></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+            </div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('lo.colLinked')"></span>: الرياضيات ▸ الوحدة الأولى ▸ الكسور</p>
+            <div class="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+              <button type="button" class="act group relative" @click="openPreview({ title: 'مقدّمة في الكسور الاعتيادية', code: 'LO-SCORM-001', format: 'SCORM 1.2' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="openEdit({ titleAr: 'مقدّمة في الكسور الاعتيادية', titleEn: 'Intro to Fractions', code: 'LO-SCORM-001', format: 'scorm12', path: 'h1', isPublic: true })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="togglePublic({ title: 'مقدّمة في الكسور الاعتيادية', isPublic: true })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative ms-auto !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'مقدّمة في الكسور الاعتيادية' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+            </div>
+          </li>
+
+          <!-- بطاقة 2 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="format-icon bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-code"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">تجربة التحليل الكهربائي للماء</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-HTML5-014 · 8.2 MB</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-accent">HTML5</span>
+              <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPrivate')"></span></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+            </div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('lo.colLinked')"></span>: العلوم ▸ وحدة المادة ▸ الدرس الثالث</p>
+            <div class="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+              <button type="button" class="act group relative" @click="openPreview({ title: 'تجربة التحليل الكهربائي للماء', code: 'LO-HTML5-014', format: 'HTML5' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="openEdit({ titleAr: 'تجربة التحليل الكهربائي للماء', titleEn: 'Water Electrolysis Lab', code: 'LO-HTML5-014', format: 'html5', path: 'h2', isPublic: false })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="togglePublic({ title: 'تجربة التحليل الكهربائي للماء', isPublic: false })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative ms-auto !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'تجربة التحليل الكهربائي للماء' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+            </div>
+          </li>
+
+          <!-- بطاقة 3 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="format-icon bg-neutral-200 text-ink" aria-hidden="true"><i class="fa-solid fa-film"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">فيديو شرح الإعراب بالحركات</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-VID-027 · 142 MB</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-neutral" x-text="t('lo.formatVideo')"></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPublic')"></span></span>
+              <span class="badge badge-warning"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusReview')"></span></span>
+            </div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('lo.colLinked')"></span>: اللغة العربية ▸ القواعد ▸ الإعراب</p>
+            <div class="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+              <button type="button" class="act group relative" @click="openPreview({ title: 'فيديو شرح الإعراب بالحركات', code: 'LO-VID-027', format: t('lo.formatVideo') })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="openEdit({ titleAr: 'فيديو شرح الإعراب بالحركات', titleEn: 'Arabic Grammar: Case Endings', code: 'LO-VID-027', format: 'video', path: 'h3', isPublic: true })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="togglePublic({ title: 'فيديو شرح الإعراب بالحركات', isPublic: true })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative ms-auto !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'فيديو شرح الإعراب بالحركات' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+            </div>
+          </li>
+
+          <!-- بطاقة 4 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="format-icon bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-file-pdf"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">بطاقة مراجعة الجهاز الهضمي</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-PDF-009 · 3.1 MB</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-warning" x-text="t('lo.formatPdf')"></span>
+              <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPrivate')"></span></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+            </div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('lo.colLinked')"></span>: العلوم ▸ الخلية ▸ تركيب الخلية</p>
+            <div class="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+              <button type="button" class="act group relative" @click="openPreview({ title: 'بطاقة مراجعة الجهاز الهضمي', code: 'LO-PDF-009', format: t('lo.formatPdf') })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="openEdit({ titleAr: 'بطاقة مراجعة الجهاز الهضمي', titleEn: 'Digestive System Review Card', code: 'LO-PDF-009', format: 'pdf', path: 'h4', isPublic: false })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="togglePublic({ title: 'بطاقة مراجعة الجهاز الهضمي', isPublic: false })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative ms-auto !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'بطاقة مراجعة الجهاز الهضمي' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+            </div>
+          </li>
+
+          <!-- بطاقة 5 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="format-icon bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-box-archive"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">محاكاة معادلة احتراق الميثان</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-SCORM-033 · 31.8 MB</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-info">SCORM 2004</span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPublic')"></span></span>
+              <span class="badge badge-warning"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusReview')"></span></span>
+            </div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('lo.colLinked')"></span>: العلوم ▸ وحدة المادة ▸ الدرس الثالث</p>
+            <div class="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+              <button type="button" class="act group relative" @click="openPreview({ title: 'محاكاة معادلة احتراق الميثان', code: 'LO-SCORM-033', format: 'SCORM 2004' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="openEdit({ titleAr: 'محاكاة معادلة احتراق الميثان', titleEn: 'Methane Combustion Simulation', code: 'LO-SCORM-033', format: 'scorm2004', path: 'h2', isPublic: true })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="togglePublic({ title: 'محاكاة معادلة احتراق الميثان', isPublic: true })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative ms-auto !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'محاكاة معادلة احتراق الميثان' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+            </div>
+          </li>
+
+          <!-- بطاقة 6 -->
+          <li class="min-w-0 rounded-xl border border-line p-4">
+            <div class="flex items-start gap-3">
+              <span class="format-icon bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-code"></i></span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-extrabold leading-6">عرض تفاعلي: تركيب الخلية</p>
+                <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-HTML5-019 · 12.4 MB</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge badge-accent">HTML5</span>
+              <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPrivate')"></span></span>
+              <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+            </div>
+            <p class="mt-2.5 text-xs text-muted"><span class="font-bold" x-text="t('lo.colLinked')"></span>: العلوم ▸ الخلية ▸ تركيب الخلية</p>
+            <div class="mt-3 flex items-center gap-1.5 border-t border-line pt-3">
+              <button type="button" class="act group relative" @click="openPreview({ title: 'عرض تفاعلي: تركيب الخلية', code: 'LO-HTML5-019', format: 'HTML5' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="openEdit({ titleAr: 'عرض تفاعلي: تركيب الخلية', titleEn: 'Interactive: Cell Structure', code: 'LO-HTML5-019', format: 'html5', path: 'h4', isPublic: false })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative" @click="togglePublic({ title: 'عرض تفاعلي: تركيب الخلية', isPublic: false })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+              <button type="button" class="act group relative ms-auto !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'عرض تفاعلي: تركيب الخلية' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+            </div>
+          </li>
+
+          <!-- حالة عدم وجود نتائج (محفوظة للعرض — غير مفعّلة افتراضيًا) -->
+          <li x-show="demoEmptyState" x-cloak class="col-span-full py-10 text-center text-muted">
+            <i class="fa-regular fa-folder-open mb-2 block text-2xl" aria-hidden="true"></i> <span x-text="t('lo.emptyTitle')"></span>
+          </li>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[980px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('lo.title')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colObject')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colFormat')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colLinked')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colVisibility')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('lo.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('lo.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+
+                <!-- صف 1 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="format-icon bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-box-archive"></i></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">مقدّمة في الكسور الاعتيادية</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-SCORM-001</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-info">SCORM 1.2</span>
+                    <p class="mt-1 text-xs text-muted">24.5 MB</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle text-muted">الرياضيات ▸ الوحدة الأولى ▸ الكسور</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPublic')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openPreview({ title: 'مقدّمة في الكسور الاعتيادية', code: 'LO-SCORM-001', format: 'SCORM 1.2' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="openEdit({ titleAr: 'مقدّمة في الكسور الاعتيادية', titleEn: 'Intro to Fractions', code: 'LO-SCORM-001', format: 'scorm12', path: 'h1', isPublic: true })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="togglePublic({ title: 'مقدّمة في الكسور الاعتيادية', isPublic: true })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'مقدّمة في الكسور الاعتيادية' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 2 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="format-icon bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-code"></i></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">تجربة التحليل الكهربائي للماء</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-HTML5-014</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-accent">HTML5</span>
+                    <p class="mt-1 text-xs text-muted">8.2 MB</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle text-muted">العلوم ▸ وحدة المادة ▸ الدرس الثالث</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPrivate')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openPreview({ title: 'تجربة التحليل الكهربائي للماء', code: 'LO-HTML5-014', format: 'HTML5' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="openEdit({ titleAr: 'تجربة التحليل الكهربائي للماء', titleEn: 'Water Electrolysis Lab', code: 'LO-HTML5-014', format: 'html5', path: 'h2', isPublic: false })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="togglePublic({ title: 'تجربة التحليل الكهربائي للماء', isPublic: false })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'تجربة التحليل الكهربائي للماء' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 3 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="format-icon bg-neutral-200 text-ink" aria-hidden="true"><i class="fa-solid fa-film"></i></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">فيديو شرح الإعراب بالحركات</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-VID-027</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-neutral" x-text="t('lo.formatVideo')"></span>
+                    <p class="mt-1 text-xs text-muted">142 MB</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle text-muted">اللغة العربية ▸ القواعد ▸ الإعراب</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPublic')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusReview')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openPreview({ title: 'فيديو شرح الإعراب بالحركات', code: 'LO-VID-027', format: t('lo.formatVideo') })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="openEdit({ titleAr: 'فيديو شرح الإعراب بالحركات', titleEn: 'Arabic Grammar: Case Endings', code: 'LO-VID-027', format: 'video', path: 'h3', isPublic: true })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="togglePublic({ title: 'فيديو شرح الإعراب بالحركات', isPublic: true })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'فيديو شرح الإعراب بالحركات' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 4 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="format-icon bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-file-pdf"></i></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">بطاقة مراجعة الجهاز الهضمي</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-PDF-009</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning" x-text="t('lo.formatPdf')"></span>
+                    <p class="mt-1 text-xs text-muted">3.1 MB</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle text-muted">العلوم ▸ الخلية ▸ تركيب الخلية</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPrivate')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openPreview({ title: 'بطاقة مراجعة الجهاز الهضمي', code: 'LO-PDF-009', format: t('lo.formatPdf') })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="openEdit({ titleAr: 'بطاقة مراجعة الجهاز الهضمي', titleEn: 'Digestive System Review Card', code: 'LO-PDF-009', format: 'pdf', path: 'h4', isPublic: false })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="togglePublic({ title: 'بطاقة مراجعة الجهاز الهضمي', isPublic: false })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'بطاقة مراجعة الجهاز الهضمي' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 5 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="format-icon bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-box-archive"></i></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">محاكاة معادلة احتراق الميثان</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-SCORM-033</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-info">SCORM 2004</span>
+                    <p class="mt-1 text-xs text-muted">31.8 MB</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle text-muted">العلوم ▸ وحدة المادة ▸ الدرس الثالث</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPublic')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-warning"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusReview')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openPreview({ title: 'محاكاة معادلة احتراق الميثان', code: 'LO-SCORM-033', format: 'SCORM 2004' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="openEdit({ titleAr: 'محاكاة معادلة احتراق الميثان', titleEn: 'Methane Combustion Simulation', code: 'LO-SCORM-033', format: 'scorm2004', path: 'h2', isPublic: true })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="togglePublic({ title: 'محاكاة معادلة احتراق الميثان', isPublic: true })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'محاكاة معادلة احتراق الميثان' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- صف 6 -->
+                <tr class="transition hover:bg-soft/40">
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex items-center gap-3">
+                      <span class="format-icon bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-code"></i></span>
+                      <div class="min-w-0">
+                        <p class="truncate font-extrabold leading-6">عرض تفاعلي: تركيب الخلية</p>
+                        <p class="truncate text-xs text-muted" dir="ltr" style="text-align:right">LO-HTML5-019</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-accent">HTML5</span>
+                    <p class="mt-1 text-xs text-muted">12.4 MB</p>
+                  </td>
+                  <td class="px-4 py-4 align-middle text-muted">العلوم ▸ الخلية ▸ تركيب الخلية</td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-muted"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.visibilityPrivate')"></span></span>
+                  </td>
+                  <td class="px-4 py-4 align-middle">
+                    <span class="badge badge-success"><span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span><span x-text="t('lo.statusActive')"></span></span>
+                  </td>
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex justify-end gap-1.5">
+                      <button type="button" class="act group relative" @click="openPreview({ title: 'عرض تفاعلي: تركيب الخلية', code: 'LO-HTML5-019', format: 'HTML5' })" :aria-label="t('lo.actPreview')"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actPreview')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="openEdit({ titleAr: 'عرض تفاعلي: تركيب الخلية', titleEn: 'Interactive: Cell Structure', code: 'LO-HTML5-019', format: 'html5', path: 'h4', isPublic: false })" :aria-label="t('lo.actEdit')"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actEdit')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative" @click="togglePublic({ title: 'عرض تفاعلي: تركيب الخلية', isPublic: false })" :aria-label="t('lo.actTogglePublic')"><i class="fa-solid fa-earth-americas" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actTogglePublic')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete({ title: 'عرض تفاعلي: تركيب الخلية' })" :aria-label="t('lo.actDelete')"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('lo.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- حالة عدم وجود نتائج (DataTable Empty State — محفوظة للعرض، غير مفعّلة افتراضيًا) -->
+                <tr x-show="demoEmptyState" x-cloak>
+                  <td colspan="6" class="px-5 py-16 text-center">
+                    <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand">
+                      <i class="fa-solid fa-box-open text-xl" aria-hidden="true"></i>
+                    </span>
+                    <p class="font-extrabold text-ink" x-text="t('lo.emptyTitle')"></p>
+                    <p class="mx-auto mt-1.5 max-w-sm text-sm text-muted" x-text="t('lo.emptySubtitle')"></p>
+                    <button type="button" @click="resetFilters()" class="btn btn-outline mt-4">
+                      <i class="fa-solid fa-filter-circle-xmark text-muted" aria-hidden="true"></i> <span x-text="t('lo.resetFilters')"></span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ================= تذييل الصفحات (Pagination — ثابت) ================= -->
+        <div class="flex flex-col gap-3 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <p class="text-xs font-bold text-muted">
+            <span x-text="t('lo.showing')"></span> <span class="text-ink">1–6</span> <span x-text="t('lo.of')"></span> <span class="text-ink">86</span> <span x-text="t('lo.objectsWord')"></span>
+          </p>
+          <nav class="flex items-center gap-1.5" :aria-label="t('lo.pagination')">
+            <button type="button" disabled class="act opacity-40" :aria-label="t('lo.prev')">
+              <i class="fa-solid ltr:fa-chevron-left rtl:fa-chevron-right text-xs" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="act font-bold border-transparent bg-primary-500 text-white" aria-current="page">1</button>
+            <button type="button" class="act font-bold">2</button>
+            <button type="button" class="act font-bold">3</button>
+            <span aria-hidden="true" class="inline-grid h-9 w-9 shrink-0 place-items-center text-sm font-bold text-muted">&hellip;</span>
+            <button type="button" class="act font-bold">15</button>
+            <button type="button" class="act" :aria-label="t('lo.next')">
+              <i class="fa-solid ltr:fa-chevron-right rtl:fa-chevron-left text-xs" aria-hidden="true"></i>
+            </button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear(), version: 'v1.0.0', env: 'Production' }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted">المستودع التعليمي المركزي
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> جميع الحقوق محفوظة
+          </span>
+        </p>
+      </div>
+
+      <nav aria-label="روابط التذييل" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline">&#8962; خريطة الشاشات</a></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">مركز المساعدة</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">التوثيق</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">سياسة الخصوصية</span></li>
+          <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true">شروط الاستخدام</span></li>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          الأنظمة تعمل
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — رفع / تعديل عنصر تعليمي (موسّعة، مقسّمة إلى أقسام مرئية)
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="panel-title" @keydown.escape.window="closePanel()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePanel()"></div>
+
+  <form @submit.prevent="submitObject()" x-show="panelOpen" x-trap.noscroll="panelOpen"
+        x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+        class="modal-panel max-w-4xl sm:max-w-5xl max-h-[90vh]">
+
+    <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line bg-soft p-5 sm:p-6">
+      <div class="min-w-0">
+        <h2 id="panel-title" class="text-lg font-extrabold text-ink sm:text-xl" x-text="editingObject ? t('lo.panelEditTitle') : t('lo.panelUploadTitle')"></h2>
+        <p class="mt-1 text-sm text-muted" x-text="editingObject ? t('lo.panelEditSubtitle') : t('lo.panelUploadSubtitle')"></p>
+      </div>
+      <button type="button" class="icon-btn shrink-0" @click="closePanel()" :disabled="busy" :aria-label="t('lo.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-8 overflow-y-auto p-5 sm:p-8">
+
+      <!-- ================= 1. المعلومات الأساسية ================= -->
+      <section class="space-y-4" aria-labelledby="lo-section-basic-heading">
+        <div class="flex items-center gap-3">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">1</span>
+          <h3 id="lo-section-basic-heading" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.sectionBasicInfo')"></h3>
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div>
+            <label for="lo-title-ar" class="label"><span x-text="t('lo.fieldTitleAr')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <input id="lo-title-ar" type="text" x-model.trim="form.titleAr" required class="field py-3 px-4" :aria-invalid="(formSubmitted && !form.titleAr).toString()">
+            <p class="err" x-show="formSubmitted && !form.titleAr"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('lo.titleRequired')"></span></p>
+          </div>
+
+          <div>
+            <label for="lo-title-en" class="label" x-text="t('lo.fieldTitleEn')"></label>
+            <input id="lo-title-en" type="text" x-model.trim="form.titleEn" dir="ltr" style="text-align:right" class="field py-3 px-4">
+          </div>
+        </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- ================= 2. الربط الأكاديمي المرن (مقرر فقط، أو مقرر + صف/وحدة/درس) ================= -->
+      <section class="space-y-4" aria-labelledby="lo-section-academic-heading">
+        <div class="flex items-center gap-3">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">2</span>
+          <div class="min-w-0">
+            <h3 id="lo-section-academic-heading" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.academicAssignment')"></h3>
+            <p class="hint !mt-0.5" x-text="t('lo.academicAssignmentHint')"></p>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-line bg-page/50 p-5 sm:p-6">
+
+          <!-- الصف العلوي: المقرر (مطلوب) -->
+          <div class="relative"
+               x-data="selectDropdown({ options: () => courseOptions, get: () => form.course, set: (v) => form.course = v })"
+               @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+            <label for="lo-course" class="label"><span x-text="t('lo.fieldCourse')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+            <button type="button" id="lo-course" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                    :aria-expanded="open.toString()" aria-controls="lo-course-list"
+                    :aria-activedescendant="active > -1 ? 'lo-course-opt-' + items[active].value : null"
+                    class="field flex w-full items-center justify-between gap-2 py-3 px-4 text-start" :aria-invalid="(formSubmitted && !form.course).toString()"
+                    @click="toggleList()"
+                    @keydown.down.prevent="move(1)"
+                    @keydown.up.prevent="move(-1)"
+                    @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                    @keydown.space.prevent="toggleList()">
+              <span class="truncate" x-text="triggerLabel"></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+            </button>
+            <ul x-show="open" x-cloak x-ref="list" id="lo-course-list" role="listbox" aria-labelledby="lo-course"
+                x-transition.origin.top.duration.150ms
+                class="combo-list scroll-thin">
+              <template x-for="(item, idx) in items" :key="item.value">
+                <li :id="'lo-course-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                    class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                    @click="choose(item)" @mousemove="active = idx">
+                  <span class="truncate" x-text="item.label"></span>
+                  <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                </li>
+              </template>
+            </ul>
+            <p class="err" x-show="formSubmitted && !form.course"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('lo.courseRequired')"></span></p>
+          </div>
+
+          <div class="my-5 border-t border-dashed border-line-strong/60"></div>
+
+          <!-- الشبكة الفرعية: الصف / الوحدة / الدرس (اختيارية) -->
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div class="relative"
+                 x-data="selectDropdown({ options: () => gradeOptions, get: () => form.grade, set: (v) => form.grade = v })"
+                 @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+              <label for="lo-grade" class="label flex items-center justify-between gap-1.5">
+                <span class="truncate" x-text="t('lo.fieldGrade')"></span>
+                <span class="badge badge-muted shrink-0 !px-1.5 !py-0 !text-[10px]" x-text="t('lo.optional')"></span>
+              </label>
+              <button type="button" id="lo-grade" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="lo-grade-list"
+                      :aria-activedescendant="active > -1 ? 'lo-grade-opt-' + items[active].value : null"
+                      class="field flex w-full items-center justify-between gap-2 py-3 px-4 text-start"
+                      @click="toggleList()"
+                      @keydown.down.prevent="move(1)"
+                      @keydown.up.prevent="move(-1)"
+                      @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                      @keydown.space.prevent="toggleList()">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="lo-grade-list" role="listbox" aria-labelledby="lo-grade"
+                  x-transition.origin.top.duration.150ms
+                  class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="'lo-grade-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <div class="relative"
+                 x-data="selectDropdown({ options: () => unitOptions, get: () => form.unit, set: (v) => form.unit = v })"
+                 @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+              <label for="lo-unit" class="label flex items-center justify-between gap-1.5">
+                <span class="truncate" x-text="t('lo.fieldUnit')"></span>
+                <span class="badge badge-muted shrink-0 !px-1.5 !py-0 !text-[10px]" x-text="t('lo.optional')"></span>
+              </label>
+              <button type="button" id="lo-unit" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="lo-unit-list"
+                      :aria-activedescendant="active > -1 ? 'lo-unit-opt-' + items[active].value : null"
+                      class="field flex w-full items-center justify-between gap-2 py-3 px-4 text-start"
+                      @click="toggleList()"
+                      @keydown.down.prevent="move(1)"
+                      @keydown.up.prevent="move(-1)"
+                      @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                      @keydown.space.prevent="toggleList()">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="lo-unit-list" role="listbox" aria-labelledby="lo-unit"
+                  x-transition.origin.top.duration.150ms
+                  class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="'lo-unit-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <div class="relative"
+                 x-data="selectDropdown({ options: () => lessonOptions, get: () => form.lesson, set: (v) => form.lesson = v })"
+                 @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+              <label for="lo-lesson" class="label flex items-center justify-between gap-1.5">
+                <span class="truncate" x-text="t('lo.fieldLesson')"></span>
+                <span class="badge badge-muted shrink-0 !px-1.5 !py-0 !text-[10px]" x-text="t('lo.optional')"></span>
+              </label>
+              <button type="button" id="lo-lesson" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                      :aria-expanded="open.toString()" aria-controls="lo-lesson-list"
+                      :aria-activedescendant="active > -1 ? 'lo-lesson-opt-' + items[active].value : null"
+                      class="field flex w-full items-center justify-between gap-2 py-3 px-4 text-start"
+                      @click="toggleList()"
+                      @keydown.down.prevent="move(1)"
+                      @keydown.up.prevent="move(-1)"
+                      @keydown.enter.prevent="open && active > -1 ? choose(items[active]) : openList()"
+                      @keydown.space.prevent="toggleList()">
+                <span class="truncate" x-text="triggerLabel"></span>
+                <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+              </button>
+              <ul x-show="open" x-cloak x-ref="list" id="lo-lesson-list" role="listbox" aria-labelledby="lo-lesson"
+                  x-transition.origin.top.duration.150ms
+                  class="combo-list scroll-thin">
+                <template x-for="(item, idx) in items" :key="item.value">
+                  <li :id="'lo-lesson-opt-' + item.value" role="option" :aria-selected="isSelected(item).toString()"
+                      class="combo-option" :class="{ 'is-active': idx === active && !isSelected(item), 'is-selected': isSelected(item) }"
+                      @click="choose(item)" @mousemove="active = idx">
+                    <span class="truncate" x-text="item.label"></span>
+                    <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+                  </li>
+                </template>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- ================= 3. المفاهيم المرتبطة (اختيار متعدد) + مساعد الذكاء الاصطناعي ================= -->
+      <section class="space-y-4" aria-labelledby="lo-section-concepts-heading">
+        <div class="flex items-center gap-3">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">3</span>
+          <h3 id="lo-section-concepts-heading" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.sectionConcepts')"></h3>
+        </div>
+
+      <div class="relative"
+           x-data="conceptMultiSelect({
+             options: () => [
+               { value: 'c1', label: 'الكسور الاعتيادية' },
+               { value: 'c2', label: 'المعادلات الخطية' },
+               { value: 'c3', label: 'تركيب الخلية' },
+               { value: 'c4', label: 'الجهاز الهضمي' },
+               { value: 'c5', label: 'التحليل الكهربائي للماء' },
+               { value: 'c6', label: 'الإعراب والعلامات' },
+               { value: 'c7', label: 'الأعداد الصحيحة' },
+               { value: 'c8', label: 'الدورة الكربونية' },
+             ],
+             get: () => form.concepts,
+             set: (v) => form.concepts = v,
+           })"
+           @click.outside="closeList()" @keydown.escape="closeList(); $refs.btn.focus()">
+        <div class="flex items-center justify-between gap-2">
+          <label class="label !mb-0" x-text="t('lo.fieldConcepts')"></label>
+          <button type="button" class="btn btn-outline btn-sm shrink-0" :disabled="aiLoading" @click="runAiAssistant()">
+            <i class="fa-solid" :class="aiLoading ? 'fa-circle-notch animate-spin' : 'fa-wand-magic-sparkles'" aria-hidden="true"></i>
+            <span x-text="aiLoading ? t('lo.aiAnalyzing') : t('lo.aiAssistant')"></span>
+          </button>
+        </div>
+        <p class="hint !mt-1" x-text="t('lo.fieldConceptsHint')"></p>
+
+        <div class="field mt-1.5 flex min-h-[2.75rem] w-full flex-wrap items-center gap-1.5 py-1.5" role="group" :aria-label="t('lo.fieldConcepts')">
+          <template x-for="c in selected" :key="c.value">
+            <span class="badge badge-primary gap-1.5 py-1">
+              <span x-text="c.label"></span>
+              <button type="button" class="-me-1 inline-grid h-4 w-4 shrink-0 place-items-center rounded-full hover:bg-primary-500/20" @click="remove(c.value)" :aria-label="t('lo.removeConcept') + ': ' + c.label">
+                <i class="fa-solid fa-xmark text-[10px]" aria-hidden="true"></i>
+              </button>
+            </span>
+          </template>
+          <button type="button" x-ref="btn" role="combobox" aria-haspopup="listbox" :aria-expanded="open.toString()"
+                  class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-brand transition hover:bg-soft"
+                  @click="toggleList()"
+                  @keydown.down.prevent="move(1)"
+                  @keydown.up.prevent="move(-1)"
+                  @keydown.enter.prevent="open && active > -1 ? add(available[active]) : openList()">
+            <i class="fa-solid fa-plus" aria-hidden="true"></i> <span x-text="t('lo.conceptsAdd')"></span>
+          </button>
+        </div>
+        <p class="err" x-show="formSubmitted && !form.concepts.length"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('lo.conceptsRequired')"></span></p>
+
+        <ul x-show="open" x-cloak x-ref="list" role="listbox" :aria-label="t('lo.fieldConcepts')"
+            x-transition.origin.top.duration.150ms
+            class="combo-list scroll-thin">
+          <template x-for="(item, idx) in available" :key="item.value">
+            <li role="option" class="combo-option" :class="idx === active && 'is-active'" @click="add(item)" @mousemove="active = idx">
+              <span class="truncate" x-text="item.label"></span>
+              <i class="fa-solid fa-plus shrink-0 text-xs text-brand" aria-hidden="true"></i>
+            </li>
+          </template>
+          <li x-show="!available.length" class="px-4 py-2.5 text-sm text-muted" x-text="t('lo.conceptsAllAdded')"></li>
+        </ul>
+
+        <!-- اقتراحات مساعد الذكاء الاصطناعي -->
+        <div x-show="aiSuggestions.length" x-cloak class="mt-3 rounded-xl border border-dashed border-primary-500/40 bg-primary-500/5 p-3">
+          <p class="mb-2 flex items-center gap-1.5 text-xs font-extrabold text-brand"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> <span x-text="t('lo.aiSuggestionsTitle')"></span></p>
+          <div class="flex flex-wrap gap-1.5">
+            <template x-for="s in aiSuggestions" :key="s.value">
+              <button type="button" class="badge badge-accent gap-1.5 transition hover:brightness-95" @click="add(s); aiSuggestions = aiSuggestions.filter(x => x.value !== s.value)">
+                <i class="fa-solid fa-plus text-[10px]" aria-hidden="true"></i> <span x-text="s.label"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- ================= 4. ملفات/مصادر العنصر (رفع متعدد) ================= -->
+      <section class="space-y-4" aria-labelledby="lo-section-files-heading">
+        <div class="flex items-center gap-3">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">4</span>
+          <h3 id="lo-section-files-heading" class="text-base font-extrabold text-ink sm:text-lg" x-text="t('lo.sectionFiles')"></h3>
+        </div>
+
+        <div>
+          <label class="label" x-text="t('lo.fieldFilesMulti')"></label>
+          <p class="hint !mt-1 mb-2" x-text="t('lo.fieldFilesMultiHint')"></p>
+
+          <ul class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2" x-show="form.files.length" role="list">
+            <template x-for="f in form.files" :key="f.id">
+              <li class="flex items-center gap-3 rounded-xl border border-line p-3">
+                <span class="format-icon shrink-0" :class="fileMeta(f.kind).iconClass" aria-hidden="true"><i :class="'fa-solid ' + fileMeta(f.kind).icon"></i></span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold text-ink" x-text="f.name"></p>
+                  <div class="mt-1 flex items-center gap-2">
+                    <span class="badge" :class="fileMeta(f.kind).badge" x-text="fileMeta(f.kind).label"></span>
+                    <span class="text-xs text-muted" x-text="f.size"></span>
+                  </div>
+                </div>
+                <button type="button" class="act shrink-0 !text-danger hover:!bg-error-500/10" @click="removeFile(f.id)" :aria-label="t('lo.removeFile')">
+                  <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                </button>
+              </li>
+            </template>
+          </ul>
+
+          <p x-show="!form.files.length" class="mb-3 rounded-xl border border-dashed border-line-strong bg-page/50 p-4 text-center text-xs text-muted" x-text="t('lo.noFilesYet')"></p>
+
+          <label for="lo-file" class="dropzone" :class="dragOver && 'is-drag'"
+                 @dragover.prevent="dragOver = true" @dragleave.prevent="dragOver = false"
+                 @drop.prevent="dragOver = false; onFileDrop($event)">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-muted" aria-hidden="true"></i>
+            <span class="text-sm font-bold text-ink" x-text="form.files.length ? t('lo.addMoreFiles') : t('lo.fieldFileHint')"></span>
+            <span class="text-xs text-muted" x-text="t('lo.fieldFileTypes')"></span>
+            <input id="lo-file" type="file" multiple accept=".zip,.html,.htm,.mp4,.mov,.webm,.pdf" class="sr-only" @change="onFileChange($event)">
+          </label>
+          <p class="err" x-show="formSubmitted && !form.files.length"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('lo.filesRequired')"></span></p>
+        </div>
+      </section>
+
+      <div class="border-t border-line"></div>
+
+      <!-- مفتاح is_public -->
+      <div class="flex items-start justify-between gap-3 rounded-xl border border-line bg-page/50 p-4">
+        <span class="min-w-0">
+          <span class="block text-sm font-bold text-ink" x-text="t('lo.fieldIsPublic')"></span>
+          <span class="hint" x-text="t('lo.fieldIsPublicHint')"></span>
+        </span>
+        <button type="button" class="switch-track" role="switch" :aria-checked="form.isPublic.toString()"
+                @click="form.isPublic = !form.isPublic" :aria-label="t('lo.fieldIsPublic')">
+          <span class="switch-knob"></span>
+        </button>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('lo.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy" :aria-busy="busy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('lo.saving') : t('lo.save')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — معاينة العنصر التعليمي (Preview)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'preview'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="pm-title" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()"></div>
+  <div x-show="modal === 'preview'" x-trap.noscroll="modal === 'preview'"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="modal-panel max-w-lg">
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h3 id="pm-title" class="text-lg font-extrabold text-ink" x-text="t('lo.previewTitle')"></h3>
+      <button type="button" class="icon-btn" @click="closeModal()" :aria-label="t('lo.cancel')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+    <div class="min-h-0 flex-1 overflow-y-auto p-5">
+      <div class="grid aspect-video place-items-center rounded-xl border border-dashed border-line-strong bg-page/60 text-muted">
+        <div class="flex flex-col items-center gap-2">
+          <i class="fa-solid fa-play text-3xl text-brand" aria-hidden="true"></i>
+          <span class="text-xs font-bold" x-text="t('lo.previewHint')"></span>
+        </div>
+      </div>
+      <dl class="mt-4 space-y-2 text-sm">
+        <div class="flex items-center justify-between gap-3">
+          <dt class="font-bold text-muted" x-text="t('lo.colObject')"></dt>
+          <dd class="min-w-0 truncate font-bold text-ink" x-text="previewTarget && previewTarget.title"></dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="font-bold text-muted" x-text="t('lo.colFormat')"></dt>
+          <dd class="font-bold text-brand" x-text="previewTarget && previewTarget.format"></dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="font-bold text-muted" dir="ltr">Code</dt>
+          <dd class="font-bold text-ink" dir="ltr" x-text="previewTarget && previewTarget.code"></dd>
+        </div>
+      </dl>
+    </div>
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" @click="closeModal()" x-text="t('lo.close')"></button>
+    </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد حذف العنصر التعليمي
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'delete'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4"
+     role="alertdialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()"></div>
+  <div x-show="modal === 'delete'" x-trap.noscroll="modal === 'delete'"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700"><i class="fa-solid fa-trash text-xl" aria-hidden="true"></i></span>
+    <h3 id="dm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('lo.deleteTitle')"></h3>
+    <p id="dm-desc" class="mt-2 text-sm text-muted">
+      <span x-text="t('lo.deleteText')"></span> <span class="font-bold text-ink" x-text="deleteTarget && deleteTarget.title"></span>.
+    </p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('lo.deleteCancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="deleteConfirmed()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('lo.deleteConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Custom Select Dropdown) — موحّد لكل حقول الاختيار.
+   * options: () => [{ value, label }, ...] | get: () => القيمة الحالية | set: (v) => تحديث القيمة
+   */
+  function selectDropdown({ options, get, set, placeholder = '' }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selectedItem() {
+        const val = get();
+        return this.items.find(o => o.value === val) ?? null;
+      },
+      get triggerLabel() {
+        const sel = this.selectedItem;
+        return sel ? sel.label : placeholder;
+      },
+      openList() {
+        if (!this.items.length) return;
+        this.active = this.items.findIndex(o => o.value === get());
+        if (this.active < 0) this.active = 0;
+        this.open = true;
+        this.$nextTick(() => this.scrollActiveIntoView());
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.items.length - 1);
+        this.scrollActiveIntoView();
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * مكوّن اختيار المفاهيم المتعدد (Concept Tag Input) — عرض/إضافة/إزالة فقط.
+   * options: () => [{ value, label }, ...] | get: () => [قيم محدَّدة] | set: (arr) => تحديث القيم
+   */
+  function conceptMultiSelect({ options, get, set }) {
+    return {
+      open: false,
+      active: -1,
+      get items() { return options(); },
+      get selected() { return get().map(v => this.items.find(o => o.value === v)).filter(Boolean); },
+      get available() { return this.items.filter(o => !get().includes(o.value)); },
+      openList() {
+        if (!this.available.length) return;
+        this.active = 0;
+        this.open = true;
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      add(item) {
+        if (!item || get().includes(item.value)) return;
+        set([...get(), item.value]);
+        this.active = -1;
+        if (!this.available.length) this.closeList();
+      },
+      remove(value) { set(get().filter(v => v !== value)); },
+      move(step) {
+        if (!this.open) { this.openList(); return; }
+        this.active = Math.min(Math.max(this.active + step, 0), this.available.length - 1);
+      },
+    };
+  }
+
+  /**
+   * حالة واجهة CNT-05 — العناصر التعليمية. مبنية على نفس هيكل "Dashboard Shell"
+   * لضمان التكامل الكامل مع الشريط الجانبي والعلوي ونظام التصميم المعتمد.
+   * الصفوف في الجدول ثابتة (Static Mock Rows) — عمليات الرفع/البحث/الفلترة/الترقيم
+   * الفعلية ستُنفَّذ لاحقًا عبر Livewire + Eloquent.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+
+    const I18N = {
+      ar: {
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', content: 'إدارة المحتوى' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات',
+          concepts: 'المفاهيم', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم رفع عنصر تعليمي جديد بنجاح' },
+
+        lo: {
+          title: 'العناصر التعليمية', subtitle: 'استعرض جميع العناصر التعليمية (SCORM وHTML5)، تابع ارتباطها بالمفاهيم والدروس، وأدِر حالة ظهورها العامة أو الخاصة من مكان واحد.',
+          uploadNew: 'رفع عنصر تعليمي جديد',
+          kpiTotal: 'إجمالي العناصر', kpiScorm: 'حزم SCORM', kpiHtml5: 'تفاعلي HTML5', kpiPublic: 'عام / متاح للجميع',
+          searchPlaceholder: 'ابحث بعنوان العنصر أو الرمز…',
+          colFormat: 'التنسيق', colHierarchy: 'الهيكل الأكاديمي',
+          formatAll: 'كل التنسيقات', formatScorm12: 'SCORM 1.2', formatScorm2004: 'SCORM 2004', formatHtml5: 'تفاعلي HTML5', formatVideo: 'فيديو', formatPdf: 'PDF تفاعلي',
+          hierarchyAll: 'كل المسارات الأكاديمية',
+          colVisibility: 'الظهور', visibilityAll: 'كل حالات الظهور', visibilityPublic: 'عام', visibilityPrivate: 'خاص',
+          resetFilters: 'مسح الفلاتر',
+          colObject: 'العنصر التعليمي', colLinked: 'المفهوم / الدرس المرتبط', colStatus: 'الحالة', colActions: 'إجراءات',
+          statusActive: 'نشط', statusReview: 'قيد المراجعة',
+          actPreview: 'معاينة العنصر', actEdit: 'تعديل البيانات', actTogglePublic: 'تبديل الظهور العام', actDelete: 'حذف',
+          emptyTitle: 'لا توجد عناصر تعليمية مطابقة', emptySubtitle: 'جرّب تعديل كلمات البحث أو الفلاتر المستخدمة، أو امسحها للعودة إلى القائمة الكاملة.',
+          showing: 'عرض', of: 'من', objectsWord: 'عنصرًا', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية',
+          panelUploadTitle: 'رفع عنصر تعليمي جديد', panelEditTitle: 'تعديل بيانات العنصر التعليمي',
+          panelUploadSubtitle: 'أكمل الأقسام التالية لرفع عنصر تعليمي جديد وربطه بالمنهج.', panelEditSubtitle: 'حدّث بيانات العنصر التعليمي وربطه الأكاديمي أدناه.',
+          sectionBasicInfo: 'المعلومات الأساسية', sectionConcepts: 'اختيار المفاهيم المرتبطة (بمساعدة الذكاء الاصطناعي)', sectionFiles: 'رفع ملفات/مصادر العنصر (متعدد المصادر)',
+          fieldFile: 'ملف العنصر التعليمي', fieldFileHint: 'اسحب الملف هنا أو اضغط للاختيار', fieldFileTypes: 'حزمة SCORM (.zip) أو حزمة HTML5',
+          fieldTitleAr: 'العنوان (عربي)', fieldTitleEn: 'العنوان (إنجليزي)',
+          fieldIsPublic: 'عام ومتاح للمكتبة المركزية', fieldIsPublicHint: 'جعل العنصر التعليمي عامًا ومتاحًا للمكتبة المركزية ليستخدمه مستخدمو المؤسسات الأخرى.',
+          cancel: 'إلغاء', save: 'حفظ ورفع', saving: 'جارٍ الرفع', close: 'إغلاق',
+          titleRequired: 'العنوان مطلوب.',
+
+          fieldConcepts: 'المفاهيم المرتبطة', fieldConceptsHint: 'أضف مفهومًا أو أكثر من النظام لربطه بهذا العنصر التعليمي.',
+          conceptsAdd: 'إضافة مفهوم', conceptsAllAdded: 'تمت إضافة جميع المفاهيم المتاحة', conceptsRequired: 'أضف مفهومًا واحدًا على الأقل.',
+          removeConcept: 'إزالة المفهوم',
+          aiAssistant: 'مساعد المفاهيم (AI)', aiAnalyzing: 'يحلّل الآن…', aiSuggestionsTitle: 'مفاهيم مقترحة من الذكاء الاصطناعي — اضغط للإضافة',
+
+          fieldFilesMulti: 'ملفات/مصادر العنصر التعليمي', fieldFilesMultiHint: 'يمكن أن يحتوي العنصر التعليمي الواحد على أكثر من مصدر (حزمة SCORM + فيديو شرح + ملف PDF مرجعي، مثلًا).',
+          noFilesYet: 'لا توجد ملفات مضافة بعد.', addMoreFiles: 'اسحب ملفات إضافية هنا أو اضغط للاختيار', removeFile: 'إزالة الملف', filesRequired: 'أضف ملفًا واحدًا على الأقل.',
+
+          academicAssignment: 'الربط الأكاديمي', academicAssignmentHint: 'المقرر مطلوب فقط؛ يمكن ربط العنصر بالمقرر مباشرة دون تحديد الصف أو الوحدة أو الدرس.',
+          fieldCourse: 'المقرر', fieldGrade: 'الصف الدراسي', fieldUnit: 'الوحدة', fieldLesson: 'الدرس',
+          optional: 'اختياري', notSpecified: '— غير محدد —', courseRequired: 'المقرر مطلوب.',
+          previewTitle: 'معاينة العنصر التعليمي', previewHint: 'معاينة تجريبية — ستُعرض الحزمة الفعلية هنا بعد الربط مع الخادم.',
+          deleteTitle: 'حذف العنصر التعليمي نهائيًا؟', deleteText: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بيانات', deleteCancel: 'إلغاء', deleteConfirm: 'نعم، احذف نهائيًا',
+          toastUpload: 'تم رفع العنصر التعليمي بنجاح (معاينة فقط)', toastSave: 'تم حفظ بيانات العنصر التعليمي (معاينة فقط)',
+          toastTogglePublic: 'تم تحديث حالة الظهور لـ «{title}» (معاينة فقط)',
+          toastDelete: 'تم حذف «{title}» نهائيًا (معاينة فقط)',
+        },
+      },
+      en: {
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', content: 'Content Management' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management',
+          concepts: 'Concepts', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'Seat quota is nearing its limit (83%)', reset: 'A new learning object was uploaded successfully' },
+
+        lo: {
+          title: 'Learning Objects', subtitle: 'Browse all learning objects (SCORM and HTML5), track their links to concepts and lessons, and manage public/private visibility in one place.',
+          uploadNew: 'Upload New Learning Object',
+          kpiTotal: 'Total Objects', kpiScorm: 'SCORM Packages', kpiHtml5: 'Interactive HTML5', kpiPublic: 'Public / Available to All',
+          searchPlaceholder: 'Search by object title or code…',
+          colFormat: 'Format', colHierarchy: 'Academic Hierarchy',
+          formatAll: 'All formats', formatScorm12: 'SCORM 1.2', formatScorm2004: 'SCORM 2004', formatHtml5: 'Interactive HTML5', formatVideo: 'Video', formatPdf: 'Interactive PDF',
+          hierarchyAll: 'All academic paths',
+          colVisibility: 'Visibility', visibilityAll: 'All visibility states', visibilityPublic: 'Public', visibilityPrivate: 'Private',
+          resetFilters: 'Reset filters',
+          colObject: 'Learning Object', colLinked: 'Linked Concept / Lesson', colStatus: 'Status', colActions: 'Actions',
+          statusActive: 'Active', statusReview: 'Under Review',
+          actPreview: 'Preview Object', actEdit: 'Edit Metadata', actTogglePublic: 'Toggle Public Access', actDelete: 'Delete',
+          emptyTitle: 'No matching learning objects', emptySubtitle: 'Try adjusting your search or filters, or reset them to see the full list.',
+          showing: 'Showing', of: 'of', objectsWord: 'objects', pagination: 'Pagination', prev: 'Previous page', next: 'Next page',
+          panelUploadTitle: 'Upload New Learning Object', panelEditTitle: 'Edit Learning Object',
+          panelUploadSubtitle: 'Complete the sections below to upload a new learning object and link it to the curriculum.', panelEditSubtitle: "Update the learning object's data and academic linkage below.",
+          sectionBasicInfo: 'Basic Info', sectionConcepts: 'Multi-Concept AI Selection', sectionFiles: 'Multi-Source File Uploads',
+          fieldFile: 'Learning Object File', fieldFileHint: 'Drag a file here or click to browse', fieldFileTypes: 'SCORM package (.zip) or HTML5 package',
+          fieldTitleAr: 'Title (Arabic)', fieldTitleEn: 'Title (English)',
+          fieldIsPublic: 'Public & available to the central library', fieldIsPublicHint: 'Make this learning object public and available to the central library for other tenants to use.',
+          cancel: 'Cancel', save: 'Save & Upload', saving: 'Uploading', close: 'Close',
+          titleRequired: 'Title is required.',
+
+          fieldConcepts: 'Linked Concepts', fieldConceptsHint: 'Add one or more system concepts to link with this learning object.',
+          conceptsAdd: 'Add Concept', conceptsAllAdded: 'All available concepts have been added', conceptsRequired: 'Add at least one concept.',
+          removeConcept: 'Remove concept',
+          aiAssistant: 'AI Concept Assistant', aiAnalyzing: 'Analyzing…', aiSuggestionsTitle: 'AI-suggested concepts — click to add',
+
+          fieldFilesMulti: 'Object Files / Sources', fieldFilesMultiHint: 'A single learning object can contain more than one source (e.g. a SCORM package + an explanatory video + a reference PDF).',
+          noFilesYet: 'No files added yet.', addMoreFiles: 'Drag more files here or click to browse', removeFile: 'Remove file', filesRequired: 'Add at least one file.',
+
+          academicAssignment: 'Academic Assignment', academicAssignmentHint: 'Only the course is required — you can link the object directly to a course without choosing a grade, unit, or lesson.',
+          fieldCourse: 'Course', fieldGrade: 'Grade', fieldUnit: 'Unit', fieldLesson: 'Lesson',
+          optional: 'Optional', notSpecified: '— Not specified —', courseRequired: 'Course is required.',
+          previewTitle: 'Learning Object Preview', previewHint: 'Demo preview — the actual package will render here once connected to the backend.',
+          deleteTitle: 'Permanently delete this learning object?', deleteText: 'This cannot be undone. All data for', deleteCancel: 'Cancel', deleteConfirm: 'Yes, delete permanently',
+          toastUpload: 'Learning object uploaded successfully (preview only)', toastSave: "The learning object's data was saved (preview only)",
+          toastTogglePublic: 'Visibility updated for "{title}" (preview only)',
+          toastDelete: '"{title}" was permanently deleted (preview only)',
+        },
+      },
+    };
+
+    /* خريطة توافق مع صفوف الجدول الثابتة القديمة (path) — لتعبئة الربط الأكاديمي والمفاهيم المرتبطة تلقائيًا عند التعديل */
+    const PATH_META = {
+      h1: { course: 'crs1', grade: 'g4', unit: 'u1', lesson: 'l1', concepts: ['c1'] },
+      h2: { course: 'crs2', grade: 'g5', unit: 'u2', lesson: 'l2', concepts: ['c5', 'c8'] },
+      h3: { course: 'crs3', grade: 'g6', unit: 'u3', lesson: 'l3', concepts: ['c6'] },
+      h4: { course: 'crs2', grade: '', unit: 'u4', lesson: 'l4', concepts: ['c3', 'c4'] },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'learningObjects',
+      get expanded() { return this.mobile || !this.collapsed; },
+
+      /* ---------- حالة عرض توضيحية للحالة الفارغة (محفوظة دون تفعيل تفاعلي) ---------- */
+      demoEmptyState: false,
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.replace('{' + k + '}', vars[k]); });
+        return s;
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-cloud-arrow-up', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- شريط البحث والفلاتر (عرض فقط — بلا منطق فلترة فعلي؛ سيُنفَّذ عبر Livewire) ---------- */
+      search: '', formatFilter: 'all', hierarchyFilter: 'all', visibilityFilter: 'all',
+      resetFilters() { this.search = ''; this.formatFilter = 'all'; this.hierarchyFilter = 'all'; this.visibilityFilter = 'all'; },
+
+      /* ---------- اللوحة الجانبية (Slide-over): رفع / تعديل عنصر تعليمي ---------- */
+      panelOpen: false, editingObject: null, formSubmitted: false, busy: false, dragOver: false,
+      aiLoading: false, aiSuggestions: [],
+      form: { titleAr: '', titleEn: '', concepts: [], files: [], course: '', grade: '', unit: '', lesson: '', isPublic: false },
+
+      /* ---------- قوائم ثابتة للربط الأكاديمي المرن (مقرر / صف / وحدة / درس) ---------- */
+      courseOptions: [
+        { value: 'crs1', label: 'الرياضيات' },
+        { value: 'crs2', label: 'العلوم' },
+        { value: 'crs3', label: 'اللغة العربية' },
+        { value: 'crs4', label: 'التربية الإسلامية' },
+      ],
+      get gradeOptions() {
+        return [
+          { value: '', label: this.t('lo.notSpecified') },
+          { value: 'g4', label: 'الصف الرابع' },
+          { value: 'g5', label: 'الصف الخامس' },
+          { value: 'g6', label: 'الصف السادس' },
+        ];
+      },
+      get unitOptions() {
+        return [
+          { value: '', label: this.t('lo.notSpecified') },
+          { value: 'u1', label: 'الوحدة الأولى' },
+          { value: 'u2', label: 'وحدة المادة' },
+          { value: 'u3', label: 'القواعد' },
+          { value: 'u4', label: 'الخلية' },
+        ];
+      },
+      get lessonOptions() {
+        return [
+          { value: '', label: this.t('lo.notSpecified') },
+          { value: 'l1', label: 'الكسور' },
+          { value: 'l2', label: 'الدرس الثالث' },
+          { value: 'l3', label: 'الإعراب' },
+          { value: 'l4', label: 'تركيب الخلية' },
+        ];
+      },
+
+      openUpload() {
+        this.editingObject = null;
+        this.formSubmitted = false;
+        this.aiSuggestions = [];
+        this.form = { titleAr: '', titleEn: '', concepts: [], files: [], course: '', grade: '', unit: '', lesson: '', isPublic: false };
+        this.panelOpen = true;
+      },
+      openEdit(obj) {
+        this.editingObject = obj;
+        this.formSubmitted = false;
+        this.aiSuggestions = [];
+        const meta = PATH_META[obj.path] || { course: '', grade: '', unit: '', lesson: '', concepts: [] };
+        this.form = {
+          titleAr: obj.titleAr, titleEn: obj.titleEn,
+          concepts: [...meta.concepts],
+          files: [this.mockExistingFile(obj)],
+          course: meta.course, grade: meta.grade, unit: meta.unit, lesson: meta.lesson,
+          isPublic: obj.isPublic,
+        };
+        this.panelOpen = true;
+      },
+      closePanel() { if (!this.busy) { this.panelOpen = false; } },
+
+      /* ---------- ملفات/مصادر العنصر (رفع متعدد) ---------- */
+      fileKindFromName(name) {
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        if (ext === 'zip') return 'scorm';
+        if (ext === 'pdf') return 'pdf';
+        if (['mp4', 'mov', 'webm', 'mkv'].includes(ext)) return 'video';
+        if (['html', 'htm'].includes(ext)) return 'html5';
+        return 'other';
+      },
+      kindFromObjFormat(format) {
+        return { scorm12: 'scorm', scorm2004: 'scorm', html5: 'html5', video: 'video', pdf: 'pdf' }[format] || 'other';
+      },
+      fileMeta(kind) {
+        const map = {
+          scorm: { label: this.t('lo.formatScorm12'), icon: 'fa-box-archive', iconClass: 'bg-info-500/15 text-info-700 dark:text-info-500', badge: 'badge-info' },
+          html5: { label: this.t('lo.formatHtml5'), icon: 'fa-code', iconClass: 'bg-accent-500/20 text-accent-700 dark:text-accent-500', badge: 'badge-accent' },
+          video: { label: this.t('lo.formatVideo'), icon: 'fa-film', iconClass: 'bg-neutral-200 text-ink', badge: 'badge-neutral' },
+          pdf: { label: this.t('lo.formatPdf'), icon: 'fa-file-pdf', iconClass: 'bg-warning-500/15 text-warning-700 dark:text-warning-500', badge: 'badge-warning' },
+          other: { label: 'FILE', icon: 'fa-file', iconClass: 'bg-line text-muted', badge: 'badge-muted' },
+        };
+        return map[kind] || map.other;
+      },
+      mockExistingFile(obj) {
+        const sizes = { scorm12: '24.5 MB', scorm2004: '31.8 MB', html5: '12.4 MB', video: '142 MB', pdf: '3.1 MB' };
+        const exts = { scorm12: '.zip', scorm2004: '.zip', html5: '.zip', video: '.mp4', pdf: '.pdf' };
+        return { id: 'existing-' + obj.code, name: obj.code + (exts[obj.format] || ''), kind: this.kindFromObjFormat(obj.format), size: sizes[obj.format] || '—' };
+      },
+      formatSize(bytes) {
+        if (!bytes) return '—';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let n = bytes, i = 0;
+        while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+        return n.toFixed(i > 0 && n < 10 ? 1 : 0) + ' ' + units[i];
+      },
+      addFiles(fileList) {
+        Array.from(fileList || []).forEach(f => {
+          this.form.files.push({ id: 'f-' + Date.now() + '-' + Math.random().toString(16).slice(2), name: f.name, kind: this.fileKindFromName(f.name), size: this.formatSize(f.size) });
+        });
+      },
+      onFileChange(evt) { this.addFiles(evt.target.files); evt.target.value = ''; },
+      onFileDrop(evt) { this.addFiles(evt.dataTransfer.files); },
+      removeFile(id) { this.form.files = this.form.files.filter(f => f.id !== id); },
+
+      /* ---------- مساعد المفاهيم بالذكاء الاصطناعي (تجريبي — سيُستبدل باستدعاء خدمة ذكاء اصطناعي فعلية) ---------- */
+      async runAiAssistant() {
+        this.aiLoading = true;
+        await new Promise(r => setTimeout(r, 700));
+        this.aiLoading = false;
+        const pool = [
+          { value: 'c5', label: 'التحليل الكهربائي للماء' },
+          { value: 'c8', label: 'الدورة الكربونية' },
+          { value: 'c3', label: 'تركيب الخلية' },
+          { value: 'c2', label: 'المعادلات الخطية' },
+        ];
+        this.aiSuggestions = pool.filter(p => !this.form.concepts.includes(p.value));
+      },
+
+      async submitObject() {
+        this.formSubmitted = true;
+        if (!this.form.titleAr.trim() || !this.form.course || !this.form.concepts.length || !this.form.files.length) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 500));
+        this.busy = false;
+        this.toastSuccess(this.t(this.editingObject ? 'lo.toastSave' : 'lo.toastUpload'));
+        this.panelOpen = false;
+      },
+
+      /* ---------- النوافذ المنبثقة (معاينة / تأكيد الحذف) ---------- */
+      modal: null, previewTarget: null, deleteTarget: null,
+      closeModal() { if (!this.busy) { this.modal = null; this.previewTarget = null; this.deleteTarget = null; } },
+      openPreview(obj) { this.previewTarget = obj; this.modal = 'preview'; },
+      togglePublic(obj) { this.toastSuccess(this.tf('lo.toastTogglePublic', { title: obj.title })); },
+      confirmDelete(obj) { this.deleteTarget = obj; this.modal = 'delete'; },
+      async deleteConfirmed() {
+        if (!this.deleteTarget) return;
+        this.busy = true;
+        await new Promise(r => setTimeout(r, 400));
+        this.busy = false;
+        this.toastSuccess(this.tf('lo.toastDelete', { title: this.deleteTarget.title }));
+        this.modal = null;
+        this.deleteTarget = null;
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastSuccess(msg) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: msg,
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+        });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        if (!this.busy) { this.modal = null; }
+      },
+    };
+  }
+</script>
+</body>
+</html>

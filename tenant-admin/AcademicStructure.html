@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>الهيكل الأكاديمي — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* C4: outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-700 dark:text-warning-500; }
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+    .menu-item:focus-visible { outline-offset: -2px; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- مفتاح التبديل (Settings Switch) ---------- */
+    .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-line-strong bg-line-strong/25 transition-colors duration-200; }  /* C6: حدود ≥ 3:1 */
+    .switch-track[aria-checked="true"] { @apply border-primary-700 bg-primary-500; }
+    .switch-track:disabled, .switch-track[aria-disabled="true"] { @apply cursor-not-allowed opacity-50; }
+    .switch-knob { @apply inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow ring-1 ring-line-strong/60 dark:bg-ink transition-transform duration-200 ltr:translate-x-0.5 rtl:-translate-x-0.5; }
+    .switch-track[aria-checked="true"] .switch-knob { @apply ltr:translate-x-5 rtl:-translate-x-5; }
+
+    /* ---------- شجرة الهيكل الأكاديمي (Structure Tree) ---------- */
+    .tree-row { @apply flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-soft; }
+    .tree-toggle { @apply inline-grid h-6 w-6 shrink-0 place-items-center rounded-md text-muted transition hover:bg-soft-2 hover:text-brand; }
+    .tree-children { @apply border-s-2 border-line ms-3 ps-3; }
+    .level-chip { @apply inline-flex shrink-0 items-center rounded-md bg-soft-2 px-1.5 py-0.5 text-xs font-extrabold text-brand; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse لحركة شجرة الهيكل) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="shell()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="if (($event.ctrlKey || $event.metaKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.globalSearch.focus(); }"
+      @scroll.window="closeMenu(false)" @resize.window="onResize()"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || modal || panelOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.org')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li x-text="t('breadcrumb.content')"></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.academicStructure')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — ADM-09/ADM-05: الهيكل الأكاديمي ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء الإضافة -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('as.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('as.subtitle')"></p>
+        </div>
+        <button type="button" x-show="settings.grades.enabled" x-cloak class="btn btn-accent" aria-haspopup="dialog" @click="openCreateGrade()">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+          <span x-text="t('as.addGrade')"></span>
+        </button>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPI) ================= -->
+      <section :aria-label="t('kpis')" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('as.kpiGrades')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="grades.length"></p>
+          <span x-show="!settings.grades.enabled" x-cloak class="badge badge-muted mt-2"><i class="fa-regular fa-eye-slash" aria-hidden="true"></i> <span x-text="t('as.levelDisabled')"></span></span>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('as.kpiSubjects')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-book"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">42</p>
+          <span class="badge badge-success mt-2"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> <span x-text="t('as.alwaysOn')"></span></span>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('as.kpiUnits')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-cubes"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">118</p>
+          <span x-show="!settings.units.enabled" x-cloak class="badge badge-muted mt-2"><i class="fa-regular fa-eye-slash" aria-hidden="true"></i> <span x-text="t('as.levelDisabled')"></span></span>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('as.kpiLessons')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-info-500/15 text-info-700 dark:text-info-500" aria-hidden="true"><i class="fa-solid fa-chalkboard"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums">356</p>
+          <span x-show="!settings.lessons.enabled" x-cloak class="badge badge-muted mt-2"><i class="fa-regular fa-eye-slash" aria-hidden="true"></i> <span x-text="t('as.levelDisabled')"></span></span>
+        </div>
+      </section>
+
+      <!-- ================= حالة فارغة: لا مستويات مفعّلة (معايير القبول — القسم 13) ================= -->
+      <section x-show="!settings.grades.enabled && !settings.units.enabled && !settings.lessons.enabled" x-cloak
+               class="panel flex flex-col items-center gap-3 p-8 text-center sm:p-10">
+        <span class="grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand"><i class="fa-solid fa-sitemap text-xl" aria-hidden="true"></i></span>
+        <h2 class="text-lg font-extrabold text-ink" x-text="t('as.emptyStructureTitle')"></h2>
+        <p class="max-w-md text-sm text-muted" x-text="t('as.emptyStructureText')"></p>
+        <button type="button" class="btn btn-outline mt-1" @click="document.getElementById('structure-settings').scrollIntoView({ behavior: 'smooth', block: 'start' })">
+          <i class="fa-solid fa-sliders" aria-hidden="true"></i> <span x-text="t('as.emptyStructureCta')"></span>
+        </button>
+      </section>
+
+      <!-- ================= لوحة: إعدادات الهيكل الأكاديمي (ADM-05) ================= -->
+      <section id="structure-settings" class="panel p-4 sm:p-6" aria-labelledby="settings-title">
+        <div class="flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="min-w-0">
+            <h2 id="settings-title" class="text-lg font-extrabold text-ink" x-text="t('as.settingsTitle')"></h2>
+            <p class="mt-1 text-sm text-muted" x-text="t('as.settingsSubtitle')"></p>
+          </div>
+          <!-- مؤشر التغييرات غير المحفوظة (M4) -->
+          <span x-show="dirty" x-cloak class="badge badge-warning self-start" role="status">
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="t('as.unsavedChanges')"></span>
+          </span>
+        </div>
+
+        <!-- القوالب الجاهزة (Presets) — مجموعة اختيار واحد (aria-pressed — M5) -->
+        <div class="mt-4">
+          <p id="presets-label" class="label" x-text="t('as.presetsLabel')"></p>
+          <div class="flex flex-wrap gap-2" role="group" aria-labelledby="presets-label">
+            <template x-for="p in presetList" :key="p.key">
+              <button type="button" class="btn btn-sm"
+                      :aria-pressed="String(activePreset === p.key)"
+                      :class="activePreset === p.key ? 'btn-primary' : 'btn-outline'"
+                      @click="applyPreset(p.key)">
+                <i class="fa-solid" :class="p.icon" aria-hidden="true"></i> <span x-text="t(p.label)"></span>
+              </button>
+            </template>
+            <!-- «مخصص» حالة مشتقة تلقائيًا وليست قالبًا قابلاً للنقر -->
+            <span role="status" class="btn btn-sm cursor-default"
+                  :class="activePreset === 'custom' ? 'btn-primary' : 'btn-outline opacity-70'">
+              <i class="fa-solid fa-sliders" aria-hidden="true"></i> <span x-text="t('as.presetCustom')"></span>
+              <span class="sr-only" x-show="activePreset === 'custom'" x-text="'(' + t('as.current') + ')'"></span>
+            </span>
+          </div>
+        </div>
+
+        <!-- بطاقات المستويات: الصف / الوحدة / الدرس (مولّدة من بيانات واحدة بدل تكرار الماركب) -->
+        <div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <template x-for="lvl in levelList" :key="lvl.key">
+            <div class="rounded-xl border p-4 transition-colors"
+                 :class="settings[lvl.key].enabled ? 'border-line' : 'border-dashed border-line-strong'">
+              <div class="flex items-center justify-between gap-3">
+                <h3 :id="'lvl-' + lvl.key + '-title'" class="font-extrabold text-ink" x-text="t(lvl.title)"></h3>
+                <button type="button" class="switch-track" role="switch"
+                        :aria-checked="settings[lvl.key].enabled.toString()"
+                        :aria-label="t(lvl.title) + ' — ' + t('as.enabledToggle')"
+                        :aria-describedby="'lvl-' + lvl.key + '-hint'"
+                        @click="toggleLevel(lvl.key)">
+                  <span class="switch-knob"></span>
+                </button>
+              </div>
+              <p :id="'lvl-' + lvl.key + '-hint'" class="hint" x-text="t(lvl.hint)"></p>
+
+              <div class="mt-3 flex items-center justify-between gap-3 rounded-lg bg-page/60 px-3 py-2.5">
+                <span class="min-w-0">
+                  <span class="block text-sm font-bold" :class="!settings[lvl.key].enabled && 'text-muted'" x-text="t('as.requiredToggle')"></span>
+                  <span x-show="!settings[lvl.key].enabled" class="block text-xs text-muted" x-text="t('as.requiredNeedsEnabled')"></span>
+                </span>
+                <button type="button" class="switch-track" role="switch"
+                        :aria-checked="settings[lvl.key].required.toString()"
+                        :aria-disabled="(!settings[lvl.key].enabled).toString()" :disabled="!settings[lvl.key].enabled"
+                        :aria-label="t(lvl.title) + ' — ' + t('as.requiredToggle')"
+                        @click="settings[lvl.key].required = !settings[lvl.key].required">
+                  <span class="switch-knob"></span>
+                </button>
+              </div>
+
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label :for="'lbl-' + lvl.key + '-ar'" class="label" x-text="t('as.labelAr')"></label>
+                  <input :id="'lbl-' + lvl.key + '-ar'" type="text" lang="ar" dir="rtl" x-model.trim="settings[lvl.key].label.ar" maxlength="50" class="field">
+                </div>
+                <div>
+                  <label :for="'lbl-' + lvl.key + '-en'" class="label" x-text="t('as.labelEn')"></label>
+                  <input :id="'lbl-' + lvl.key + '-en'" type="text" lang="en" dir="ltr" style="text-align: match-parent" x-model.trim="settings[lvl.key].label.en" maxlength="50" class="field">
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- ملاحظة القاعدة: required ⇒ enabled + عدم فقدان البيانات -->
+        <div class="mt-5 flex items-start gap-3 rounded-xl border border-info-500/30 bg-info-500/10 p-4">
+          <i class="fa-solid fa-circle-info mt-0.5 shrink-0 text-info-700 dark:text-blue-300" aria-hidden="true"></i>
+          <p class="text-sm text-muted" x-text="t('as.settingsNote')"></p>
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4">
+          <button type="button" class="btn btn-outline" x-show="dirty" x-cloak @click="discardSettings()">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> <span x-text="t('as.discardChanges')"></span>
+          </button>
+          <button type="button" class="btn btn-primary" :disabled="savingSettings || !dirty" :aria-busy="savingSettings" @click="saveSettings()">
+            <i class="fa-solid animate-spin fa-circle-notch" x-show="savingSettings" aria-hidden="true"></i>
+            <i class="fa-solid fa-floppy-disk" x-show="!savingSettings" aria-hidden="true"></i>
+            <span x-text="savingSettings ? t('as.saving') : t('as.saveSettings')"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= لوحة: معاينة الهيكل (شجرة تفاعلية مبنية من البيانات) =================
+           المستويات المعطّلة "تُطوى": يُخفى المستوى وتُرفع عناصره الأبناء مستوى واحدًا (C2). -->
+      <section class="panel p-4 sm:p-6" aria-labelledby="tree-title">
+        <div class="flex flex-col gap-3 border-b border-line pb-4 lg:flex-row lg:items-start lg:justify-between">
+          <div class="min-w-0">
+            <h2 id="tree-title" class="text-lg font-extrabold text-ink" x-text="t('as.treeTitle')"></h2>
+            <p class="mt-1 text-sm text-muted" x-text="t('as.treeSubtitle')"></p>
+          </div>
+          <!-- مسار المستويات — يعكس الإعدادات الحالية (C3) -->
+          <ol class="flex flex-wrap items-center gap-2 text-xs font-bold text-muted" role="list" :aria-label="t('as.levelPath')">
+            <template x-for="(step, i) in levelPath" :key="step.key">
+              <li class="inline-flex items-center gap-2">
+                <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]" aria-hidden="true"></i>
+                <span :class="step.chip ? 'level-chip' : ''" x-text="step.text"></span>
+                <span x-show="step.required" class="sr-only" x-text="'(' + t('as.requiredToggle') + ')'"></span>
+                <span x-show="step.required" class="text-danger" aria-hidden="true">*</span>
+              </li>
+            </template>
+          </ol>
+        </div>
+
+        <ul class="mt-4 space-y-1" role="list">
+          <template x-for="row in treeRows" :key="row.key">
+            <li class="tree-row"
+                :class="row.inactive && 'border border-dashed border-line-strong'"
+                :style="'padding-inline-start:' + (0.75 + row.depth * 1.75) + 'rem'">
+
+              <!-- صفوف نصية (ملاحظات / "و N أخرى") -->
+              <template x-if="row.type === 'note'">
+                <p class="text-xs text-muted" x-text="noteText(row)"></p>
+              </template>
+
+              <template x-if="row.type !== 'note'">
+                <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+                  <button x-show="row.hasKids" type="button" class="tree-toggle" @click="toggleNode(row.key)"
+                          :aria-expanded="String(!!openNodes[row.key])"
+                          :aria-label="t('as.toggleBranch') + ': ' + row.name[locale]">
+                    <i class="fa-solid fa-chevron-right text-xs transition-transform duration-150"
+                       :class="openNodes[row.key] ? 'rotate-90' : 'rtl:-scale-x-100'" aria-hidden="true"></i>
+                  </button>
+                  <span x-show="!row.hasKids" class="inline-block h-6 w-6 shrink-0" aria-hidden="true"></span>
+
+                  <span class="level-chip" x-text="chipFor(row.type)"></span>
+                  <span class="min-w-0 flex-1 truncate text-ink"
+                        :class="{ 'font-extrabold': row.type === 'grade' || row.type === 'subject', 'font-bold': row.type === 'unit', 'text-sm font-bold': row.type === 'lesson' }"
+                        x-text="row.name[locale]"></span>
+
+                  <!-- شارات حسب النوع -->
+                  <template x-if="row.type === 'grade'">
+                    <span class="badge shrink-0" :class="row.inactive ? 'badge-muted' : 'badge-success'">
+                      <i class="fa-solid" :class="row.inactive ? 'fa-eye-slash' : 'fa-circle-check'" aria-hidden="true"></i>
+                      <span x-text="row.inactive ? t('as.statusInactive') : t('as.statusActive')"></span>
+                    </span>
+                  </template>
+                  <span x-show="row.type === 'grade'" class="badge badge-primary shrink-0">
+                    <i class="fa-solid fa-book" aria-hidden="true"></i> <span x-text="pluralize('subjects', row.subjectsCount || 0)"></span>
+                  </span>
+                  <span x-show="row.type === 'subject'" class="badge badge-muted shrink-0 font-mono" dir="ltr" x-text="row.code"></span>
+                  <span x-show="row.type === 'unit' && settings.lessons.enabled" class="badge badge-accent shrink-0">
+                    <i class="fa-solid fa-chalkboard" aria-hidden="true"></i> <span x-text="pluralize('lessons', row.lessonCount)"></span>
+                  </span>
+                  <span x-show="row.showConcepts" class="badge badge-info shrink-0">
+                    <i class="fa-solid fa-diagram-project" aria-hidden="true"></i> <span x-text="t('as.conceptsCount') + ': ' + row.concepts"></span>
+                  </span>
+                  <span x-show="row.showConcepts && row.incomplete" class="badge badge-warning shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> <span x-text="t('as.incompleteClassification')"></span>
+                  </span>
+                </div>
+              </template>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ================= لوحة: إدارة الصفوف (ADM-09) — مصدر بيانات واحد للبطاقات والجدول ================= -->
+      <section x-show="settings.grades.enabled" x-cloak class="panel overflow-hidden" aria-labelledby="grades-table-title">
+        <div class="flex flex-col gap-1 border-b border-line p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+          <div class="min-w-0">
+            <h2 id="grades-table-title" class="text-lg font-extrabold text-ink" x-text="t('as.gradesTableTitle')"></h2>
+            <p class="mt-1 text-sm text-muted" x-text="t('as.gradesTableSubtitle')"></p>
+          </div>
+        </div>
+
+        <!-- (أ) بطاقات — للجوال والتابلت -->
+        <ul class="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:hidden" role="list">
+          <template x-for="g in sortedGrades" :key="g.id">
+            <li class="min-w-0 rounded-xl border p-4" :class="g.isActive ? 'border-line' : 'border-dashed border-line-strong'">
+              <div class="flex items-start gap-3">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-soft text-sm font-extrabold text-brand" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-extrabold leading-6">
+                    <bdi :lang="locale" x-text="gradeName(g)"></bdi>
+                    <span class="font-normal text-muted"><span aria-hidden="true">·</span> <bdi :lang="altLocale" x-text="gradeName(g, altLocale)"></bdi></span>
+                  </p>
+                  <p class="truncate font-mono text-xs text-muted" dir="ltr" style="text-align: match-parent" x-text="g.code"></p>
+                </div>
+                <button type="button" class="act shrink-0" data-kebab @click="toggleMenu(g, $event)" @keydown.arrow-down.prevent="openMenuId === g.id || toggleMenu(g, $event)"
+                        aria-haspopup="menu" aria-controls="grade-menu" :aria-expanded="(openMenuId === g.id).toString()"
+                        :aria-label="t('as.colActions') + ': ' + gradeName(g)">
+                  <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span class="badge badge-primary"><i class="fa-solid fa-book" aria-hidden="true"></i> <span x-text="pluralize('subjects', g.subjectsCount)"></span></span>
+                <span class="badge" :class="g.isActive ? 'badge-success' : 'badge-muted'">
+                  <i class="fa-solid" :class="g.isActive ? 'fa-circle-check' : 'fa-eye-slash'" aria-hidden="true"></i>
+                  <span x-text="g.isActive ? t('as.statusActive') : t('as.statusInactive')"></span>
+                </span>
+              </div>
+            </li>
+          </template>
+        </ul>
+
+        <!-- (ب) جدول — للشاشات الكبيرة (xl+) -->
+        <div class="hidden xl:block">
+          <div class="overflow-x-auto" @scroll="closeMenu(false)">
+            <table class="w-full min-w-[920px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('as.gradesTableTitle')"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="w-16 px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('as.colOrder')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('as.colCode')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('as.colName')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('as.colSubjectsCount')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('as.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('as.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="(g, i) in sortedGrades" :key="g.id">
+                  <tr class="transition hover:bg-soft/40">
+                    <td class="px-5 py-4 align-middle font-bold tabular-nums text-muted" x-text="i + 1"></td>
+                    <td class="px-4 py-4 align-middle font-mono text-xs font-bold text-muted" dir="ltr" style="text-align: match-parent" x-text="g.code"></td>
+                    <td class="max-w-[22rem] px-4 py-4 align-middle">
+                      <p class="truncate font-extrabold leading-6" :lang="locale" x-text="gradeName(g)"></p>
+                      <p class="truncate text-xs text-muted" :lang="altLocale" :dir="altLocale === 'en' ? 'ltr' : 'rtl'" style="text-align: match-parent" x-text="gradeName(g, altLocale)"></p>
+                    </td>
+                    <td class="px-4 py-4 align-middle"><span class="badge badge-primary"><i class="fa-solid fa-book" aria-hidden="true"></i> <span x-text="g.subjectsCount"></span></span></td>
+                    <td class="px-4 py-4 align-middle">
+                      <span class="badge" :class="g.isActive ? 'badge-success' : 'badge-muted'">
+                        <i class="fa-solid" :class="g.isActive ? 'fa-circle-check' : 'fa-eye-slash'" aria-hidden="true"></i>
+                        <span x-text="g.isActive ? t('as.statusActive') : t('as.statusInactive')"></span>
+                      </span>
+                    </td>
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex justify-end">
+                        <button type="button" class="act" data-kebab @click="toggleMenu(g, $event)" @keydown.arrow-down.prevent="openMenuId === g.id || toggleMenu(g, $event)"
+                                aria-haspopup="menu" aria-controls="grade-menu" :aria-expanded="(openMenuId === g.id).toString()"
+                                :aria-label="t('as.colActions') + ': ' + gradeName(g)">
+                          <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- تذييل بسيط -->
+        <div class="flex items-center justify-between border-t border-line px-4 py-3.5 sm:px-5">
+          <p class="text-xs font-bold text-muted" x-text="tf('as.showingGrades', { shown: grades.length, total: pluralize('grades', grades.length) })"></p>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     قائمة الإجراءات السريعة (Kebab Menu) — عنصر واحد بموضع ثابت (fixed)
+     لوحة مفاتيح كاملة: أسهم / Home / End / Esc / Tab + إعادة التركيز إلى الزر (C5, M1, M2)
+     ========================================================================== -->
+<div id="grade-menu" x-ref="kebab" x-show="openMenuId !== null" x-cloak x-transition.opacity.scale.95
+     class="fixed z-[70] w-64 overflow-hidden rounded-2xl border border-line bg-card py-1 shadow-pop"
+     :style="'top:' + menuPos.top + 'px; left:' + menuPos.left + 'px;'"
+     role="menu" :aria-label="kebabGrade ? t('as.colActions') + ': ' + gradeName(kebabGrade) : null"
+     @click.outside="if (!$event.target.closest('[data-kebab]')) closeMenu(false)"
+     @keydown.arrow-down.prevent="$focus.within($refs.kebab).wrap().next()"
+     @keydown.arrow-up.prevent="$focus.within($refs.kebab).wrap().previous()"
+     @keydown.home.prevent="$focus.within($refs.kebab).first()"
+     @keydown.end.prevent="$focus.within($refs.kebab).last()"
+     @keydown.escape.stop.prevent="closeMenu()"
+     @keydown.tab="closeMenu(false)">
+  <template x-if="kebabGrade">
+    <div>
+      <button type="button" role="menuitem" class="menu-item" @click="openEditGrade(kebabGrade)">
+        <i class="fa-solid fa-pen w-4 text-muted" aria-hidden="true"></i> <span x-text="t('as.menuEdit')"></span>
+      </button>
+      <!-- بديل لوحة المفاتيح/النقر الواحد للسحب والإفلات (WCAG 2.5.7) -->
+      <button type="button" role="menuitem" class="menu-item" :disabled="isFirstGrade(kebabGrade)" @click="moveGrade(kebabGrade, -1)">
+        <i class="fa-solid fa-arrow-up w-4 text-muted" aria-hidden="true"></i> <span x-text="t('as.menuMoveUp')"></span>
+      </button>
+      <button type="button" role="menuitem" class="menu-item" :disabled="isLastGrade(kebabGrade)" @click="moveGrade(kebabGrade, 1)">
+        <i class="fa-solid fa-arrow-down w-4 text-muted" aria-hidden="true"></i> <span x-text="t('as.menuMoveDown')"></span>
+      </button>
+      <button type="button" role="menuitem" class="menu-item" @click="toggleGradeStatus(kebabGrade)">
+        <i class="fa-solid w-4 text-muted" :class="kebabGrade.isActive ? 'fa-eye-slash' : 'fa-eye'" aria-hidden="true"></i>
+        <span x-text="kebabGrade.isActive ? t('as.menuDeactivate') : t('as.menuActivate')"></span>
+      </button>
+      <div role="separator" class="my-1 border-t border-line"></div>
+      <button type="button" role="menuitem" class="menu-item !items-start !text-danger hover:!bg-error-500/10" @click="confirmDeleteGrade(kebabGrade)">
+        <i class="fa-solid fa-trash mt-0.5 w-4" aria-hidden="true"></i>
+        <span class="min-w-0">
+          <span class="block" x-text="t('as.menuDelete')"></span>
+          <!-- إعلام مسبق بحارس الحذف بدل المفاجأة -->
+          <span x-show="kebabGrade.subjectsCount > 0" class="block text-xs font-medium text-muted"
+                x-text="tf('as.linkedTo', { subjects: pluralize('subjects', kebabGrade.subjectsCount) })"></span>
+        </span>
+      </button>
+    </div>
+  </template>
+</div>
+
+<!-- ==========================================================================
+     اللوحة الجانبية (Slide-over) — إضافة / تعديل صف
+     ========================================================================== -->
+<div x-show="panelOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60]" @keydown.escape.window="closePanel()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closePanel()" aria-hidden="true"></div>
+
+  <form x-ref="gradeForm" novalidate @submit.prevent="submitGrade()" x-show="panelOpen" x-trap.noscroll.noreturn="panelOpen"
+        role="dialog" aria-modal="true" aria-labelledby="panel-title"
+        x-transition:enter="transition duration-300 ease-out" x-transition:enter-start="ltr:translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition duration-200 ease-in" x-transition:leave-start="translate-x-0" x-transition:leave-end="ltr:translate-x-full rtl:-translate-x-full"
+        class="absolute inset-y-0 end-0 flex w-full max-w-md flex-col border-s border-line bg-card shadow-pop">
+
+    <header class="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-soft p-5">
+      <h2 id="panel-title" class="text-lg font-extrabold text-ink" x-text="editingGrade ? t('as.panelEditTitle') : t('as.panelAddTitle')"></h2>
+      <button type="button" class="icon-btn" @click="closePanel()" :disabled="busy" :aria-label="t('as.close')"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+      <p class="text-xs text-muted"><span class="text-danger" aria-hidden="true">*</span> <span x-text="t('as.requiredLegend')"></span></p>
+
+      <div>
+        <label for="gf-code" class="label"><span x-text="t('as.fieldCode')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="gf-code" autofocus type="text" x-model.trim="form.code" @blur="form.code = form.code.toUpperCase()" required aria-required="true" maxlength="50" autocomplete="off" spellcheck="false"
+               dir="ltr" style="text-align: match-parent" class="field font-mono" placeholder="G7"
+               :aria-invalid="(formSubmitted && !!errors.code).toString()" aria-describedby="gf-code-hint gf-code-err">
+        <p id="gf-code-hint" class="hint" x-text="t('as.fieldCodeHint')"></p>
+        <p id="gf-code-err" class="err" x-show="formSubmitted && errors.code"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.code"></span></p>
+      </div>
+
+      <div>
+        <label for="gf-name-ar" class="label"><span x-text="t('as.fieldNameAr')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="gf-name-ar" type="text" lang="ar" dir="rtl" style="text-align: match-parent" x-model.trim="form.nameAr" required aria-required="true" maxlength="100" class="field"
+               :aria-invalid="(formSubmitted && !!errors.nameAr).toString()" aria-describedby="gf-name-ar-err">
+        <p id="gf-name-ar-err" class="err" x-show="formSubmitted && errors.nameAr"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.nameAr"></span></p>
+      </div>
+
+      <div>
+        <label for="gf-name-en" class="label"><span x-text="t('as.fieldNameEn')"></span> <span class="text-danger" aria-hidden="true">*</span></label>
+        <input id="gf-name-en" type="text" lang="en" dir="ltr" style="text-align: match-parent" x-model.trim="form.nameEn" required aria-required="true" maxlength="100" class="field"
+               :aria-invalid="(formSubmitted && !!errors.nameEn).toString()" aria-describedby="gf-name-en-err">
+        <p id="gf-name-en-err" class="err" x-show="formSubmitted && errors.nameEn"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> <span x-text="errors.nameEn"></span></p>
+      </div>
+
+      <div>
+        <label for="gf-desc-ar" class="label" x-text="t('as.fieldDescAr')"></label>
+        <textarea id="gf-desc-ar" lang="ar" dir="rtl" style="text-align: match-parent" x-model.trim="form.descAr" rows="2" class="field resize-none"></textarea>
+      </div>
+
+      <div>
+        <label for="gf-desc-en" class="label" x-text="t('as.fieldDescEn')"></label>
+        <textarea id="gf-desc-en" lang="en" dir="ltr" style="text-align: match-parent" x-model.trim="form.descEn" rows="2" class="field resize-none"></textarea>
+      </div>
+
+      <div>
+        <label for="gf-order" class="label" x-text="t('as.fieldSortOrder')"></label>
+        <input id="gf-order" type="number" inputmode="numeric" min="0" step="1" x-model.number="form.sortOrder" class="field" aria-describedby="gf-order-hint">
+        <p id="gf-order-hint" class="hint" x-text="t('as.fieldSortOrderHint')"></p>
+      </div>
+
+      <div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-page/50 p-4">
+        <span class="min-w-0">
+          <span id="gf-active-lbl" class="block text-sm font-bold text-ink" x-text="t('as.fieldIsActive')"></span>
+          <span id="gf-active-hint" class="hint block" x-text="t('as.fieldIsActiveHint')"></span>
+        </span>
+        <button type="button" class="switch-track shrink-0" role="switch" :aria-checked="form.isActive.toString()"
+                aria-labelledby="gf-active-lbl" aria-describedby="gf-active-hint" @click="form.isActive = !form.isActive">
+          <span class="switch-knob"></span>
+        </button>
+      </div>
+    </div>
+
+    <footer class="flex shrink-0 items-center justify-end gap-3 border-t border-line bg-page/40 p-4">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closePanel()" x-text="t('as.cancel')"></button>
+      <button type="submit" class="btn btn-primary" :disabled="busy" :aria-busy="busy">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="busy ? t('as.saving') : t('as.save')"></span>
+      </button>
+    </footer>
+  </form>
+</div>
+
+<!-- ==========================================================================
+     نافذة — حارس الحذف (StructureDeletionGuard): صف مرتبط بمقررات — مع مسارات حل (M10)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'guard'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+  <div x-show="modal === 'guard'" x-trap.noscroll.noreturn="modal === 'guard'"
+       role="alertdialog" aria-modal="true" aria-labelledby="gm-title" aria-describedby="gm-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-md rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-accent-500/20 text-accent-700 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-shield-halved text-xl"></i></span>
+    <h2 id="gm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('as.guardTitle')"></h2>
+    <p id="gm-desc" class="mt-2 text-sm text-muted">
+      <span x-text="guardTarget && tf('as.guardText', { subjects: pluralize('subjects', guardTarget.subjectsCount) })"></span>
+      <span class="font-bold text-ink" x-text="guardTarget && gradeName(guardTarget)"></span>.
+    </p>
+    <div class="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+      <button type="button" class="btn btn-outline" @click="closeModal()" x-text="t('as.guardClose')"></button>
+      <button type="button" class="btn btn-outline" x-show="guardTarget && guardTarget.isActive" @click="deactivateFromGuard()">
+        <i class="fa-solid fa-eye-slash" aria-hidden="true"></i> <span x-text="t('as.guardDeactivate')"></span>
+      </button>
+      <a class="btn btn-primary" :href="guardTarget ? 'CoursesManagement.html?grade=' + encodeURIComponent(guardTarget.code) : '#'">
+        <i class="fa-solid fa-book-open" aria-hidden="true"></i> <span x-text="t('as.guardGoSubjects')"></span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — تأكيد حذف صف (لا مقررات مرتبطة به)
+     ========================================================================== -->
+<div x-cloak x-show="modal === 'delete'" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.window="closeModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeModal()" aria-hidden="true"></div>
+  <div x-show="modal === 'delete'" x-trap.noscroll.noreturn="modal === 'delete'"
+       role="alertdialog" aria-modal="true" aria-labelledby="dm-title" aria-describedby="dm-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+    <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-red-300" aria-hidden="true"><i class="fa-solid fa-trash text-xl"></i></span>
+    <h2 id="dm-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('as.deleteTitle')"></h2>
+    <p id="dm-desc" class="mt-2 text-sm text-muted">
+      <span x-text="t('as.deleteText')"></span> <span class="font-bold text-ink" x-text="deleteTarget && gradeName(deleteTarget)"></span>.
+    </p>
+    <div class="mt-6 flex justify-center gap-3">
+      <button type="button" class="btn btn-outline" :disabled="busy" @click="closeModal()" x-text="t('as.deleteCancel')"></button>
+      <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="deleteConfirmed()">
+        <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+        <span x-text="t('as.deleteConfirm')"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- منطقة إعلانات لقارئات الشاشة (نقل الترتيب، أخطاء النموذج) -->
+<p class="sr-only" aria-live="polite" x-text="liveMsg"></p>
+
+<script>
+  /**
+   * حالة واجهة ADM-09/ADM-05 — الهيكل الأكاديمي (Grades + Structure Settings + Tree Preview).
+   * النسخة المُراجَعة: الصفوف والشجرة مبنية من مصفوفات بيانات (مصدر واحد للبطاقات والجدول والشجرة)
+   * بدل الماركب الثابت المكرر، لتسهيل الانتقال إلى Livewire (@foreach / $wire.entangle).
+   * كل العمليات ما زالت محلية (Mock) — الحفظ الفعلي والتحقق النهائي يتمّان في الخادم.
+   */
+  function shell() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    const I18N = {
+      ar: {
+        docTitle: 'الهيكل الأكاديمي — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل', kpis: 'مؤشرات الهيكل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'الرئيسية', org: 'إدارة المؤسسة', content: 'المحتوى' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        // صيغ الجمع العربية الست (Intl.PluralRules('ar'): zero/one/two/few/many/other)
+        plural: {
+          subjects: { zero: 'لا مقررات', one: 'مقرر واحد', two: 'مقرران', few: '{n} مقررات', many: '{n} مقررًا', other: '{n} مقرر' },
+          lessons:  { zero: 'لا دروس', one: 'درس واحد', two: 'درسان', few: '{n} دروس', many: '{n} درسًا', other: '{n} درس' },
+          grades:   { zero: 'لا صفوف', one: 'صف واحد', two: 'صفّان', few: '{n} صفوف', many: '{n} صفًا', other: '{n} صف' },
+        },
+
+        as: {
+          title: 'الهيكل الأكاديمي', subtitle: 'اضبط مستويات التصنيف (الصف، الوحدة، الدرس) فوق المقرر الإلزامي، وأدِر الصفوف المرتبطة بمقررات مؤسستك.',
+          addGrade: 'إضافة صف جديد',
+          kpiGrades: 'عدد الصفوف', kpiSubjects: 'عدد المقررات', kpiUnits: 'عدد الوحدات', kpiLessons: 'عدد الدروس',
+          levelDisabled: 'مستوى معطّل — البيانات محفوظة', alwaysOn: 'إلزامي دائمًا',
+
+          emptyStructureTitle: 'مؤسستك تعمل بالمقررات فقط',
+          emptyStructureText: 'لم يتم تفعيل أي مستوى تصنيف إضافي بعد. فعّل الصفوف أو الوحدات أو الدروس من إعدادات الهيكل الأكاديمي أدناه حسب حاجة مؤسستك.',
+          emptyStructureCta: 'الذهاب إلى الإعدادات',
+
+          settingsTitle: 'إعدادات الهيكل الأكاديمي', settingsSubtitle: 'المقرر إلزامي دائمًا. فعّل أو عطّل كل مستوى، واجعله إلزاميًا عند الحاجة، وخصّص تسميته بالعربية والإنجليزية.',
+          presetsLabel: 'قوالب جاهزة', current: 'الحالي',
+          presetSubjectsOnly: 'مقررات فقط', presetGradesSubjects: 'صفوف + مقررات', presetUnitsLessons: 'مقررات + وحدات + دروس', presetFull: 'هيكل كامل', presetCustom: 'مخصص',
+          levelGradeKey: 'مستوى الصف (Grade)', levelUnitKey: 'مستوى الوحدة (Unit)', levelLessonKey: 'مستوى الدرس (Lesson)',
+          levelGradeHint: 'خاصية على المقرر (subjects.grade_id) — صف المفهوم يُشتق من مقرره تلقائيًا.',
+          levelUnitHint: 'تتبع المقرر دائمًا (units.subject_id). تعطيلها يسمح بإلحاق الدروس مباشرة بالمقرر.',
+          levelLessonHint: 'تتبع المقرر دائمًا، والوحدة اختياريًا (lessons.unit_id) إن كانت الوحدات معطّلة أو غير إلزامية.',
+          enabledToggle: 'مفعّل', requiredToggle: 'إلزامي', requiredNeedsEnabled: 'فعّل المستوى أولًا',
+          labelAr: 'التسمية بالعربية', labelEn: 'التسمية بالإنجليزية',
+          settingsNote: 'تفعيل «إلزامي» يفرض الحقل عند إنشاء/تعديل المفهوم وعند الإرسال للمراجعة فقط، ولا يكسر أي بيانات قديمة. تعطيل مستوى يُخفيه من الواجهات فورًا دون حذف أو تعديل أي بيانات محفوظة له — يمكن إعادة تفعيله لاحقًا دون فقدان شيء.',
+          saveSettings: 'حفظ الإعدادات', saving: 'جارٍ الحفظ…',
+          unsavedChanges: 'تغييرات غير محفوظة', discardChanges: 'تجاهل التغييرات',
+          toastSettingsSaved: 'تم حفظ إعدادات الهيكل الأكاديمي (معاينة فقط)',
+          toastSettingsDiscarded: 'تمت استعادة آخر إعدادات محفوظة',
+          toastPresetApplied: 'تم تطبيق القالب «{name}» على المعاينة — احفظ الإعدادات لاعتماده',
+
+          treeTitle: 'معاينة الهيكل', treeSubtitle: 'معاينة حيّة بحسب الإعدادات أعلاه: المستويات المعطّلة تختفي وتنتقل عناصرها مستوى للأعلى.',
+          levelPath: 'ترتيب المستويات',
+          subjectWord: 'مقرر', conceptWord: 'مفهوم', conceptsCount: 'مفاهيم',
+          toggleBranch: 'فتح/إغلاق', statusActive: 'نشط', statusInactive: 'معطّل',
+          incompleteClassification: 'تصنيف ناقص', moreSubjects: 'و {more} أخرى…',
+          inactiveGradeHint: 'صف معطّل: مخفي من واجهات الإدخال، وبياناته ومقرراته محفوظة بالكامل لإعادة التفعيل لاحقًا.',
+
+          gradesTableTitle: 'قائمة الصفوف', gradesTableSubtitle: 'غيّر الترتيب من قائمة الإجراءات (نقل لأعلى/لأسفل). الحذف يتطلب نقل المقررات أولًا.',
+          colOrder: 'الترتيب', colCode: 'الرمز', colName: 'الاسم', colSubjectsCount: 'عدد المقررات', colStatus: 'الحالة', colActions: 'إجراءات',
+          menuEdit: 'تعديل البيانات', menuMoveUp: 'نقل لأعلى', menuMoveDown: 'نقل لأسفل', menuDeactivate: 'تعطيل الصف', menuActivate: 'تنشيط الصف', menuDelete: 'حذف',
+          linkedTo: 'مرتبط بـ {subjects} — الحذف محظور',
+          movedTo: 'نُقل «{name}» إلى الموضع {pos}',
+          showingGrades: 'عرض {shown} من أصل {total}',
+
+          panelAddTitle: 'إضافة صف جديد', panelEditTitle: 'تعديل بيانات الصف',
+          requiredLegend: 'حقول مطلوبة',
+          fieldCode: 'الرمز', fieldCodeHint: 'رمز مختصر وفريد داخل المؤسسة (مثال: G7). يُحوَّل إلى أحرف كبيرة تلقائيًا.',
+          fieldNameAr: 'الاسم بالعربية', fieldNameEn: 'الاسم بالإنجليزية',
+          fieldDescAr: 'الوصف بالعربية (اختياري)', fieldDescEn: 'الوصف بالإنجليزية (اختياري)',
+          fieldSortOrder: 'ترتيب العرض', fieldSortOrderHint: 'رقم أصغر = ظهور أول في القوائم والشجرة.',
+          fieldIsActive: 'صف نشط', fieldIsActiveHint: 'تعطيله يخفيه من شاشات الإدخال دون حذف مقرراته.',
+          cancel: 'إلغاء', close: 'إغلاق', save: 'حفظ',
+          codeRequired: 'الرمز مطلوب.', codeTaken: 'هذا الرمز مستخدم لصف آخر.', nameRequired: 'هذا الحقل مطلوب.',
+          toastCreate: 'تم إنشاء الصف بنجاح (معاينة فقط)', toastSave: 'تم حفظ بيانات الصف (معاينة فقط)',
+          toastDeactivate: 'تم تعطيل صف «{name}» — مقرراته محفوظة', toastActivate: 'تم تنشيط صف «{name}»',
+          toastDelete: 'تم حذف صف «{name}» نهائيًا (معاينة فقط)',
+          undo: 'تراجع', undone: 'تم التراجع',
+
+          guardTitle: 'لا يمكن حذف صف مرتبط بمقررات',
+          guardText: 'يرتبط بهذا الصف {subjects}. انقلها إلى صف آخر من شاشة المقررات قبل الحذف، أو عطّل الصف بدلًا من حذفه:',
+          guardClose: 'إغلاق', guardDeactivate: 'تعطيل الصف بدلًا من ذلك', guardGoSubjects: 'إدارة مقررات هذا الصف',
+          deleteTitle: 'حذف الصف نهائيًا؟', deleteText: 'لا يمكن التراجع عن هذا الإجراء. سيُحذف الصف', deleteCancel: 'إلغاء', deleteConfirm: 'نعم، احذف نهائيًا',
+        },
+      },
+      en: {
+        docTitle: 'Academic Structure — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb', kpis: 'Structure indicators',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System settings', logout: 'Log out',
+        breadcrumb: { home: 'Home', org: 'Organization Management', content: 'Content' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'User seat quota is nearing its limit (83%)', reset: 'A password reset link was sent successfully' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          subjects: { one: '{n} subject', other: '{n} subjects' },
+          lessons:  { one: '{n} lesson', other: '{n} lessons' },
+          grades:   { one: '{n} grade', other: '{n} grades' },
+        },
+
+        as: {
+          title: 'Academic Structure', subtitle: 'Configure optional classification levels (Grade, Unit, Lesson) on top of the mandatory Subject, and manage the grades linked to your organization\'s subjects.',
+          addGrade: 'Add New Grade',
+          kpiGrades: 'Total Grades', kpiSubjects: 'Total Subjects', kpiUnits: 'Total Units', kpiLessons: 'Total Lessons',
+          levelDisabled: 'Level disabled — data preserved', alwaysOn: 'Always mandatory',
+
+          emptyStructureTitle: 'Your organization runs on Subjects only',
+          emptyStructureText: 'No additional classification level is enabled yet. Enable Grades, Units, or Lessons from the Academic Structure settings below as your organization needs.',
+          emptyStructureCta: 'Go to settings',
+
+          settingsTitle: 'Academic Structure Settings', settingsSubtitle: 'Subject is always mandatory. Enable or disable each level, make it mandatory when needed, and customize its Arabic/English label.',
+          presetsLabel: 'Ready-made presets', current: 'current',
+          presetSubjectsOnly: 'Subjects only', presetGradesSubjects: 'Grades + Subjects', presetUnitsLessons: 'Subjects + Units + Lessons', presetFull: 'Full structure', presetCustom: 'Custom',
+          levelGradeKey: 'Grade level', levelUnitKey: 'Unit level', levelLessonKey: 'Lesson level',
+          levelGradeHint: 'A property on the Subject (subjects.grade_id) — a concept\'s grade is derived from its subject automatically.',
+          levelUnitHint: 'Always follows a Subject (units.subject_id). Disabling it lets lessons attach directly to the subject.',
+          levelLessonHint: 'Always follows a Subject, and optionally a Unit (lessons.unit_id) when units are disabled or optional.',
+          enabledToggle: 'Enabled', requiredToggle: 'Required', requiredNeedsEnabled: 'Enable the level first',
+          labelAr: 'Arabic label', labelEn: 'English label',
+          settingsNote: 'Making a level "Required" enforces it only on concept create/update and before submit-for-review — it never breaks existing records. Disabling a level hides it from the UI immediately without deleting or altering any of its stored data — it can be re-enabled later with nothing lost.',
+          saveSettings: 'Save Settings', saving: 'Saving…',
+          unsavedChanges: 'Unsaved changes', discardChanges: 'Discard changes',
+          toastSettingsSaved: 'Academic structure settings saved (preview only)',
+          toastSettingsDiscarded: 'Last saved settings restored',
+          toastPresetApplied: 'Preset "{name}" applied to the preview — save settings to confirm',
+
+          treeTitle: 'Structure Preview', treeSubtitle: 'A live preview based on the settings above: disabled levels disappear and their items move up one level.',
+          levelPath: 'Level order',
+          subjectWord: 'Subject', conceptWord: 'Concept', conceptsCount: 'Concepts',
+          toggleBranch: 'Expand/collapse', statusActive: 'Active', statusInactive: 'Disabled',
+          incompleteClassification: 'Incomplete classification', moreSubjects: 'and {more} more…',
+          inactiveGradeHint: 'Disabled grade: hidden from input screens; its data and subjects remain fully preserved for later re-activation.',
+
+          gradesTableTitle: 'Grades List', gradesTableSubtitle: 'Change the order from the actions menu (move up/down). Deletion requires reassigning subjects first.',
+          colOrder: 'Order', colCode: 'Code', colName: 'Name', colSubjectsCount: 'Subjects', colStatus: 'Status', colActions: 'Actions',
+          menuEdit: 'Edit details', menuMoveUp: 'Move up', menuMoveDown: 'Move down', menuDeactivate: 'Deactivate grade', menuActivate: 'Activate grade', menuDelete: 'Delete',
+          linkedTo: 'Linked to {subjects} — deletion blocked',
+          movedTo: '"{name}" moved to position {pos}',
+          showingGrades: 'Showing {shown} of {total}',
+
+          panelAddTitle: 'Add New Grade', panelEditTitle: 'Edit Grade',
+          requiredLegend: 'Required fields',
+          fieldCode: 'Code', fieldCodeHint: 'A short, unique code within the tenant (e.g. G7). Converted to uppercase automatically.',
+          fieldNameAr: 'Arabic name', fieldNameEn: 'English name',
+          fieldDescAr: 'Arabic description (optional)', fieldDescEn: 'English description (optional)',
+          fieldSortOrder: 'Sort order', fieldSortOrderHint: 'Lower number = appears first in lists and the tree.',
+          fieldIsActive: 'Grade is active', fieldIsActiveHint: 'Disabling hides it from input screens without deleting its subjects.',
+          cancel: 'Cancel', close: 'Close', save: 'Save',
+          codeRequired: 'Code is required.', codeTaken: 'This code is already used by another grade.', nameRequired: 'This field is required.',
+          toastCreate: 'Grade created successfully (preview only)', toastSave: 'Grade data was saved (preview only)',
+          toastDeactivate: '"{name}" has been deactivated — its subjects are preserved', toastActivate: '"{name}" has been activated',
+          toastDelete: '"{name}" was permanently deleted (preview only)',
+          undo: 'Undo', undone: 'Change undone',
+
+          guardTitle: 'Cannot delete a grade linked to subjects',
+          guardText: 'This grade has {subjects} linked to it. Reassign them from the Subjects screen before deleting, or deactivate the grade instead:',
+          guardClose: 'Close', guardDeactivate: 'Deactivate instead', guardGoSubjects: 'Manage this grade\'s subjects',
+          deleteTitle: 'Permanently delete this grade?', deleteText: 'This cannot be undone. The grade will be deleted:', deleteCancel: 'Cancel', deleteConfirm: 'Yes, delete permanently',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'academicStructure',
+      liveMsg: '',
+      get expanded() { return this.mobile || !this.collapsed; },
+      get altLocale() { return this.locale === 'ar' ? 'en' : 'ar'; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        if (!forms || typeof forms !== 'object') return String(n);
+        const cat = new Intl.PluralRules(this.locale).select(n);
+        return (forms[cat] ?? forms.other).split('{n}').join(n);
+      },
+      announce(msg) { this.liveMsg = ''; setTimeout(() => { this.liveMsg = msg; }, 60); },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+        this.closeMenu(false);
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- إعدادات الهيكل الأكاديمي (academic.structure — tenant_settings) ----------
+         القيمة الافتراضية الرسمية عند غياب المفتاح هي تعطيل كل المستويات (القسم 3)؛
+         نبدأ هنا من قالب «هيكل كامل» لتوضيح جميع المستويات في هذه المعاينة. */
+      settings: {
+        grades:  { enabled: true, required: true, label: { ar: 'الصف',   en: 'Grade'  } },
+        units:   { enabled: true, required: true, label: { ar: 'الوحدة', en: 'Unit'   } },
+        lessons: { enabled: true, required: true, label: { ar: 'الدرس',  en: 'Lesson' } },
+      },
+      savedSettings: '',
+      get dirty() { return JSON.stringify(this.settings) !== this.savedSettings; },
+      levelList: [
+        { key: 'grades',  title: 'as.levelGradeKey',  hint: 'as.levelGradeHint' },
+        { key: 'units',   title: 'as.levelUnitKey',   hint: 'as.levelUnitHint' },
+        { key: 'lessons', title: 'as.levelLessonKey', hint: 'as.levelLessonHint' },
+      ],
+      presetList: [
+        { key: 'subjectsOnly',   icon: 'fa-book',        label: 'as.presetSubjectsOnly' },
+        { key: 'gradesSubjects', icon: 'fa-layer-group', label: 'as.presetGradesSubjects' },
+        { key: 'unitsLessons',   icon: 'fa-cubes',       label: 'as.presetUnitsLessons' },
+        { key: 'full',           icon: 'fa-sitemap',     label: 'as.presetFull' },
+      ],
+      presets: {
+        subjectsOnly:   { grades: { enabled: false, required: false }, units: { enabled: false, required: false }, lessons: { enabled: false, required: false } },
+        gradesSubjects: { grades: { enabled: true,  required: true  }, units: { enabled: false, required: false }, lessons: { enabled: false, required: false } },
+        unitsLessons:   { grades: { enabled: false, required: false }, units: { enabled: true,  required: false }, lessons: { enabled: true,  required: true  } },
+        full:           { grades: { enabled: true,  required: true  }, units: { enabled: true,  required: true  }, lessons: { enabled: true,  required: true  } },
+      },
+      get activePreset() {
+        for (const key of Object.keys(this.presets)) {
+          const p = this.presets[key];
+          const same = ['grades', 'units', 'lessons'].every(lvl =>
+            this.settings[lvl].enabled === p[lvl].enabled && this.settings[lvl].required === p[lvl].required
+          );
+          if (same) return key;
+        }
+        return 'custom';
+      },
+      levelLabel(lvl) { const l = this.settings[lvl].label; return l[this.locale] || l.ar || l.en || ''; },
+      toggleLevel(lvl) {
+        const s = this.settings[lvl];
+        s.enabled = !s.enabled;
+        if (!s.enabled) s.required = false;      // قاعدة: required ⇒ enabled
+      },
+      applyPreset(key) {
+        const p = this.presets[key];
+        if (!p || this.activePreset === key) return;
+        ['grades', 'units', 'lessons'].forEach(lvl => {
+          this.settings[lvl].enabled = p[lvl].enabled;
+          this.settings[lvl].required = p[lvl].required;
+        });
+        this.toastSuccess(this.tf('as.toastPresetApplied', { name: this.t('as.preset' + key.charAt(0).toUpperCase() + key.slice(1)) }));
+      },
+      discardSettings() {
+        this.settings = JSON.parse(this.savedSettings);
+        this.toastSuccess(this.t('as.toastSettingsDiscarded'));
+      },
+      savingSettings: false,
+      async saveSettings() {
+        if (!this.dirty) return;
+        this.savingSettings = true;
+        await sleep(450);
+        this.savedSettings = JSON.stringify(this.settings);
+        this.savingSettings = false;
+        this.toastSuccess(this.t('as.toastSettingsSaved'));
+      },
+
+      /* ---------- الصفوف (مصدر واحد للبطاقات والجدول والشجرة) — Livewire: Grade::withCount('subjects') ---------- */
+      grades: [
+        { id: 7, code: 'G6',  nameAr: 'السادس الأساسي',        nameEn: 'Grade 6',  descAr: 'صف بلا مقررات بعد (لاختبار تأكيد الحذف)', descEn: 'Grade without subjects yet (to test delete confirmation)', sortOrder: 0, subjectsCount: 0,  isActive: true },
+        { id: 1, code: 'G7',  nameAr: 'السابع الأساسي',        nameEn: 'Grade 7',  descAr: 'الصف السابع من المرحلة الأساسية', descEn: 'Seventh grade of basic education', sortOrder: 1, subjectsCount: 8,  isActive: true },
+        { id: 2, code: 'G8',  nameAr: 'الثامن الأساسي',        nameEn: 'Grade 8',  descAr: 'الصف الثامن من المرحلة الأساسية', descEn: 'Eighth grade of basic education', sortOrder: 2, subjectsCount: 7,  isActive: true },
+        { id: 3, code: 'G9',  nameAr: 'التاسع الأساسي',        nameEn: 'Grade 9',  descAr: 'الصف التاسع من المرحلة الأساسية', descEn: 'Ninth grade of basic education', sortOrder: 3, subjectsCount: 9,  isActive: true },
+        { id: 4, code: 'G10', nameAr: 'العاشر (الأول الثانوي)', nameEn: 'Grade 10', descAr: 'الصف العاشر — أول الثانوية', descEn: 'Tenth grade - first year of secondary', sortOrder: 4, subjectsCount: 10, isActive: true },
+        { id: 5, code: 'G11', nameAr: 'الحادي عشر',            nameEn: 'Grade 11', descAr: 'الصف الحادي عشر', descEn: 'Eleventh grade', sortOrder: 5, subjectsCount: 5,  isActive: false },
+        { id: 6, code: 'G12', nameAr: 'الثاني عشر',            nameEn: 'Grade 12', descAr: 'الصف الثاني عشر — الثانوية العامة', descEn: 'Twelfth grade - general secondary', sortOrder: 6, subjectsCount: 3,  isActive: true },
+      ],
+      get sortedGrades() { return [...this.grades].sort((a, b) => (a.sortOrder - b.sortOrder) || (a.id - b.id)); },
+      gradeName(g, loc = this.locale) { return loc === 'en' ? g.nameEn : g.nameAr; },
+      isFirstGrade(g) { return this.sortedGrades[0]?.id === g.id; },
+      isLastGrade(g) { const l = this.sortedGrades; return l[l.length - 1]?.id === g.id; },
+      moveGrade(g, dir) {
+        const list = this.sortedGrades;
+        const i = list.findIndex(x => x.id === g.id), j = i + dir;
+        if (i < 0 || j < 0 || j >= list.length) return;
+        [list[i], list[j]] = [list[j], list[i]];
+        list.forEach((x, k) => { x.sortOrder = k; });
+        this.closeMenu(true);
+        this.announce(this.tf('as.movedTo', { name: this.gradeName(g), pos: j + 1 }));
+      },
+
+      /* ---------- شجرة المعاينة: بيانات + تسطيح المستويات المعطّلة (C2) ---------- */
+      tree: [
+        { key: 'g7', type: 'grade', code: 'G7', children: [
+          { key: 'math7', type: 'subject', code: 'MATH7', name: { ar: 'رياضيات - السابع', en: 'Mathematics - Grade 7' }, children: [
+            { key: 'u-num', type: 'unit', name: { ar: 'الأعداد والعمليات', en: 'Numbers & Operations' }, children: [
+              { key: 'l-int', type: 'lesson', name: { ar: 'الأعداد الصحيحة', en: 'Integers' }, concepts: 5 },
+              { key: 'l-dec', type: 'lesson', name: { ar: 'الكسور العشرية', en: 'Decimal Fractions' }, concepts: 4, incomplete: true },
+            ]},
+            { key: 'u-geo', type: 'unit', name: { ar: 'الهندسة المستوية', en: 'Plane Geometry' }, children: [
+              { key: 'l-area', type: 'lesson', name: { ar: 'المحيط والمساحة', en: 'Perimeter & Area' }, concepts: 3 },
+            ]},
+          ]},
+          { key: 'sci7', type: 'subject', code: 'SCI7', name: { ar: 'علوم - السابع', en: 'Science - Grade 7' }, children: [
+            { key: 'u-cell', type: 'unit', name: { ar: 'الخلية والوراثة', en: 'Cell & Genetics' }, children: [
+              { key: 'l-cell', type: 'lesson', name: { ar: 'تركيب الخلية', en: 'Cell Structure' }, concepts: 6 },
+            ]},
+          ]},
+          { key: 'g7-more', type: 'note', tKey: 'as.moreSubjects', more: 6 },
+        ]},
+        { key: 'g8', type: 'grade', code: 'G8', children: [
+          { key: 'math8', type: 'subject', code: 'MATH8', name: { ar: 'رياضيات - الثامن', en: 'Mathematics - Grade 8' }, children: [] },
+          { key: 'g8-more', type: 'note', tKey: 'as.moreSubjects', more: 6 },
+        ]},
+        { key: 'g11', type: 'grade', code: 'G11', children: [
+          { key: 'g11-note', type: 'note', tKey: 'as.inactiveGradeHint', requires: 'grades' },
+        ]},
+      ],
+      openNodes: { g7: true, math7: true, 'u-num': true, 'u-cell': true },
+      toggleNode(key) { this.openNodes[key] = !this.openNodes[key]; },
+      chipFor(type) {
+        return { grade: this.levelLabel('grades'), unit: this.levelLabel('units'), lesson: this.levelLabel('lessons'), subject: this.t('as.subjectWord') }[type] || '';
+      },
+      noteText(row) { return this.tf(row.tKey, { more: this.pluralize('subjects', row.more || 0) }); },
+      get levelPath() {
+        const S = this.settings;
+        return [
+          S.grades.enabled  && { key: 'g', text: this.levelLabel('grades'),  chip: true, required: S.grades.required },
+          { key: 's', text: this.t('as.subjectWord'), required: true },
+          S.units.enabled   && { key: 'u', text: this.levelLabel('units'),   chip: true, required: S.units.required },
+          S.lessons.enabled && { key: 'l', text: this.levelLabel('lessons'), chip: true, required: S.lessons.required },
+          { key: 'c', text: this.t('as.conceptWord') },
+        ].filter(Boolean);
+      },
+      get treeRows() {
+        const S = this.settings, rows = [];
+        const lvlOf = { grade: 'grades', unit: 'units', lesson: 'lessons' };
+        const shown = (n) => !(n.requires && !S[n.requires].enabled) && (!lvlOf[n.type] || S[lvlOf[n.type]].enabled);
+        const hasVisible = (n) => (n.children || []).some(c => !(c.requires && !S[c.requires].enabled) && (shown(c) || hasVisible(c)));
+        const sumConcepts = (n) => (n.concepts || 0) + (n.children || []).reduce((a, c) => a + sumConcepts(c), 0);
+        const anyIncomplete = (n) => !!n.incomplete || (n.children || []).some(anyIncomplete);
+        // أعمق مستوى ظاهر يعرض عدد المفاهيم (يمتص مفاهيم المستويات المعطّلة تحته)
+        const isLeafLevel = (t) => t === 'lesson' || (!S.lessons.enabled && (t === 'unit' || (t === 'subject' && !S.units.enabled)));
+
+        const walk = (nodes, depth) => {
+          for (const n of nodes) {
+            if (n.requires && !S[n.requires].enabled) continue;
+            let extra = {};
+            if (n.type === 'grade') {
+              const g = this.grades.find(x => x.code === n.code);
+              if (!g) continue;                                   // صف محذوف
+              extra = { name: { ar: g.nameAr, en: g.nameEn }, inactive: !g.isActive, subjectsCount: g.subjectsCount };
+            }
+            if (!shown(n)) { walk(n.children || [], depth); continue; }   // تسطيح: رفع الأبناء
+            if (n.type === 'note') { rows.push({ key: n.key, type: 'note', depth, tKey: n.tKey, more: n.more }); continue; }
+            const leaf = isLeafLevel(n.type);
+            rows.push({
+              key: n.key, type: n.type, name: n.name, code: n.code, depth, ...extra,
+              hasKids: hasVisible(n),
+              lessonCount: (n.children || []).filter(c => c.type === 'lesson').length,
+              showConcepts: leaf, concepts: leaf ? sumConcepts(n) : 0, incomplete: leaf && anyIncomplete(n),
+            });
+            if (this.openNodes[n.key]) walk(n.children || [], depth + 1);
+          }
+        };
+        walk(this.tree, 0);
+        return rows;
+      },
+
+      /* ---------- قائمة الإجراءات السريعة (Kebab) — موضع ثابت + لوحة مفاتيح + إعادة تركيز ---------- */
+      openMenuId: null, kebabGrade: null, menuTrigger: null, lastTrigger: null, menuPos: { top: 0, left: 0 },
+      lastW: window.innerWidth,
+      toggleMenu(grade, evt) {
+        if (this.openMenuId === grade.id) { this.closeMenu(); return; }
+        const btn = evt.currentTarget;
+        this.menuTrigger = btn;
+        const r = btn.getBoundingClientRect();
+        const menuW = 256, gap = 6, pad = 8;
+        const isRtl = document.documentElement.dir === 'rtl';
+        // محاذاة حافة النهاية للقائمة مع حافة النهاية للزر (تبقى داخل البطاقة)
+        let left = isRtl ? r.left : r.right - menuW;
+        left = Math.min(Math.max(pad, left), window.innerWidth - menuW - pad);
+        const place = (h) => (r.bottom + gap + h > window.innerHeight - pad) ? Math.max(pad, r.top - h - gap) : r.bottom + gap;
+        this.menuPos = { top: place(290), left };
+        this.kebabGrade = grade;
+        this.openMenuId = grade.id;
+        // x-show يُظهر العنصر في إطار الرسم التالي: نقيس الارتفاع الفعلي ثم ننقل التركيز إلى أول عنصر
+        this.$nextTick(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+          const el = this.$refs.kebab;
+          if (!el || this.openMenuId !== grade.id) return;
+          if (el.offsetHeight) this.menuPos.top = place(el.offsetHeight);
+          this.$focus.within(el).first();
+        })));
+      },
+      closeMenu(restore = true) {
+        if (this.openMenuId === null) return;
+        this.openMenuId = null;
+        if (restore && this.menuTrigger) this.menuTrigger.focus();
+      },
+      onResize() {
+        if (window.innerWidth === this.lastW) return;      // تجاهل تغيّر الارتفاع بسبب شريط عنوان الجوال
+        this.lastW = window.innerWidth;
+        this.closeMenu(false);
+      },
+      restoreFocus() {
+        const el = this.lastTrigger;
+        this.lastTrigger = null;
+        this.$nextTick(() => {
+          if (el && el.isConnected && el.offsetParent !== null) el.focus();
+          else document.getElementById('main')?.focus();
+        });
+      },
+
+      /* ---------- اللوحة الجانبية (Slide-over): إضافة / تعديل صف ---------- */
+      panelOpen: false, editingGrade: null, formSubmitted: false, busy: false,
+      form: { code: '', nameAr: '', nameEn: '', descAr: '', descEn: '', sortOrder: 0, isActive: true },
+      get errors() {
+        const e = {}, f = this.form;
+        if (!f.code) e.code = this.t('as.codeRequired');
+        else if (this.grades.some(g => g.code.toUpperCase() === f.code.toUpperCase() && g.id !== this.editingGrade?.id)) e.code = this.t('as.codeTaken');
+        if (!f.nameAr) e.nameAr = this.t('as.nameRequired');
+        if (!f.nameEn) e.nameEn = this.t('as.nameRequired');
+        return e;
+      },
+      openCreateGrade() {
+        this.lastTrigger = document.activeElement;
+        this.editingGrade = null;
+        this.formSubmitted = false;
+        const next = this.grades.reduce((m, g) => Math.max(m, g.sortOrder), -1) + 1;
+        this.form = { code: '', nameAr: '', nameEn: '', descAr: '', descEn: '', sortOrder: next, isActive: true };
+        this.panelOpen = true;
+      },
+      openEditGrade(grade) {
+        this.lastTrigger = this.menuTrigger;
+        this.closeMenu(false);
+        this.editingGrade = grade;
+        this.formSubmitted = false;
+        this.form = { code: grade.code, nameAr: grade.nameAr, nameEn: grade.nameEn, descAr: grade.descAr || '', descEn: grade.descEn || '', sortOrder: grade.sortOrder, isActive: grade.isActive };
+        this.panelOpen = true;
+      },
+      closePanel() {
+        if (this.busy || !this.panelOpen) return;
+        this.panelOpen = false;
+        this.restoreFocus();
+      },
+      async submitGrade() {
+        this.formSubmitted = true;
+        if (Object.keys(this.errors).length) {
+          await this.$nextTick();
+          this.$refs.gradeForm.querySelector('[aria-invalid="true"]')?.focus();
+          return;
+        }
+        this.busy = true;
+        await sleep(500);
+        const data = { ...this.form, code: this.form.code.toUpperCase(), sortOrder: Number.isFinite(+this.form.sortOrder) && this.form.sortOrder !== '' ? +this.form.sortOrder : this.grades.length };
+        if (this.editingGrade) Object.assign(this.editingGrade, data);
+        else this.grades.push({ id: Date.now(), subjectsCount: 0, ...data });
+        this.busy = false;
+        this.toastSuccess(this.t(this.editingGrade ? 'as.toastSave' : 'as.toastCreate'));
+        this.panelOpen = false;
+        this.restoreFocus();
+      },
+
+      /* ---------- النوافذ المنبثقة (حارس الحذف / تأكيد الحذف) ---------- */
+      modal: null, guardTarget: null, deleteTarget: null,
+      closeModal() {
+        if (this.busy || !this.modal) return;
+        this.modal = null; this.guardTarget = null; this.deleteTarget = null;
+        this.restoreFocus();
+      },
+
+      toggleGradeStatus(grade) {
+        grade.isActive = !grade.isActive;
+        this.closeMenu(true);
+        const name = this.gradeName(grade);
+        this.toastUndo(this.tf(grade.isActive ? 'as.toastActivate' : 'as.toastDeactivate', { name }), () => { grade.isActive = !grade.isActive; });
+      },
+      deactivateFromGuard() {
+        const g = this.guardTarget;
+        if (!g) return;
+        this.modal = null; this.guardTarget = null;
+        g.isActive = false;
+        this.restoreFocus();
+        this.toastUndo(this.tf('as.toastDeactivate', { name: this.gradeName(g) }), () => { g.isActive = true; });
+      },
+
+      /* ---------- StructureDeletionGuard: يمنع حذف صف مرتبط بمقررات (يُفرض أيضًا في الخادم) ---------- */
+      confirmDeleteGrade(grade) {
+        this.lastTrigger = this.menuTrigger;
+        this.closeMenu(false);
+        if (grade.subjectsCount > 0) { this.guardTarget = grade; this.modal = 'guard'; }
+        else { this.deleteTarget = grade; this.modal = 'delete'; }
+      },
+      async deleteConfirmed() {
+        const g = this.deleteTarget;
+        if (!g) return;
+        this.busy = true;
+        await sleep(400);
+        this.grades = this.grades.filter(x => x.id !== g.id);
+        this.busy = false;
+        this.toastSuccess(this.tf('as.toastDelete', { name: this.gradeName(g) }));
+        this.modal = null;
+        this.deleteTarget = null;
+        this.restoreFocus();                        // الصف حُذف ← يعود التركيز إلى <main>
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastBase(extra) {
+        if (!window.Swal) return Promise.resolve({});
+        return Swal.fire(Object.assign({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          showConfirmButton: false,
+          timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+          // WCAG 2.2.1: إيقاف المؤقت عند المرور أو التركيز
+          didOpen: (el) => {
+            el.addEventListener('mouseenter', Swal.stopTimer);
+            el.addEventListener('mouseleave', Swal.resumeTimer);
+            el.addEventListener('focusin', Swal.stopTimer);
+          },
+        }, extra));
+      },
+      toastSuccess(msg) { this.toastBase({ title: msg }); },
+      toastUndo(msg, undo) {
+        this.toastBase({
+          title: msg, timer: 6000, timerProgressBar: true,
+          showConfirmButton: true, confirmButtonText: this.t('as.undo'), buttonsStyling: false,
+          customClass: { popup: 'firob-swal firob-toast', confirmButton: 'btn btn-sm btn-outline' },
+        }).then(r => { if (r.isConfirmed) { undo(); this.toastSuccess(this.t('as.undone')); } });
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        this.savedSettings = JSON.stringify(this.settings);
+        document.title = this.t('docTitle');
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        window.addEventListener('beforeunload', (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — كل نافذة/لوحة تعالج Esc بنفسها مع إعادة التركيز
+      closeAll() {
+        this.notifOpen = false; this.profileOpen = false; this.mobileNav = false;
+        this.closeMenu(true);
+      },
+    };
+  }
+</script>
+</body>
+</html>

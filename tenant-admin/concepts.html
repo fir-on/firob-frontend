@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta id="theme-color" name="theme-color" content="#F1EDE7">
+<title>إدارة المفاهيم — FirOb</title>
+
+<!-- ① تطبيق الثيم قبل الرسم (يمنع وميض FOUC) -->
+<script>
+  (function () {
+    try {
+      var s = localStorage.getItem('firob-theme');
+      var d = s ? s === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', d);
+      var m = document.getElementById('theme-color');
+      if (m) m.setAttribute('content', d ? '#09141B' : '#F1EDE7');
+      var loc = localStorage.getItem('firob-locale') || 'ar';
+      document.documentElement.lang = loc;
+      document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+    } catch (e) {}
+  })();
+</script>
+
+<!-- ①-ب طبقة النموذج الأولي: توحيد الروابط + تثبيت اللغة (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-prototype.js"></script>
+<!-- بيانات تجريبية مشتركة مع concept-editor.html (تُحذف عند الانتقال إلى Laravel) -->
+<script src="../asset/js/firob-mock-data.js"></script>
+<!-- نسخة احتياطية مطابقة للملف المشترك: تعمل الصفحة حتى لو لم يُوضع firob-mock-data.js في asset/js -->
+<script>
+window.FIROB_MOCK = window.FIROB_MOCK || {
+  /* إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس شاشة ADM-05 */
+  structure: {
+    units:   { enabled: true, required: true },
+    lessons: { enabled: true, required: true },
+  },
+
+  /* المقررات (Subject) — الصف خاصية على المقرر (subjects.grade_id) */
+  courses: [
+    { id: 'math-g7', ar: 'الرياضيات - الصف السابع',     en: 'Mathematics - Grade 7',     gradeAr: 'السابع الأساسي', gradeEn: 'Grade 7', icon: 'fa-square-root-variable', cls: 'bg-primary-500/10 text-brand' },
+    { id: 'sci-g8',  ar: 'العلوم العامة - الصف الثامن', en: 'General Science - Grade 8', gradeAr: 'الثامن الأساسي', gradeEn: 'Grade 8', icon: 'fa-flask',                cls: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+    { id: 'arab-g9', ar: 'اللغة العربية - الصف التاسع', en: 'Arabic Language - Grade 9', gradeAr: 'التاسع الأساسي', gradeEn: 'Grade 9', icon: 'fa-book-open',            cls: 'bg-accent-500/20 text-yellow-800 dark:text-accent-500' },
+  ],
+
+  /* الوحدات (Unit — units.subject_id) */
+  units: [
+    { id: 'u101', courseId: 'math-g7', ar: 'الوحدة الأولى: الأعداد الصحيحة',      en: 'Unit 1: Integers' },
+    { id: 'u102', courseId: 'math-g7', ar: 'الوحدة الثانية: الكسور والنسب',       en: 'Unit 2: Fractions & Ratios' },
+    { id: 'u201', courseId: 'sci-g8',  ar: 'الوحدة الأولى: الخلية ومكوناتها',     en: 'Unit 1: The Cell & Its Components' },
+    { id: 'u202', courseId: 'sci-g8',  ar: 'الوحدة الثانية: التفاعلات الكيميائية', en: 'Unit 2: Chemical Reactions' },
+    { id: 'u301', courseId: 'arab-g9', ar: 'الوحدة الأولى: النصوص الأدبية',       en: 'Unit 1: Literary Texts' },
+  ],
+
+  /* الدروس (Lesson — lessons.unit_id) */
+  lessons: [
+    { id: 'l1011', unitId: 'u101', ar: 'جمع الأعداد الصحيحة وطرحها',        en: 'Adding & Subtracting Integers' },
+    { id: 'l1012', unitId: 'u101', ar: 'ضرب الأعداد الصحيحة وقسمتها',       en: 'Multiplying & Dividing Integers' },
+    { id: 'l1021', unitId: 'u102', ar: 'تبسيط الكسور',                      en: 'Simplifying Fractions' },
+    { id: 'l1022', unitId: 'u102', ar: 'النسبة والتناسب',                   en: 'Ratio & Proportion' },
+    { id: 'l2011', unitId: 'u201', ar: 'مكونات الخلية النباتية',             en: 'Plant Cell Components' },
+    { id: 'l2012', unitId: 'u201', ar: 'تركيب الخلية النباتية والحيوانية',   en: 'Plant & Animal Cell Structure' },
+    { id: 'l2021', unitId: 'u202', ar: 'أنواع التفاعلات الكيميائية',         en: 'Types of Chemical Reactions' },
+    { id: 'l2022', unitId: 'u202', ar: 'موازنة المعادلات الكيميائية',        en: 'Balancing Chemical Equations' },
+    { id: 'l3011', unitId: 'u301', ar: 'تحليل النص الشعري',                 en: 'Analysing Poetry' },
+    { id: 'l3012', unitId: 'u301', ar: 'عناصر القصة القصيرة',               en: 'Short Story Elements' },
+  ],
+
+  /* المفاهيم (Concept) — links = withCount(['learningObjects', 'questions']) */
+  concepts: [
+    { id: 1,  code: 'CPT-MATH-001', ar: 'الأعداد الصحيحة الموجبة والسالبة', en: 'Positive & Negative Integers',
+      descAr: 'يشرح مفهوم الأعداد الصحيحة الموجبة والسالبة وطرق تمثيلها على خط الأعداد.',
+      descEn: 'Explains positive and negative integers and how to represent them on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1011', links: { objects: 6, questions: 24 } },
+    { id: 2,  code: 'CPT-MATH-002', ar: 'خاصية الإبدال في الضرب', en: 'Commutative Property of Multiplication',
+      descAr: 'يوضّح أن ترتيب العددين المضروبين لا يغيّر حاصل الضرب.',
+      descEn: 'Shows that the order of the two multiplied numbers does not change the product.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: 'l1012', links: { objects: 3, questions: 10 } },
+    { id: 3,  code: 'CPT-MATH-003', ar: 'القيمة المطلقة للعدد', en: 'Absolute Value of a Number',
+      descAr: 'يعرّف القيمة المطلقة بأنها المسافة بين العدد والصفر على خط الأعداد.',
+      descEn: 'Defines absolute value as the distance between a number and zero on the number line.',
+      courseId: 'math-g7', unitId: 'u101', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 4,  code: 'CPT-SCI-004', ar: 'تركيب الخلية النباتية والحيوانية', en: 'Plant & Animal Cell Structure',
+      descAr: 'يقارن بين مكونات الخلية النباتية والخلية الحيوانية ووظائف كل عضو فيها.',
+      descEn: 'Compares the components of plant and animal cells and the function of each organelle.',
+      courseId: 'sci-g8', unitId: 'u201', lessonId: 'l2012', links: { objects: 4, questions: 12 } },
+    { id: 5,  code: 'CPT-SCI-005', ar: 'موازنة المعادلة الكيميائية', en: 'Balancing Chemical Equations',
+      descAr: 'يشرح كيفية موازنة عدد الذرات في طرفي المعادلة الكيميائية باستخدام المعاملات.',
+      descEn: 'Explains how to balance atom counts on both sides of a chemical equation using coefficients.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: null, links: { objects: 2, questions: 0 } },
+    { id: 6,  code: 'CPT-ARAB-006', ar: 'عناصر القصة القصيرة: الشخصية', en: 'Elements of the Short Story: Character',
+      descAr: 'يتناول دور الشخصية في بناء الحبكة وأنواعها في القصة القصيرة.',
+      descEn: 'Covers the role of character in building the plot and its types within a short story.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3012', links: { objects: 5, questions: 18 } },
+    { id: 7,  code: 'CPT-UNFL-007', ar: 'الصورة الشعرية', en: 'Poetic Imagery',
+      descAr: 'يعرّف الصورة الشعرية ودورها في تجسيد المعنى وإثراء النص الأدبي.',
+      descEn: 'Defines poetic imagery and its role in embodying meaning and enriching literary text.',
+      courseId: null, unitId: null, lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 8,  code: 'CPT-MATH-008', ar: 'تبسيط الكسور الاعتيادية', en: 'Simplifying Common Fractions',
+      descAr: 'يشرح قسمة البسط والمقام على العامل المشترك الأكبر للوصول إلى أبسط صورة.',
+      descEn: 'Explains dividing numerator and denominator by their GCD to reach the simplest form.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: 'l1021', links: { objects: 2, questions: 8 } },
+    { id: 9,  code: 'CPT-MATH-009', ar: 'النسبة المئوية', en: 'Percentages',
+      descAr: 'يعرّف النسبة المئوية كنسبة من مئة ويطبّقها على مسائل حياتية.',
+      descEn: 'Defines a percentage as a ratio out of one hundred and applies it to everyday problems.',
+      courseId: 'math-g7', unitId: 'u102', lessonId: null, links: { objects: 0, questions: 0 } },
+    { id: 10, code: 'CPT-SCI-010', ar: 'التفاعلات الطاردة والماصة للحرارة', en: 'Exothermic & Endothermic Reactions',
+      descAr: 'يميّز بين التفاعلات التي تُطلق الحرارة والتي تمتصها مع أمثلة من الحياة اليومية.',
+      descEn: 'Distinguishes reactions that release heat from those that absorb it, with everyday examples.',
+      courseId: 'sci-g8', unitId: 'u202', lessonId: 'l2021', links: { objects: 1, questions: 6 } },
+    { id: 11, code: 'CPT-ARAB-011', ar: 'الوزن الشعري', en: 'Poetic Metre',
+      descAr: 'يعرّف الوزن الشعري والتفعيلات الأساسية في الشعر العربي.',
+      descEn: 'Defines poetic metre and the basic feet of Arabic poetry.',
+      courseId: 'arab-g9', unitId: 'u301', lessonId: 'l3011', links: { objects: 0, questions: 0 } },
+    { id: 12, code: 'CPT-ARAB-012', ar: 'التشبيه', en: 'Simile',
+      descAr: 'يعرّف التشبيه وأركانه الأربعة وأنواعه.',
+      descEn: 'Defines the simile, its four components and its types.',
+      courseId: 'arab-g9', unitId: null, lessonId: null, links: { objects: 3, questions: 0 } },
+  ],
+};
+</script>
+
+<!-- ② الخطوط: Tajawal (عربي) + Manrope (إنجليزي) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../asset/images/firob-favicon.png">
+<link rel="apple-touch-icon" href="../asset/images/firob-favicon.png">
+
+<!-- ③ الأيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer">
+
+<!-- ④ Tailwind + التوكنز المعتمدة (Style Guide v1.0) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      fontFamily: { sans: ['Tajawal', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+      colors: {
+        page: v('page'), card: v('card'), field: v('field'), ink: v('ink'), muted: v('muted'),
+        line: v('line'), 'line-strong': v('line-strong'),
+        brand: v('brand'), soft: v('soft'), 'soft-2': v('soft-2'), danger: v('danger'),
+        onaccent: '#1E293B',
+        primary: { 50:'#E7F4F8', 100:'#C9E7EF', 200:'#A3D5E2', 500:'#0E80A1', 600:'#0C6F8B', 700:'#0B6680', 800:'#094F63', 900:'#073C4C' },
+        accent:  { 100:'#FDF6CC', 200:'#FBEE96', 500:'#F7D933', 600:'#E8C81F', 700:'#CFAE12' },
+        success: { 50:'#ECFDF5', 100:'#D1FAE5', 500:'#10B981', 700:'#047857', 800:'#065F46' },
+        warning: { 50:'#FFFBEB', 100:'#FEF3C7', 500:'#F59E0B', 700:'#B45309', 800:'#92400E' },
+        error:   { 50:'#FEF2F2', 100:'#FEE2E2', 500:'#EF4444', 600:'#DC2626', 700:'#B91C1C', 800:'#991B1B' },
+        info:    { 50:'#EFF6FF', 100:'#DBEAFE', 500:'#3B82F6', 700:'#1D4ED8', 800:'#1E40AF' },
+        neutral: { 200:'#E4DED4', 300:'#D6CFC3' },
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(30,41,59,.06), 0 12px 32px -12px rgba(30,41,59,.14)',
+        pop:  '0 20px 50px -12px rgba(7,60,76,.45)',
+      },
+    } }
+  }
+</script>
+
+<!-- ⑤ طبقة التوكنز والمكونات -->
+<style type="text/tailwindcss">
+  @layer base {
+    :root {
+      color-scheme: light;
+      --page: 241 237 231;  --card: 251 249 246;  --field: 255 255 255;
+      --ink: 30 41 59;      --muted: 71 85 105;
+      --line: 226 232 240;  --line-strong: 127 143 166;
+      --brand: 11 102 128;  --soft: 231 244 248;  --soft-2: 201 231 239;
+      --danger: 185 28 28;
+      --topbar-h: calc(4rem + env(safe-area-inset-top, 0px));
+      --ring: 0 0 0 2px rgb(var(--card)), 0 0 0 4px rgb(var(--brand)), 0 0 0 7px rgba(247,217,51,.55);
+    }
+    .dark {
+      color-scheme: dark;
+      --page: 9 20 27;      --card: 15 30 40;     --field: 10 22 30;
+      --ink: 232 240 245;   --muted: 157 178 192;
+      --line: 34 55 69;     --line-strong: 100 125 143;
+      --brand: 110 205 228; --soft: 20 52 66;     --soft-2: 27 68 85;
+      --danger: 252 165 165;
+    }
+    html { font-family: 'Tajawal', 'Manrope', ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    html[lang="en"] { font-family: 'Manrope', 'Tajawal', ui-sans-serif, system-ui, sans-serif; }
+
+    /* شبكة أمان ضد أي سكرول أفقي */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+    body { @apply bg-page text-ink antialiased transition-colors duration-300; }
+    img, svg, video, canvas { max-width: 100%; }
+    [x-cloak] { display: none !important; }
+    :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }  /* outline لا يتعارض مع ظلال المكونات ويعمل في forced-colors */
+    @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    /* إلغاء أيقونة التفريغ الأصلية لحقول type="search" — تتعارض مع أيقونة البحث وزر التفريغ المخصص، وتسوء في RTL */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; }
+  }
+
+  @layer components {
+    .app-h { min-height: 100vh; min-height: 100dvh; }
+    .panel { @apply min-w-0 rounded-2xl border border-line bg-card shadow-card; }
+    .icon-btn { @apply relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.9375rem] font-bold text-muted transition hover:bg-soft hover:text-brand; }
+    .nav-link[aria-current="page"] { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25; }
+    .nav-link i { @apply w-5 shrink-0 text-center text-base; }
+    .act { @apply inline-grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line text-sm transition hover:bg-soft; }
+
+    /* ---------- تلميحات أزرار الإجراءات (Action Tooltips) ---------- */
+    .tooltip-bubble {
+      @apply pointer-events-none absolute -top-9 left-1/2 z-30 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg border border-white/10 bg-ink px-2.5 py-1 text-xs font-medium tracking-wide text-card opacity-0 shadow-xl backdrop-blur-md transition-all duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:scale-100 group-focus-visible:opacity-100;
+    }
+    .tooltip-arrow {
+      @apply pointer-events-none absolute -top-3 left-1/2 z-30 h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink opacity-0 transition-all duration-200 ease-out;
+      @apply group-hover:-translate-y-1 group-hover:opacity-100 group-focus-visible:-translate-y-1 group-focus-visible:opacity-100;
+    }
+
+    /* ---------- الشارات (StatusBadge) ---------- */
+    .badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold leading-5; }
+    .badge-success { @apply bg-success-500/15 text-success-700 dark:text-success-500; }
+    .badge-accent  {@apply bg-accent-500/20 text-yellow-900 dark:text-accent-500; }
+    .badge-muted   { @apply bg-line text-muted; }
+    .badge-info    { @apply bg-info-500/15 text-info-700 dark:text-blue-300; }
+    .badge-danger  { @apply bg-error-500/15 text-error-700 dark:text-red-300; }
+    .badge-neutral { @apply bg-neutral-200 text-ink dark:bg-soft-2; }
+    .badge-primary { @apply bg-primary-500/15 text-brand; }
+    .badge-warning { @apply bg-warning-500/15 text-warning-800 dark:text-warning-500; }  /* 700 كان 4.15:1 على الصفوف الملوّنة */
+
+    /* ---------- عناصر النموذج ---------- */
+    .label { @apply mb-1.5 block text-sm font-bold text-ink; }
+    .hint  { @apply mt-1.5 text-xs text-muted; }
+    .err   { @apply mt-1.5 flex items-center gap-1.5 text-xs font-bold text-danger; }
+    .field { @apply block w-full rounded-lg border border-line-strong bg-field px-3.5 py-2.5 text-sm text-ink transition placeholder:text-muted; }
+    .field:hover { @apply border-primary-500; }
+    .field:focus { @apply border-primary-700 outline-none; box-shadow: var(--ring); }
+    .field[aria-invalid="true"] { @apply border-error-600 bg-error-500/5; }
+    .field:disabled { @apply cursor-not-allowed border-line bg-soft text-muted; }
+
+    /* ---------- الأزرار ---------- */
+    .btn { @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold leading-5 transition disabled:pointer-events-none disabled:opacity-50; }
+    .btn-sm { @apply px-3 py-1.5 text-xs; }
+    .btn-primary { @apply bg-primary-500 text-white shadow-lg shadow-primary-500/25 hover:bg-primary-600; }
+    .btn-outline { @apply border border-line bg-card text-ink hover:bg-soft; }
+    .btn-danger  { @apply bg-error-600 text-white hover:bg-error-700; }
+    .btn-accent  { @apply bg-accent-500 text-onaccent hover:bg-accent-600; }
+
+    /* ---------- القوائم المنسدلة ---------- */
+    .menu { @apply z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-pop;
+            position: fixed; inset-inline: .75rem; top: calc(var(--topbar-h) + .5rem); }
+    @media (min-width: 640px) {
+      .menu { position: absolute; inset-inline-start: auto; inset-inline-end: 0; top: 100%; margin-top: .5rem; }
+    }
+    .menu-item { @apply flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm font-bold text-ink transition hover:bg-soft focus-visible:bg-soft; }
+    .menu-item:disabled { @apply cursor-not-allowed opacity-40 hover:bg-transparent; }
+    .menu-item:focus-visible { outline-offset: -2px; }
+
+    /* ---------- قائمة الاختيار المخصصة (Combobox Listbox) ---------- */
+    .combo-list { @apply absolute top-full z-50 mt-1.5 w-full overflow-y-auto rounded-xl border border-line bg-card p-1.5 shadow-pop; max-height: 14rem; }
+    .combo-option { @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-start text-sm font-medium text-ink transition-colors hover:bg-soft; }
+    .combo-option.is-active   { @apply bg-soft; }
+    .combo-option.is-selected { @apply bg-primary-500/10 font-bold text-brand; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--line-strong)) transparent; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; }
+    .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { background-color: rgb(var(--line-strong)); border-radius: 9999px; }
+
+    /* ---------- النافذة المنبثقة / اللوحة الجانبية ---------- */
+    .modal-panel { @apply relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-pop; }
+
+    /* ---------- SweetAlert2: مواءمة مع نظام التصميم ---------- */
+    .firob-swal { font-family: inherit !important; border-radius: 1rem !important; background: rgb(var(--card)) !important; color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-title { color: rgb(var(--ink)) !important; }
+    .firob-swal .swal2-html-container { color: rgb(var(--muted)) !important; }
+    .firob-swal .swal2-actions { gap: .5rem; }
+    .firob-toast { box-shadow: 0 20px 50px -12px rgba(7,60,76,.45) !important; }
+
+    /* ---------- مقياس الحصة / شريط التقدّم (QuotaMeter) ---------- */
+    .quota-track { @apply h-1.5 w-full overflow-hidden rounded-full bg-line; }
+    .quota-fill { @apply h-full rounded-full transition-all duration-500; }
+
+    /* ---------- مفتاح التبديل (Settings Switch) ---------- */
+    .switch-track { @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-line-strong bg-line-strong/25 transition-colors duration-200; }
+    .switch-track[aria-checked="true"] { @apply border-primary-700 bg-primary-500; }
+    .switch-track:disabled, .switch-track[aria-disabled="true"] { @apply cursor-not-allowed opacity-50; }
+    .switch-knob { @apply inline-block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow ring-1 ring-line-strong/60 dark:bg-ink transition-transform duration-200 ltr:translate-x-0.5 rtl:-translate-x-0.5; }
+    .switch-track[aria-checked="true"] .switch-knob { @apply ltr:translate-x-5 rtl:-translate-x-5; }
+    /* زر كامل بدور switch يحوي مسارًا مرئيًا (C3) */
+    .switch-btn[aria-checked="true"] .switch-track { @apply border-primary-700 bg-primary-500; }
+    .switch-btn[aria-checked="true"] .switch-knob { @apply ltr:translate-x-5 rtl:-translate-x-5; }
+    .switch-btn[aria-checked="true"] { @apply border-primary-500/60 bg-primary-500/10; }
+
+    /* ---------- بطاقة المقرر / المفهوم (Icon Chip) ---------- */
+    .course-icon { @apply grid h-12 w-12 shrink-0 place-items-center rounded-xl text-lg; }
+  }
+</style>
+
+<!-- ⑥ Alpine.js (+ Focus لحصر التركيز داخل النوافذ المنبثقة + Collapse) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- ⑦ SweetAlert2 -->
+<script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>  <!-- يُفضَّل تثبيت إصدار دقيق في Vite -->
+</head>
+
+<body x-data="conceptsManager()" x-init="init()" @keydown.escape.window="closeAll()"
+      @keydown.window="onGlobalKey($event)"
+      @scroll.window="notifOpen = false" @resize.window="notifOpen = false"
+      :class="{ 'overflow-hidden': (mobileNav && mobile) || isDeleteModalOpen }">
+
+<a href="#main" class="sr-only z-[100] rounded-xl bg-accent-500 px-4 py-2 font-bold text-onaccent focus:not-sr-only focus:fixed focus:start-4 focus:top-4" x-text="t('skipLink')"></a>
+
+<div class="app-h flex w-full">
+
+  <!-- ================= Backdrop (الجوال) ================= -->
+  <div x-cloak x-show="mobileNav && mobile" x-transition.opacity @click="mobileNav = false"
+       class="fixed inset-0 z-40 bg-primary-900/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
+
+  <!-- ================= Sidebar ================= -->
+  <aside id="sidebar" :aria-label="t('mainMenu')"
+         class="fixed inset-y-0 start-0 z-50 flex w-72 max-w-[85vw] shrink-0 flex-col border-e border-line bg-card transition-[transform,width,visibility] duration-300 lg:sticky lg:top-0 lg:h-[100dvh] lg:max-w-none"
+         :class="[
+           mobileNav ? 'translate-x-0' : 'max-lg:invisible max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
+           collapsed ? 'lg:w-20' : 'lg:w-72'
+         ]"
+         :aria-hidden="(mobile && !mobileNav).toString()" :inert="mobile && !mobileNav">
+
+    <!-- الشعار -->
+    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4" :class="!expanded && 'lg:justify-center lg:px-0'">
+      <a href="TenantDashboard.html" class="inline-flex min-w-0 flex-1 items-center gap-3" :class="!expanded && 'lg:flex-none lg:justify-center'">
+        <span class="inline-flex shrink-0 items-center p-0">
+          <img src="../asset/images/firob-logo.png" alt="FirOb" class="mx-1 -my-2.5 block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        </span>
+        <span class="min-w-0 flex-1" x-show="expanded">
+          <p class="truncate text-base font-extrabold leading-tight" x-text="t('appTitle')"></p>
+          <p class="truncate text-xs font-bold text-muted" x-text="t('appSubtitle')"></p>
+        </span>
+      </a>
+      <button type="button" class="icon-btn lg:hidden" @click="mobileNav = false" :aria-label="t('closeMenu')">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <!-- روابط التنقل -->
+    <nav class="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-5" :aria-label="t('mainNav')">
+      <template x-for="group in nav" :key="group.group">
+        <div>
+          <p class="mb-2 truncate px-3 text-xs font-extrabold tracking-wide text-muted" x-show="expanded" x-text="t('navGroups.' + group.group)"></p>
+          <ul class="space-y-1" role="list">
+            <template x-for="item in group.items" :key="item.key">
+              <li>
+                <a :href="item.href || '#'" class="nav-link" @click="if (!item.href) { $event.preventDefault(); setActive(item.key); }"
+                   :aria-current="active === item.key ? 'page' : null"
+                   :title="expanded ? null : t('navItems.' + item.key)"
+                   :aria-label="expanded ? null : t('navItems.' + item.key)"
+                   :class="!expanded && 'justify-center'">
+                  <i :class="item.icon" aria-hidden="true"></i>
+                  <span class="min-w-0 flex-1 truncate" x-show="expanded" x-text="t('navItems.' + item.key)"></span>
+                  <span x-show="(item.key === 'notificationCenter' ? unread : item.count) && expanded"
+                        class="shrink-0 rounded-full text-xs"
+                        :class="item.tone === 'primary' ? 'bg-primary-500/10 px-2 py-0.5 font-bold text-brand' : 'bg-accent-500 px-2 font-extrabold text-onaccent'"
+                        x-text="item.key === 'notificationCenter' ? unread : item.count"></span>
+                </a>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </template>
+    </nav>
+
+    <!-- تبديل الطي (سطح المكتب) -->
+    <div class="hidden shrink-0 border-t border-line p-3 lg:block">
+      <button type="button" class="icon-btn w-full" :class="expanded && 'justify-start gap-3 px-3'" @click="toggleSidebar()" :aria-label="t('toggleSidebar')">
+        <i class="fa-solid rtl:-scale-x-100" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'" aria-hidden="true"></i>
+        <span class="truncate text-sm font-bold" x-show="expanded" x-text="t('collapseSidebar')"></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= العمود الرئيسي ================= -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <!-- ================= Topbar ================= -->
+    <header class="sticky top-0 z-30 flex flex-col border-b border-line bg-card/85 backdrop-blur-md">
+      <div class="flex items-center gap-1 px-2 sm:gap-2 sm:px-6" style="height: var(--topbar-h); padding-top: env(safe-area-inset-top, 0px);">
+
+        <button type="button" class="icon-btn" @click="toggleSidebar()" aria-controls="sidebar"
+                :aria-expanded="(mobile ? mobileNav : !collapsed).toString()" :aria-label="t('toggleSidebar')">
+          <i class="fa-solid fa-bars-staggered" aria-hidden="true"></i>
+        </button>
+
+        <form role="search" class="relative hidden min-w-0 max-w-md flex-1 md:block" @submit.prevent>
+          <label for="q" class="sr-only" x-text="t('searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-line-strong" aria-hidden="true"></i>
+          <input id="q" x-ref="globalSearch" type="search" :placeholder="t('searchPlaceholder')"
+                 class="h-10 w-full min-w-0 rounded-xl border border-line bg-field pe-16 ps-10 text-base text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+          <kbd dir="ltr" aria-hidden="true"
+               class="pointer-events-none absolute end-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-line-strong bg-page px-1.5 py-0.5 text-[11px] font-bold text-muted sm:inline-flex">Ctrl K</kbd>
+        </form>
+
+        <div class="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          <button type="button"
+                  class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-muted transition hover:bg-soft hover:text-brand"
+                  @click="toggleLocale()" :lang="locale === 'ar' ? 'en' : 'ar'"
+                  :aria-label="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'"
+                  :title="locale === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'">
+            <i class="fa-solid fa-globe" aria-hidden="true"></i>
+            <span class="text-xs font-extrabold" x-text="locale === 'ar' ? 'EN' : 'ع'"></span>
+          </button>
+
+          <button type="button" class="icon-btn" @click="toggleTheme()" :aria-pressed="dark.toString()"
+                  :aria-label="dark ? t('lightMode') : t('darkMode')">
+            <i class="fa-solid" :class="dark ? 'fa-sun' : 'fa-moon'" aria-hidden="true"></i>
+          </button>
+
+          <div class="sm:relative" @click.outside="notifOpen = false">
+            <button type="button" class="icon-btn" @click="notifOpen = !notifOpen; profileOpen = false"
+                    :aria-expanded="notifOpen.toString()" aria-controls="notif-menu"
+                    :aria-label="t('notifications')">
+              <i class="fa-regular fa-bell" aria-hidden="true"></i>
+              <span x-show="unread" class="absolute end-2 top-2 h-2.5 w-2.5 rounded-full bg-error-500 ring-2 ring-card" aria-hidden="true"></span>
+            </button>
+            <div id="notif-menu" x-cloak x-show="notifOpen" x-transition.opacity.scale.95 class="menu sm:w-80" role="region" :aria-label="t('notifications')">
+              <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <p class="font-extrabold" x-text="t('notifications')"></p>
+                <button type="button" class="text-xs font-bold text-brand hover:underline" @click="notifications.forEach(n => n.read = true)" x-text="t('markAllRead')"></button>
+              </div>
+              <ul class="max-h-[60dvh] divide-y divide-line overflow-y-auto sm:max-h-80" role="list">
+                <template x-for="n in notifications" :key="n.id">
+                  <li class="flex gap-3 px-4 py-3" :class="n.read ? '' : 'bg-soft/60'">
+                    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" :class="n.tone" aria-hidden="true"><i :class="n.icon"></i></span>
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-bold leading-6" x-text="t('notif.' + n.key)"></p>
+                      <p class="text-xs text-muted" x-text="n.time"></p>
+                    </div>
+                  </li>
+                </template>
+              </ul>
+              <div class="border-t border-line p-2">
+                <a href="../common/notifications.html" class="menu-item justify-center text-brand" @click="notifOpen = false">
+                  <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                  <span x-text="t('viewAllNotif')"></span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="sm:relative" @click.outside="profileOpen = false">
+            <button type="button" class="flex max-w-[14rem] items-center gap-2 rounded-xl p-1 transition hover:bg-soft md:pe-2"
+                    @click="profileOpen = !profileOpen; notifOpen = false"
+                    aria-haspopup="menu" :aria-expanded="profileOpen.toString()" aria-controls="profile-menu" :aria-label="t('appSubtitle') + ' — ' + t('accountMenu')">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-500 text-sm font-extrabold text-white" aria-hidden="true">T</span>
+              <span class="hidden min-w-0 text-start md:block">
+                <span class="block truncate text-sm font-extrabold leading-tight" x-text="t('appSubtitle')"></span>
+                <span class="block truncate text-xs text-muted" x-text="t('roleName')"></span>
+              </span>
+              <i class="fa-solid fa-chevron-down hidden shrink-0 text-xs text-muted md:block" aria-hidden="true"></i>
+            </button>
+            <div id="profile-menu" x-cloak x-show="profileOpen" x-transition.opacity.scale.95 class="menu sm:w-56" role="menu" :aria-label="t('accountMenu')">
+              <a href="../common/profile.html" role="menuitem" class="menu-item"><i class="fa-regular fa-user w-4 text-muted" aria-hidden="true"></i> <span x-text="t('profile')"></span></a>
+              <button type="button" role="menuitem" class="menu-item cursor-not-allowed opacity-60" aria-disabled="true" tabindex="-1"><i class="fa-solid fa-gear w-4 text-muted" aria-hidden="true"></i> <span x-text="t('settings')"></span></button>
+              <a href="../common/errors.html" role="menuitem" class="menu-item"><i class="fa-solid fa-triangle-exclamation w-4 text-muted" aria-hidden="true"></i> <span x-text="t('systemStatus')"></span></a>
+              <div role="separator" class="border-t border-line"></div>
+              <a href="../auth/login.html" role="menuitem" class="menu-item !text-danger"><i class="fa-solid fa-arrow-right-from-bracket w-4" aria-hidden="true"></i> <span x-text="t('logout')"></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- زبدة الخبز (Breadcrumb) -->
+      <div class="hidden border-t border-line px-6 py-2 text-xs font-bold text-muted sm:block">
+        <nav :aria-label="t('breadcrumbLabel')">
+          <ol class="flex items-center gap-2" role="list">
+            <li><a href="TenantDashboard.html" class="rounded hover:text-brand hover:underline" x-text="t('breadcrumb.home')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li><a href="AcademicStructure.html" class="transition hover:text-brand hover:underline" x-text="t('navItems.academicStructure')"></a></li>
+            <li aria-hidden="true"><i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[10px]"></i></li>
+            <li class="text-ink" x-text="t('navItems.concepts')"></li>
+          </ol>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ================= المحتوى الرئيسي — إدارة المفاهيم ================= -->
+    <main id="main" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1400px] flex-1 space-y-4 px-3 py-4 focus:outline-none sm:space-y-6 sm:p-6 lg:p-8"
+          style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));">
+
+      <!-- العنوان + إجراء الإضافة -->
+      <section class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div class="min-w-0">
+          <h1 class="text-2xl font-extrabold text-brand sm:text-3xl" x-text="t('cp.title')"></h1>
+          <p class="mt-1 max-w-2xl text-sm text-muted sm:text-base" x-text="t('cp.subtitle')"></p>
+        </div>
+        <a href="concept-editor.html" class="btn btn-accent">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+          <span x-text="t('cp.addConcept')"></span>
+        </a>
+      </section>
+
+      <!-- ================= شريط مؤشرات الأداء (KPI) — محسوبة من البيانات وإعدادات الهيكل ================= -->
+      <section :aria-label="t('cp.kpis')" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('cp.kpiTotal')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-diagram-project"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="kpis.total"></p>
+        </div>
+        <div class="panel p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('cp.kpiClassified')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-500/15 text-success-700 dark:text-success-500" aria-hidden="true"><i class="fa-solid fa-circle-check"></i></span>
+          </div>
+          <p class="mt-2 text-2xl font-extrabold tabular-nums" x-text="kpis.done"></p>
+        </div>
+        <div class="panel col-span-2 p-4 sm:p-5 lg:col-span-1">
+          <div class="flex items-center justify-between gap-3">
+            <p class="min-w-0 truncate text-sm font-bold text-muted" x-text="t('cp.kpiIncomplete')"></p>
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-warning-500/15 text-warning-700 dark:text-warning-500" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+          </div>
+          <div class="mt-2 flex flex-wrap items-end justify-between gap-2">
+            <p class="text-2xl font-extrabold tabular-nums" x-text="kpis.incomplete"></p>
+            <button type="button" x-show="kpis.incomplete && !incompleteOnly" class="text-xs font-bold text-brand underline-offset-4 hover:underline" @click="incompleteOnly = true" x-text="t('cp.showThem')"></button>
+          </div>
+          <!-- قاعدة الاكتمال مأخوذة من إعدادات الهيكل الأكاديمي (ADM-05) -->
+          <p class="hint" x-text="t('cp.requiredRule') + ' ' + requiredLevelsText"></p>
+        </div>
+      </section>
+
+      <!-- ================= شريط البحث والفلاتر (فلترة فعلية + فلاتر متسلسلة) ================= -->
+      <!-- شريط مرن يلتف تلقائيًا: لا أعمدة ثابتة العرض، فلا يخرج أي عنصر عن اللوحة مهما كان العرض -->
+      <section class="panel flex flex-wrap items-center gap-3 p-4 sm:p-5" :aria-label="t('cp.filtersLabel')">
+        <div class="relative min-w-0 flex-[2_1_18rem]">
+          <label for="concept-search" class="sr-only" x-text="t('cp.searchPlaceholder')"></label>
+          <i class="fa-solid fa-magnifying-glass pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden="true"></i>
+          <input id="concept-search" x-ref="conceptSearch" type="search" x-model.debounce.150ms="searchQuery" :placeholder="t('cp.searchPlaceholder')"
+                 autocomplete="off" aria-describedby="concept-search-hint"
+                 class="h-11 w-full min-w-0 rounded-xl border border-line-strong bg-field ps-10 pe-10 text-sm text-ink placeholder:text-muted transition-colors focus:border-brand focus:outline-none">
+          <button type="button" x-show="searchQuery" x-cloak x-transition.opacity.duration.150ms
+                  @click="searchQuery = ''; $refs.conceptSearch.focus()" :aria-label="t('cp.clearSearch')"
+                  class="absolute end-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors hover:bg-soft hover:text-ink">
+            <i class="fa-solid fa-circle-xmark text-sm" aria-hidden="true"></i>
+          </button>
+          <span id="concept-search-hint" class="sr-only" x-text="t('cp.searchShortcutHint')"></span>
+        </div>
+
+        <div class="relative min-w-0 flex-[1_1_12rem]"
+             x-data="selectDropdown({ id: 'course-filter', options: () => courseOptions(), get: () => selectedCourse, set: (v) => selectedCourse = v })"
+             @click.outside="closeList()">
+          <label id="course-filter-label" for="course-filter" class="sr-only" x-text="t('cp.filterCourseLabel')"></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="course-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="course-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="course-filter-list" role="listbox" aria-labelledby="course-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+        <div x-show="structure.units.enabled" class="relative min-w-0 flex-[1_1_12rem]"
+             x-data="selectDropdown({ id: 'unit-filter', options: () => unitOptions(), get: () => selectedUnit, set: (v) => selectedUnit = v })"
+             @click.outside="closeList()">
+          <label id="unit-filter-label" for="unit-filter" class="sr-only" x-text="t('cp.filterUnitLabel')"></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="unit-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="unit-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="unit-filter-list" role="listbox" aria-labelledby="unit-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+        <div x-show="structure.lessons.enabled" class="relative min-w-0 flex-[1_1_12rem]"
+             x-data="selectDropdown({ id: 'lesson-filter', options: () => lessonOptions(), get: () => selectedLesson, set: (v) => selectedLesson = v })"
+             @click.outside="closeList()">
+          <label id="lesson-filter-label" for="lesson-filter" class="sr-only" x-text="t('cp.filterLessonLabel')"></label>
+          <div class="relative" data-combo-anchor>
+          <button type="button" id="lesson-filter" x-ref="btn" role="combobox" aria-haspopup="listbox"
+                  :aria-expanded="open.toString()" aria-controls="lesson-filter-list"
+                  :aria-activedescendant="open && active > -1 ? optId(items[active]) : null"
+                  class="field flex w-full items-center justify-between gap-2 text-start font-bold"
+                  @click="toggleList()" @keydown="onKey($event)">
+            <span class="truncate" x-text="triggerLabel"></span>
+            <i class="fa-solid fa-chevron-down shrink-0 text-xs text-muted transition-transform duration-200" :class="open && 'rotate-180'" aria-hidden="true"></i>
+          </button>
+          <ul x-show="open" x-cloak x-ref="list" id="lesson-filter-list" role="listbox" aria-labelledby="lesson-filter-label"
+              x-transition.origin.top.duration.150ms class="combo-list scroll-thin">
+            <template x-for="(item, idx) in items" :key="item.value">
+              <li :id="optId(item)" role="option" :aria-selected="isSelected(item).toString()"
+                  class="combo-option" :class="{ 'is-active': idx === active, 'is-selected': isSelected(item) }"
+                  @click="choose(item)" @mousemove="active = idx">
+                <span class="truncate" x-text="item.label"></span>
+                <i class="fa-solid fa-check shrink-0 text-xs text-brand" x-show="isSelected(item)" aria-hidden="true"></i>
+              </li>
+            </template>
+          </ul>
+          </div>
+        </div>
+
+        <!-- تبديل سريع: الناقصة التصنيف فقط — الزر نفسه هو الـ switch (C3) -->
+        <button type="button" role="switch" :aria-checked="incompleteOnly.toString()" @click="incompleteOnly = !incompleteOnly"
+                class="switch-btn flex h-11 flex-[1_1_auto] items-center gap-2.5 rounded-xl border border-line bg-page/50 px-3.5 text-start sm:flex-none">
+          <span class="switch-track pointer-events-none" aria-hidden="true"><span class="switch-knob"></span></span>
+          <span class="flex-1 whitespace-nowrap text-sm font-bold text-ink" x-text="t('cp.incompleteOnlyLabel')"></span>
+          <span x-show="kpis.incomplete" class="badge badge-warning" x-text="kpis.incomplete"></span>
+        </button>
+
+        <button type="button" class="btn btn-outline h-11 flex-[1_1_auto] sm:flex-none" @click="resetFilters()" :disabled="!activeFilterCount">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i>
+          <span x-text="t('cp.resetFilters')"></span>
+          <span x-show="activeFilterCount" class="badge badge-primary px-2" x-text="activeFilterCount"></span>
+        </button>
+      </section>
+
+      <!-- إعلان عدد النتائج لقارئات الشاشة -->
+      <p class="sr-only" aria-live="polite" x-text="resultsMsg"></p>
+
+      <!-- ================= حالة فارغة (مربوطة بنتيجة الفلترة) ================= -->
+      <section x-show="!filtered.length" x-cloak class="panel flex flex-col items-center gap-3 p-10 text-center">
+        <span class="grid h-14 w-14 place-items-center rounded-full bg-primary-500/10 text-brand" aria-hidden="true"><i class="fa-solid fa-diagram-project text-xl"></i></span>
+        <h2 class="text-lg font-extrabold text-ink" x-text="t('cp.emptyTitle')"></h2>
+        <p class="max-w-sm text-sm text-muted" x-text="t('cp.emptySubtitle')"></p>
+        <button type="button" class="btn btn-outline mt-1" @click="resetFilters(); $refs.conceptSearch.focus()">
+          <i class="fa-solid fa-filter-circle-xmark" aria-hidden="true"></i> <span x-text="t('cp.resetFilters')"></span>
+        </button>
+      </section>
+
+      <!-- ================= بطاقات المفاهيم — الجوال والتابلت (M1) ================= -->
+      <template x-if="filtered.length && mobile">
+        <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="list" :aria-label="t('cp.title')">
+          <template x-for="c in pageRows" :key="c.id">
+            <li class="panel flex min-w-0 flex-col gap-3 p-4" :class="!isComplete(c) && 'border-warning-500/50'">
+              <div class="flex items-start gap-3">
+                <span class="course-icon h-11 w-11" :class="iconMeta(c).cls" aria-hidden="true"><i class="fa-solid" :class="iconMeta(c).icon"></i></span>
+                <div class="min-w-0 flex-1">
+                  <span class="badge badge-muted mb-1 font-mono" dir="ltr" x-text="c.code"></span>
+                  <h2 class="truncate font-extrabold leading-6" :lang="titleLang(c)" dir="auto" style="text-align: match-parent" x-text="title(c)"></h2>
+                  <p x-show="altTitle(c)" class="truncate text-xs text-muted" :lang="altLocale" dir="auto" style="text-align: match-parent" x-text="altTitle(c)"></p>
+                </div>
+              </div>
+              <!-- المسار الأكاديمي: قائمة مرتبة بفواصل اتجاهية + نص بديل للمستوى الناقص (M3) -->
+              <template x-if="c.courseId">
+                <ol class="flex flex-wrap items-center gap-1.5 text-xs" :aria-label="t('cp.colHierarchy')">
+                  <template x-for="(step, i) in pathOf(c)" :key="step.level">
+                    <li class="inline-flex min-w-0 items-center gap-1.5">
+                      <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[9px] text-muted" aria-hidden="true"></i>
+                      <span x-show="step.label" class="min-w-0" :class="i === 0 ? 'font-bold text-ink' : 'text-muted'" dir="auto" x-text="step.label"></span>
+                      <span x-show="!step.label" class="badge" :class="step.required ? 'badge-warning' : 'badge-muted'">
+                        <span aria-hidden="true">—</span><span class="sr-only" x-text="t('cp.missing.' + step.level)"></span>
+                      </span>
+                    </li>
+                  </template>
+                </ol>
+              </template>
+              <template x-if="!c.courseId">
+                <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('cp.unclassifiedHint')"></span></span>
+              </template>
+              <div class="flex flex-col items-start gap-1">
+                <span class="badge" :class="isComplete(c) ? 'badge-success' : 'badge-warning'">
+                  <i class="fa-solid text-[10px]" :class="isComplete(c) ? 'fa-circle-check' : 'fa-triangle-exclamation'" aria-hidden="true"></i>
+                  <span x-text="isComplete(c) ? t('cp.statusClassified') : t('cp.statusIncomplete')"></span>
+                </span>
+                <span x-show="!isComplete(c)" class="text-xs text-muted" x-text="missingText(c)"></span>
+              </div>
+              <div class="mt-auto flex flex-wrap items-center justify-end gap-1.5 border-t border-line pt-3">
+                <a :href="editorUrl(c)" class="act group relative" :class="!isComplete(c) && 'border-transparent bg-accent-500 text-onaccent hover:!bg-accent-600'"
+                   :aria-label="(isComplete(c) ? t('cp.actEdit') : t('cp.completeClassification')) + ': ' + title(c)"><i class="fa-solid" :class="isComplete(c) ? 'fa-pen' : 'fa-list-check'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="isComplete(c) ? t('cp.actEdit') : t('cp.completeClassification')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                <span class="flex gap-1.5">
+                <button type="button" class="act group relative" @click="duplicateConcept(c)" :aria-label="t('cp.actDuplicate') + ': ' + title(c)"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('cp.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete(c, $event)" aria-haspopup="dialog" :aria-label="t('cp.actDelete') + ': ' + title(c)"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('cp.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                </span>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </template>
+
+      <!-- ================= جدول المفاهيم — lg+ ================= -->
+      <template x-if="filtered.length && !mobile">
+        <section class="panel overflow-hidden" aria-labelledby="concepts-table-title">
+          <h2 id="concepts-table-title" class="sr-only" x-text="t('cp.title')"></h2>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[980px] border-collapse text-sm">
+              <caption class="sr-only" x-text="t('cp.title') + ' — ' + pageInfo"></caption>
+              <thead>
+                <tr class="bg-soft text-ink">
+                  <th scope="col" class="px-5 py-3.5 text-start text-xs font-extrabold" x-text="t('cp.colConcept')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('cp.colHierarchy')"></th>
+                  <th scope="col" class="px-4 py-3.5 text-start text-xs font-extrabold" x-text="t('cp.colStatus')"></th>
+                  <th scope="col" class="px-5 py-3.5 text-end text-xs font-extrabold" x-text="t('cp.colActions')"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-line">
+                <template x-for="c in pageRows" :key="c.id">
+                  <tr class="transition" :class="isComplete(c) ? 'hover:bg-soft/40' : 'bg-warning-500/5 hover:bg-warning-500/10'">
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex items-center gap-3">
+                        <span class="course-icon h-10 w-10" :class="iconMeta(c).cls" aria-hidden="true"><i class="fa-solid" :class="iconMeta(c).icon"></i></span>
+                        <div class="min-w-0 max-w-[24rem]">
+                          <span class="badge badge-muted mb-1 font-mono" dir="ltr" x-text="c.code"></span>
+                          <p class="truncate font-extrabold leading-6" :lang="titleLang(c)" dir="auto" style="text-align: match-parent" x-text="title(c)"></p>
+                          <p x-show="altTitle(c)" class="truncate text-xs text-muted" :lang="altLocale" dir="auto" style="text-align: match-parent" x-text="altTitle(c)"></p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="max-w-[22rem] px-4 py-4 align-middle">
+              <!-- المسار الأكاديمي: قائمة مرتبة بفواصل اتجاهية + نص بديل للمستوى الناقص (M3) -->
+              <template x-if="c.courseId">
+                <ol class="flex flex-wrap items-center gap-1.5 text-xs" :aria-label="t('cp.colHierarchy')">
+                  <template x-for="(step, i) in pathOf(c)" :key="step.level">
+                    <li class="inline-flex min-w-0 items-center gap-1.5">
+                      <i x-show="i > 0" class="fa-solid fa-chevron-right rtl:-scale-x-100 text-[9px] text-muted" aria-hidden="true"></i>
+                      <span x-show="step.label" class="min-w-0" :class="i === 0 ? 'font-bold text-ink' : 'text-muted'" dir="auto" x-text="step.label"></span>
+                      <span x-show="!step.label" class="badge" :class="step.required ? 'badge-warning' : 'badge-muted'">
+                        <span aria-hidden="true">—</span><span class="sr-only" x-text="t('cp.missing.' + step.level)"></span>
+                      </span>
+                    </li>
+                  </template>
+                </ol>
+              </template>
+              <template x-if="!c.courseId">
+                <span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation text-[10px]" aria-hidden="true"></i> <span x-text="t('cp.unclassifiedHint')"></span></span>
+              </template>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+              <div class="flex flex-col items-start gap-1">
+                <span class="badge" :class="isComplete(c) ? 'badge-success' : 'badge-warning'">
+                  <i class="fa-solid text-[10px]" :class="isComplete(c) ? 'fa-circle-check' : 'fa-triangle-exclamation'" aria-hidden="true"></i>
+                  <span x-text="isComplete(c) ? t('cp.statusClassified') : t('cp.statusIncomplete')"></span>
+                </span>
+                <span x-show="!isComplete(c)" class="text-xs text-muted" x-text="missingText(c)"></span>
+              </div>
+                    </td>
+                    <td class="px-5 py-4 align-middle">
+                      <div class="flex items-center justify-end gap-1.5">
+                        <a :href="editorUrl(c)" class="act group relative" :class="!isComplete(c) && 'border-transparent bg-accent-500 text-onaccent hover:!bg-accent-600'"
+                   :aria-label="(isComplete(c) ? t('cp.actEdit') : t('cp.completeClassification')) + ': ' + title(c)"><i class="fa-solid" :class="isComplete(c) ? 'fa-pen' : 'fa-list-check'" aria-hidden="true"></i><span class="tooltip-bubble" x-text="isComplete(c) ? t('cp.actEdit') : t('cp.completeClassification')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></a>
+                <button type="button" class="act group relative" @click="duplicateConcept(c)" :aria-label="t('cp.actDuplicate') + ': ' + title(c)"><i class="fa-solid fa-copy" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('cp.actDuplicate')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                <button type="button" class="act group relative !text-danger hover:!bg-error-500/10" @click="confirmDelete(c, $event)" aria-haspopup="dialog" :aria-label="t('cp.actDelete') + ': ' + title(c)"><i class="fa-solid fa-trash" aria-hidden="true"></i><span class="tooltip-bubble" x-text="t('cp.actDelete')" aria-hidden="true"></span><span class="tooltip-arrow" aria-hidden="true"></span></button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+
+      <!-- ================= ترقيم الصفحات (يعمل على البيانات؛ في Livewire: ->paginate()->links()) ================= -->
+      <div x-show="filtered.length" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs font-bold text-muted" x-text="pageInfo"></p>
+        <nav x-show="pageCount > 1" class="flex items-center gap-1.5" :aria-label="t('cp.pagination')">
+          <button type="button" class="act" :disabled="page === 1" :class="page === 1 && 'cursor-not-allowed opacity-50'" @click="goPage(page - 1)" :aria-label="t('cp.prev')">
+            <i class="fa-solid fa-chevron-left rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+          </button>
+          <template x-for="p in pageCount" :key="p">
+            <button type="button" class="act font-bold" :class="p === page && 'border-transparent bg-primary-500 text-white'"
+                    :aria-current="p === page ? 'page' : null" :aria-label="tf('cp.pageN', { n: p })" @click="goPage(p)" x-text="p"></button>
+          </template>
+          <button type="button" class="act" :disabled="page === pageCount" :class="page === pageCount && 'cursor-not-allowed opacity-50'" @click="goPage(page + 1)" :aria-label="t('cp.next')">
+            <i class="fa-solid fa-chevron-right rtl:-scale-x-100 text-xs" aria-hidden="true"></i>
+          </button>
+        </nav>
+      </div>
+    </main>
+
+    <!-- ================= Footer (كل النصوص عبر I18N) ================= -->
+    <footer class="mt-auto border-t border-line bg-card/60"
+          x-data="{ year: new Date().getFullYear() }"
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+    <div class="mx-auto flex w-full min-w-0 max-w-[1400px] flex-col gap-4 px-3 py-0 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+
+      <div class="flex min-w-0 items-center gap-3">
+        <img src="../asset/images/firob-logo.png" alt="FirOb" loading="lazy" decoding="async" class="block h-[clamp(4rem,10vh,6rem)] w-auto max-w-[22rem] object-contain">
+        <p class="min-w-0 text-sm text-muted"><span x-text="t('footer.tagline')"></span>
+          <span class="block text-xs sm:inline sm:text-sm">
+            <span class="hidden sm:inline" aria-hidden="true">·</span>
+            © <span class="tabular-nums" x-text="year"></span> <span x-text="t('footer.rights')"></span>
+          </span>
+        </p>
+      </div>
+
+      <nav :aria-label="t('footer.navLabel')" class="min-w-0">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold" role="list">
+          <li><a href="../index.html" class="rounded font-bold text-muted underline-offset-4 transition hover:text-brand hover:underline"><span aria-hidden="true">&#8962;</span> <span x-text="t('footer.screenMap')"></span></a></li>
+          <template x-for="k in ['help', 'docs', 'privacy', 'terms']" :key="k">
+            <li><span class="inline-flex cursor-not-allowed items-center text-line-strong" aria-disabled="true" x-text="t('footer.' + k)"></span></li>
+          </template>
+        </ul>
+      </nav>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-success">
+          <span class="h-2 w-2 rounded-full bg-success-500" aria-hidden="true"></span>
+          <span x-text="t('footer.systemsOk')"></span>
+        </span>
+      </div>
+    </div>
+  </footer>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     نافذة — حذف مفهوم (حارس مبني على الارتباطات: عناصر تعليمية / أسئلة) — C4
+     ========================================================================== -->
+<div x-cloak x-show="isDeleteModalOpen" x-transition.opacity class="fixed inset-0 z-[60] grid place-items-center p-4" @keydown.escape.window="closeDeleteModal()">
+  <div class="absolute inset-0 bg-primary-900/60 backdrop-blur-sm" @click="closeDeleteModal()" aria-hidden="true"></div>
+  <div x-show="isDeleteModalOpen" x-trap.noscroll.noreturn="isDeleteModalOpen"
+       role="alertdialog" aria-modal="true" aria-labelledby="del-title" aria-describedby="del-desc"
+       x-transition:enter="transition duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="opacity-0 scale-95"
+       class="relative w-full max-w-md rounded-2xl border border-line bg-card p-6 text-center shadow-pop">
+
+    <!-- (أ) مفهوم مرتبط بمحتوى: الحذف محظور مع مسار حل -->
+    <template x-if="deleteTarget && hasLinks(deleteTarget)">
+      <div>
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-accent-500/20 text-yellow-800 dark:text-accent-500" aria-hidden="true"><i class="fa-solid fa-shield-halved text-xl"></i></span>
+        <h2 id="del-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('cp.guardTitle')"></h2>
+        <p id="del-desc" class="mt-2 text-sm text-muted">
+          <span class="font-bold text-ink" dir="auto" x-text="title(deleteTarget)"></span>
+          <span x-text="tf('cp.guardText', { links: linksSummary(deleteTarget) })"></span>
+        </p>
+        <div class="mt-6 flex flex-col-reverse justify-center gap-3 sm:flex-row">
+          <button type="button" class="btn btn-outline" @click="closeDeleteModal()" x-text="t('cp.guardClose')"></button>
+          <a class="btn btn-primary" :href="'learning-objects.html?concept=' + encodeURIComponent(deleteTarget.code)">
+            <i class="fa-solid fa-cubes" aria-hidden="true"></i> <span x-text="t('cp.guardViewLinks')"></span>
+          </a>
+        </div>
+      </div>
+    </template>
+
+    <!-- (ب) مفهوم بلا ارتباطات: تأكيد حذف نهائي -->
+    <template x-if="deleteTarget && !hasLinks(deleteTarget)">
+      <div>
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-full bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-red-300" aria-hidden="true"><i class="fa-solid fa-trash text-xl"></i></span>
+        <h2 id="del-title" class="mt-4 text-lg font-extrabold text-ink" x-text="t('cp.deleteTitle')"></h2>
+        <p id="del-desc" class="mt-2 text-sm text-muted" x-text="tf('cp.deleteText', { name: title(deleteTarget) })"></p>
+        <div class="mt-6 flex justify-center gap-3">
+          <button type="button" class="btn btn-outline" :disabled="busy" @click="closeDeleteModal()" x-text="t('cp.deleteCancel')"></button>
+          <button type="button" class="btn btn-danger" :disabled="busy" :aria-busy="busy" @click="deleteConfirmed()">
+            <i class="fa-solid animate-spin fa-circle-notch" x-show="busy" aria-hidden="true"></i>
+            <span x-text="t('cp.deleteConfirm')"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script>
+  /**
+   * مكوّن قائمة الاختيار المخصصة (Select-only Combobox — نمط ARIA APG).
+   * options: () => [{ value, label }] | get: () => القيمة | set: (v) => تحديث
+   * لوحة المفاتيح: ↑↓ Home End Enter Space Esc Tab + البحث بالكتابة (type-ahead).
+   * Esc يوقف الانتشار حتى لا يُغلق اللوحة الجانبية/النافذة الأم (C5).
+   */
+  function selectDropdown({ id, options, get, set, placeholder = '' }) {
+    return {
+      id, open: false, active: -1, typed: '', typedAt: 0,
+      get items() { return options(); },
+      get selectedItem() { const val = get(); return this.items.find(o => o.value === val) ?? null; },
+      get triggerLabel() { const sel = this.selectedItem; return sel ? sel.label : placeholder; },
+      optId(item) { return this.id + '-opt-' + (item.value === '' ? 'none' : item.value); },
+      openList() {
+        if (!this.items.length) return;
+        this.active = Math.max(0, this.items.findIndex(o => o.value === get()));
+        this.open = true;
+        this.scrollActiveIntoView();
+      },
+      closeList() { this.open = false; this.active = -1; },
+      toggleList() { this.open ? this.closeList() : this.openList(); },
+      choose(item) { set(item.value); this.closeList(); this.$refs.btn?.focus(); },
+      setActive(i) { this.active = Math.min(Math.max(i, 0), this.items.length - 1); this.scrollActiveIntoView(); },
+      move(step) { if (!this.open) { this.openList(); return; } this.setActive(this.active + step); },
+      onKey(e) {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); if (e.altKey && this.open && k === 'ArrowUp') { this.choose(this.items[this.active]); return; } this.move(k === 'ArrowDown' ? 1 : -1); }
+        else if (k === 'Home' && this.open) { e.preventDefault(); this.setActive(0); }
+        else if (k === 'End' && this.open) { e.preventDefault(); this.setActive(this.items.length - 1); }
+        else if (k === 'Enter' || k === ' ') { e.preventDefault(); (this.open && this.active > -1) ? this.choose(this.items[this.active]) : this.openList(); }
+        else if (k === 'Escape') { if (this.open) { e.preventDefault(); e.stopPropagation(); this.closeList(); } }
+        else if (k === 'Tab') { if (this.open) this.closeList(); }
+        else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault(); e.stopPropagation();
+          const now = Date.now();
+          this.typed = (now - this.typedAt > 600 ? '' : this.typed) + k.toLowerCase();
+          this.typedAt = now;
+          const i = this.items.findIndex(o => o.label.toLowerCase().startsWith(this.typed));
+          if (i > -1) { if (!this.open) this.openList(); this.setActive(i); }
+        }
+      },
+      scrollActiveIntoView() { this.$nextTick(() => this.$refs.list?.children[this.active + 1]?.scrollIntoView({ block: 'nearest' })); },
+      isSelected(item) { const sel = this.selectedItem; return !!sel && sel.value === item.value; },
+    };
+  }
+
+  /**
+   * حالة واجهة إدارة المفاهيم — النسخة المُراجَعة.
+   * مصدر بيانات واحد (concepts + المرجعيات courses/units/lessons) تُبنى منه البطاقات والجدول والمؤشرات والترقيم.
+   * حالة الاكتمال تُحسب من إعدادات الهيكل الأكاديمي (المستويات الإلزامية) لا من شارة مكتوبة يدويًا (C5).
+   * كل العمليات محلية (Mock) — في Livewire تُنفَّذ الفلترة والترقيم والحذف وحارسه في الخادم.
+   */
+  function conceptsManager() {
+    const desktopMQ = window.matchMedia('(min-width: 1024px)');
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    const I18N = {
+      ar: {
+        docTitle: 'إدارة المفاهيم — FirOb',
+        skipLink: 'تخطَّ إلى المحتوى', appTitle: 'FirOb', appSubtitle: 'لوحة مسؤول المؤسسة', roleName: 'مسؤول المؤسسة',
+        mainMenu: 'القائمة الرئيسية', mainNav: 'التنقل الرئيسي', breadcrumbLabel: 'مسار التنقل',
+        accountMenu: 'قائمة الحساب', viewAllNotif: 'عرض جميع الإشعارات', systemStatus: 'حالات النظام والأخطاء',
+        toggleSidebar: 'تبديل القائمة الجانبية', closeMenu: 'إغلاق القائمة', collapseSidebar: 'طي القائمة',
+        searchPlaceholder: 'ابحث في النظام…',
+        languageLabel: 'اللغة', lightMode: 'الوضع الفاتح', darkMode: 'الوضع الداكن',
+        notifications: 'الإشعارات', markAllRead: 'تعليم الكل كمقروء',
+        profile: 'الملف الشخصي والإعدادات', settings: 'إعدادات النظام', logout: 'تسجيل الخروج',
+        breadcrumb: { home: 'لوحة التحكم', org: 'إدارة المؤسسة' },
+        navGroups: { overview: 'نظرة عامة', admin: 'الإدارة', content: 'المحتوى', aiTools: 'أدوات الذكاء الاصطناعي', system: 'النظام' },
+        navItems: {
+          orgDashboard: 'لوحة المؤسسة', users: 'المستخدمون', invitations: 'الدعوات', roleMatrix: 'مصفوفة الصلاحيات', activityLog: 'سجل النشاط',
+          academicStructure: 'الهيكل الأكاديمي', coursesManagement: 'إدارة المقررات', concepts: 'المفاهيم', quizzes: 'الاختبارات', learningObjects: 'العناصر التعليمية', reviewQueue: 'طابور المراجعة',
+          aiGenerator: 'مولّد الأسئلة', aiAnalytics: 'تحليلات AI',
+          subscription: 'الاشتراك والفوترة', orgSettings: 'إعدادات المؤسسة', notificationCenter: 'مركز الإشعارات',
+        },
+        notif: { invite: 'تم قبول دعوة مستخدم جديد: «يوسف إبراهيم النجار»', quota: 'اقتربت حصة المقاعد من الحد الأقصى (83%)', reset: 'تم إرسال رابط إعادة تعيين كلمة مرور بنجاح' },
+        footer: {
+          tagline: 'المستودع التعليمي المركزي', rights: 'جميع الحقوق محفوظة', navLabel: 'روابط التذييل', screenMap: 'خريطة الشاشات',
+          help: 'مركز المساعدة', docs: 'التوثيق', privacy: 'سياسة الخصوصية', terms: 'شروط الاستخدام', systemsOk: 'الأنظمة تعمل',
+        },
+        plural: {
+          concepts:  { zero: 'لا مفاهيم', one: 'مفهوم واحد', two: 'مفهومان', few: '{n} مفاهيم', many: '{n} مفهومًا', other: '{n} مفهوم' },
+          objects:   { zero: 'لا عناصر تعليمية', one: 'عنصر تعليمي واحد', two: 'عنصران تعليميان', few: '{n} عناصر تعليمية', many: '{n} عنصرًا تعليميًا', other: '{n} عنصر تعليمي' },
+          questions: { zero: 'لا أسئلة', one: 'سؤال واحد', two: 'سؤالان', few: '{n} أسئلة', many: '{n} سؤالًا', other: '{n} سؤال' },
+        },
+
+        cp: {
+          title: 'إدارة المفاهيم', subtitle: 'استعرض جميع المفاهيم التعليمية المرتبطة بالمقررات والوحدات والدروس، صنّفها أكاديميًا، وتابع نسبة اكتمال التصنيف من مكان واحد.',
+          addConcept: 'إضافة مفهوم جديد', kpis: 'مؤشرات المفاهيم', filtersLabel: 'البحث والفلاتر',
+          kpiTotal: 'إجمالي المفاهيم', kpiClassified: 'مفاهيم مصنّفة بالكامل', kpiIncomplete: 'ناقصة التصنيف', showThem: 'عرضها',
+          requiredRule: 'المستويات الإلزامية حسب الهيكل الأكاديمي:',
+          searchPlaceholder: 'ابحث باسم المفهوم أو رمزه…', clearSearch: 'مسح البحث', searchShortcutHint: 'اختصار: اضغط / للانتقال إلى البحث',
+          filterCourseLabel: 'المقرر', filterCourseAll: 'كل المقررات',
+          filterUnitLabel: 'الوحدة', filterUnitAll: 'كل الوحدات',
+          filterLessonLabel: 'الدرس', filterLessonAll: 'كل الدروس',
+          incompleteOnlyLabel: 'الناقصة التصنيف فقط',
+          resetFilters: 'مسح الفلاتر', resultsCount: 'النتائج: {concepts}',
+          colConcept: 'المفهوم والرمز', colHierarchy: 'المسار الأكاديمي', colStatus: 'حالة التصنيف', colActions: 'إجراءات',
+          statusClassified: 'مصنّف بالكامل', statusIncomplete: 'ناقص التصنيف', completeClassification: 'استكمال التصنيف',
+          unclassifiedHint: 'غير مصنّف أكاديميًا بعد',
+          level: { course: 'المقرر', unit: 'الوحدة', lesson: 'الدرس' },
+          missing: { course: 'المقرر غير محدد', unit: 'الوحدة غير محددة', lesson: 'الدرس غير محدد' },
+          missingPrefix: 'ينقصه:',
+          actEdit: 'تعديل', actDuplicate: 'نسخ', actDelete: 'حذف',
+          emptyTitle: 'لا توجد مفاهيم مطابقة', emptySubtitle: 'جرّب تعديل كلمات البحث أو الفلاتر المستخدمة، أو امسحها للعودة إلى القائمة الكاملة.',
+          pageInfo: 'عرض {from}–{to} من أصل {total}', pagination: 'ترقيم الصفحات', prev: 'الصفحة السابقة', next: 'الصفحة التالية', pageN: 'الصفحة {n}',
+          guardTitle: 'لا يمكن حذف هذا المفهوم', guardText: 'مرتبط بـ {links}. انقل هذه العناصر أو احذفها أولًا، أو عدّل المفهوم بدلًا من حذفه.',
+          guardClose: 'إغلاق', guardViewLinks: 'عرض العناصر المرتبطة',
+          deleteTitle: 'حذف المفهوم نهائيًا؟', deleteText: 'لا يمكن التراجع عن هذا الإجراء. سيتم حذف المفهوم «{name}» نهائيًا.', deleteCancel: 'إلغاء', deleteConfirm: 'نعم، احذف نهائيًا',
+          toastDuplicate: 'تم إنشاء نسخة من «{name}» بالرمز {code}', toastDelete: 'تم حذف المفهوم «{name}» نهائيًا (معاينة فقط)',
+          flash: { create: 'تم إنشاء المفهوم {code} (معاينة فقط)', edit: 'تم حفظ تعديلات المفهوم {code} (معاينة فقط)', complete: 'اكتمل تصنيف المفهوم {code} (معاينة فقط)' },
+          undo: 'تراجع', undone: 'تم التراجع', copySuffix: ' (نسخة)',
+        },
+      },
+      en: {
+        docTitle: 'Concepts Management — FirOb',
+        skipLink: 'Skip to content', appTitle: 'FirOb', appSubtitle: 'Tenant Admin Dashboard', roleName: 'Tenant Admin',
+        mainMenu: 'Main menu', mainNav: 'Main navigation', breadcrumbLabel: 'Breadcrumb',
+        accountMenu: 'Account menu', viewAllNotif: 'View all notifications', systemStatus: 'System Status & Errors',
+        toggleSidebar: 'Toggle sidebar', closeMenu: 'Close menu', collapseSidebar: 'Collapse sidebar',
+        searchPlaceholder: 'Search the system…',
+        languageLabel: 'Language', lightMode: 'Light mode', darkMode: 'Dark mode',
+        notifications: 'Notifications', markAllRead: 'Mark all as read',
+        profile: 'Profile & Settings', settings: 'System Settings', logout: 'Log out',
+        breadcrumb: { home: 'Dashboard', org: 'Organization Admin' },
+        navGroups: { overview: 'Overview', admin: 'Administration', content: 'Content', aiTools: 'AI Tools', system: 'System' },
+        navItems: {
+          orgDashboard: 'Organization Dashboard', users: 'Users', invitations: 'Invitations', roleMatrix: 'Role Matrix', activityLog: 'Activity Log',
+          academicStructure: 'Academic Structure', coursesManagement: 'Courses Management', concepts: 'Concepts', quizzes: 'Quizzes', learningObjects: 'Learning Objects', reviewQueue: 'Review Queue',
+          aiGenerator: 'Question Generator', aiAnalytics: 'AI Analytics',
+          subscription: 'Subscription & Billing', orgSettings: 'Organization Settings', notificationCenter: 'Notification Center',
+        },
+        notif: { invite: 'A new user invitation was accepted: "Yousef Ibrahim Al-Najjar"', quota: 'Seat quota is nearing its limit (83%)', reset: 'Password reset link was sent successfully' },
+        footer: {
+          tagline: 'Central Educational Repository', rights: 'All rights reserved', navLabel: 'Footer links', screenMap: 'Screen map',
+          help: 'Help Center', docs: 'Documentation', privacy: 'Privacy Policy', terms: 'Terms of Use', systemsOk: 'All systems operational',
+        },
+        plural: {
+          concepts:  { one: '{n} concept', other: '{n} concepts' },
+          objects:   { one: '{n} learning object', other: '{n} learning objects' },
+          questions: { one: '{n} question', other: '{n} questions' },
+        },
+
+        cp: {
+          title: 'Concepts Management', subtitle: 'Browse all educational concepts linked to courses, units, and lessons, classify them academically, and track classification completeness in one place.',
+          addConcept: 'Add New Concept', kpis: 'Concept indicators', filtersLabel: 'Search & filters',
+          kpiTotal: 'Total Concepts', kpiClassified: 'Fully Classified Concepts', kpiIncomplete: 'Incomplete Classification', showThem: 'Show them',
+          requiredRule: 'Required levels per Academic Structure:',
+          searchPlaceholder: 'Search by concept name or code…', clearSearch: 'Clear search', searchShortcutHint: 'Shortcut: press / to jump to search',
+          filterCourseLabel: 'Course', filterCourseAll: 'All Courses',
+          filterUnitLabel: 'Unit', filterUnitAll: 'All Units',
+          filterLessonLabel: 'Lesson', filterLessonAll: 'All Lessons',
+          incompleteOnlyLabel: 'Incomplete only',
+          resetFilters: 'Reset Filters', resultsCount: 'Results: {concepts}',
+          colConcept: 'Concept & Code', colHierarchy: 'Academic Hierarchy', colStatus: 'Classification Status', colActions: 'Actions',
+          statusClassified: 'Fully Classified', statusIncomplete: 'Incomplete Classification', completeClassification: 'Complete Classification',
+          unclassifiedHint: 'Not yet academically classified',
+          level: { course: 'Course', unit: 'Unit', lesson: 'Lesson' },
+          missing: { course: 'Course not set', unit: 'Unit not set', lesson: 'Lesson not set' },
+          missingPrefix: 'Missing:',
+          actEdit: 'Edit', actDuplicate: 'Duplicate', actDelete: 'Delete',
+          emptyTitle: 'No matching concepts', emptySubtitle: 'Try adjusting your search terms or filters, or reset them to see the full list.',
+          pageInfo: 'Showing {from}–{to} of {total}', pagination: 'Pagination', prev: 'Previous page', next: 'Next page', pageN: 'Page {n}',
+          guardTitle: 'This concept cannot be deleted', guardText: 'is linked to {links}. Move or remove those items first, or edit the concept instead of deleting it.',
+          guardClose: 'Close', guardViewLinks: 'View linked items',
+          deleteTitle: 'Delete this concept permanently?', deleteText: 'This action cannot be undone. "{name}" will be permanently deleted.', deleteCancel: 'Cancel', deleteConfirm: 'Yes, delete permanently',
+          toastDuplicate: 'A copy of "{name}" was created as {code}', toastDelete: '"{name}" was permanently deleted (preview only)',
+          flash: { create: 'Concept {code} was created (preview only)', edit: 'Changes to {code} were saved (preview only)', complete: 'Classification of {code} is now complete (preview only)' },
+          undo: 'Undo', undone: 'Change undone', copySuffix: ' (copy)',
+        },
+      },
+    };
+
+    return {
+      /* ---------- حالة عامة (Shell) ---------- */
+      dark: document.documentElement.classList.contains('dark'),
+      locale: document.documentElement.lang === 'en' ? 'en' : 'ar',
+      mobile: !desktopMQ.matches,
+      mobileNav: false,
+      collapsed: false,
+      notifOpen: false, profileOpen: false,
+      active: 'concepts',
+      get expanded() { return this.mobile || !this.collapsed; },
+      get altLocale() { return this.locale === 'ar' ? 'en' : 'ar'; },
+
+      /* ---------- الترجمة ---------- */
+      t(path) {
+        const dict = I18N[this.locale];
+        return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict) ?? path;
+      },
+      tf(path, vars) {
+        let s = this.t(path);
+        Object.keys(vars || {}).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+        return s;
+      },
+      pluralize(key, n) {
+        const forms = this.t('plural.' + key);
+        if (!forms || typeof forms !== 'object') return String(n);
+        return (forms[new Intl.PluralRules(this.locale).select(n)] ?? forms.other).split('{n}').join(n);
+      },
+      setLocale(loc) {
+        this.locale = loc;
+        document.documentElement.lang = loc;
+        document.documentElement.dir = loc === 'ar' ? 'rtl' : 'ltr';
+        document.title = this.t('docTitle');
+        try { localStorage.setItem('firob-locale', loc); } catch (e) {}
+      },
+      toggleLocale() { this.setLocale(this.locale === 'ar' ? 'en' : 'ar'); },
+
+      /* ---------- التنقل (Tenant Admin) ---------- */
+      nav: [
+        { group: 'overview', items: [
+          { key: 'orgDashboard', icon: 'fa-solid fa-gauge-high', href: 'TenantDashboard.html' },
+        ]},
+        { group: 'admin', items: [
+          { key: 'users', icon: 'fa-solid fa-users', href: 'users.html' },
+          { key: 'invitations', icon: 'fa-solid fa-envelope-open-text', href: 'UserInvitations.html' },
+          { key: 'roleMatrix', icon: 'fa-solid fa-user-shield', href: 'RoleMatrixEditor.html' },
+          { key: 'activityLog', icon: 'fa-solid fa-clock-rotate-left', href: 'ActivityTimeline.html' },
+        ]},
+        { group: 'content', items: [
+          { key: 'academicStructure', icon: 'fa-solid fa-sitemap', href: 'AcademicStructure.html' },
+          { key: 'coursesManagement', icon: 'fa-solid fa-book-open', href: 'CoursesManagement.html' },
+          { key: 'concepts', icon: 'fa-solid fa-diagram-project', href: 'concepts.html' },
+          { key: 'quizzes', icon: 'fa-solid fa-clipboard-question', href: 'quizzes.html' },
+          { key: 'learningObjects', icon: 'fa-solid fa-cubes', href: 'learning-objects.html' },
+          { key: 'reviewQueue', icon: 'fa-solid fa-list-check', href: 'ReviewQueue.html', count: 5 },
+        ]},
+        { group: 'aiTools', items: [
+          { key: 'aiGenerator', icon: 'fa-solid fa-wand-magic-sparkles', href: 'ai-generator.html' },
+          { key: 'aiAnalytics', icon: 'fa-solid fa-chart-line', href: 'AIUsageAnalytics.html' },
+        ]},
+        { group: 'system', items: [
+          { key: 'subscription', icon: 'fa-solid fa-file-invoice-dollar', href: 'SubscriptionsAndInvoices.html' },
+          { key: 'orgSettings', icon: 'fa-solid fa-sliders', href: 'TenantSettingsForm.html' },
+          { key: 'notificationCenter', icon: 'fa-regular fa-bell', href: '../common/notifications.html', count: 3, tone: 'primary' },
+        ]},
+      ],
+      setActive(key) { this.active = key; this.mobileNav = false; },
+
+      /* ---------- الإشعارات (شريط علوي عام) ---------- */
+      notifications: [
+        { id: 1, key: 'invite', time: '10m', read: false, icon: 'fa-solid fa-user-plus', tone: 'bg-primary-500/15 text-brand' },
+        { id: 2, key: 'quota', time: '2h', read: false, icon: 'fa-solid fa-triangle-exclamation', tone: 'bg-warning-500/15 text-warning-700 dark:text-warning-500' },
+        { id: 3, key: 'reset', time: '1d', read: true, icon: 'fa-solid fa-key', tone: 'bg-success-500/15 text-success-700 dark:text-success-500' },
+      ],
+      get unread() { return this.notifications.filter(n => !n.read).length; },
+
+      /* ---------- إعدادات الهيكل الأكاديمي (tenant_settings: academic.structure) — نفس مصدر شاشة ADM-05 ---------- */
+      structure: structuredClone(FIROB_MOCK.structure),   // asset/js/firob-mock-data.js
+      get requiredLevelsText() {
+        const lv = ['course'];
+        if (this.structure.units.enabled && this.structure.units.required) lv.push('unit');
+        if (this.structure.lessons.enabled && this.structure.lessons.required) lv.push('lesson');
+        return lv.map(l => this.t('cp.level.' + l)).join(' › ');
+      },
+
+      /* ---------- البيانات المرجعية (Subject / Unit / Lesson) ---------- */
+      courses: FIROB_MOCK.courses,
+      units: FIROB_MOCK.units,
+      lessons: FIROB_MOCK.lessons,
+      label(item) { return item ? (item[this.locale] || item.ar) : ''; },
+      courseById(id) { return this.courses.find(x => x.id === id); },
+      unitById(id)   { return this.units.find(x => x.id === id); },
+      lessonById(id) { return this.lessons.find(x => x.id === id); },
+
+      /* ---------- المفاهيم — Concept::with(['subject','unit','lesson'])->withCount(['learningObjects','questions']) ---------- */
+      concepts: FIROB_MOCK.concepts.map(c => ({ ...c, links: { ...c.links } })),
+      title(c, loc = this.locale) { return (loc === 'en' && c.en) || c.ar; },
+      titleLang(c) { return this.locale === 'en' && c.en ? 'en' : 'ar'; },
+      altTitle(c) { const alt = this.title(c, this.altLocale); return alt !== this.title(c) ? alt : ''; },
+      iconMeta(c) {
+        const course = this.courseById(c.courseId);
+        return course ? { icon: course.icon, cls: course.cls } : { icon: 'fa-circle-question', cls: 'bg-line text-muted' };
+      },
+
+      // C5: الاكتمال يتبع إعدادات «إلزامي» للمؤسسة — لا شارة ثابتة
+      missingLevels(c) {
+        const m = [];
+        if (!c.courseId) m.push('course');
+        if (this.structure.units.enabled && this.structure.units.required && !c.unitId) m.push('unit');
+        if (this.structure.lessons.enabled && this.structure.lessons.required && !c.lessonId) m.push('lesson');
+        return m;
+      },
+      isComplete(c) { return this.missingLevels(c).length === 0; },
+      missingText(c) { return this.t('cp.missingPrefix') + ' ' + this.missingLevels(c).map(l => this.t('cp.level.' + l)).join(this.locale === 'ar' ? '، ' : ', '); },
+      pathOf(c) {
+        const S = this.structure, steps = [{ level: 'course', label: this.label(this.courseById(c.courseId)), required: true }];
+        if (S.units.enabled)   steps.push({ level: 'unit',   label: this.label(this.unitById(c.unitId)),     required: S.units.required });
+        if (S.lessons.enabled) steps.push({ level: 'lesson', label: this.label(this.lessonById(c.lessonId)), required: S.lessons.required });
+        return steps;
+      },
+      editorUrl(c) { return 'concept-editor.html?code=' + encodeURIComponent(c.code) + '&mode=' + (this.isComplete(c) ? 'edit' : 'complete'); },
+      hasLinks(c) { return (c.links.objects + c.links.questions) > 0; },
+      linksSummary(c) {
+        return [['objects', c.links.objects], ['questions', c.links.questions]].filter(([, n]) => n > 0)
+          .map(([k, n]) => this.pluralize(k, n)).join(this.locale === 'ar' ? ' و' : ' and ');
+      },
+      get kpis() {
+        const done = this.concepts.filter(c => this.isComplete(c)).length;
+        return { total: this.concepts.length, done, incomplete: this.concepts.length - done };
+      },
+
+      /* ---------- البحث والفلاتر المتسلسلة (C1, C2) ---------- */
+      searchQuery: '', selectedCourse: 'all', selectedUnit: 'all', selectedLesson: 'all', incompleteOnly: false,
+      courseOptions() { return [{ value: 'all', label: this.t('cp.filterCourseAll') }, ...this.courses.map(c => ({ value: c.id, label: this.label(c) }))]; },
+      get scopedUnits() { return this.units.filter(u => this.selectedCourse === 'all' || u.courseId === this.selectedCourse); },
+      get scopedLessons() {
+        return this.lessons.filter(l => this.selectedUnit === 'all' ? this.scopedUnits.some(u => u.id === l.unitId) : l.unitId === this.selectedUnit);
+      },
+      unitOptions() { return [{ value: 'all', label: this.t('cp.filterUnitAll') }, ...this.scopedUnits.map(u => ({ value: u.id, label: this.label(u) }))]; },
+      lessonOptions() { return [{ value: 'all', label: this.t('cp.filterLessonAll') }, ...this.scopedLessons.map(l => ({ value: l.id, label: this.label(l) }))]; },
+      get filtered() {
+        const q = this.searchQuery.trim().toLowerCase();
+        return this.concepts.filter(c =>
+          (!q || [c.code, c.ar, c.en].some(s => (s || '').toLowerCase().includes(q))) &&
+          (this.selectedCourse === 'all' || c.courseId === this.selectedCourse) &&
+          (this.selectedUnit   === 'all' || c.unitId   === this.selectedUnit) &&
+          (this.selectedLesson === 'all' || c.lessonId === this.selectedLesson) &&
+          (!this.incompleteOnly || !this.isComplete(c)));
+      },
+      get activeFilterCount() {
+        return [this.searchQuery.trim() !== '', this.selectedCourse !== 'all', this.selectedUnit !== 'all', this.selectedLesson !== 'all', this.incompleteOnly].filter(Boolean).length;
+      },
+      get resultsMsg() { return this.activeFilterCount ? this.tf('cp.resultsCount', { concepts: this.pluralize('concepts', this.filtered.length) }) : ''; },
+      resetFilters() { this.searchQuery = ''; this.selectedCourse = 'all'; this.selectedUnit = 'all'; this.selectedLesson = 'all'; this.incompleteOnly = false; },
+
+      /* ---------- الترقيم ---------- */
+      page: 1, perPage: 8,
+      get pageCount() { return Math.max(1, Math.ceil(this.filtered.length / this.perPage)); },
+      get pageRows() { const p = Math.min(this.page, this.pageCount); return this.filtered.slice((p - 1) * this.perPage, p * this.perPage); },
+      get pageInfo() {
+        const total = this.filtered.length, from = total ? (Math.min(this.page, this.pageCount) - 1) * this.perPage + 1 : 0;
+        return this.tf('cp.pageInfo', { from, to: Math.min(from + this.perPage - 1, total), total: this.pluralize('concepts', total) });
+      },
+      goPage(p) {
+        this.page = Math.min(Math.max(1, p), this.pageCount);
+        this.$nextTick(() => document.getElementById('main')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+      },
+
+      /* ---------- النسخ: ينشئ نسخة فعلية برمز فريد + تراجع ---------- */
+      duplicateConcept(c) {
+        let n = 2, code = c.code + '-C';
+        while (this.concepts.some(x => x.code === code)) code = c.code + '-C' + n++;
+        const copy = { ...c, id: Date.now(), code, ar: c.ar + I18N.ar.cp.copySuffix, en: c.en ? c.en + I18N.en.cp.copySuffix : '', links: { objects: 0, questions: 0 } };
+        this.concepts.splice(this.concepts.indexOf(c) + 1, 0, copy);
+        this.toastUndo(this.tf('cp.toastDuplicate', { name: this.title(c), code }), () => { this.concepts = this.concepts.filter(x => x.id !== copy.id); });
+      },
+
+      /* ---------- نافذة الحذف + حارس الارتباطات (C4) ---------- */
+      busy: false, isDeleteModalOpen: false, deleteTarget: null, lastTrigger: null,
+      confirmDelete(c, evt) {
+        this.lastTrigger = evt?.currentTarget || document.activeElement;
+        this.deleteTarget = c;
+        this.isDeleteModalOpen = true;
+      },
+      restoreFocus() {
+        const el = this.lastTrigger;
+        this.lastTrigger = null;
+        this.$nextTick(() => {
+          if (el && el.isConnected && el.offsetParent !== null) el.focus();
+          else document.getElementById('main')?.focus();
+        });
+      },
+      closeDeleteModal() {
+        if (this.busy || !this.isDeleteModalOpen) return;
+        this.isDeleteModalOpen = false; this.deleteTarget = null;
+        this.restoreFocus();
+      },
+      async deleteConfirmed() {
+        const c = this.deleteTarget;
+        if (!c || this.hasLinks(c)) return;             // حماية مزدوجة — الخادم هو المرجع النهائي
+        this.busy = true;
+        await sleep(400);
+        this.concepts = this.concepts.filter(x => x.id !== c.id);
+        this.busy = false;
+        this.isDeleteModalOpen = false; this.deleteTarget = null;
+        this.toastSuccess(this.tf('cp.toastDelete', { name: this.title(c) }));
+        this.restoreFocus();                               // الصف حُذف ← يعود التركيز إلى <main>
+      },
+
+      /* ---------- SweetAlert2: تنبيهات سريعة (Toast) ---------- */
+      toastBase(extra) {
+        if (!window.Swal) return Promise.resolve({});
+        return Swal.fire(Object.assign({
+          toast: true, position: 'top-end', icon: 'success', showConfirmButton: false, timer: 3000,
+          customClass: { popup: 'firob-swal firob-toast' },
+          didOpen: (el) => {
+            el.addEventListener('mouseenter', Swal.stopTimer);
+            el.addEventListener('mouseleave', Swal.resumeTimer);
+            el.addEventListener('focusin', Swal.stopTimer);
+          },
+        }, extra));
+      },
+      toastSuccess(msg) { this.toastBase({ title: msg }); },
+      toastUndo(msg, undo) {
+        this.toastBase({
+          title: msg, timer: 6000, timerProgressBar: true,
+          showConfirmButton: true, confirmButtonText: this.t('cp.undo'), buttonsStyling: false,
+          customClass: { popup: 'firob-swal firob-toast', confirmButton: 'btn btn-sm btn-outline' },
+        }).then(r => { if (r.isConfirmed) { undo(); this.toastSuccess(this.t('cp.undone')); } });
+      },
+
+      /* ---------- اختصارات لوحة المفاتيح ---------- */
+      onGlobalKey(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          const g = this.$refs.globalSearch;
+          (g && g.offsetParent !== null ? g : this.$refs.conceptSearch)?.focus();   // البحث العام مخفي تحت md
+          return;
+        }
+        if (e.key === '/' && !this.isDeleteModalOpen && !e.target.closest('input, textarea, select, [contenteditable], [role="combobox"]')) {
+          e.preventDefault(); this.$refs.conceptSearch?.focus();
+        }
+      },
+
+      /* ---------- عامة ---------- */
+      init() {
+        document.title = this.t('docTitle');
+        // رسالة نجاح قادمة من محرر المفهوم (?saved=CODE&action=create|edit|complete) — بديل session()->flash في Laravel
+        const qp = new URLSearchParams(location.search), saved = qp.get('saved');
+        if (saved) {
+          const show = () => this.toastSuccess(this.tf('cp.flash.' + (qp.get('action') || 'edit'), { code: saved }));
+          document.readyState === 'complete' ? show() : window.addEventListener('load', show, { once: true });
+          history.replaceState(null, '', location.pathname);
+        }
+        desktopMQ.addEventListener('change', (m) => { this.mobile = !m.matches; if (m.matches) this.mobileNav = false; });
+        try { this.collapsed = localStorage.getItem('firob-sidebar') === 'collapsed'; } catch (e) {}
+        // فلاتر متسلسلة: تغيير الأب يعيد ضبط الأبناء، وأي تغيير يعيد إلى الصفحة الأولى
+        this.$watch('selectedCourse', () => { this.selectedUnit = 'all'; this.selectedLesson = 'all'; this.page = 1; });
+        this.$watch('selectedUnit', () => { this.selectedLesson = 'all'; this.page = 1; });
+        ['selectedLesson', 'searchQuery', 'incompleteOnly'].forEach(k => this.$watch(k, () => { this.page = 1; }));
+      },
+      toggleSidebar() {
+        if (this.mobile) { this.mobileNav = !this.mobileNav; return; }
+        this.collapsed = !this.collapsed;
+        try { localStorage.setItem('firob-sidebar', this.collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+      },
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        document.getElementById('theme-color')?.setAttribute('content', this.dark ? '#09141B' : '#F1EDE7');
+        try { localStorage.setItem('firob-theme', this.dark ? 'dark' : 'light'); } catch (e) {}
+      },
+      // Esc العام: القوائم فقط — النافذة تعالج Esc بنفسها وتعيد التركيز
+      closeAll() { this.notifOpen = false; this.profileOpen = false; this.mobileNav = false; },
+    };
+  }
+</script>
+</body>
+</html>
